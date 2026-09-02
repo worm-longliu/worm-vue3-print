@@ -1,7 +1,7 @@
 <!-- Excel 风格表格元素：单元格矩阵编辑器（选区/右键菜单/双击编辑） -->
 <template>
   <div class="print-table" :class="{ 'design-mode': designMode }" @contextmenu.prevent>
-    <table :style="{ fontSize: defaultFontSize + 'pt', color: defaultColor }">
+    <table ref="tableRef" :style="{ fontSize: defaultFontSize + 'pt', color: defaultColor }">
       <colgroup>
         <col v-for="(w, i) in colWidths" :key="i" :style="{ width: w + 'mm' }" />
       </colgroup>
@@ -42,7 +42,7 @@
         v-for="(row, ri) in rows"
         :key="row.id"
         class="row-badge"
-        :style="{ top: rowTopMm(ri) + 'mm', height: row.height + 'mm' }"
+        :style="{ top: badgeTopMm(ri) + 'mm', height: badgeHeightMm(ri) + 'mm' }"
       >
         {{ ROW_TYPE_BADGE[row.type] }}
       </span>
@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, reactive, ref } from 'vue'
+import { computed, inject, onMounted, reactive, ref, watch } from 'vue'
 import type { RuntimeElement, TableRow, TableCell, TableRowType } from '../../types'
 import {
   normalizeSelection, canMergeReason, mergeCells, splitCells,
@@ -117,6 +117,63 @@ function rowTopMm(ri: number): number {
   for (let i = 0; i < ri; i++) t += rows.value[i]!.height
   return t
 }
+
+// ─── 设计态实测尺寸自愈 ───
+// HTML 表格行高只是「最小高度」：单元格内容换行、大字号/大 padding 都会把行撑高，
+// 实际渲染高度可能大于行高和（打印端 overflow:visible 并按实测高度分页，行为一致）。
+// 设计框体（虚线选框/选中框/位置标签/吸附对齐）需跟随 <table> 实测高度，
+// 否则选中时示意虚线框与表格真实占用高度不一致。
+const tableRef = ref<HTMLTableElement | null>(null)
+
+/** 96dpi 下 1mm ≈ 3.78px（与 render/browser-pagination 测量遍同一常量） */
+const PX_PER_MM = 3.7795275591
+/** 实测高度与模型高度差小于该值（mm）时不回写，避免无意义抖动 */
+const HEIGHT_EPSILON_MM = 0.1
+
+/** 各行实测布局（mm）：行被内容撑高时，行类型徽标按实测位置/高度对齐 */
+const rowLayoutMm = ref<{ top: number; height: number }[]>([])
+
+function measureTable() {
+  if (!props.designMode) return
+  const table = tableRef.value
+  if (!table) return
+  const tableHpx = table.offsetHeight
+  if (tableHpx <= 0) return // 画布未挂载/隐藏（无布局）时跳过
+  const o = props.element.options
+  const tableHmm = tableHpx / PX_PER_MM
+  if (Math.abs(tableHmm - (o.height ?? 0)) > HEIGHT_EPSILON_MM) {
+    o.height = Math.round(tableHmm * 100) / 100
+  }
+  // tr.offsetTop 与 table.offsetTop 同属一个 offsetParent（.print-table 为 relative）
+  const baseTop = table.offsetTop
+  rowLayoutMm.value = Array.from(table.rows).map(tr => ({
+    top: (tr.offsetTop - baseTop) / PX_PER_MM,
+    height: tr.offsetHeight / PX_PER_MM,
+  }))
+}
+
+/** 行徽标顶距：优先实测位置，未测量时回退行高累加 */
+function badgeTopMm(ri: number): number {
+  return rowLayoutMm.value[ri]?.top ?? rowTopMm(ri)
+}
+
+/** 行徽标高：优先实测高度，未测量时回退配置行高 */
+function badgeHeightMm(ri: number): number {
+  return rowLayoutMm.value[ri]?.height ?? rows.value[ri]?.height ?? 0
+}
+
+// 表格结构/内容/样式任意变化后，在 DOM 更新完毕时实测（post 钩子保证读到新布局）
+watch(
+  () => [props.element.options, props.designMode],
+  () => measureTable(),
+  { deep: true, flush: 'post' },
+)
+
+onMounted(() => {
+  measureTable()
+  // Web 字体加载完成后字宽可能变化导致换行变化，补测一次
+  document.fonts?.ready.then(() => measureTable())
+})
 
 // ─── 单元格显示与样式 ───
 

@@ -2,7 +2,7 @@
 // 设计器核心状态管理：模板数据/选择/历史/剪贴板/编组/键盘/序列化
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type {
-  RuntimeElement, ElementType, ElementZone, PrintBusinessField, TemplateMeta, TemplateData,
+  RuntimeElement, ElementType, ElementZone, PrintBusinessField, TemplateData,
   TableSelection, PrintElementData,
 } from '../types'
 import { createRuntimeElement, generateId } from '../utils/element-factory'
@@ -98,12 +98,6 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
   })
 
   const fields = ref<PrintBusinessField[]>(options.initialFields || [])
-
-  const templateMeta = ref<TemplateMeta>({
-    name: '',
-    businessType: '',
-    remark: '',
-  })
 
   const { selectedIds, selectedElements, select, clearSelection, selectAll: selectAllIds, previewIds, setPreview, clearPreview, commitPreview } = useSelection(elements)
 
@@ -378,14 +372,6 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     recordHistory()
   }
 
-  function getTemplateMeta(): TemplateMeta {
-    return { ...templateMeta.value }
-  }
-
-  function setTemplateMeta(meta: TemplateMeta) {
-    templateMeta.value = { ...meta }
-  }
-
   /** 当前设计器状态序列化为模板 JSON（单一出口，按 zone 拆回三区，保留 id/type 供渲染服务使用） */
   function getTemplateJson(): TemplateData {
     const all = elements.value
@@ -455,13 +441,12 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     previewIds, setPreview, clearPreview, commitPreview,
     hasClipboard, copy, paste, cutSelected,
     tableSelection, setTableSelection,
-    templateMeta,
     canUndo, canRedo, undo, redo,
     recordHistory,
     alignSelected, groupSelected, ungroupSelected, deleteSelected,
     duplicateSelected, resetZoom,
     dragStart, dragStop,
     addElement, addFieldElement, moveLayer, fitToWindow, updateTemplateData,
-    getTemplateMeta, setTemplateMeta, getTemplateJson, loadTemplate,
+    getTemplateJson, loadTemplate,
   }
 }

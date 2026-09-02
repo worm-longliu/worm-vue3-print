@@ -13,7 +13,7 @@ function getNestedValue(obj: any, path: string): any {
 }
 
 export function useBindingDisplay() {
-  function getBindingDisplayState(element: any, businessType: string): BindingDisplayState {
+  function getBindingDisplayState(element: any): BindingDisplayState {
     const formatter = element.options.formatter
     const title = element.options.title
 
@@ -26,7 +26,7 @@ export function useBindingDisplay() {
       }
     }
 
-    const demoData = getDemoData(businessType)
+    const demoData = getDemoData()
     // 简单预览：从 formatter 中提取字段名并查找 demo 数据
     const fieldMatch = formatter.match(/\{([^}]+)\}/)
     if (fieldMatch) {

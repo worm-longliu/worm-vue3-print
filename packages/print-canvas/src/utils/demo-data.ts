@@ -1,7 +1,7 @@
 // web/src/components/print/utils/demo-data.ts
 // 采购收货单默认预览 demo 数据: 嵌套结构, 与字段树定义一致
 
-export function getDemoData(_businessType?: string): Record<string, any> {
+export function getDemoData(): Record<string, any> {
   return DEFAULT_DEMO_DATA
 }
 

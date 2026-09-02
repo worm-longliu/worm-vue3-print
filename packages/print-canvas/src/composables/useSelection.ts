@@ -6,7 +6,6 @@ import type { RuntimeElement } from '../types'
 export const SELECTED_IDS_KEY: InjectionKey<Ref<Set<string>>> = Symbol('selected-ids')
 /** 框选实时预选状态：拖拽过程中高亮即将选中的元素，提交后转为正式选中 */
 export const PREVIEW_IDS_KEY: InjectionKey<Ref<Set<string>>> = Symbol('preview-ids')
-export const BUSINESS_TYPE_KEY: InjectionKey<Ref<string>> = Symbol('business-type')
 
 export function useSelection(elements: { value: RuntimeElement[] }) {
   const selectedIds = ref<Set<string>>(new Set())

@@ -27,7 +27,7 @@
                 v-for="desc in bindingDescriptors"
                 :key="desc.targetPath"
                 :descriptor="desc"
-                :business-type="templateMeta?.businessType || ''"
+                :fields="fields"
                 :model-value="getBindingValue(desc.targetPath)"
                 @update:model-value="(v: string) => setBindingValue(desc.targetPath, v)"
               />
@@ -39,13 +39,13 @@
             <!-- 表格行/单元格属性（需有选区） -->
             <template v-if="isTableType && tableSelection && tableSelection.elementId === element!.id">
               <TableRowGroup :element="element!" :selection="tableSelection" />
-              <TableCellGroup :element="element!" :selection="tableSelection" :fields="fields" :business-type="templateMeta?.businessType || ''" />
+              <TableCellGroup :element="element!" :selection="tableSelection" :fields="fields" />
             </template>
             <!-- 表格设置（表格元素时显示） -->
             <TableSettingsGroup
               v-if="isTableType && filteredGroups.includes('content')"
               :element="element!"
-              :business-type="templateMeta?.businessType || ''"
+              :fields="fields"
             />
             <BorderBgGroup v-if="filteredGroups.includes('border-bg')" :element="element" :matched-keys="matchedKeys" :searching="searching" />
             <!-- 分页配置（表格元素） -->
@@ -70,19 +70,6 @@
 
       <div v-show="(activeTab || 'page') === 'page'" class="pd-tab-pane" role="tabpanel">
         <form class="pd-form" @submit.prevent>
-          <!-- 模板设置 -->
-          <div class="pd-field"><span class="pd-label">模板名称</span>
-            <input class="pd-input" v-model="templateMeta!.name" @input="onTemplateMetaChange" />
-          </div>
-          <div class="pd-field"><span class="pd-label">业务类型</span>
-            <select class="pd-select" v-model="templateMeta!.businessType" style="width: 100%" @change="onTemplateMetaChange">
-              <option v-for="t in businessTypeOptions" :key="t.value" :value="t.value">{{ t.label }}</option>
-            </select>
-          </div>
-          <div class="pd-field"><span class="pd-label">备注</span>
-            <textarea class="pd-input" v-model="templateMeta!.remark" rows="2" @input="onTemplateMetaChange"></textarea>
-          </div>
-
           <h3 class="pd-divider">纸张设置</h3>
 
           <div class="pd-field"><span class="pd-label">纸张尺寸</span>
@@ -149,10 +136,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, inject } from 'vue'
-import type { RuntimeElement, PrintBusinessField, TemplateMeta, TemplateData, TableSelection } from '../types'
+import { computed, ref } from 'vue'
+import type { RuntimeElement, PrintBusinessField, TemplateData, TableSelection } from '../types'
 import { PAPER_PRESETS } from '../utils/default-config'
-import { BUSINESS_TYPE_OPTIONS_KEY } from '../composables/useHostAdapter'
 import { searchProperties } from '../utils/property-search'
 import PropertySearch from './property/PropertySearch.vue'
 import PositionSizeGroup from './property/PositionSizeGroup.vue'
@@ -173,7 +159,6 @@ const props = defineProps<{
   element: RuntimeElement | null
   templateData?: TemplateData
   fields: PrintBusinessField[]
-  templateMeta?: TemplateMeta
   activeTab?: 'element' | 'page'
   tableSelection?: TableSelection | null
   recordHistory?: () => void
@@ -183,13 +168,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   'delete-element': []
   'update:templateData': [data: TemplateData]
-  'update:templateMeta': [meta: TemplateMeta]
   'update:activeTab': [tab: 'element' | 'page']
   'toggle-collapse': []
 }>()
-
-// 业务类型选项由宿主经 PrintDesigner 注入
-const businessTypeOptions = inject(BUSINESS_TYPE_OPTIONS_KEY, computed(() => []))
 
 const paperPresets = PAPER_PRESETS
 const searchText = ref('')
@@ -362,12 +343,6 @@ function onOverlayHeightChange(v: number | undefined) {
   emitUpdate({
     firstPageOverlay: { ...props.templateData!.firstPageOverlay, height: v },
   })
-}
-
-function onTemplateMetaChange() {
-  if (props.templateMeta) {
-    emit('update:templateMeta', { ...props.templateMeta })
-  }
 }
 
 const currentTab = computed(() => props.activeTab || 'page')

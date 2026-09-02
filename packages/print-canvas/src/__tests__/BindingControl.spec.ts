@@ -8,7 +8,6 @@ describe('BindingControl', () => {
       props: {
         descriptor: { targetPath: 'options.formatter', label: '内容', dataSource: 'main' },
         modelValue: '',
-        businessType: 'purchase_receipt',
       },
     })
     const input = wrapper.find('input')
@@ -21,7 +20,6 @@ describe('BindingControl', () => {
       props: {
         descriptor: { targetPath: 'options.formatter', label: '内容', dataSource: 'main' },
         modelValue: '{supplier.name}',
-        businessType: 'purchase_receipt',
       },
     })
     expect((wrapper.find('input').element as HTMLInputElement).value).toBe('{supplier.name}')

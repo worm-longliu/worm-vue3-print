@@ -3,14 +3,18 @@ import { describe, it, expect } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import ExpressionEditor from '../components/ExpressionEditor.vue'
 
+const testFields = [
+  { fieldKey: 'supplier', fieldLabel: '供应商信息', fieldType: 'string', sortOrder: 1 },
+  { fieldKey: 'supplier.name', fieldLabel: '供应商名称', fieldType: 'string', sortOrder: 2 },
+  { fieldKey: 'supplier.phone', fieldLabel: '供应商电话', fieldType: 'string', sortOrder: 3 },
+  { fieldKey: 'goods', fieldLabel: '商品明细', fieldType: 'list', sortOrder: 4 },
+  { fieldKey: 'goods.name', fieldLabel: '商品名称', fieldType: 'string', sortOrder: 5 },
+  { fieldKey: 'goods.spec', fieldLabel: '规格', fieldType: 'string', sortOrder: 6 },
+]
+
 function mountEditor(expression: string, modelValue = true) {
   return mount(ExpressionEditor, {
-    props: { modelValue, businessType: 'purchase_receipt', expression },
-    global: {
-      stubs: {
-        TreeNode: { name: 'TreeNode', template: '<div />' },
-      },
-    },
+    props: { modelValue, expression, fields: testFields },
   })
 }
 
@@ -37,5 +41,32 @@ describe('ExpressionEditor 打开时重置表达式（残留回归）', () => {
     await wrapper.setProps({ modelValue: false })
     await wrapper.setProps({ modelValue: true, expression: '{other}' })
     expect(textareaValue(wrapper)).toBe('{other}')
+  })
+})
+
+describe('ExpressionEditor 字段页（宿主 fields 驱动）', () => {
+  it('渲染分组标题与全路径字段', () => {
+    const wrapper = mountEditor('')
+    expect(wrapper.text()).toContain('供应商信息')
+    expect(wrapper.text()).toContain('供应商名称')
+    expect(wrapper.text()).toContain('supplier.name')
+    expect(wrapper.text()).toContain('商品明细')
+  })
+
+  it('双击字段插入完整路径表达式', async () => {
+    const wrapper = mountEditor('')
+    const item = wrapper.findAll('.ee-field-item').find(el => el.text().includes('规格'))
+    await item!.trigger('dblclick')
+    expect(textareaValue(wrapper)).toBe('{goods.spec}')
+  })
+
+  it('搜索关键字过滤字段（分组标题不计入字段行）', async () => {
+    const wrapper = mountEditor('')
+    const input = wrapper.find('.ee-content-search input')
+    ;(input.element as HTMLInputElement).value = '商品'
+    await input.trigger('input')
+    const items = wrapper.findAll('.ee-field-item')
+    expect(items.length).toBe(1)
+    expect(items[0]!.text()).toContain('商品名称')
   })
 })

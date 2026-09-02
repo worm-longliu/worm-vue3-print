@@ -56,7 +56,7 @@ import type { DragOptions } from '../../composables/useDrag'
 import { generateId } from '../../utils/element-factory'
 import { useResize, RESIZE_POINTS } from '../../composables/useResize'
 import { useBindingDisplay } from '../../composables/useBindingDisplay'
-import { SELECTED_IDS_KEY, PREVIEW_IDS_KEY, BUSINESS_TYPE_KEY } from '../../composables/useSelection'
+import { SELECTED_IDS_KEY, PREVIEW_IDS_KEY } from '../../composables/useSelection'
 import TextElement from './TextElement.vue'
 import ImageElement from './ImageElement.vue'
 import LongTextElement from './LongTextElement.vue'
@@ -128,11 +128,10 @@ const componentMap: Record<string, any> = {
 }
 
 const { getBindingDisplayState } = useBindingDisplay()
-const injectedBusinessType = inject(BUSINESS_TYPE_KEY, ref(''))
 
 const bindingState = computed(() => {
   if (!props.designMode) return null
-  return getBindingDisplayState(props.element, injectedBusinessType.value)
+  return getBindingDisplayState(props.element)
 })
 
 const contentComponent = computed(() => componentMap[props.element.printElementType.type])

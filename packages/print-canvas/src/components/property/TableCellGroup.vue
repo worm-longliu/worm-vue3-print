@@ -74,10 +74,10 @@
           <input :checked="mainCell.fontWeight === 'bold'" type="checkbox" class="pd-switch" @input="write(c => { c.fontWeight = ($event.target as HTMLInputElement).checked ? 'bold' : undefined })" />
         </div>
         <div class="pd-field"><span class="pd-label">文字颜色</span>
-          <input :value="mainCell.color" type="color" class="pd-color" @input="write(c => { c.color = ($event.target as HTMLInputElement).value ?? undefined })" />
+          <PresetColorPicker :model-value="mainCell.color" @update:model-value="write(c => { c.color = $event })" />
         </div>
         <div class="pd-field"><span class="pd-label">背景色</span>
-          <input :value="mainCell.backgroundColor" type="color" class="pd-color" @input="write(c => { c.backgroundColor = ($event.target as HTMLInputElement).value ?? undefined })" />
+          <PresetColorPicker :model-value="mainCell.backgroundColor" @update:model-value="write(c => { c.backgroundColor = $event })" />
         </div>
       </div>
 
@@ -94,7 +94,7 @@
           :max="5"
           :step="0.25"
           style="width: 90px" />
-        <input type="color" class="pd-color" v-model="borderColor" />
+        <PresetColorPicker v-model="borderColor" />
       </div>
       <div class="pd-button-group border-presets">
         <button type="button" class="pd-button small" @click="preset('all')">全部</button>
@@ -130,7 +130,6 @@
 
   <ExpressionEditor
     v-model="formatterEditorVisible"
-    :business-type="businessType"
     :fields="fields"
     :expression="pendingFormatterValue"
     @update:expression="onFormatterEditorConfirm"
@@ -141,6 +140,7 @@
 import { computed, inject, ref } from 'vue'
 import type {
   RuntimeElement, TableSelection, TableCell, TableCellBorder, TableCellBorders, TableCellType, TextAlign,
+  PrintBusinessField,
 } from '../../types'
 import {
   canMergeReason, mergeCells, splitCells, applyBorderPreset, findMainCell, type BorderPreset,
@@ -148,12 +148,12 @@ import {
 import { TABLE_EDIT_KEY } from '../../composables/useTableSelection'
 import PropertyGroup from './PropertyGroup.vue'
 import ExpressionEditor from '../ExpressionEditor.vue'
+import PresetColorPicker from '../PresetColorPicker.vue'
 
 const props = defineProps<{
   element: RuntimeElement
   selection: TableSelection
-  fields: any[]
-  businessType: string
+  fields: PrintBusinessField[]
 }>()
 const ctx = inject(TABLE_EDIT_KEY)!
 

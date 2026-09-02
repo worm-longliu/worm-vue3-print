@@ -11,6 +11,7 @@
       :show-table-ghost-border="showTableGhostBorder"
       :selected-element-has-group="selectedElement?.options.groupId ? true : false"
       :overlay-visible="overlayVisible"
+      :show-load-default="!!loadDefaultTemplate"
       v-model:scale="scale"
       @back="$emit('back')"
       @preview="$emit('preview')"
@@ -37,7 +38,6 @@
         :fields="fields"
         :elements="elements"
         :selected-ids="selectedIds"
-        :business-type="templateMeta.businessType"
         :collapsed="leftCollapsed"
         @select="onSelectElement"
         @move-layer="onMoveLayer"
@@ -91,13 +91,11 @@
         :template-data="templateData"
         :fields="fields"
         :table-selection="tableSelection"
-        :template-meta="templateMeta"
         :record-history="recordHistory"
         :collapsed="rightCollapsed"
         v-model:active-tab="activePropertyTab"
         @delete-element="onDeleteElement"
         @update:template-data="onTemplateDataChanged"
-        @update:template-meta="onTemplateMetaChange"
         @toggle-collapse="toggleRight"
       />
     </div>
@@ -113,7 +111,7 @@
     <!-- 设计稿双击元素/单元格打开的表达式编辑器 -->
     <ExpressionEditor
       v-model="dblEditorVisible"
-      :business-type="templateMeta.businessType"
+      :fields="fields"
       :expression="dblEditorExpression"
       @update:expression="onDblEditorConfirm"
     />
@@ -123,17 +121,16 @@
 <script setup lang="ts">
 import '../styles/native-controls.css'
 import { ref, watch, provide, computed, onMounted, onUnmounted } from 'vue'
-import type { RuntimeElement, PrintBusinessField, TemplateMeta, TemplateData, TableCell, RequestScreenshotFn, UploadImageFn, BusinessTypeOption } from '../types'
+import type { RuntimeElement, PrintBusinessField, TemplateData, TableCell, RequestScreenshotFn, UploadImageFn } from '../types'
 import { useDesignerState } from '../composables/useDesignerState'
 import { useGuides } from '../composables/useGuides'
 import { TABLE_EDIT_KEY } from '../composables/useTableSelection'
-import { SELECTED_IDS_KEY, PREVIEW_IDS_KEY, BUSINESS_TYPE_KEY } from '../composables/useSelection'
+import { SELECTED_IDS_KEY, PREVIEW_IDS_KEY } from '../composables/useSelection'
 import { getZoneRects } from '../utils/zone-layout'
 import { getPaperDimensions } from '../utils/default-config'
 import { DEFAULT_DEMO_DATA } from '../utils/demo-data'
-import { DEFAULT_TEMPLATES } from '../utils/default-templates'
 import { findMainCell } from '../utils/table-matrix'
-import { UPLOAD_IMAGE_KEY, BUSINESS_TYPE_OPTIONS_KEY } from '../composables/useHostAdapter'
+import { UPLOAD_IMAGE_KEY } from '../composables/useHostAdapter'
 import type { AlignMode } from '../composables/useAlign'
 import DesignerToolbar from './DesignerToolbar.vue'
 import LeftPanel from './LeftPanel.vue'
@@ -152,15 +149,14 @@ const props = defineProps<{
   requestScreenshot?: RequestScreenshotFn
   /** 图片上传适配器：未注入时图片上传不可用 */
   uploadImage?: UploadImageFn
-  /** 业务类型下拉选项（宿主定义；核心不内置业务类型） */
-  businessTypeOptions?: BusinessTypeOption[]
+  /** 加载默认布局回调（宿主实现业务逻辑；未注入时工具栏不展示该按钮），返回 null/undefined 视为无默认布局 */
+  loadDefaultTemplate?: () => TemplateData | Promise<TemplateData | null | undefined> | null | undefined
 }>()
 
 const emit = defineEmits<{
   back: []
   preview: []
   save: [json: string]
-  'business-type-change': [businessType: string]
 }>()
 
 // 装配层状态：面板折叠（localStorage 持久）+ 未保存 dirty
@@ -173,14 +169,13 @@ const {
   selectedIds, selectedElement, select, clearSelection, selectAll,
   previewIds, setPreview, commitPreview,
   hasClipboard, copy, paste, cutSelected,
-  templateMeta,
   canUndo, canRedo, undo: onUndo, redo: onRedo,
   alignSelected: onAlign,
   groupSelected: onGroup, ungroupSelected: onUngroup, deleteSelected: onDeleteElement,
   dragStart: onDragStart, dragStop: onDragStop,
   addElement: onDropElement, addFieldElement: onDropField,
   moveLayer: onMoveLayer, updateTemplateData, fitToWindow,
-  getTemplateMeta, setTemplateMeta, getTemplateJson, loadTemplate,
+  getTemplateJson, loadTemplate,
   tableSelection, setTableSelection, recordHistory,
 } = useDesignerState({
   initialTemplate: props.initialTemplate,
@@ -203,10 +198,7 @@ provide(TABLE_EDIT_KEY, { tableSelection, setTableSelection, recordHistory, maxT
 provide(SELECTED_IDS_KEY, selectedIds)
 provide(PREVIEW_IDS_KEY, previewIds)
 
-const businessTypeRef = computed(() => templateMeta.value.businessType)
-provide(BUSINESS_TYPE_KEY, businessTypeRef)
 provide(UPLOAD_IMAGE_KEY, computed(() => props.uploadImage))
-provide(BUSINESS_TYPE_OPTIONS_KEY, computed(() => props.businessTypeOptions || []))
 watch(selectedElement, el => {
   if (!el || el.printElementType.type !== 'table') setTableSelection(null)
 })
@@ -272,10 +264,6 @@ function onKeyFitWindow(e: KeyboardEvent) {
 }
 onMounted(() => document.addEventListener('keydown', onKeyFitWindow))
 onUnmounted(() => document.removeEventListener('keydown', onKeyFitWindow))
-
-function onTemplateMetaChange(meta: TemplateMeta) {
-  templateMeta.value = { ...meta }
-}
 
 function onTemplateDataChanged(data: TemplateData) {
   const prevHeader = templateData.value.header.height
@@ -409,22 +397,23 @@ watch(() => props.initialElements, (els) => {
   }
 })
 watch(() => props.fields, (f) => { fields.value = f || [] })
-watch(() => templateMeta.value.businessType, (bt) => {
-  if (bt) emit('business-type-change', bt)
-})
 
-defineExpose({ getTemplateMeta, setTemplateMeta, getTemplateJson })
+defineExpose({ getTemplateJson })
 
-function handleLoadDefault() {
-  const bt = templateMeta.value.businessType
-  const tpl = DEFAULT_TEMPLATES[bt]
-  if (!tpl) {
-    alert('该业务类型暂无默认布局')
-    return
-  }
+async function handleLoadDefault() {
+  if (!props.loadDefaultTemplate) return
   if (!confirm('将覆盖当前画布内容，是否继续？')) return
-  loadTemplate(tpl)
-  alert('默认布局已加载')
+  try {
+    const tpl = await props.loadDefaultTemplate()
+    if (!tpl) {
+      alert('未获取到默认布局')
+      return
+    }
+    loadTemplate(tpl)
+    alert('默认布局已加载')
+  } catch {
+    alert('加载默认布局失败')
+  }
 }
 
 function handleSave() {

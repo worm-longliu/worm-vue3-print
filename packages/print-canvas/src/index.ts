@@ -10,7 +10,7 @@ export { renderHtmlPages } from './render/browser-pagination'
 export { browserCodeRenderer } from './render/browser-code-renderer'
 
 // 类型与宿主能力契约（TemplateData/RuntimeElement/PrintBusinessField/
-// ScreenshotRequest/RequestScreenshotFn/UploadImageFn/BusinessTypeOption 等）
+// ScreenshotRequest/RequestScreenshotFn/UploadImageFn 等）
 export * from './types'
 
 // 模板工厂与示例数据
@@ -19,4 +19,4 @@ export type { DesignerStateOptions } from './composables/useDesignerState'
 export { DEFAULT_DEMO_DATA, getDemoData } from './utils/demo-data'
 
 // 宿主能力注入键（高级自定义可选；常规接入仅需给 PrintDesigner 传 props）
-export { UPLOAD_IMAGE_KEY, BUSINESS_TYPE_OPTIONS_KEY } from './composables/useHostAdapter'
+export { UPLOAD_IMAGE_KEY } from './composables/useHostAdapter'

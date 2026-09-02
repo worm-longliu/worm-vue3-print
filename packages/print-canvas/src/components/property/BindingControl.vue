@@ -7,7 +7,7 @@
   </div>
   <ExpressionEditor
     v-model="editorVisible"
-    :business-type="businessType"
+    :fields="fields"
     :expression="modelValue"
     @update:expression="(v: string) => emit('update:modelValue', v)"
   />
@@ -15,13 +15,13 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { BindingDescriptor } from '../../types'
+import type { BindingDescriptor, PrintBusinessField } from '../../types'
 import ExpressionEditor from '../ExpressionEditor.vue'
 
 const props = defineProps<{
   descriptor: BindingDescriptor
   modelValue: string
-  businessType: string
+  fields?: PrintBusinessField[]
 }>()
 
 const emit = defineEmits<{

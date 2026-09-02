@@ -10,11 +10,11 @@
             />
         </div>
         <div class="pd-field" v-show="showItem('bb-border-color')"><span class="pd-label">边框颜色</span>
-          <input type="color" class="pd-color" v-model="element.options.borderColor" />
+          <PresetColorPicker v-model="element.options.borderColor" />
         </div>
       </div>
       <div class="pd-field" v-show="showItem('bb-bg-color')"><span class="pd-label">背景色</span>
-        <input type="color" class="pd-color" v-model="element.options.backgroundColor" />
+        <PresetColorPicker v-model="element.options.backgroundColor" />
       </div>
     </form>
   </PropertyGroup>
@@ -22,6 +22,7 @@
 
 <script setup lang="ts">
 import type { RuntimeElement } from '../../types'
+import PresetColorPicker from '../PresetColorPicker.vue'
 import PropertyGroup from './PropertyGroup.vue'
 
 const props = defineProps<{

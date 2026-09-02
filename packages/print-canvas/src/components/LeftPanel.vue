@@ -33,7 +33,7 @@
         </div>
         <div v-show="activeTab === 'fields'" class="pd-tab-pane" role="tabpanel">
           <FieldTreePanel
-            :business-type="businessType"
+            :fields="fields"
             @field-drag="onFieldDrag"
           />
         </div>
@@ -55,7 +55,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { ElementType, PrintBusinessField, RuntimeElement } from '../types'
-import type { FieldTreeNode } from '../utils/field-tree-config'
 import LayerPanel from './LayerPanel.vue'
 import FieldTreePanel from './FieldTreePanel.vue'
 
@@ -63,7 +62,6 @@ defineProps<{
   fields: PrintBusinessField[]
   elements: RuntimeElement[]
   selectedIds: Set<string>
-  businessType: string
   collapsed: boolean
 }>()
 
@@ -72,7 +70,7 @@ const emit = defineEmits<{
   'move-layer': [direction: string]
   'toggle-visible': [id: string]
   'toggle-locked': [id: string]
-  'field-drag': [field: FieldTreeNode]
+  'field-drag': [field: PrintBusinessField]
   'toggle-collapse': []
 }>()
 
@@ -96,7 +94,7 @@ function onDragStart(event: DragEvent, type: string) {
   event.dataTransfer?.setData('elementType', type)
 }
 
-function onFieldDrag(field: FieldTreeNode) {
+function onFieldDrag(field: PrintBusinessField) {
   emit('field-drag', field)
 }
 

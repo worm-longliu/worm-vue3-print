@@ -11,14 +11,14 @@
         <input type="number" class="pd-input" v-model.number="element.options.tableDefaultFontSize" :min="5" :max="72" />
       </div>
       <div class="pd-field"><span class="pd-label">默认文字颜色</span>
-        <input type="color" class="pd-color" v-model="element.options.tableDefaultColor" />
+        <PresetColorPicker v-model="element.options.tableDefaultColor" />
       </div>
       <div class="pd-field"><span class="pd-label">默认内边距 (mm)</span>
         <input type="number" class="pd-input" v-model.number="element.options.tableDefaultPadding" :min="0" :max="10" :step="0.5" />
       </div>
       <div class="pd-field"><span class="pd-label">列宽 (mm)</span>
         <div v-for="(w, i) in element.options.tableColWidths" :key="i" class="col-width-row">
-          <span>列{{ i + 1 }}</span>
+          <span style="width: 60px">列{{ i + 1 }}</span>
           <input :value="w" type="number" class="pd-input" :min="5" :max="200" :step="1" @input="onColWidthChange(i, ($event.target as HTMLInputElement).valueAsNumber)" />
         </div>
       </div>
@@ -28,24 +28,24 @@
 
 <script setup lang="ts">
 import { computed, inject } from 'vue'
-import type { RuntimeElement } from '../../types'
+import PresetColorPicker from '../PresetColorPicker.vue'
+import type { RuntimeElement, PrintBusinessField } from '../../types'
 import { TABLE_EDIT_KEY } from '../../composables/useTableSelection'
-import { getListFields } from '../../utils/field-tree-config'
 import { syncTableElementSize } from '../../utils/table-matrix'
 import PropertyGroup from './PropertyGroup.vue'
 
 const props = defineProps<{
   element: RuntimeElement
-  businessType: string
+  fields: PrintBusinessField[]
 }>()
 
 const tableEditCtx = inject(TABLE_EDIT_KEY, null)
 
+/** 列表数据源选项：宿主以 fieldType='list' 声明明细列表字段 */
 const listFieldOptions = computed(() => {
-  return getListFields(props.businessType).map(f => ({
-    label: f.fieldLabel,
-    value: f.fieldKey,
-  }))
+  return props.fields
+    .filter(f => f.fieldType === 'list')
+    .map(f => ({ label: f.fieldLabel, value: f.fieldKey }))
 })
 
 function onSourceChange(v: string) {

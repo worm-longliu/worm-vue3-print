@@ -34,7 +34,7 @@
         <input type="range" class="pd-range" v-model.number="localConfig.rotate" :min="-90" :max="90" :step="5" @change="onChange" />
       </div>
       <div class="pd-field"><span class="pd-label">颜色</span>
-        <input type="color" class="pd-color" v-model="localConfig.color" @change="onChange" />
+        <PresetColorPicker :model-value="localConfig.color" @update:model-value="onColorChange" />
       </div>
       <div class="pd-field"><span class="pd-label">透明度</span>
         <input type="range" class="pd-range" v-model.number="localConfig.opacity" :min="0.05" :max="0.5" :step="0.05" @change="onChange" />
@@ -49,6 +49,7 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
 import type { WatermarkOptions, PrintBusinessField } from '../types'
+import PresetColorPicker from './PresetColorPicker.vue'
 
 const props = defineProps<{
   modelValue?: WatermarkOptions
@@ -75,6 +76,11 @@ watch(() => props.modelValue, (val) => {
     Object.assign(localConfig, val)
   }
 }, { deep: true })
+
+function onColorChange(value: string) {
+  localConfig.color = value
+  onChange()
+}
 
 function onChange() {
   emit('update:modelValue', { ...localConfig })

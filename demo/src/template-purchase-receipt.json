@@ -1,0 +1,881 @@
+{
+  "unit": "mm",
+  "paperSize": "A5",
+  "orientation": "landscape",
+  "margins": {
+    "top": 10,
+    "right": 10,
+    "bottom": 10,
+    "left": 10
+  },
+  "header": {
+    "height": 10,
+    "elements": [
+      {
+        "id": "el-1787388716888-j5ccp1",
+        "type": "text",
+        "options": {
+          "left": 0,
+          "top": 0,
+          "width": 190,
+          "height": 9.3,
+          "formatter": "采购收货单",
+          "fontSize": 15,
+          "textAlign": "center",
+          "borderWidth": 0.5,
+          "borderColor": "#333333",
+          "backgroundColor": "#fb8c00",
+          "lineHeight": 0,
+          "letterSpacing": 3.5,
+          "verticalAlign": "middle",
+          "fontWeight": "bold"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      }
+    ]
+  },
+  "footer": {
+    "height": 10,
+    "elements": [
+      {
+        "id": "el-1787574605234-y9hbam",
+        "type": "image",
+        "options": {
+          "left": 46.134,
+          "top": 0,
+          "width": 22,
+          "height": 10,
+          "fit": "contain",
+          "src": "http://localhost:9003/docfiles/20260824/107165017631000189_ScreenShot_2026-08-12_163601_786.png"
+        },
+        "printElementType": {
+          "type": "image",
+          "title": "图片"
+        }
+      },
+      {
+        "id": "el-1787402492782-jgr2bx",
+        "type": "text",
+        "options": {
+          "left": 145.7,
+          "top": 2.7,
+          "width": 42.3,
+          "height": 5.3,
+          "formatter": "{pageIndex}/{totalPages}",
+          "fontSize": 12,
+          "textAlign": "left"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      }
+    ]
+  },
+  "firstPageOverlay": {
+    "height": 0,
+    "elements": []
+  },
+  "elements": [
+    {
+      "id": "el-1787389122029-bwhe9i",
+      "type": "table",
+      "options": {
+        "left": 0,
+        "top": 0,
+        "width": 190,
+        "height": 16,
+        "tableMode": "dynamic",
+        "tableRows": [
+          {
+            "id": "row-mt45c165-1",
+            "type": "header",
+            "height": 8,
+            "repeatOnPage": true,
+            "cells": [
+              {
+                "id": "cell-mt45c165-1",
+                "formatter": "供应商名称",
+                "align": "right"
+              },
+              {
+                "id": "cell-mt45c165-2",
+                "formatter": "{supplier.name}",
+                "align": "left"
+              },
+              {
+                "id": "cell-mt45do7e-10",
+                "formatter": "联系地址",
+                "align": "right"
+              },
+              {
+                "id": "cell-mt45e6t7-13",
+                "rowspan": 1,
+                "colspan": 2,
+                "formatter": "{supplier.address} ",
+                "merged": false
+              },
+              {
+                "id": "cell-mt45e8jo-16",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "merged": true,
+                "rowspan": 1,
+                "colspan": 1,
+                "formatter": ""
+              },
+              {
+                "id": "cell-mt45c165-3",
+                "formatter": "{order.no}",
+                "merged": false,
+                "rowspan": 2,
+                "colspan": 1,
+                "cellType": "barcode",
+                "showBarcodeText": true
+              }
+            ]
+          },
+          {
+            "id": "row-mt45c165-2",
+            "type": "header",
+            "height": 8,
+            "cells": [
+              {
+                "id": "cell-mt45c165-4",
+                "formatter": "收货人",
+                "align": "right"
+              },
+              {
+                "id": "cell-mt45c165-5",
+                "formatter": "{receiver.name}"
+              },
+              {
+                "id": "cell-mt45do7e-11",
+                "formatter": "收货人电话",
+                "align": "right"
+              },
+              {
+                "id": "cell-mt45e6t7-14",
+                "formatter": "{receiver.phone}",
+                "rowspan": 1,
+                "colspan": 2
+              },
+              {
+                "id": "cell-mt45e8jo-17",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "merged": true,
+                "rowspan": 1,
+                "colspan": 1,
+                "formatter": ""
+              },
+              {
+                "id": "cell-mt45c165-6",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "merged": true,
+                "rowspan": 1,
+                "colspan": 1,
+                "formatter": ""
+              }
+            ]
+          }
+        ],
+        "tableColWidths": [
+          23,
+          41,
+          20,
+          40,
+          20,
+          46
+        ],
+        "tableDefaultFontSize": 10,
+        "tableDefaultColor": "#333333",
+        "tableDefaultPadding": 1,
+        "fields": [],
+        "tablePagination": {
+          "enabled": true
+        }
+      },
+      "printElementType": {
+        "type": "table",
+        "title": "表格"
+      }
+    },
+    {
+      "id": "el-1787389745878-spvkfd",
+      "type": "table",
+      "options": {
+        "left": 0,
+        "top": 16,
+        "width": 190,
+        "height": 34,
+        "tableMode": "dynamic",
+        "tableRows": [
+          {
+            "id": "row-mt45pejb-1",
+            "type": "header",
+            "height": 8,
+            "repeatOnPage": true,
+            "cells": [
+              {
+                "id": "cell-mt45pejb-1",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "商品名称",
+                "align": "center",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-mt45pejb-2",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "规格",
+                "align": "center",
+                "fontWeight": "bold",
+                "backgroundColor": "#1e88e5"
+              },
+              {
+                "id": "cell-mt45pejb-3",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "数量",
+                "align": "center",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-mt4dpgvi-1",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "单价",
+                "align": "center",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-mt4dpkxp-4",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "备注",
+                "align": "center"
+              }
+            ]
+          },
+          {
+            "id": "row-mt45pejb-2",
+            "type": "data",
+            "height": 10,
+            "cells": [
+              {
+                "id": "cell-mt45pejb-4",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "{goods.name}{goods.name}{goods.name}"
+              },
+              {
+                "id": "cell-mt45pejb-5",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "{goods.spec}"
+              },
+              {
+                "id": "cell-mt45pejb-6",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "{goods.qty}"
+              },
+              {
+                "id": "cell-mt4dpgvi-2",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "{goods.price}"
+              },
+              {
+                "id": "cell-mt4dpkxp-5",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "{goods.qty}",
+                "wordWrap": true
+              }
+            ]
+          },
+          {
+            "id": "row-mt45pejb-3",
+            "type": "subtotal",
+            "height": 8,
+            "cells": [
+              {
+                "id": "cell-mt45pejb-7",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "小计"
+              },
+              {
+                "id": "cell-mt45pejb-8",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                }
+              },
+              {
+                "id": "cell-mt45pejb-9",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "{SUM(goods.qty)}"
+              },
+              {
+                "id": "cell-mt4dpgvi-3",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "rowspan": 1,
+                "colspan": 2,
+                "formatter": "这个是额好吧"
+              },
+              {
+                "id": "cell-mt4dpkxp-6",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "merged": true,
+                "rowspan": 1,
+                "colspan": 1,
+                "formatter": ""
+              }
+            ]
+          },
+          {
+            "id": "row-mt7ahpkf-7iry",
+            "type": "summary",
+            "height": 8,
+            "cells": [
+              {
+                "id": "cell-mt7ahpkf-6",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "{COUNT(goods.name)}"
+              },
+              {
+                "id": "cell-mt7ahpkf-7",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "{SUM(goods.qty)}"
+              },
+              {
+                "id": "cell-mt7ahpkf-8",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                }
+              },
+              {
+                "id": "cell-mt7ahpkf-9",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "{supplier.phone}"
+              },
+              {
+                "id": "cell-mt7ahpkf-10",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "tableColWidths": [
+          56,
+          31,
+          29,
+          34,
+          40
+        ],
+        "tableDefaultFontSize": 10,
+        "tableDefaultColor": "#333333",
+        "tableDefaultPadding": 1,
+        "fields": [],
+        "tablePagination": {
+          "enabled": true
+        }
+      },
+      "printElementType": {
+        "type": "table",
+        "title": "表格"
+      }
+    },
+    {
+      "id": "el-1787402403366-ftd012",
+      "type": "text",
+      "options": {
+        "left": 110.784,
+        "top": 65.02080000000001,
+        "width": 42.3,
+        "height": 5.3,
+        "formatter": "客户签字：",
+        "fontSize": 12,
+        "textAlign": "left"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    }
+  ],
+  "watermark": {},
+  "guides": []
+}

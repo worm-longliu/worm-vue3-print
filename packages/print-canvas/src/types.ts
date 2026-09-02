@@ -283,21 +283,14 @@ export interface RuntimeElement {
   zone?: ElementZone
 }
 
-/** 业务字段 */
+/** 业务字段（宿主查询后传入，核心不内置字段字典） */
 export interface PrintBusinessField {
   id?: string
-  businessType: string
   fieldKey: string
   fieldLabel: string
+  /** 字段类型；'list' 表示明细列表字段（用于表格数据源选择） */
   fieldType: string
   sortOrder: number
-}
-
-/** 模板元信息 */
-export interface TemplateMeta {
-  name: string
-  businessType: string
-  remark: string
 }
 
 /**
@@ -317,10 +310,6 @@ export interface BindingDescriptor {
   /** 是否允许清空 */
   clearable?: boolean
 }
-
-// 字段树类型（从 field-tree-config 导出，供外部组件引用）
-export type { FieldTreeNode } from './utils/field-tree-config'
-
 // ─── 宿主能力注入：开源核心不直接发起网络请求，以下能力由宿主实现后注入 ───
 
 /** 截图请求载荷（设计器叠层对比用） */
@@ -334,9 +323,3 @@ export type RequestScreenshotFn = (req: ScreenshotRequest) => Promise<Blob>
 
 /** 图片上传适配器：宿主上传文件并返回可访问的图片 URL */
 export type UploadImageFn = (file: File) => Promise<string>
-
-/** 业务类型选项（宿主定义并注入，核心不内置业务类型） */
-export interface BusinessTypeOption {
-  label: string
-  value: string
-}

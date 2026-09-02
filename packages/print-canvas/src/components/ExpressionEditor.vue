@@ -41,21 +41,34 @@
             :placeholder="searchPlaceholder" />
         </div>
         <div class="ee-content-list">
-          <!-- 字段列表 -->
+          <!-- 字段列表（按 fieldKey 首段分组：supplier.*/receiver.*/goods.* 等） -->
           <template v-if="activeTab === 'field'">
-            <TreeNode
-              v-for="node in filteredTree"
-              :key="node.id"
-              :node="node"
-              :depth="0"
-              :parent-is-list="false"
-              :search-text="searchText"
-              :show-list-prefix="false"
-              :selected-fields="selectedFields"
-              @field-drag.prevent
-              @field-check="toggleField"
-              @field-dblclick="handleFieldDoubleClick"
-            />
+            <template v-for="group in filteredGroups" :key="group.key || '_top'">
+              <div v-if="group.key" class="ee-field-group" :class="{ 'is-list': group.isList }">
+                <span class="ee-field-group-icon">{{ group.isList ? '📋' : '📁' }}</span>
+                <span>{{ group.label }}</span>
+              </div>
+              <div
+                v-for="field in group.fields"
+                :key="field.fieldKey"
+                class="ee-list-item ee-field-item"
+                :style="{ paddingLeft: group.key ? '22px' : '10px' }"
+                @dblclick="handleFieldDoubleClick(field)"
+              >
+                <label class="ee-field-row">
+                  <input
+                    type="checkbox"
+                    class="pd-checkbox"
+                    :checked="selectedFields.has(field.fieldKey)"
+                    @change="toggleField(field)"
+                    @click.stop
+                  />
+                  <span class="ee-item-label">{{ field.fieldLabel }}</span>
+                  <span class="ee-item-key">{{ field.fieldKey }}</span>
+                </label>
+              </div>
+            </template>
+            <p v-if="filteredGroups.length === 0" class="pd-empty">暂无字段</p>
           </template>
 
           <!-- 变量列表 -->
@@ -166,18 +179,16 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import { getFieldTree } from '../utils/field-tree-config'
-import type { FieldTreeNode } from '../utils/field-tree-config'
+import type { PrintBusinessField } from '../types'
 import { evaluateTemplate } from '../utils/expression-eval'
 import { DEFAULT_DEMO_DATA } from '../utils/demo-data'
-import TreeNode from './TreeNode.vue'
+import { groupFields, filterGroups } from '../utils/field-groups'
 
 const props = defineProps<{
   modelValue: boolean
-  businessType: string
   expression: string
-  /** 外部字段树，提供时优先于 businessType 静态配置 */
-  fields?: FieldTreeNode[]
+  /** 宿主传入的业务字段（字段页数据源） */
+  fields?: PrintBusinessField[]
 }>()
 
 const emit = defineEmits<{
@@ -203,31 +214,17 @@ const searchPlaceholder = computed(() => {
   }
 })
 
-// 字段树
+// 字段列表（宿主注入的扁平业务字段，按 fieldKey 首段分组展示）
 const searchText = ref('')
-const tree = computed(() => (props.fields && props.fields.length ? props.fields : getFieldTree(props.businessType)))
-
-const filteredTree = computed(() => {
-  if (!searchText.value.trim()) return tree.value
-  const keyword = searchText.value.trim().toLowerCase()
-  const filter = (nodes: FieldTreeNode[]): FieldTreeNode[] => {
-    return nodes.reduce<FieldTreeNode[]>((acc, n) => {
-      const matched = n.fieldLabel.toLowerCase().includes(keyword)
-      const filteredChildren = filter(n.children)
-      if (matched || filteredChildren.length > 0) {
-        acc.push({ ...n, children: filteredChildren })
-      }
-      return acc
-    }, [])
-  }
-  return filter(tree.value)
-})
+const filteredGroups = computed(() =>
+  filterGroups(groupFields(props.fields ?? []), searchText.value),
+)
 
 // 字段多选模式
 const selectedFields = ref<Set<string>>(new Set())
 
-function toggleField(node: FieldTreeNode) {
-  const key = node.fieldKey
+function toggleField(field: PrintBusinessField) {
+  const key = field.fieldKey
   const next = new Set(selectedFields.value)
   if (next.has(key)) {
     next.delete(key)
@@ -237,26 +234,16 @@ function toggleField(node: FieldTreeNode) {
   selectedFields.value = next
 }
 
-// 当弹出框打开时，根据当前 expression 值尝试匹配字段树节点
+// 当弹出框打开时，根据当前 expression 值尝试匹配已选字段
 watch(visible, (val) => {
   if (val) {
     // 每次打开时重置为外部传入值，避免携带上次编辑残留
     localExpression.value = props.expression || ''
-    if (props.expression) {
-      const findNode = (nodes: FieldTreeNode[]): FieldTreeNode | null => {
-        for (const n of nodes) {
-          if (n.fieldKey === props.expression) return n
-          if (n.children.length > 0) {
-            const found = findNode(n.children)
-            if (found) return found
-          }
-        }
-        return null
-      }
-      const found = findNode(tree.value)
-      if (found) {
-        selectedFields.value = new Set([found.fieldKey])
-      }
+    const found = (props.fields ?? []).find(
+      f => props.expression === f.fieldKey || props.expression === `{${f.fieldKey}}`,
+    )
+    if (found) {
+      selectedFields.value = new Set([found.fieldKey])
     }
   } else {
     selectedFields.value = new Set()
@@ -264,8 +251,8 @@ watch(visible, (val) => {
 })
 
 // 字段双击处理
-function handleFieldDoubleClick(node: FieldTreeNode) {
-  insertAtCursor(`{${node.fieldKey}}`)
+function handleFieldDoubleClick(field: PrintBusinessField) {
+  insertAtCursor(`{${field.fieldKey}}`)
 }
 
 // 聚合函数双击 — 自动填充选中字段
@@ -480,6 +467,23 @@ function onConfirm() {
   letter-spacing: 0.5px;
 }
 
+/* 字段分组标题 */
+.ee-field-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pd-text);
+}
+.ee-field-group.is-list {
+  color: var(--pd-accent, #165DFF);
+}
+.ee-field-group-icon {
+  font-size: 13px;
+  filter: saturate(.6);
+}
 /* 列表项 */
 .ee-list-item {
   padding: 8px 10px;
@@ -487,6 +491,14 @@ function onConfirm() {
   border-radius: 4px;
   margin-bottom: 4px;
   transition: all 0.2s;
+}
+.ee-field-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ee-field-row .ee-item-label {
+  flex: 1;
 }
 
 .ee-list-item:hover {
