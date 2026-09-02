@@ -1,0 +1,77 @@
+// web/src/components/print/utils/demo-data.ts
+// 采购收货单默认预览 demo 数据: 嵌套结构, 与字段树定义一致
+
+export function getDemoData(_businessType?: string): Record<string, any> {
+  return DEFAULT_DEMO_DATA
+}
+
+export const DEFAULT_DEMO_DATA: Record<string, any> = {
+  supplier: {
+    name: '鑫达五金有限公司',
+    phone: '0571-88776655',
+    address: '杭州市萧山区经济开发区88号',
+  },
+  receiver: {
+    name: '李四',
+    phone: '13912345678',
+    address: '杭州市余杭区文一西路998号',
+  },
+  order: {
+    no: 'PO20260801001',
+    date: '2026-08-01',
+    total: 69543.75,
+  },
+  // 50 条商品明细, 用于验证多页分页效果
+  goods: [
+    { name: '碳钢螺丝 M8', spec: 'M14×10', unit: '个', qty: 100, price: 0.50, amount: 50, remark: 'A级' },
+    { name: '不锈钢螺母 M10', spec: 'M16×11', unit: '套', qty: 117, price: 0.75, amount: 87.75, remark: '' },
+    { name: '弹簧垫圈 M12', spec: 'M6×12', unit: '盒', qty: 134, price: 1, amount: 134, remark: '' },
+    { name: '六角螺栓 M14', spec: 'M5×13', unit: '支', qty: 151, price: 1.25, amount: 188.75, remark: '' },
+    { name: '内六角螺钉 M16', spec: 'M20×14', unit: '袋', qty: 168, price: 1.50, amount: 252, remark: '' },
+    { name: '平垫圈 M6', spec: 'M4×15', unit: '件', qty: 185, price: 1.75, amount: 323.75, remark: '' },
+    { name: '自攻螺钉 M5', spec: 'M3×16', unit: '根', qty: 202, price: 2, amount: 404, remark: '' },
+    { name: '双头螺柱 M20', spec: 'M8×17', unit: '包', qty: 219, price: 2.25, amount: 492.75, remark: 'A级' },
+    { name: '紧定螺钉 M4', spec: 'M10×18', unit: '只', qty: 236, price: 2.50, amount: 590, remark: '' },
+    { name: '十字盘头钉 M3', spec: 'M12×19', unit: '组', qty: 253, price: 2.75, amount: 695.75, remark: '' },
+    { name: '碳钢螺丝 M8', spec: 'M14×20', unit: '个', qty: 270, price: 3, amount: 810, remark: '' },
+    { name: '不锈钢螺母 M10', spec: 'M16×21', unit: '套', qty: 287, price: 3.25, amount: 932.75, remark: '' },
+    { name: '弹簧垫圈 M12', spec: 'M6×22', unit: '盒', qty: 304, price: 3.50, amount: 1064, remark: '' },
+    { name: '六角螺栓 M14', spec: 'M5×23', unit: '支', qty: 321, price: 3.75, amount: 1203.75, remark: '' },
+    { name: '内六角螺钉 M16', spec: 'M20×24', unit: '袋', qty: 338, price: 4, amount: 1352, remark: 'A级' },
+    { name: '平垫圈 M6', spec: 'M4×25', unit: '件', qty: 355, price: 4.25, amount: 1508.75, remark: '' },
+    { name: '自攻螺钉 M5', spec: 'M3×26', unit: '根', qty: 372, price: 4.50, amount: 1674, remark: '' },
+    { name: '双头螺柱 M20', spec: 'M8×27', unit: '包', qty: 389, price: 4.75, amount: 1847.75, remark: '' },
+    { name: '紧定螺钉 M4', spec: 'M10×28', unit: '只', qty: 406, price: 5, amount: 2030, remark: '' },
+    { name: '十字盘头钉 M3', spec: 'M12×29', unit: '组', qty: 423, price: 5.25, amount: 2220.75, remark: '' },
+    { name: '碳钢螺丝 M8', spec: 'M14×30', unit: '个', qty: 440, price: 0.50, amount: 220, remark: '' },
+    { name: '不锈钢螺母 M10', spec: 'M16×31', unit: '套', qty: 457, price: 0.75, amount: 342.75, remark: 'A级' },
+    { name: '弹簧垫圈 M12', spec: 'M6×32', unit: '盒', qty: 474, price: 1, amount: 474, remark: '' },
+    { name: '六角螺栓 M14', spec: 'M5×33', unit: '支', qty: 491, price: 1.25, amount: 613.75, remark: '' },
+    { name: '内六角螺钉 M16', spec: 'M20×34', unit: '袋', qty: 508, price: 1.50, amount: 762, remark: '' },
+    { name: '平垫圈 M6', spec: 'M4×35', unit: '件', qty: 525, price: 1.75, amount: 918.75, remark: '' },
+    { name: '自攻螺钉 M5', spec: 'M3×36', unit: '根', qty: 542, price: 2, amount: 1084, remark: '' },
+    { name: '双头螺柱 M20', spec: 'M8×37', unit: '包', qty: 559, price: 2.25, amount: 1257.75, remark: '' },
+    { name: '紧定螺钉 M4', spec: 'M10×38', unit: '只', qty: 576, price: 2.50, amount: 1440, remark: 'A级' },
+    { name: '十字盘头钉 M3', spec: 'M12×39', unit: '组', qty: 593, price: 2.75, amount: 1630.75, remark: '' },
+    { name: '碳钢螺丝 M8', spec: 'M14×40', unit: '个', qty: 610, price: 3, amount: 1830, remark: '' },
+    { name: '不锈钢螺母 M10', spec: 'M16×41', unit: '套', qty: 627, price: 3.25, amount: 2037.75, remark: '' },
+    { name: '弹簧垫圈 M12', spec: 'M6×42', unit: '盒', qty: 644, price: 3.50, amount: 2254, remark: '' },
+    { name: '六角螺栓 M14', spec: 'M5×43', unit: '支', qty: 661, price: 3.75, amount: 2478.75, remark: '' },
+    { name: '内六角螺钉 M16', spec: 'M20×44', unit: '袋', qty: 678, price: 4, amount: 2712, remark: '' },
+    { name: '平垫圈 M6', spec: 'M4×45', unit: '件', qty: 695, price: 4.25, amount: 2953.75, remark: 'A级' },
+    { name: '自攻螺钉 M5', spec: 'M3×46', unit: '根', qty: 712, price: 4.50, amount: 3204, remark: '' },
+    { name: '双头螺柱 M20', spec: 'M8×47', unit: '包', qty: 729, price: 4.75, amount: 3462.75, remark: '' },
+    { name: '紧定螺钉 M4', spec: 'M10×48', unit: '只', qty: 746, price: 5, amount: 3730, remark: '' },
+    { name: '十字盘头钉 M3', spec: 'M12×49', unit: '组', qty: 763, price: 5.25, amount: 4005.75, remark: '' },
+    { name: '碳钢螺丝 M8', spec: 'M14×10', unit: '个', qty: 780, price: 0.50, amount: 390, remark: '' },
+    { name: '不锈钢螺母 M10', spec: 'M16×11', unit: '套', qty: 797, price: 0.75, amount: 597.75, remark: '' },
+    { name: '弹簧垫圈 M12', spec: 'M6×12', unit: '盒', qty: 814, price: 1, amount: 814, remark: 'A级' },
+    { name: '六角螺栓 M14', spec: 'M5×13', unit: '支', qty: 831, price: 1.25, amount: 1038.75, remark: '' },
+    { name: '内六角螺钉 M16', spec: 'M20×14', unit: '袋', qty: 848, price: 1.50, amount: 1272, remark: '' },
+    { name: '平垫圈 M6', spec: 'M4×15', unit: '件', qty: 865, price: 1.75, amount: 1513.75, remark: '' },
+    { name: '自攻螺钉 M5', spec: 'M3×16', unit: '根', qty: 882, price: 2, amount: 1764, remark: '' },
+    { name: '双头螺柱 M20', spec: 'M8×17', unit: '包', qty: 899, price: 2.25, amount: 2022.75, remark: '' },
+    { name: '紧定螺钉 M4', spec: 'M10×18', unit: '只', qty: 916, price: 2.50, amount: 2290, remark: '' },
+    { name: '十字盘头钉 M3', spec: 'M12×19', unit: '组', qty: 933, price: 2.75, amount: 2565.75, remark: 'A级' },
+  ],
+}

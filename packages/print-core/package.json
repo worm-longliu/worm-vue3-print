@@ -1,0 +1,37 @@
+{
+  "name": "@worm-vue3-print/core",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "打印模板表达式引擎与同构渲染管线（HTML 生成/分页/数据绑定），无 Vue、无宿主依赖",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "print",
+    "template",
+    "expression",
+    "pagination",
+    "pdf-render-pipeline"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}

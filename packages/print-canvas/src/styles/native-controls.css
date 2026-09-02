@@ -1,0 +1,307 @@
+/* 打印设计器原生控件样式：仅 HTML/CSS，不依赖 UI 组件库 */
+.pd-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--pd-text, #303133);
+}
+.pd-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pd-label {
+  font-size: 11px;
+  color: var(--pd-text-muted, #909399);
+}
+.pd-input,
+.pd-select,
+.pd-color,
+textarea.pd-input {
+  width: 100%;
+  min-height: 26px;
+  padding: 3px 6px;
+  border: 1px solid var(--pd-border, #d9dde6);
+  border-radius: 6px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  transition: border-color .14s ease, box-shadow .14s ease;
+}
+.pd-input:hover,
+.pd-select:hover {
+  border-color: var(--pd-text-faint, #b4b9c4);
+}
+textarea.pd-input {
+  min-height: 48px;
+  resize: vertical;
+}
+.pd-input:focus,
+.pd-select:focus,
+.pd-color:focus {
+  outline: none;
+  border-color: var(--pd-accent, #165DFF);
+  box-shadow: 0 0 0 2px rgb(22 93 255 / 12%);
+}
+.pd-select {
+  appearance: auto;
+}
+.pd-color {
+  padding: 1px;
+  height: 26px;
+}
+.pd-switch {
+  appearance: none;
+  width: 32px;
+  height: 18px;
+  margin: 0;
+  border: 1px solid var(--pd-border, #dcdfe6);
+  border-radius: 999px;
+  background: #dcdfe6;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.pd-switch:checked {
+  background: var(--pd-accent, #165DFF);
+  border-color: var(--pd-accent, #165DFF);
+}
+.pd-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+.pd-switch:checked::after {
+  transform: translateX(14px);
+}
+.pd-range {
+  width: 100%;
+  accent-color: var(--pd-accent, #165DFF);
+}
+.pd-radio-group,
+.pd-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pd-radio,
+.pd-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 0 7px;
+  border: 1px solid var(--pd-border, #d9dde6);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color .14s ease, background .14s ease, color .14s ease;
+}
+.pd-radio:has(input:checked),
+.pd-checkbox:has(input:checked) {
+  color: var(--pd-accent, #165DFF);
+  border-color: var(--pd-accent, #165DFF);
+  background: rgb(22 93 255 / 6%);
+}
+.pd-button-group {
+  display: inline-flex;
+  gap: 4px;
+}
+.pd-button,
+.pd-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 3px 8px;
+  border: 1px solid var(--pd-border, #d9dde6);
+  border-radius: 6px;
+  background: var(--pd-bg, #f4f6fa);
+  color: var(--pd-text, #2a2e37);
+  font: inherit;
+  cursor: pointer;
+  transition: background .14s ease, border-color .14s ease, color .14s ease;
+}
+.pd-button:hover {
+  background: var(--pd-sidebar-hover, #f0f3f9);
+  border-color: var(--pd-text-faint, #b4b9c4);
+}
+.pd-button.primary {
+  background: var(--pd-accent, #165DFF);
+  border-color: var(--pd-accent, #165DFF);
+  color: #fff;
+}
+.pd-button.danger {
+  background: #f56c6c;
+  border-color: #f56c6c;
+  color: #fff;
+}
+.pd-button.small {
+  min-height: 22px;
+  padding: 1px 6px;
+  font-size: 11px;
+}
+.pd-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.pd-tabs {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.pd-tab-bar {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px 0;
+  border-bottom: 1px solid var(--pd-border-soft, #ebeef5);
+}
+.pd-tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 5px 5px 0 0;
+  background: transparent;
+  transition: color .14s ease, background .14s ease;
+}
+.pd-tab-bar .pd-tab:hover {
+  color: var(--pd-text, #2a2e37);
+  background: var(--pd-sidebar-hover, #f0f3f9);
+}
+.pd-tab.active {
+  color: var(--pd-accent, #165DFF);
+  border-bottom-color: var(--pd-accent, #165DFF);
+  background: transparent;
+  font-weight: 600;
+}
+.pd-tab-pane {
+  min-height: 0;
+  overflow: auto;
+}
+.pd-divider {
+  margin: 6px 0;
+  font-size: 11px;
+  color: var(--pd-text-muted, #909399);
+}
+.pd-empty {
+  margin: 16px 0;
+  color: var(--pd-text-muted, #909399);
+  text-align: center;
+}
+.pd-badge {
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgb(103 194 58 / 12%);
+  color: #529b2e;
+  font-size: 10px;
+}
+.pd-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 45%);
+}
+.pd-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(950px, 90vw);
+  max-height: 90vh;
+  overflow: hidden;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: var(--pd-shadow-md, 0 12px 40px rgba(23, 32, 60, .18));
+}
+.pd-dialog-small {
+  width: min(400px, 92vw);
+}
+.pd-dialog-large {
+  width: min(950px, 90vw);
+}
+.pd-dialog-header,
+.pd-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 16px;
+}
+.pd-dialog-header {
+  border-bottom: 1px solid var(--pd-border-soft, #ebeef5);
+}
+.pd-dialog-footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--pd-border-soft, #ebeef5);
+}
+.pd-dialog-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+.pd-close {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  background: transparent;
+  color: var(--pd-text-muted, #909399);
+  font-size: 16px;
+  cursor: pointer;
+}
+.pd-icon {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+}
+
+
+/* ── 工作台级打磨：细滚动条 / 键盘聚焦 / 减弱动效（仅作用于设计器内部）── */
+.designer-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(23, 32, 60, .18) transparent;
+}
+.designer-container ::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.designer-container ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.designer-container ::-webkit-scrollbar-thumb {
+  background: rgba(23, 32, 60, .16);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.designer-container ::-webkit-scrollbar-thumb:hover {
+  background: rgba(23, 32, 60, .30);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.designer-container ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+.designer-container button:focus-visible,
+.designer-container [tabindex]:focus-visible,
+.designer-container .pd-tab:focus-visible {
+  outline: 2px solid var(--pd-accent, #165DFF);
+  outline-offset: 1px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .designer-container *,
+  .designer-container *::before,
+  .designer-container *::after {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
