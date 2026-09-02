@@ -1,6 +1,6 @@
 {
   "name": "@worm-vue3-print/core",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "打印模板表达式引擎与同构渲染管线（HTML 生成/分页/数据绑定），无 Vue、无宿主依赖",
   "main": "dist/index.cjs",
@@ -8,9 +8,9 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     }
   },
   "files": [

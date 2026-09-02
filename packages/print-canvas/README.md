@@ -4,7 +4,18 @@ Vue 3 可视化打印模板设计器画布（`worm-vue3-print` monorepo）。纯
 原生控件实现，**不依赖 Element Plus、不依赖宿主 API/路由/租户**。模板保存、字段查询、
 截图、图片上传、消息提示等能力由宿主通过 props / 事件 / 适配器注入。
 
+## 安装
+
+```bash
+npm install @worm-vue3-print/canvas @worm-vue3-print/core
+```
+
 ## 宿主接入
+
+```ts
+import { PrintDesigner, PrintHtmlPreview } from '@worm-vue3-print/canvas'
+import '@worm-vue3-print/canvas/style.css'
+```
 
 ```vue
 <PrintDesigner
@@ -40,5 +51,4 @@ cd packages/print-canvas
 npm test          # vitest（happy-dom + @vue/test-utils）
 ```
 
-> 当前以**源码方式**被宿主 Vite 直接编译消费（宿主将 `@worm-vue3-print/canvas` alias 到
-> `src/index.ts`）；发布 npm 前再补充 Vue 库模式构建（external vue、抽离 CSS、生成 d.ts）。
+> 构建产物位于 `dist/`，使用 Vite Vue 库模式构建（external Vue，抽离 CSS，生成 d.ts）。
