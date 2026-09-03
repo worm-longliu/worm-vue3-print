@@ -13,7 +13,6 @@
       :overlay-visible="overlayVisible"
       :show-load-default="!!loadDefaultTemplate"
       v-model:scale="scale"
-      @back="$emit('back')"
       @preview="$emit('preview')"
       @save="handleSave"
       @load-default="handleLoadDefault"
@@ -154,7 +153,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  back: []
   preview: []
   save: [json: string]
 }>()

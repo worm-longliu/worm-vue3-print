@@ -2,7 +2,6 @@
   <div class="designer-toolbar">
     <!-- 文件 -->
     <div class="tb-group">
-      <button class="tb-btn tb-icon" title="返回" @click="$emit('back')">←</button>
       <span class="tb-mark" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="5" y="3" width="14" height="18" rx="2.5" />
@@ -13,7 +12,7 @@
       </span>
       <div class="tb-title">
         <span class="tb-title-name">{{ isEdit ? '编辑模板' : '新建模板' }}</span>
-        <span class="tb-title-sub">印刷工作台</span>
+        <span class="tb-title-sub">打印模板设计器</span>
       </div>
     </div>
     <!-- 编辑 -->
@@ -95,7 +94,6 @@ defineProps<{
 }>()
 
 defineEmits<{
-  back: []
   preview: []
   save: []
   'load-default': []

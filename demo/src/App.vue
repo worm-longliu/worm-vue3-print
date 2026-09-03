@@ -14,7 +14,6 @@
         :fields="fields"
         :is-edit="true"
         :load-default-template="loadDefaultTemplate"
-        @back="onBack"
         @preview="onPreview"
         @save="onSave"
       />
@@ -65,10 +64,6 @@ const templateData = ref<TemplateData>(rawTemplate as TemplateData)
 const fields = ref<PrintBusinessField[]>(PURCHASE_RECEIPT_FIELDS)
 
 const designerRef = ref<InstanceType<typeof PrintDesigner> | null>(null)
-
-function onBack() {
-  console.log('[demo] 返回（宿主在此可跳转列表页）')
-}
 
 /**
  * 保存：宿主在此将 JSON 持久化。
