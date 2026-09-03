@@ -419,6 +419,19 @@ describe('文本元素 backgroundColor 渲染', () => {
     ]))
     expect(html).toContain('background-color:#f0f0f0')
   })
+
+  it('打印 CSS 声明 print-color-adjust:exact，确保 Chromium 打印/PDF 保留背景色', () => {
+    const t = makeAreaTemplate({
+      header: {
+        height: 15,
+        elements: [makeAreaEl('text', { testData: 'X', backgroundColor: '#ffd700' })] as any,
+      },
+    })
+    const html = generateHtml(t, singlePage)
+    // Chromium 默认在打印/导出 PDF 时剔除背景色，必须显式声明才能保留
+    expect(html).toContain('-webkit-print-color-adjust: exact')
+    expect(html).toContain('print-color-adjust: exact')
+  })
 })
 
 // ─── 文本元素字符间距渲染（设计稿可见、打印稿必须同样可见）───

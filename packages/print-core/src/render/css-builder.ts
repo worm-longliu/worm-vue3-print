@@ -27,6 +27,10 @@ export function buildPageCss(template: TemplateData): string {
 
 /* ── 全局重置 ── */
 * { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* 打印必须保留元素背景色（Chromium 默认剔除背景，需显式声明） */
+* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
 body { font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif; }
 
 /* ── 屏幕预览：灰底 + 纸张阴影/页间距；打印时去除 ── */
