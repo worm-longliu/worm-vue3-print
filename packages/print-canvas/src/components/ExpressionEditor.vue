@@ -55,17 +55,10 @@
                 :style="{ paddingLeft: group.key ? '22px' : '10px' }"
                 @dblclick="handleFieldDoubleClick(field)"
               >
-                <label class="ee-field-row">
-                  <input
-                    type="checkbox"
-                    class="pd-checkbox"
-                    :checked="selectedFields.has(field.fieldKey)"
-                    @change="toggleField(field)"
-                    @click.stop
-                  />
+                <div class="ee-field-info">
                   <span class="ee-item-label">{{ field.fieldLabel }}</span>
                   <span class="ee-item-key">{{ field.fieldKey }}</span>
-                </label>
+                </div>
               </div>
             </template>
             <p v-if="filteredGroups.length === 0" class="pd-empty">暂无字段</p>
@@ -79,8 +72,10 @@
               class="ee-list-item"
               @dblclick="handleItemDoubleClick(sv.template)"
             >
-              <div class="ee-item-label">{{ sv.label }}</div>
-              <div class="ee-item-key">{{ sv.name }}</div>
+              <div class="ee-field-info">
+                <span class="ee-item-label">{{ sv.label }}</span>
+                <span class="ee-item-key">{{ sv.template }}</span>
+              </div>
             </div>
           </template>
 
@@ -94,8 +89,10 @@
                 class="ee-list-item"
                 @dblclick="handleAggregateDoubleClick(fn)"
               >
-                <div class="ee-item-label">{{ fn.label }}</div>
-                <div class="ee-item-key">{{ fn.name }}</div>
+                <div class="ee-field-info">
+                  <span class="ee-item-label">{{ fn.label }}</span>
+                  <span class="ee-item-key">{{ fn.name }}()</span>
+                </div>
               </div>
             </div>
             <div class="ee-func-group">
@@ -106,8 +103,10 @@
                 class="ee-list-item"
                 @dblclick="handleItemDoubleClick(fn.template)"
               >
-                <div class="ee-item-label">{{ fn.label }}</div>
-                <div class="ee-item-key">{{ fn.name }}</div>
+                <div class="ee-field-info">
+                  <span class="ee-item-label">{{ fn.label }}</span>
+                  <span class="ee-item-key">{{ fn.name }}()</span>
+                </div>
               </div>
             </div>
           </template>
@@ -123,7 +122,7 @@
             v-model="localExpression"
             class="ee-textarea"
             rows="6"
-            placeholder="双击左侧字段/函数插入表达式，如: {fieldKey} 或 SUM(amount)"
+            placeholder="双击左侧字段/变量/函数插入，或直接输入静态内容"
           />
         </div>
 
@@ -136,10 +135,13 @@
           <div class="ee-help-title">帮助信息</div>
           <div class="ee-help-grid">
             <div class="ee-help-card ee-help-field">
-              <div class="ee-help-card-title">字段绑定</div>
+              <div class="ee-help-card-title">输入方式</div>
               <div class="ee-help-card-content">
-                使用 {字段名} 格式<br>
-                示例: {order.no}
+                双击左侧字段、变量、函数即可插入到表达式输入框中<br>
+                静态数据直接输入即可，如：供应商名称<br>
+                动态解析字段、变量、函数必须用 {} 包裹<br>
+                示例：{SUM(supplier.name)}<br>
+                注意：只能嵌套一层
               </div>
             </div>
             <div class="ee-help-card ee-help-function">
@@ -147,22 +149,25 @@
               <div class="ee-help-card-content">
                 SUM(字段) - 求和<br>
                 AVG(字段) - 平均值<br>
-                COUNT(字段) - 计数
+                COUNT(字段) - 计数<br>
+                IF(条件, 真值, 假值) - 条件判断
               </div>
             </div>
             <div class="ee-help-card ee-help-variable">
               <div class="ee-help-card-title">系统变量</div>
               <div class="ee-help-card-content">
-                {page} - 当前页码<br>
-                {total} - 总页数<br>
-                {row} - 当前行号
+                {pageIndex} - 当前页码<br>
+                {totalPages} - 总页数<br>
+                {printDate} - 打印日期
               </div>
             </div>
             <div class="ee-help-card ee-help-conditional">
-              <div class="ee-help-card-title">条件判断</div>
+              <div class="ee-help-card-title">示例</div>
               <div class="ee-help-card-content">
-                IF(条件, 真值, 假值)<br>
-                示例: IF(amount>1000, "大单", "小单")
+                静态文本：供应商名称<br>
+                动态字段：{supplier.name}<br>
+                函数调用：{SUM(amount)}<br>
+                条件判断：{IF(amount>1000, "大单", "小单")}
               </div>
             </div>
           </div>
@@ -220,33 +225,10 @@ const filteredGroups = computed(() =>
   filterGroups(groupFields(props.fields ?? []), searchText.value),
 )
 
-// 字段多选模式
-const selectedFields = ref<Set<string>>(new Set())
-
-function toggleField(field: PrintBusinessField) {
-  const key = field.fieldKey
-  const next = new Set(selectedFields.value)
-  if (next.has(key)) {
-    next.delete(key)
-  } else {
-    next.add(key)
-  }
-  selectedFields.value = next
-}
-
-// 当弹出框打开时，根据当前 expression 值尝试匹配已选字段
+// 当弹出框打开时，重置为外部传入值
 watch(visible, (val) => {
   if (val) {
-    // 每次打开时重置为外部传入值，避免携带上次编辑残留
     localExpression.value = props.expression || ''
-    const found = (props.fields ?? []).find(
-      f => props.expression === f.fieldKey || props.expression === `{${f.fieldKey}}`,
-    )
-    if (found) {
-      selectedFields.value = new Set([found.fieldKey])
-    }
-  } else {
-    selectedFields.value = new Set()
   }
 })
 
@@ -255,14 +237,9 @@ function handleFieldDoubleClick(field: PrintBusinessField) {
   insertAtCursor(`{${field.fieldKey}}`)
 }
 
-// 聚合函数双击 — 自动填充选中字段
+// 聚合函数双击 — 插入空模板
 function handleAggregateDoubleClick(fn: { name: string; template: string }) {
-  if (selectedFields.value.size > 0) {
-    const fields = Array.from(selectedFields.value).join(', ')
-    insertAtCursor(`${fn.name}(${fields})`)
-  } else {
-    insertAtCursor(fn.template)
-  }
+  insertAtCursor(fn.template)
 }
 
 // 通用双击处理（变量和格式化函数）
@@ -460,10 +437,8 @@ function onConfirm() {
   font-size: 11px;
   font-weight: 600;
   color: var(--pd-text-muted);
-  padding: 4px 10px 6px;
-  border-bottom: 1px solid var(--pd-border);
-  margin-bottom: 4px;
-  text-transform: uppercase;
+  padding: 6px 10px;
+  margin-bottom: 2px;
   letter-spacing: 0.5px;
 }
 
@@ -486,36 +461,29 @@ function onConfirm() {
 }
 /* 列表项 */
 .ee-list-item {
-  padding: 8px 10px;
+  padding: 7px 10px;
   cursor: pointer;
   border-radius: 4px;
-  margin-bottom: 4px;
-  transition: all 0.2s;
+  margin-bottom: 2px;
+  transition: background 0.15s;
 }
-.ee-field-row {
+.ee-field-info {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 1px;
 }
-.ee-field-row .ee-item-label {
-  flex: 1;
+.ee-field-info .ee-item-label {
+  font-size: 12px;
+  color: var(--pd-text);
+}
+.ee-field-info .ee-item-key {
+  font-size: 10px;
+  color: var(--pd-text-muted);
+  font-family: monospace;
 }
 
 .ee-list-item:hover {
   background: #ecf5ff;
-  border-color: var(--pd-accent);
-}
-
-.ee-list-item .ee-item-label {
-  font-size: 12px;
-  color: var(--pd-text);
-}
-
-.ee-list-item .ee-item-key {
-  font-size: 10px;
-  color: var(--pd-text-muted);
-  font-family: monospace;
-  margin-top: 2px;
 }
 
 /* 右侧编辑区 */

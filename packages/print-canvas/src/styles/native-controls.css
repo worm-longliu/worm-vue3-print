@@ -20,6 +20,7 @@
 .pd-color,
 textarea.pd-input {
   width: 100%;
+  height: 26px;
   min-height: 26px;
   padding: 3px 6px;
   border: 1px solid var(--pd-border, #d9dde6);
@@ -27,6 +28,7 @@ textarea.pd-input {
   background: #fff;
   color: inherit;
   font: inherit;
+  box-sizing: border-box;
   transition: border-color .14s ease, box-shadow .14s ease;
 }
 .pd-input:hover,
@@ -34,6 +36,7 @@ textarea.pd-input {
   border-color: var(--pd-text-faint, #b4b9c4);
 }
 textarea.pd-input {
+  height: auto;
   min-height: 48px;
   resize: vertical;
 }
