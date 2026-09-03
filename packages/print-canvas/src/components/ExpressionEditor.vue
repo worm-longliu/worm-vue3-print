@@ -70,7 +70,7 @@
               v-for="sv in filteredSystemVars"
               :key="sv.name"
               class="ee-list-item"
-              @dblclick="handleItemDoubleClick(sv.template)"
+              @dblclick="handleVariableDoubleClick(sv)"
             >
               <div class="ee-field-info">
                 <span class="ee-item-label">{{ sv.label }}</span>
@@ -87,7 +87,7 @@
                 v-for="fn in filteredAggregateFuncs"
                 :key="fn.name"
                 class="ee-list-item"
-                @dblclick="handleAggregateDoubleClick(fn)"
+                @dblclick="handleFunctionDoubleClick(fn)"
               >
                 <div class="ee-field-info">
                   <span class="ee-item-label">{{ fn.label }}</span>
@@ -101,7 +101,7 @@
                 v-for="fn in filteredFormatFuncs"
                 :key="fn.name"
                 class="ee-list-item"
-                @dblclick="handleItemDoubleClick(fn.template)"
+                @dblclick="handleFunctionDoubleClick(fn)"
               >
                 <div class="ee-field-info">
                   <span class="ee-item-label">{{ fn.label }}</span>
@@ -232,19 +232,47 @@ watch(visible, (val) => {
   }
 })
 
-// 字段双击处理
+// 字段双击：函数参数内插入裸字段（去大括号），其余场景保持 {字段} 包裹
 function handleFieldDoubleClick(field: PrintBusinessField) {
-  insertAtCursor(`{${field.fieldKey}}`)
+  const { insideParens } = getCursorRegion()
+  insertAtCursor(insideParens ? field.fieldKey : `{${field.fieldKey}}`)
 }
 
-// 聚合函数双击 — 插入空模板
-function handleAggregateDoubleClick(fn: { name: string; template: string }) {
-  insertAtCursor(fn.template)
+// 变量双击：函数参数内去大括号，其余场景保持 {变量} 原样
+function handleVariableDoubleClick(sv: { name: string; template: string }) {
+  const { insideParens } = getCursorRegion()
+  insertAtCursor(insideParens ? sv.template.replace(/^\{|\}$/g, '') : sv.template)
 }
 
-// 通用双击处理（变量和格式化函数）
-function handleItemDoubleClick(text: string) {
-  insertAtCursor(text)
+// 函数双击：已在 {…} 块内则裸插入，否则自动包裹大括号；光标定位到 () 内部
+function handleFunctionDoubleClick(fn: { name: string; template: string }) {
+  const { insideBlock } = getCursorRegion()
+  const text = insideBlock ? fn.template : `{${fn.template}}`
+  const caretOffset = text.indexOf('(') + 1
+  insertAtCursor(text, caretOffset)
+}
+
+// 根据光标位置判断插入上下文：是否在 {…} 表达式块内、是否在函数参数 (…) 内
+function getCursorRegion(): { insideBlock: boolean; insideParens: boolean } {
+  const ta = textareaRef.value
+  const start = ta?.selectionStart ?? localExpression.value.length
+  const before = localExpression.value.substring(0, start)
+
+  // 光标前最近的 { 未被 } 闭合 → 在表达式块内
+  let insideBlock = false
+  const lastBlockOpen = before.lastIndexOf('{')
+  if (lastBlockOpen !== -1 && !before.slice(lastBlockOpen + 1).includes('}')) {
+    insideBlock = true
+  }
+
+  // 光标前最近的 ( 未被 ) 闭合 → 在函数参数内
+  let insideParens = false
+  const lastParenOpen = before.lastIndexOf('(')
+  if (lastParenOpen !== -1 && !before.slice(lastParenOpen + 1).includes(')')) {
+    insideParens = true
+  }
+
+  return { insideBlock, insideParens }
 }
 
 // 过滤后的系统变量
@@ -324,7 +352,7 @@ const previewResult = computed(() => {
   }
 })
 
-function insertAtCursor(text: string) {
+function insertAtCursor(text: string, caretOffset = text.length) {
   const ta = textareaRef.value
   if (!ta) {
     localExpression.value += text
@@ -335,9 +363,10 @@ function insertAtCursor(text: string) {
   const before = localExpression.value.substring(0, start)
   const after = localExpression.value.substring(end)
   localExpression.value = before + text + after
+  const caretPos = start + caretOffset
   nextTick(() => {
     ta.focus()
-    ta.selectionStart = ta.selectionEnd = start + text.length
+    ta.selectionStart = ta.selectionEnd = caretPos
   })
 }
 

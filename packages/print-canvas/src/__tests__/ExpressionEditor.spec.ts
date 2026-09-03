@@ -70,3 +70,81 @@ describe('ExpressionEditor 字段页（宿主 fields 驱动）', () => {
     expect(items[0]!.text()).toContain('商品名称')
   })
 })
+
+describe('ExpressionEditor 智能大括号处理', () => {
+  // 设置 textarea 内容与光标位置（触发 input 同步 v-model）
+  function setContentAndCaret(wrapper: VueWrapper, value: string, caret: number) {
+    const ta = wrapper.find('textarea.ee-textarea').element as HTMLTextAreaElement
+    ta.value = value
+    ta.selectionStart = ta.selectionEnd = caret
+    ta.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+
+  function caretOf(wrapper: VueWrapper): number {
+    const ta = wrapper.find('textarea.ee-textarea').element as HTMLTextAreaElement
+    return ta.selectionStart
+  }
+
+  async function dblclickItem(wrapper: VueWrapper, label: string, tab?: string) {
+    if (tab) {
+      const tabEl = wrapper
+        .findAll('.ee-nav-tab')
+        .find(el => el.text().includes(tab))
+      expect(tabEl, `找不到 ${tab} 页签`).toBeTruthy()
+      await tabEl!.trigger('click')
+    }
+    const item = wrapper
+      .findAll('.ee-list-item, .ee-field-item')
+      .find(el => el.text().includes(label))
+    expect(item, `找不到包含 ${label} 的列表项`).toBeTruthy()
+    await item!.trigger('dblclick')
+  }
+
+  it('空编辑器双击函数自动包裹大括号，且光标定位到 () 内', async () => {
+    const wrapper = mountEditor('')
+    await dblclickItem(wrapper, 'SUM', '函数')
+    expect(textareaValue(wrapper)).toBe('{SUM()}')
+    expect(caretOf(wrapper)).toBe(5)
+  })
+
+  it('光标在未闭合 { 块内双击函数插入裸函数（不重复包裹）', async () => {
+    const wrapper = mountEditor('')
+    setContentAndCaret(wrapper, '{', 1)
+    await dblclickItem(wrapper, 'SUM', '函数')
+    expect(textareaValue(wrapper)).toBe('{SUM()')
+  })
+
+  it('格式化函数同样自动包裹大括号', async () => {
+    const wrapper = mountEditor('')
+    await dblclickItem(wrapper, 'MONEY', '函数')
+    expect(textareaValue(wrapper)).toBe('{MONEY()}')
+  })
+
+  it('光标在函数参数内双击字段去除大括号', async () => {
+    const wrapper = mountEditor('')
+    setContentAndCaret(wrapper, '{SUM(', 5)
+    await dblclickItem(wrapper, '规格')
+    expect(textareaValue(wrapper)).toBe('{SUM(goods.spec')
+  })
+
+  it('光标在函数参数内双击变量去除大括号', async () => {
+    const wrapper = mountEditor('')
+    setContentAndCaret(wrapper, '{IF(', 4)
+    await dblclickItem(wrapper, '当前页码', '变量')
+    expect(textareaValue(wrapper)).toBe('{IF(pageIndex')
+  })
+
+  it('光标不在函数参数内双击字段保留大括号', async () => {
+    const wrapper = mountEditor('')
+    setContentAndCaret(wrapper, '合计', 2)
+    await dblclickItem(wrapper, '规格')
+    expect(textareaValue(wrapper)).toBe('合计{goods.spec}')
+  })
+
+  it('光标在函数参数内双击函数插入裸函数', async () => {
+    const wrapper = mountEditor('')
+    setContentAndCaret(wrapper, '{SUM(', 5)
+    await dblclickItem(wrapper, 'AVG', '函数')
+    expect(textareaValue(wrapper)).toBe('{SUM(AVG()')
+  })
+})
