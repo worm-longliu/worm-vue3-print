@@ -330,6 +330,7 @@ const DBL_EDITABLE_FIELD: Record<string, string> = {
   longText: 'formatter',
   barcode: 'formatter',
   qrcode: 'formatter',
+  image: 'src',
 }
 const dblEditorVisible = ref(false)
 const dblEditTarget = ref<
