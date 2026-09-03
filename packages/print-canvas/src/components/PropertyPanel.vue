@@ -101,6 +101,12 @@
               <label class="pd-radio"><input type="radio" value="landscape" :checked="orientationModel === 'landscape'" @change="onOrientationChange(($event.target as HTMLInputElement).value)"><span>横向</span></label>
             </div>
           </div>
+          <div class="pd-field"><span class="pd-label">页面背景色</span>
+            <div class="page-bg-row">
+              <PresetColorPicker v-model="pageBackgroundModel" class="page-bg-picker" />
+              <button type="button" class="pd-reset" title="恢复为默认白色" @click="onPageBackgroundReset">默认</button>
+            </div>
+          </div>
 
           <h3 class="pd-divider">页边距 (mm)</h3>
           <div class="margin-grid">
@@ -152,6 +158,7 @@ import PaginationGroup from './property/PaginationGroup.vue'
 import ImageContentUpload from './property/ImageContentUpload.vue'
 import TableRowGroup from './property/TableRowGroup.vue'
 import TableCellGroup from './property/TableCellGroup.vue'
+import PresetColorPicker from './PresetColorPicker.vue'
 import { getElementBindings, getTableCellBindings } from '../utils/binding-registry'
 import type { BindingDescriptor } from '../types'
 
@@ -271,6 +278,11 @@ function onImageUploadSuccess(url: string) {
 const paperSizeModel = computed(() => props.templateData?.paperSize || 'A4')
 const orientationModel = computed(() => props.templateData?.orientation || 'portrait')
 
+const pageBackgroundModel = computed({
+  get: () => props.templateData?.pageBackground || '#ffffff',
+  set: (v: string) => onPageBackgroundChange(v),
+})
+
 const marginTop = computed(() => props.templateData?.margins.top ?? 10)
 const marginBottom = computed(() => props.templateData?.margins.bottom ?? 10)
 const marginLeft = computed(() => props.templateData?.margins.left ?? 10)
@@ -299,6 +311,15 @@ function onPaperSizeChange(size: string) {
 
 function onOrientationChange(val: string | number | boolean | undefined) {
   emitUpdate({ orientation: String(val) as TemplateData['orientation'] })
+}
+
+function onPageBackgroundChange(v: string) {
+  const value = v && v.toLowerCase() !== '#ffffff' && v.toLowerCase() !== '#fff' ? v : undefined
+  emitUpdate(value === undefined ? { pageBackground: undefined } : { pageBackground: value })
+}
+
+function onPageBackgroundReset() {
+  emitUpdate({ pageBackground: undefined })
 }
 
 function onCustomWidthChange(v: number | undefined) {
@@ -469,5 +490,30 @@ function expandTab(tab: 'element' | 'page') {
 .custom-size-x {
   color: var(--pd-text-muted, #8b909c);
   font-size: 12px;
+}
+.page-bg-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.page-bg-picker {
+  flex: 1;
+  min-width: 0;
+}
+.pd-reset {
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--pd-border, #d9dde6);
+  border-radius: 5px;
+  background: var(--pd-field-bg, #f4f6fa);
+  color: var(--pd-text-muted, #8b909c);
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all .14s ease;
+}
+.pd-reset:hover {
+  color: var(--pd-accent, #165DFF);
+  border-color: var(--pd-accent, #165DFF);
 }
 </style>

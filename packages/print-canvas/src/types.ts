@@ -44,6 +44,8 @@ export interface TemplateData {
   customWidth?: number
   /** 自定义纸张高度（mm），仅 paperSize='CUSTOM' 时有效 */
   customHeight?: number
+  /** 页面（纸张）背景色；未设置时默认白色 */
+  pageBackground?: string
   /** 水印配置 */
   watermark?: WatermarkOptions
   /** 手动参考线（设计态辅助，序列化保留，渲染端忽略） */

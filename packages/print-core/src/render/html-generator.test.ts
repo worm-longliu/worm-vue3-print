@@ -434,6 +434,26 @@ describe('文本元素 backgroundColor 渲染', () => {
   })
 })
 
+// ─── 页面(纸张)背景色渲染（预览与打印/PDF 一致）───
+
+describe('页面背景色渲染', () => {
+  it('设置 pageBackground 时 .print-page 输出对应 background', () => {
+    const t = makeTemplate({}) as TemplateData
+    t.pageBackground = '#f2f6ff'
+    const html = generateHtml(t, singlePage)
+    const pageCss = html.match(/\n\.print-page\s*\{([^}]*min-height:[^}]*)\}/)?.[1] ?? ''
+    expect(pageCss).toContain('background: #f2f6ff')
+  })
+
+  it('未设置 pageBackground 时 .print-page 默认白色（存量模板行为不变）', () => {
+    const t = makeTemplate({}) as TemplateData
+    t.pageBackground = undefined
+    const html = generateHtml(t, singlePage)
+    const pageCss = html.match(/\n\.print-page\s*\{([^}]*min-height:[^}]*)\}/)?.[1] ?? ''
+    expect(pageCss).toContain('background: #fff')
+  })
+})
+
 // ─── 文本元素字符间距渲染（设计稿可见、打印稿必须同样可见）───
 
 describe('文本元素 letterSpacing 渲染', () => {

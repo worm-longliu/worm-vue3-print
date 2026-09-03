@@ -324,7 +324,7 @@ function onGuideDown(e: MouseEvent, g: AlignLine) {
 const paperStyle = computed(() => ({
   width: paperWidthMM.value + 'mm',
   minHeight: paperHeightMM.value + 'mm',
-  background: 'var(--pd-paper, #fff)',
+  background: props.templateData.pageBackground || 'var(--pd-paper, #fff)',
   boxShadow: 'var(--pd-shadow-paper, 0 1px 2px rgba(0,0,0,.12), 0 8px 24px rgba(0,0,0,.08))',
   margin: '0 auto',
   overflow: 'hidden',

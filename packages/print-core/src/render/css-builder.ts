@@ -47,6 +47,7 @@ body { font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, s
 .print-page {
   width: ${mm(paper.width)};
   min-height: ${mm(paper.height)};
+  background: ${template.pageBackground ?? '#fff'};
   padding: ${mm(mt)} ${mm(mr)} ${mm(mb)} ${mm(ml)};
   position: relative;
   page-break-after: always;

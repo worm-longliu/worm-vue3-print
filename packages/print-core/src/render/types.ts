@@ -24,6 +24,8 @@ export interface TemplateData {
   customWidth?: number
   /** 自定义纸张高度（mm），仅 paperSize='CUSTOM' 时生效 */
   customHeight?: number
+  /** 页面（纸张）背景色；未设置时默认白色 */
+  pageBackground?: string
   margins: { top: number; right: number; bottom: number; left: number }
   header: { height: number; elements: TemplateElement[] }
   footer: { height: number; elements: TemplateElement[] }
