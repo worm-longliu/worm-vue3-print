@@ -40,10 +40,10 @@
     </div>
     <!-- 层级 -->
     <div class="tb-group" v-if="hasSelection">
-      <button class="tb-btn tb-icon" @click="$emit('move-layer', 'top')" title="置顶">⤒</button>
-      <button class="tb-btn tb-icon" @click="$emit('move-layer', 'up')" title="上移">↑</button>
-      <button class="tb-btn tb-icon" @click="$emit('move-layer', 'down')" title="下移">↓</button>
-      <button class="tb-btn tb-icon" @click="$emit('move-layer', 'bottom')" title="置底">⤓</button>
+      <button class="tb-btn tb-icon" @click="$emit('move-layer', 'top')" data-tip="置顶">⤒</button>
+      <button class="tb-btn tb-icon" @click="$emit('move-layer', 'up')" data-tip="上移一层">↑</button>
+      <button class="tb-btn tb-icon" @click="$emit('move-layer', 'down')" data-tip="下移一层">↓</button>
+      <button class="tb-btn tb-icon" @click="$emit('move-layer', 'bottom')" data-tip="置底">⤓</button>
     </div>
     <!-- 视图 -->
     <div class="tb-group">
@@ -190,6 +190,29 @@ defineEmits<{
 .tb-icon {
   font-size: 15px;
   line-height: 1;
+}
+.tb-btn[data-tip] {
+  position: relative;
+}
+.tb-btn[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(30, 35, 48, .88);
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s ease;
+  z-index: 100;
+}
+.tb-btn[data-tip]:hover::after {
+  opacity: 1;
 }
 .tb-mark {
   width: 28px;
