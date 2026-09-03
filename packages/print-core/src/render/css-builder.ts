@@ -59,12 +59,14 @@ body { font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, s
   position: relative;
 }
 
-/* ── 页脚：绝对定位固定在页面底部（内容不足时不随文档流上浮） ── */
+/* ── 页脚：绝对定位固定在页面底部（内容不足时不随文档流上浮） ──
+   用显式 top 定位到「纸高 - 下边距 - 页脚高」，保证下边距生效、
+   与设计器 CanvasPaper 的三区几何一致。 */
 .page-footer {
   width: ${mm(contentWidth)};
   height: ${mm(footerH)};
   position: absolute;
-  bottom: 0;
+  top: ${mm(paper.height - mb - footerH)};
   left: 0;
 }
 

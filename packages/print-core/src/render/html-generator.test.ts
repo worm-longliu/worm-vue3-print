@@ -307,7 +307,7 @@ describe('页眉/页脚区域元素渲染', () => {
     expect(html).toContain('src="https://x/logo.png"')
   })
 
-  it('页脚容器绝对定位固定在页面底部（内容不足时不随文档流上浮到页眉下方）', () => {
+  it('页脚容器绝对定位固定在页面底部且下边距生效（top = 纸高 - 下边距 - 页脚高）', () => {
     const t = makeAreaTemplate({
       footer: {
         height: 12,
@@ -317,7 +317,8 @@ describe('页眉/页脚区域元素渲染', () => {
     const html = generateHtml(t, singlePage)
     const footerCss = html.match(/\.page-footer\s*\{([^}]*)\}/)?.[1] ?? ''
     expect(footerCss).toContain('position: absolute')
-    expect(footerCss).toContain('bottom: 0')
+    expect(footerCss).toContain('top: 275mm')
+    expect(footerCss).toContain('left: 0')
   })
 })
 

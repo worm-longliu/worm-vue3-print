@@ -338,6 +338,7 @@ const contentStyle = computed(() => {
   return {
     padding: `${m.top}mm ${m.right}mm ${m.bottom}mm ${m.left}mm`,
     position: 'relative' as const,
+    boxSizing: 'border-box' as const,
     minHeight: paperHeightMM.value + 'mm',
   }
 })
