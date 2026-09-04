@@ -33,7 +33,7 @@
         </select>
       </div>
 
-      <div class="pd-field" v-if="isImageCell"><span class="pd-label">缩放模式</span>
+      <div class="pd-field" v-if="isBarcodeCell || isQrcodeCell || isImageCell"><span class="pd-label">缩放模式</span>
         <select :value="mainCell.fit || 'contain'" class="pd-select" @change="write(c => { c.fit = ($event.target as HTMLSelectElement).value as any })">
           <option value="contain">包含（保持比例）</option>
           <option value="cover">覆盖（保持比例）</option>
@@ -42,13 +42,13 @@
           <option value="scale-down">缩小（保持比例）</option>
         </select>
       </div>
-      <div class="pd-field" v-if="isImageCell"><span class="pd-label">最大宽度 (mm)</span>
+      <div class="pd-field" v-if="isBarcodeCell || isQrcodeCell || isImageCell"><span class="pd-label">最大宽度 (mm)</span>
         <StepperInput :model-value="mainCell.maxWidth"
           :min="1"
           :max="200"
           placeholder="默认" @update:model-value="write(c => { c.maxWidth = $event ?? undefined })" />
       </div>
-      <div class="pd-field" v-if="isImageCell"><span class="pd-label">最大高度 (mm)</span>
+      <div class="pd-field" v-if="isBarcodeCell || isQrcodeCell || isImageCell"><span class="pd-label">最大高度 (mm)</span>
         <StepperInput :model-value="mainCell.maxHeight"
           :min="1"
           :max="200"
@@ -212,11 +212,7 @@ function onCellTypeChange(v: string) {
       c.showBarcodeText = undefined
     }
     if (v !== 'qrcode') c.qrCodeLevel = undefined
-    if (v !== 'image') {
-      c.fit = undefined
-      c.maxWidth = undefined
-      c.maxHeight = undefined
-    }
+    // fit、maxWidth、maxHeight 对所有类型都有效，不再清除
   })
 }
 

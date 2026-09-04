@@ -274,6 +274,12 @@ function codeImgHtml(
   /** 元素级条形码：等比填满元素框；表格单元格保持原 shrink-to-fit 行为 */
   fill = false,
   codeRenderer?: CodeRenderer,
+  /** 单元格缩放模式 */
+  fit?: string,
+  /** 单元格最大宽度（mm） */
+  maxWidth?: number,
+  /** 单元格最大高度（mm） */
+  maxHeight?: number,
 ): string {
   if (!value || !codeRenderer) return fallbackHtml
   try {
@@ -285,9 +291,26 @@ function codeImgHtml(
       fontSize: typeof opts.fontSize === 'number' ? opts.fontSize : undefined,
     })
     const src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
-    const style = fill
-      ? 'width:100%;height:100%;object-fit:contain;display:block;margin:auto;'
-      : 'max-width:100%;max-height:100%;display:block;margin:auto;'
+    // 构建样式
+    const styleParts: string[] = []
+    if (fill) {
+      styleParts.push('width:100%', 'height:100%', 'display:block', 'margin:auto')
+    } else {
+      // 默认 shrink-to-fit 行为
+      styleParts.push('max-width:100%', 'max-height:100%', 'display:block', 'margin:auto')
+    }
+    // 应用缩放模式
+    if (fit) {
+      styleParts.push(`object-fit:${fit}`)
+    }
+    // 应用最大宽度和高度（mm 单位）
+    if (maxWidth) {
+      styleParts.push(`max-width:${maxWidth}mm`)
+    }
+    if (maxHeight) {
+      styleParts.push(`max-height:${maxHeight}mm`)
+    }
+    const style = styleParts.join(';')
     return `<img src="${src}" style="${style}" />`
   } catch {
     return fallbackHtml
@@ -342,7 +365,7 @@ function renderMatrixRows(
         if (cell.cellType === 'barcode' || cell.cellType === 'qrcode') {
           // 单元格条形码按单元格等比填满（fill）；单元格二维码保持原 shrink-to-fit 行为
           const cellFill = cell.cellType === 'barcode'
-          inner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;">${codeImgHtml(cell.content, cell.cellType as 'barcode' | 'qrcode', cell, esc(cell.content), cellFill, ctx?.codeRenderer)}</div>`
+          inner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;">${codeImgHtml(cell.content, cell.cellType as 'barcode' | 'qrcode', cell, esc(cell.content), cellFill, ctx?.codeRenderer, cell.fit, cell.maxWidth, cell.maxHeight)}</div>`
         } else if (cell.cellType === 'image') {
           // 图片类型单元格：渲染 <img> 标签
           const fit = cell.fit || 'contain'
