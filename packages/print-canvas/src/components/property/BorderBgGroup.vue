@@ -42,5 +42,9 @@ function showItem(key: string): boolean {
 <style scoped>
 .border-row {
   display: flex;
-  gap: 16px;
+  gap: 10px;
+}
+.border-row .pd-field {
+  flex: 1;
+  min-width: 0;
 }</style>
