@@ -7,6 +7,7 @@
           <label class="pd-radio"><input type="radio" value="text" :checked="(mainCell.cellType || 'text') === 'text'" @change="onCellTypeChange(($event.target as HTMLInputElement).value)"><span>文本</span></label>
           <label class="pd-radio"><input type="radio" value="barcode" :checked="mainCell.cellType === 'barcode'" @change="onCellTypeChange(($event.target as HTMLInputElement).value)"><span>条形码</span></label>
           <label class="pd-radio"><input type="radio" value="qrcode" :checked="mainCell.cellType === 'qrcode'" @change="onCellTypeChange(($event.target as HTMLInputElement).value)"><span>二维码</span></label>
+          <label class="pd-radio"><input type="radio" value="image" :checked="mainCell.cellType === 'image'" @change="onCellTypeChange(($event.target as HTMLInputElement).value)"><span>图片</span></label>
         </div>
       </div>
 
@@ -30,6 +31,28 @@
           <option value="Q">Q</option>
           <option value="H">H（最高）</option>
         </select>
+      </div>
+
+      <div class="pd-field" v-if="isImageCell"><span class="pd-label">缩放模式</span>
+        <select :value="mainCell.fit || 'contain'" class="pd-select" @change="write(c => { c.fit = ($event.target as HTMLSelectElement).value as any })">
+          <option value="contain">包含（保持比例）</option>
+          <option value="cover">覆盖（保持比例）</option>
+          <option value="fill">拉伸填满</option>
+          <option value="none">原始尺寸</option>
+          <option value="scale-down">缩小（保持比例）</option>
+        </select>
+      </div>
+      <div class="pd-field" v-if="isImageCell"><span class="pd-label">最大宽度 (mm)</span>
+        <StepperInput :model-value="mainCell.maxWidth"
+          :min="1"
+          :max="200"
+          placeholder="默认" @update:model-value="write(c => { c.maxWidth = $event ?? undefined })" />
+      </div>
+      <div class="pd-field" v-if="isImageCell"><span class="pd-label">最大高度 (mm)</span>
+        <StepperInput :model-value="mainCell.maxHeight"
+          :min="1"
+          :max="200"
+          placeholder="默认" @update:model-value="write(c => { c.maxHeight = $event ?? undefined })" />
       </div>
 
       <div class="pd-field"><span class="pd-label">内容</span>
@@ -171,6 +194,7 @@ const pendingFormatterValue = ref('')
 
 const isBarcodeCell = computed(() => mainCell.value.cellType === 'barcode')
 const isQrcodeCell = computed(() => mainCell.value.cellType === 'qrcode')
+const isImageCell = computed(() => mainCell.value.cellType === 'image')
 
 function onAlignChange(v: string) {
   write(c => { c.align = v as TextAlign })
@@ -188,6 +212,11 @@ function onCellTypeChange(v: string) {
       c.showBarcodeText = undefined
     }
     if (v !== 'qrcode') c.qrCodeLevel = undefined
+    if (v !== 'image') {
+      c.fit = undefined
+      c.maxWidth = undefined
+      c.maxHeight = undefined
+    }
   })
 }
 
