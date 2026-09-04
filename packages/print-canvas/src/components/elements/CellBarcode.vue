@@ -1,14 +1,14 @@
 <!-- 表格单元格内条形码/二维码渲染：设计态与预览态共用，按值生成图形 -->
 <template>
   <div class="cell-barcode">
-    <svg v-show="cellType === 'barcode' && svgOk" ref="barcodeSvg" preserveAspectRatio="xMidYMid meet"></svg>
-    <img v-if="cellType === 'qrcode' && dataUrl" :src="dataUrl" alt="qrcode" />
+    <svg v-show="cellType === 'barcode' && svgOk" ref="barcodeSvg" preserveAspectRatio="xMidYMid meet" :style="svgStyle"></svg>
+    <img v-if="cellType === 'qrcode' && dataUrl" :src="dataUrl" alt="qrcode" :style="imgStyle" />
     <span v-if="!svgOk && cellType === 'barcode'" class="cell-barcode-fallback">{{ value || '条码' }}</span>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import JsBarcode from 'jsbarcode'
 import QRCode from 'qrcode'
 
@@ -18,11 +18,26 @@ const props = defineProps<{
   barcodeType?: string
   qrCodeLevel?: string
   showText?: boolean
+  fit?: string
+  maxWidth?: number
+  maxHeight?: number
 }>()
 
 const barcodeSvg = ref<SVGSVGElement | null>(null)
 const svgOk = ref(false)
 const dataUrl = ref('')
+
+const svgStyle = computed(() => ({
+  objectFit: (props.fit || 'contain') as any,
+  maxWidth: props.maxWidth ? `${props.maxWidth}mm` : '100%',
+  maxHeight: props.maxHeight ? `${props.maxHeight}mm` : '100%',
+}))
+
+const imgStyle = computed(() => ({
+  objectFit: (props.fit || 'contain') as any,
+  maxWidth: props.maxWidth ? `${props.maxWidth}mm` : '100%',
+  maxHeight: props.maxHeight ? `${props.maxHeight}mm` : '100%',
+}))
 
 function renderBarcode() {
   svgOk.value = false

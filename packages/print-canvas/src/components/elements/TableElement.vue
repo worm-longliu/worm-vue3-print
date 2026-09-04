@@ -26,6 +26,9 @@
                 :barcode-type="cell.barcodeType"
                 :qr-code-level="cell.qrCodeLevel"
                 :show-text="cell.showBarcodeText"
+                :fit="cell.fit"
+                :max-width="cell.maxWidth"
+                :max-height="cell.maxHeight"
               />
               <CellImage
                 v-else-if="cell.cellType === 'image'"
