@@ -109,6 +109,8 @@ const props = defineProps<{
   showTableGhostBorder?: boolean
   /** 画布缩放倍率（用于列宽拖拽 px→mm 换算） */
   scale?: number
+  /** 打印数据（用于运行态图片等动态内容） */
+  data?: Record<string, any>[]
 }>()
 
 const emit = defineEmits<{
@@ -212,8 +214,11 @@ const demoList = computed<Record<string, any>[] | undefined>(() => {
 
 // 添加图片数据处理
 const imageData = computed(() => {
-  // 这里需要根据实际情况传入打印数据
-  // 设计态下可以使用 demo 数据
+  // 运行态：使用打印数据
+  if (props.data) {
+    return props.data
+  }
+  // 设计态：使用 demo 数据
   return undefined
 })
 
