@@ -387,3 +387,25 @@ export function syncTableElementSize(options: ElementOptions): void {
   options.width = Math.round(wMm * 100) / 100
   options.height = Math.round(hMm * 100) / 100
 }
+
+/** 列宽拖拽的最小列宽（mm），与属性面板列宽输入下限一致 */
+export const MIN_COL_WIDTH_MM = 5
+
+/**
+ * 列宽拖拽钳制（纯函数，不修改入参，调用方负责回写）：
+ * 返回目标列宽在 [MIN_COL_WIDTH_MM, maxTableWidth - 其余列和] 范围内的钳制值，
+ * 结果保留 0.1mm 精度。maxTableWidth 为 Infinity 时不设总宽上限。
+ */
+export function clampResizedColumnWidth(
+  colWidths: number[],
+  index: number,
+  targetMm: number,
+  maxTableWidth: number,
+): number {
+  const others = colWidths.reduce((s, w, i) => (i === index ? s : s + w), 0)
+  const cap = maxTableWidth === Infinity
+    ? Infinity
+    : Math.max(MIN_COL_WIDTH_MM, maxTableWidth - others)
+  const rounded = Math.round(targetMm * 10) / 10
+  return Math.min(Math.max(rounded, MIN_COL_WIDTH_MM), cap)
+}

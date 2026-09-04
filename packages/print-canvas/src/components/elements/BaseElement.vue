@@ -139,7 +139,7 @@ const contentComponent = computed(() => componentMap[props.element.printElementT
 /** 仅表格元素需要虚拟虚线开关，避免其它元素根节点出现无关 attribute */
 const contentAttrs = computed(() =>
   props.element.printElementType.type === 'table'
-    ? { showTableGhostBorder: props.showTableGhostBorder }
+    ? { showTableGhostBorder: props.showTableGhostBorder, scale: props.scale }
     : {},
 )
 

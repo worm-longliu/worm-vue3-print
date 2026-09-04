@@ -6,6 +6,7 @@ import {
   normalizeSelection, canMergeReason, mergeCells, splitCells,
   insertRow, deleteRow, insertCol, deleteCol, setRowType, applyBorderPreset,
   syncTableElementSize, resolveCellBorderCss, GHOST_BORDER_CSS,
+  clampResizedColumnWidth, MIN_COL_WIDTH_MM,
 } from '../utils/table-matrix'
 
 /** 构造 rows×cols 全 header 矩阵 */
@@ -254,5 +255,32 @@ describe('syncTableElementSize 表格尺寸派生', () => {
     syncTableElementSize(options)
     expect(options.width).toBe(0)
     expect(options.height).toBe(0)
+  })
+})
+
+describe('clampResizedColumnWidth 列宽拖拽钳制', () => {
+  it('按增量扩大目标列宽', () => {
+    expect(clampResizedColumnWidth([40, 40, 40], 1, 50, 200)).toBe(50)
+  })
+
+  it('收缩目标列宽', () => {
+    expect(clampResizedColumnWidth([40, 40, 40], 1, 30, 200)).toBe(30)
+  })
+
+  it('不低于最小列宽 MIN_COL_WIDTH_MM', () => {
+    expect(clampResizedColumnWidth([40, 40, 40], 1, 1, 200)).toBe(MIN_COL_WIDTH_MM)
+  })
+
+  it('总宽不超过 maxTableWidth：其余列和 80 时上限为 40', () => {
+    expect(clampResizedColumnWidth([40, 40, 40], 1, 80, 120)).toBe(40)
+  })
+
+  it('maxTableWidth 为 Infinity 时只受最小列宽约束', () => {
+    expect(clampResizedColumnWidth([40, 40, 40], 1, 200, Infinity)).toBe(200)
+  })
+
+  it('结果保留 0.1mm 精度', () => {
+    expect(clampResizedColumnWidth([40, 40, 40], 1, 47.26, 200)).toBe(47.3)
+    expect(clampResizedColumnWidth([40, 40, 40], 1, 47.24, 200)).toBe(47.2)
   })
 })

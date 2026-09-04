@@ -167,3 +167,111 @@ describe('TableElement 设计态实测尺寸自愈', () => {
     expect(element.options.height).toBe(10)
   })
 })
+
+describe('TableElement 列宽拖拽', () => {
+  function makeTableElement(cols: number[]): RuntimeElement {
+    return {
+      id: 'el-table',
+      options: {
+        left: 0, top: 0,
+        width: cols.reduce((s, w) => s + w, 0),
+        height: 10,
+        tableColWidths: cols,
+        tableRows: [{
+          id: 'row-1',
+          type: 'header',
+          height: 10,
+          cells: cols.map((_, i) => ({ id: `cell-${i}`, formatter: `列${i + 1}` })),
+        }],
+      },
+      printElementType: { type: 'table', title: '表格' },
+    }
+  }
+
+  function mountTable(overrides: {
+    element?: RuntimeElement
+    selected?: boolean
+    designMode?: boolean
+    maxW?: number
+    scale?: number
+  } = {}) {
+    const recordHistory = vi.fn()
+    const tableSelection = ref<TableSelection | null>(null)
+    const wrapper = mount(TableElement, {
+      props: {
+        element: overrides.element ?? makeTableElement([40, 40, 40]),
+        designMode: overrides.designMode ?? true,
+        isSelected: overrides.selected ?? true,
+        scale: overrides.scale ?? 1,
+      },
+      global: {
+        provide: {
+          [TABLE_EDIT_KEY]: {
+            tableSelection,
+            setTableSelection: () => {},
+            recordHistory,
+            maxTableWidth: ref(overrides.maxW ?? Infinity),
+          },
+        },
+      },
+    })
+    return { wrapper, recordHistory }
+  }
+
+  it('选中+设计态且多列时，每个内部列边界渲染一个拖拽手柄', () => {
+    const { wrapper } = mountTable()
+    expect(wrapper.findAll('.col-resize-handle')).toHaveLength(2)
+  })
+
+  it('未选中/锁定/非设计态/单列时不渲染手柄', () => {
+    expect(mountTable({ selected: false }).wrapper.findAll('.col-resize-handle')).toHaveLength(0)
+    const locked = makeTableElement([40, 40, 40])
+    locked.options.locked = true
+    expect(mountTable({ element: locked }).wrapper.findAll('.col-resize-handle')).toHaveLength(0)
+    expect(mountTable({ designMode: false }).wrapper.findAll('.col-resize-handle')).toHaveLength(0)
+    expect(mountTable({ element: makeTableElement([40]) }).wrapper.findAll('.col-resize-handle')).toHaveLength(0)
+  })
+
+  it('拖拽手柄按位移（px/scale）修改目标列宽，其余列不变，mouseup 记一次历史', async () => {
+    const element = reactive(makeTableElement([40, 40, 40]))
+    const { wrapper, recordHistory } = mountTable({ element, scale: 1 })
+    const handle = wrapper.findAll('.col-resize-handle')[0]!
+    await handle.trigger('mousedown', { clientX: 100 })
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 140 })) // dx=40px → 40mm
+    expect(element.options.tableColWidths).toEqual([80, 40, 40])
+    expect(recordHistory).not.toHaveBeenCalled() // 拖拽过程中不记历史
+    document.dispatchEvent(new MouseEvent('mouseup'))
+    expect(recordHistory).toHaveBeenCalledTimes(1)
+    expect(element.options.width).toBe(160) // 列宽和同步
+  })
+
+  it('scale 折算位移：scale=2 时 40px → 20mm', async () => {
+    const element = reactive(makeTableElement([40, 40, 40]))
+    const { wrapper } = mountTable({ element, scale: 2 })
+    const handle = wrapper.findAll('.col-resize-handle')[0]!
+    await handle.trigger('mousedown', { clientX: 100 })
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 140 }))
+    expect(element.options.tableColWidths[0]).toBe(60) // 40 + 40/2
+    document.dispatchEvent(new MouseEvent('mouseup'))
+  })
+
+  it('拖拽受 maxTableWidth 钳制：总宽不超过打印范围宽度', async () => {
+    const element = reactive(makeTableElement([40, 40, 40]))
+    const { wrapper } = mountTable({ element, maxW: 120 })
+    const handle = wrapper.findAll('.col-resize-handle')[0]!
+    await handle.trigger('mousedown', { clientX: 100 })
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 300 })) // dx=200mm
+    expect(element.options.tableColWidths[0]).toBe(40) // 120 - 40 - 40
+    document.dispatchEvent(new MouseEvent('mouseup'))
+  })
+
+  it('拖拽不低于最小列宽 5mm', async () => {
+    const element = reactive(makeTableElement([40, 40, 40]))
+    const { wrapper } = mountTable({ element })
+    const handle = wrapper.findAll('.col-resize-handle')[0]!
+    await handle.trigger('mousedown', { clientX: 100 })
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 0 })) // dx=-100mm
+    expect(element.options.tableColWidths[0]).toBe(5)
+    document.dispatchEvent(new MouseEvent('mouseup'))
+  })
+})

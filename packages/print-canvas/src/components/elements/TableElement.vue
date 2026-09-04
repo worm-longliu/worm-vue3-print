@@ -36,6 +36,17 @@
         </tr>
       </tbody>
     </table>
+    <!-- 列宽拖拽手柄（仅设计态选中且未锁定时） -->
+    <div v-if="colResizeEnabled" class="col-resize-layer">
+      <div
+        v-for="i in colResizeBoundaries"
+        :key="i"
+        class="col-resize-handle"
+        :class="{ dragging: colResizeBoundary === i }"
+        :style="{ left: colBoundaryLeftMm(i) + 'mm' }"
+        @mousedown.stop.prevent="onColResizeStart(i, $event)"
+      />
+    </div>
     <!-- 行类型徽标（仅设计态且元素被选中） -->
     <div v-if="designMode && isSelected" class="row-badges">
       <span
@@ -63,12 +74,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, onMounted, reactive, ref, watch } from 'vue'
+import { computed, inject, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import type { RuntimeElement, TableRow, TableCell, TableRowType } from '../../types'
 import {
   normalizeSelection, canMergeReason, mergeCells, splitCells,
   insertRow, deleteRow, insertCol, deleteCol, setRowType, syncTableElementSize,
-  resolveCellBorderCss,
+  resolveCellBorderCss, clampResizedColumnWidth,
 } from '../../utils/table-matrix'
 import { TABLE_EDIT_KEY, type TableEditContext } from '../../composables/useTableSelection'
 import TableContextMenu from './TableContextMenu.vue'
@@ -86,6 +97,8 @@ const props = defineProps<{
   isSelected?: boolean
   /** 设计态下无边框单元格是否显示虚拟虚线（默认 true） */
   showTableGhostBorder?: boolean
+  /** 画布缩放倍率（用于列宽拖拽 px→mm 换算） */
+  scale?: number
 }>()
 
 const emit = defineEmits<{
@@ -345,6 +358,62 @@ function onMenuAction(name: string, payload?: string) {
   syncElementSize()
   editCtx.recordHistory()
 }
+
+// ─── 列宽拖拽 ───
+// 仅设计态选中且未锁定的多列表格渲染内部列边界手柄；拖拽期间实时回写列宽，
+// mouseup 时同步元素尺寸并记一次历史（与右键菜单结构操作一致）。
+const colResizeEnabled = computed(
+  () => props.designMode && !!props.isSelected && !props.element.options.locked && colWidths.value.length > 1,
+)
+/** 内部列边界索引（1..n-1），单列无边界 */
+const colResizeBoundaries = computed<number[]>(() =>
+  colWidths.value.length > 1
+    ? Array.from({ length: colWidths.value.length - 1 }, (_, k) => k + 1)
+    : [],
+)
+/** 第 i 列左边界位置（mm）= 前 i 列宽和 */
+function colBoundaryLeftMm(i: number): number {
+  return colWidths.value.slice(0, i).reduce((s, w) => s + w, 0)
+}
+
+const colResizeBoundary = ref<number | null>(null)
+let resizeStartX = 0
+let resizeStartWidth = 0
+
+/** 拖拽边界 i（第 i 列左边界）：调整其左侧第 i-1 列的宽度，使被拖动的边界线跟随光标 */
+function onColResizeStart(i: number, e: MouseEvent) {
+  if (!colResizeEnabled.value) return
+  colResizeBoundary.value = i
+  resizeStartX = e.clientX
+  resizeStartWidth = colWidths.value[i - 1]!
+  document.addEventListener('mousemove', onColResizeMove)
+  document.addEventListener('mouseup', onColResizeEnd)
+}
+
+function onColResizeMove(e: MouseEvent) {
+  if (colResizeBoundary.value === null) return
+  const scale = props.scale || 1
+  const deltaMm = (e.clientX - resizeStartX) / scale
+  const colIndex = colResizeBoundary.value - 1
+  const widths = props.element.options.tableColWidths!
+  widths[colIndex] = clampResizedColumnWidth(
+    widths, colIndex, resizeStartWidth + deltaMm, editCtx.maxTableWidth.value,
+  )
+}
+
+function onColResizeEnd() {
+  document.removeEventListener('mousemove', onColResizeMove)
+  document.removeEventListener('mouseup', onColResizeEnd)
+  if (colResizeBoundary.value === null) return
+  colResizeBoundary.value = null
+  syncElementSize()
+  editCtx.recordHistory()
+}
+
+onUnmounted(() => {
+  document.removeEventListener('mousemove', onColResizeMove)
+  document.removeEventListener('mouseup', onColResizeEnd)
+})
 </script>
 
 <style scoped>
@@ -401,5 +470,33 @@ function onMenuAction(name: string, payload?: string) {
   color: #909399;
   background: #f5f7fa;
   border-radius: 2px;
+}
+.col-resize-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.col-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  transform: translateX(-50%);
+  cursor: col-resize;
+  pointer-events: auto;
+}
+/* 手柄 hover/拖拽时显示主题色竖线，提示列边界位置 */
+.col-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  border-left: 1px solid transparent;
+}
+.col-resize-handle:hover::after,
+.col-resize-handle.dragging::after {
+  border-left-color: var(--pd-accent, #165DFF);
 }
 </style>
