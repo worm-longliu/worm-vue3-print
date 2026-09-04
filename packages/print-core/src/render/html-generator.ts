@@ -224,7 +224,7 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
   const width = opts.width ?? 100
   const height = opts.height ?? undefined
   // 方案 A+B：flow-group 内跟随元素用相对容器样式（containerStyle）覆盖绝对定位
-  const style = containerStyle ?? elementPositionStyle(left, top, width, height)
+  const style = containerStyle ?? elementPositionStyle(left, top, width, height, opts.zIndex)
   const measureAttr = isMeasure ? ` data-measure-id="${el.id}"` : ''
 
   const type = el.type || el.printElementType?.type || 'text'
@@ -376,7 +376,7 @@ function renderTableElement(
   ctx?: RenderCtx,
 ): string {
   const opts = el.options
-  const style = elementPositionStyle(opts.left ?? 0, opts.top ?? 0, opts.width ?? 100)
+  const style = elementPositionStyle(opts.left ?? 0, opts.top ?? 0, opts.width ?? 100, undefined, opts.zIndex)
   const renderRows: RenderRow[] = opts._renderRows ?? []
   const bodyHtml = renderMatrixRows(renderRows, 0, renderRows.length, opts, isMeasure, ctx)
   return `<div class="print-element" style="${style};overflow:visible;"${measureAttr}>
@@ -387,7 +387,7 @@ function renderTableElement(
 function renderTableSlice(el: TemplateElement, section: PageSection, ctx?: RenderCtx): string {
   const opts = el.options
   // 续片在本页内容区从页顶(0)开始，首片用设计 top
-  const style = elementPositionStyle(opts.left ?? 0, section.renderTop ?? opts.top ?? 0, opts.width ?? 100)
+  const style = elementPositionStyle(opts.left ?? 0, section.renderTop ?? opts.top ?? 0, opts.width ?? 100, undefined, opts.zIndex)
   const renderRows: RenderRow[] = opts._renderRows ?? []
   const startRow = section.startRow ?? 0
   const endRow = section.endRow ?? renderRows.length
@@ -444,8 +444,11 @@ function renderSummaryRows(el: TemplateElement, opts: Record<string, any>, ctx?:
 
 /**
  * 方案 A+B：渲染「表格 slice + 跟随区」相对容器。
- * 容器按 groupTop 绝对定位，容器内表格 slice 与跟随元素走文档流：
- * 跟随元素从表格设计底部开始，按设计 Y 差值（margin-top）依次排布。
+ * 容器按 groupTop 绝对定位；容器内表格 slice 走文档流；
+ * 跟随元素外包 position:relative 的 flow-follow 容器（紧随切片实际底部），
+ * 成员按设计坐标绝对定位：left = 设计 left − 表格 left，top = 设计 top − 表格设计底部。
+ * 由此保留成员间设计几何与重叠（WYSIWYG）：非重叠顺序元素位置与旧文档流间隙排布一致，
+ * 重叠成员不再被压缩成块级堆叠。
  */
 function renderFlowGroup(
   el: TemplateElement,
@@ -457,7 +460,9 @@ function renderFlowGroup(
   const tableLeft = opts.left ?? 0
   const tableWidth = opts.width ?? 100
   const groupTop = section.groupTop ?? opts.top ?? 0
-  const style = `position:absolute;left:${mm(tableLeft)};top:${mm(groupTop)};width:${mm(tableWidth)};overflow:visible;`
+  const tableBottom = tableDesignBottom(el)
+  const zStyle = typeof opts.zIndex === 'number' ? `z-index:${opts.zIndex};` : ''
+  const style = `position:absolute;left:${mm(tableLeft)};top:${mm(groupTop)};width:${mm(tableWidth)};overflow:visible;${zStyle}`
 
   // 本页表格 slice（跟随区整体移页时为空；小计/汇总行即使无正文行也渲染）
   const startRow = section.startRow ?? 0
@@ -477,9 +482,16 @@ function renderFlowGroup(
 </div>`
   }
 
-  // 跟随区：相对容器内按文档流排布，间距 = 设计 Y 差值（保留排版意图）
-  let cursorBottom = tableDesignBottom(el)
-  const followHtml = (section.followElementIds ?? [])
+  // 跟随区：flow-follow 容器（relative）高度 = 成员相对表格设计底部的并集范围，
+  // 保证切片跨页/整体移页时容器始终紧随切片实际底部排布。
+  const followIds = section.followElementIds ?? []
+  const followExtent = followIds.reduce((maxBottom, id) => {
+    const m = findElement(template, id)
+    if (!m) return maxBottom
+    return Math.max(maxBottom, (m.options?.top ?? 0) + (m.options?.height ?? 0))
+  }, tableBottom)
+
+  const followHtml = followIds
     .map(id => {
       const m = findElement(template, id)
       if (!m) return ''
@@ -487,25 +499,31 @@ function renderFlowGroup(
       const mLeft = m.options?.left ?? 0
       const mWidth = m.options?.width ?? tableWidth
       const mHeight = m.options?.height ?? 0
-      const gap = Math.max(mTop - cursorBottom, 0)
-      cursorBottom = mTop + mHeight
+      const mZ = m.options?.zIndex
       const type = m.type || m.printElementType?.type || 'text'
       const needsHeight = type === 'rect' || type === 'oval' || type === 'image'
       const flowStyle = [
-        'position:relative',
+        'position:absolute',
         `left:${mm(mLeft - tableLeft)}`,
+        `top:${mm(mTop - tableBottom)}`,
         `width:${mm(mWidth)}`,
         ...(needsHeight && mHeight > 0 ? [`height:${mm(mHeight)}`] : []),
-        `margin-top:${mm(gap)}`,
+        ...(typeof mZ === 'number' ? [`z-index:${mZ}`] : []),
         'overflow:visible',
       ].join(';') + ';'
       return renderElement(m, false, flowStyle, undefined, ctx)
     })
     .join('\n')
 
+  const followWrap = followIds.length > 0
+    ? `<div class="flow-follow" style="position:relative;width:${mm(tableWidth)};height:${mm(Math.max(followExtent - tableBottom, 0))};overflow:visible;">
+${followHtml}
+</div>`
+    : ''
+
   return `<div class="flow-group" style="${style}">
 ${sliceHtml}
-${followHtml}
+${followWrap}
 </div>`
 }
 

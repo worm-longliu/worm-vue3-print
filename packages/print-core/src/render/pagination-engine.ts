@@ -67,26 +67,24 @@ function buildFollowMap(sorted: TemplateElement[]): Map<string, string[]> {
 }
 
 /**
- * 跟随区总高度（mm）= 首元素与表格的间距 + 各成员实测高度 + 成员间设计间距。
- * 间距 = 成员设计 top − 前驱设计 bottom（设计 Y 差值，保留排版意图）。
+ * 跟随区总高度（mm）= 成员相对「表格设计底部」的并集范围 max(mTop + mHeight) − tableBottom。
+ * 与 html-generator 的绝对定位渲染（WYSIWYG）一致：重叠成员不再累加两倍纵向空间，
+ * 顺序非重叠成员结果与旧「间隙之和」完全相同。
  */
 function followGroupHeight(
   el: TemplateElement,
   members: string[],
   template: TemplateData,
-  measuredElements: Map<string, MeasuredElement>,
+  _measuredElements: Map<string, MeasuredElement>,
 ): number {
-  let cursorBottom = tableDesignBottom(el)
-  let total = 0
+  const tableBottom = tableDesignBottom(el)
+  let maxBottom = tableBottom
   for (const id of members) {
     const m = template.elements.find(e => e.id === id)
     if (!m) continue
-    const mTop = m.options?.top ?? 0
-    total += Math.max(mTop - cursorBottom, 0)
-    total += measuredElements.get(id)?.measuredHeight ?? m.options?.height ?? 0
-    cursorBottom = mTop + (m.options?.height ?? 0)
+    maxBottom = Math.max(maxBottom, (m.options?.top ?? 0) + (m.options?.height ?? 0))
   }
-  return total
+  return Math.max(maxBottom - tableBottom, 0)
 }
 
 // ─── 公共 API ───

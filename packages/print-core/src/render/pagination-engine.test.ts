@@ -262,6 +262,27 @@ describe('方案 A+B：表格下方跟随区 flow-group', () => {
     expect(pages).toHaveLength(2)
   })
 
+  it('重叠的跟随元素：按并集范围计高，不因重复计高而错误移页', () => {
+    // follow-1: top=39 h=200；follow-2: top=50 h=200（与 follow-1 大量重叠）
+    // 旧「间隙之和」= (39−34)+200 + (50−239→0)+200 = 405mm > 页2剩余(235) → 会整体移页(3页)
+    // 新「并集范围」= (50+200)−34 = 216mm ≤ 页2剩余 → 同页 flow-group(2页)
+    const tpl = makeFollowTemplate([
+      makeFollowEl('follow-1', 39, 200),
+      makeFollowEl('follow-2', 50, 200),
+    ])
+    const pages = paginate(tpl, measureFollow(
+      Array(30).fill(10),
+      [{ id: 'follow-1', h: 200 }, { id: 'follow-2', h: 200 }],
+    ))
+    expect(pages).toHaveLength(2)
+    expect(pages[1].sections[0]).toMatchObject({
+      type: 'flow-group',
+      elementId: 'tbl-1',
+      followElementIds: ['follow-1', 'follow-2'],
+      groupTop: 0,
+    })
+  })
+
   it('多个表格：跟随区归入各自上方最近的表格', () => {
     const tableA = makeFollowTable(3) // 3 行×8，top=10 底部 34
     const followA = makeFollowEl('follow-A', 39, 8)

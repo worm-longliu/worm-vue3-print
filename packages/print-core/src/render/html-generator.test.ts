@@ -503,6 +503,50 @@ describe('文本元素 letterSpacing 渲染', () => {
   })
 })
 
+// ─── 元素层级 z-index 透传（设计器「层级」与预览/打印一致）───
+
+describe('元素 z-index 渲染', () => {
+  it('内容区元素设置 zIndex 时输出 z-index（重叠层序与设计稿一致）', () => {
+    const t = makeTemplate({})
+    ;(t.elements as any[]) = [
+      { id: 'e1', type: 'rect', options: { left: 0, top: 0, width: 50, height: 20, zIndex: 1, borderColor: '#000' } },
+      { id: 'e2', type: 'text', options: { left: 10, top: 5, width: 40, height: 8, zIndex: 10, testData: '在上层' } },
+    ]
+    const html = generateHtml(t, pageWith([
+      { elementId: 'e1', type: 'element' },
+      { elementId: 'e2', type: 'element' },
+    ]))
+    expect(html).toContain('z-index:1')
+    expect(html).toContain('z-index:10')
+  })
+
+  it('未设置 zIndex 时不输出 z-index（存量模板层叠回退 DOM 顺序）', () => {
+    const t = makeAreaTemplate({
+      header: { height: 15, elements: [makeAreaEl('text', { testData: 'X' })] as any },
+    })
+    const html = generateHtml(t, singlePage)
+    const style = html.match(/print-element" style="([^"]*)">X<\/div>/)?.[1] ?? ''
+    expect(style).not.toContain('z-index')
+  })
+
+  it('表格元素设置 zIndex 时 print-element 输出 z-index', () => {
+    const t = makeTemplate({ ...matrixOptions(), zIndex: 3 })
+    const html = generateHtml(t, pageWith([
+      { elementId: 'tbl-1', type: 'table-slice', startRow: 0, endRow: 1 },
+    ]))
+    expect(html).toMatch(/class="print-element"[^>]*z-index:3;/)
+  })
+
+  it('测量模式同样输出 z-index', () => {
+    const t = makeTemplate({})
+    ;(t.elements as any[]) = [
+      { id: 'e1', type: 'text', options: { left: 0, top: 0, width: 50, height: 8, zIndex: 7, testData: 'X' } },
+    ]
+    const html = generateHtml(t, [], undefined, { isMeasurementPass: true })
+    expect(html).toContain('z-index:7')
+  })
+})
+
 // ─── 方案 A+B：flow-group 相对容器渲染 ───
 
 function flowGroupOptions() {
@@ -529,7 +573,7 @@ const followTextEl = {
 }
 
 describe('renderFlowGroup 相对容器', () => {
-  it('容器按 groupTop 绝对定位，slice 与跟随元素文档流排布', () => {
+  it('容器按 groupTop 绝对定位，slice 文档流 + 跟随元素绝对定位（保留设计几何）', () => {
     const t = makeTemplate(flowGroupOptions())
     t.elements.push(followTextEl as any)
     const html = generateHtml(t, pageWith([
@@ -537,8 +581,9 @@ describe('renderFlowGroup 相对容器', () => {
     ]))
     expect(html).toMatch(/class="flow-group"[^>]*position:absolute;left:10mm;top:10mm;width:100mm/)
     expect(html).toContain('class="flow-slice"')
-    // 跟随元素相对定位：left=12−10=2mm，margin-top=39−34=5mm
-    expect(html).toMatch(/position:relative;left:2mm;width:80mm;margin-top:5mm/)
+    // 跟随元素绝对定位：left=12−10=2mm，top=39−34=5mm（表格设计底部=10+24）
+    expect(html).toMatch(/class="flow-follow"[^>]*position:relative;width:100mm;height:13mm/)
+    expect(html).toMatch(/position:absolute;left:2mm;top:5mm;width:80mm;/)
     expect(html).toContain('经办人签字')
   })
 
@@ -553,7 +598,7 @@ describe('renderFlowGroup 相对容器', () => {
     expect(html).toContain('经办人签字')
   })
 
-  it('多个跟随元素：间距按设计 Y 差值依次累加', () => {
+  it('多个跟随元素：按设计 top 相对表格底部绝对定位', () => {
     const follow2 = {
       id: 'follow-2', type: 'text',
       options: { left: 12, top: 51, width: 80, height: 8, formatter: '备注' },
@@ -563,10 +608,39 @@ describe('renderFlowGroup 相对容器', () => {
     const html = generateHtml(t, pageWith([
       { elementId: 'tbl-1', type: 'flow-group', startRow: 0, endRow: 2, followElementIds: ['follow-1', 'follow-2'], groupTop: 10 },
     ]))
-    // follow-1: margin-top=5（39−34）；follow-2: margin-top=4（51−47）
-    expect(html).toMatch(/margin-top:5mm/)
-    expect(html).toMatch(/margin-top:4mm/)
+    // follow-1: top=39−34=5mm；follow-2: top=51−34=17mm（等价旧 margin-top 累积位置）
+    expect(html).toMatch(/position:absolute;left:2mm;top:5mm;width:80mm;/)
+    expect(html).toMatch(/position:absolute;left:2mm;top:17mm;width:80mm;/)
     expect(html).toContain('备注')
+  })
+
+  it('重叠的跟随元素保留设计重叠（不再压缩为块级堆叠）', () => {
+    // follow-1 top=39 h=8（底部47），follow-2 top=41 h=8 → 设计上相互重叠
+    const follow2 = {
+      id: 'follow-2', type: 'text',
+      options: { left: 30, top: 41, width: 60, height: 8, formatter: '重叠备注' },
+    }
+    const t = makeTemplate(flowGroupOptions())
+    t.elements.push(followTextEl as any, follow2 as any)
+    const html = generateHtml(t, pageWith([
+      { elementId: 'tbl-1', type: 'flow-group', startRow: 0, endRow: 2, followElementIds: ['follow-1', 'follow-2'], groupTop: 10 },
+    ]))
+    // 两者均按设计坐标绝对定位：top=5mm / top=7mm，left 各自独立 → 重叠保留
+    expect(html).toMatch(/position:absolute;left:2mm;top:5mm;width:80mm;/)
+    expect(html).toMatch(/position:absolute;left:20mm;top:7mm;width:60mm;/)
+    // 不再出现文档流间隙压缩标记
+    expect(html).not.toMatch(/margin-top:/)
+    expect(html).toContain('重叠备注')
+  })
+
+  it('跟随元素设置 zIndex 时输出 z-index，容器输出表格自身层级', () => {
+    const t = makeTemplate({ ...flowGroupOptions(), zIndex: 5 })
+    t.elements.push({ ...followTextEl, options: { ...followTextEl.options, zIndex: 9 } } as any)
+    const html = generateHtml(t, pageWith([
+      { elementId: 'tbl-1', type: 'flow-group', startRow: 0, endRow: 2, followElementIds: ['follow-1'], groupTop: 10 },
+    ]))
+    expect(html).toMatch(/class="flow-group"[^>]*z-index:5;/)
+    expect(html).toMatch(/position:absolute;left:2mm;top:5mm;width:80mm;[^"]*z-index:9;/)
   })
 })
 

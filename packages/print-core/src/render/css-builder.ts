@@ -127,13 +127,15 @@ body { font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, s
 }
 
 /**
- * 生成内联样式：元素绝对定位（mm 单位）
+ * 生成内联样式：元素绝对定位（mm 单位）。
+ * 可选 z-index：与设计器「层级」一致，未设置（undefined）时不输出（层叠回退 DOM 顺序）。
  */
 export function elementPositionStyle(
   left: number,
   top: number,
   width: number,
   height?: number,
+  zIndex?: number,
 ): string {
   const parts = [
     `position:absolute`,
@@ -143,6 +145,9 @@ export function elementPositionStyle(
   ]
   if (height !== undefined && height > 0) {
     parts.push(`height:${mm(height)}`)
+  }
+  if (zIndex !== undefined) {
+    parts.push(`z-index:${zIndex}`)
   }
   return parts.join(';') + ';'
 }
