@@ -119,7 +119,7 @@ export interface TableCellBorders {
 }
 
 /** 单元格内容类型 */
-export type TableCellType = 'text' | 'barcode' | 'qrcode'
+export type TableCellType = 'text' | 'barcode' | 'qrcode' | 'image'
 
 /** 单元格 */
 export interface TableCell {
@@ -142,6 +142,10 @@ export interface TableCell {
   borders?: TableCellBorders
   padding?: number            // mm
   wordWrap?: boolean          // 默认 true
+  // 图片类型特有属性
+  fit?: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down'  // 缩放模式，默认 contain
+  maxWidth?: number     // 最大宽度（mm）
+  maxHeight?: number    // 最大高度（mm）
 }
 
 /** 表格行 */
