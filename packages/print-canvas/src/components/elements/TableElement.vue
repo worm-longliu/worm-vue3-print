@@ -27,6 +27,15 @@
                 :qr-code-level="cell.qrCodeLevel"
                 :show-text="cell.showBarcodeText"
               />
+              <CellImage
+                v-else-if="cell.cellType === 'image'"
+                :value="cell.formatter || ''"
+                :fit="cell.fit"
+                :max-width="cell.maxWidth"
+                :max-height="cell.maxHeight"
+                :design-mode="designMode"
+                :data="imageData"
+              />
               <span v-else-if="row.type === 'data'" class="data-placeholder">
                 {{ cellDisplay(row, cell) }}
               </span>
@@ -84,6 +93,7 @@ import {
 import { TABLE_EDIT_KEY, type TableEditContext } from '../../composables/useTableSelection'
 import TableContextMenu from './TableContextMenu.vue'
 import CellBarcode from './CellBarcode.vue'
+import CellImage from './CellImage.vue'
 import { resolveBarcodeDesignValue } from '../../utils/binding'
 import { DEFAULT_DEMO_DATA } from '../../utils/demo-data'
 
@@ -197,6 +207,13 @@ const demoList = computed<Record<string, any>[] | undefined>(() => {
   for (const v of Object.values(DEFAULT_DEMO_DATA)) {
     if (Array.isArray(v)) return v as Record<string, any>[]
   }
+  return undefined
+})
+
+// 添加图片数据处理
+const imageData = computed(() => {
+  // 这里需要根据实际情况传入打印数据
+  // 设计态下可以使用 demo 数据
   return undefined
 })
 
