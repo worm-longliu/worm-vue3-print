@@ -12,6 +12,7 @@
       type="number"
       class="pd-input pd-step-input"
       :value="draft"
+      :placeholder="placeholder"
       :min="min"
       :max="max"
       :step="step"
@@ -35,39 +36,60 @@
 import { computed, ref, watch } from 'vue'
 
 const props = withDefaults(defineProps<{
-  modelValue: number
+  /** 数值；undefined 表示未设置（继承默认），输入框显示空占位 */
+  modelValue?: number
   min?: number
   max?: number
-  /** 步进单位，默认 1（整数） */
+  /** 步进单位，默认 1（整数）；小数步进时按小数位数保留精度 */
   step?: number
+  /** 未设置（继承默认）时输入框的占位提示 */
+  placeholder?: string
 }>(), {
   step: 1,
 })
 
 const emit = defineEmits<{
-  'update:modelValue': [value: number]
+  'update:modelValue': [value: number | undefined]
 }>()
 
-/** 当前有效值（始终取整） */
-const current = computed(() => round(props.modelValue))
-
-/** 输入框草稿：输入过程中保留原文，失焦/回车后规范化为整数 */
-const draft = ref(String(current.value))
-watch(current, (v) => {
-  draft.value = String(v)
+/** 步进小数位数：由 step 推导（0.5→1 位，0.25→2 位，0.1→1 位，1→0 位） */
+const precision = computed(() => {
+  const s = String(props.step)
+  const dot = s.indexOf('.')
+  return dot === -1 ? 0 : s.length - dot - 1
 })
 
-const atMin = computed(() => props.min !== undefined && current.value <= props.min)
-const atMax = computed(() => props.max !== undefined && current.value >= props.max)
-
-function round(v: number): number {
+/** 按 step 精度取整，规避浮点误差（0.30000000000000004 → 0.3） */
+function roundTo(v: number): number {
   if (!Number.isFinite(v)) return 0
-  return Math.round(v)
+  return Number(v.toFixed(precision.value))
 }
 
-/** 夹取到 [min, max]，并取整 */
+/** 当前有效值：undefined 表示未设置（继承默认） */
+const current = computed<number | undefined>(() => {
+  const v = props.modelValue
+  if (v === undefined || v === null || !Number.isFinite(v)) return undefined
+  return roundTo(v)
+})
+
+/** 输入框草稿：输入过程中保留原文，失焦/回车后按精度规范化 */
+const draft = ref(current.value === undefined ? '' : String(current.value))
+watch(current, (v) => {
+  draft.value = v === undefined ? '' : String(v)
+})
+
+/** 步进基准：未设置时从 min（无 min 则为 0）起步 */
+const base = computed(() => {
+  if (current.value !== undefined) return current.value
+  return props.min !== undefined ? props.min : 0
+})
+
+const atMin = computed(() => props.min !== undefined && base.value <= props.min)
+const atMax = computed(() => props.max !== undefined && base.value >= props.max)
+
+/** 夹取到 [min, max]，并按 step 精度取整 */
 function clamp(v: number): number {
-  let next = round(v)
+  let next = roundTo(v)
   if (props.min !== undefined && next < props.min) next = props.min
   if (props.max !== undefined && next > props.max) next = props.max
   return next
@@ -75,7 +97,7 @@ function clamp(v: number): number {
 
 function stepBy(dir: 1 | -1) {
   if ((dir < 0 && atMin.value) || (dir > 0 && atMax.value)) return
-  const next = clamp(current.value + dir * props.step)
+  const next = clamp(base.value + dir * props.step)
   draft.value = String(next)
   emit('update:modelValue', next)
 }
@@ -84,16 +106,18 @@ function onInput(e: Event) {
   draft.value = (e.target as HTMLInputElement).value
 }
 
-/** 失焦/回车提交：解析草稿并取整，空值回退为当前值 */
+/** 失焦/回车提交：解析草稿并按精度取整；空值回退为当前值（未设置则保持未设置） */
 function commit() {
   const raw = draft.value.trim()
   if (raw === '') {
-    draft.value = String(current.value)
+    if (current.value !== undefined) {
+      draft.value = String(current.value)
+    }
     return
   }
   const num = Number(raw)
   if (!Number.isFinite(num)) {
-    draft.value = String(current.value)
+    draft.value = current.value === undefined ? '' : String(current.value)
     return
   }
   const next = clamp(num)

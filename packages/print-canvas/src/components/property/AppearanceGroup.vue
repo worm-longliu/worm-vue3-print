@@ -3,10 +3,9 @@
     <form class="pd-form" @submit.prevent>
       <template v-if="isTextType">
         <div class="pd-field" v-show="showItem('ap-font-size')"><span class="pd-label">字体大小</span>
-          <input type="number" class="pd-input" v-model.number="element.options.fontSize"
+          <StepperInput v-model="element.options.fontSize"
             :min="8"
-            :max="72"
-            style="width: 100%" />
+            :max="72" />
         </div>
         <div class="pd-field" v-show="showItem('ap-font-weight')"><span class="pd-label">字体粗细</span>
           <select class="pd-select" v-model="element.options.fontWeight" style="width: 100%">
@@ -39,17 +38,15 @@
           </div>
         </div>
         <div class="pd-field" v-show="showItem('ap-line-height')"><span class="pd-label">行高</span>
-          <input type="number" class="pd-input" v-model.number="element.options.lineHeight"
+          <StepperInput v-model="element.options.lineHeight"
             :min="0"
-            :max="100"
-            style="width: 100%" />
+            :max="100" />
         </div>
         <div class="pd-field" v-show="showItem('ap-letter-spacing')"><span class="pd-label">字间距</span>
-          <input type="number" class="pd-input" v-model.number="element.options.letterSpacing"
+          <StepperInput v-model="element.options.letterSpacing"
             :min="0"
             :max="20"
-            :step="0.5"
-            style="width: 100%" />
+            :step="0.5" />
         </div>
       </template>
 
@@ -63,6 +60,7 @@ import { computed } from 'vue'
 import type { RuntimeElement } from '../../types'
 import PresetColorPicker from '../PresetColorPicker.vue'
 import PropertyGroup from './PropertyGroup.vue'
+import StepperInput from './StepperInput.vue'
 
 const props = defineProps<{
   element: RuntimeElement

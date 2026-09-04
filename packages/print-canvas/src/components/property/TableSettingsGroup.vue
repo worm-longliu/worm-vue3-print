@@ -8,18 +8,18 @@
         </select>
       </div>
       <div class="pd-field"><span class="pd-label">默认字号 (pt)</span>
-        <input type="number" class="pd-input" v-model.number="element.options.tableDefaultFontSize" :min="5" :max="72" />
+        <StepperInput v-model="element.options.tableDefaultFontSize" :min="5" :max="72" placeholder="默认" />
       </div>
       <div class="pd-field"><span class="pd-label">默认文字颜色</span>
         <PresetColorPicker v-model="element.options.tableDefaultColor" />
       </div>
       <div class="pd-field"><span class="pd-label">默认内边距 (mm)</span>
-        <input type="number" class="pd-input" v-model.number="element.options.tableDefaultPadding" :min="0" :max="10" :step="0.5" />
+        <StepperInput v-model="element.options.tableDefaultPadding" :min="0" :max="10" :step="0.5" placeholder="默认" />
       </div>
       <div class="pd-field"><span class="pd-label">列宽 (mm)</span>
         <div v-for="(w, i) in element.options.tableColWidths" :key="i" class="col-width-row">
           <span style="width: 60px">列{{ i + 1 }}</span>
-          <input :value="w" type="number" class="pd-input" :min="5" :max="200" :step="1" @input="onColWidthChange(i, ($event.target as HTMLInputElement).valueAsNumber)" />
+          <StepperInput :model-value="w" :min="5" :max="200" @update:model-value="onColWidthChange(i, $event)" />
         </div>
       </div>
     </form>
@@ -33,6 +33,7 @@ import type { RuntimeElement, PrintBusinessField } from '../../types'
 import { TABLE_EDIT_KEY } from '../../composables/useTableSelection'
 import { syncTableElementSize } from '../../utils/table-matrix'
 import PropertyGroup from './PropertyGroup.vue'
+import StepperInput from './StepperInput.vue'
 
 const props = defineProps<{
   element: RuntimeElement

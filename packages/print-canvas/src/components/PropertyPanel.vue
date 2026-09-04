@@ -80,19 +80,15 @@
           </div>
           <div class="pd-field" v-if="paperSizeModel === 'CUSTOM'"><span class="pd-label">自定义宽高 (mm)</span>
             <div class="custom-size-grid">
-              <input :value="customWidth" type="number" class="pd-input"
-                @input="onCustomWidthChange(($event.target as HTMLInputElement).valueAsNumber)"
+              <StepperInput :model-value="customWidth"
                 :min="25"
                 :max="2000"
-                :step="1"
-                style="width: 100%" />
+                @update:model-value="onCustomWidthChange" />
               <span class="custom-size-x">×</span>
-              <input :value="customHeight" type="number" class="pd-input"
-                @input="onCustomHeightChange(($event.target as HTMLInputElement).valueAsNumber)"
+              <StepperInput :model-value="customHeight"
                 :min="25"
                 :max="2000"
-                :step="1"
-                style="width: 100%" />
+                @update:model-value="onCustomHeightChange" />
             </div>
           </div>
           <div class="pd-field"><span class="pd-label">方向</span>
@@ -111,28 +107,28 @@
           <h3 class="pd-divider">页边距 (mm)</h3>
           <div class="margin-grid">
             <div class="pd-field"><span class="pd-label">上</span>
-              <input :value="marginTop" type="number" class="pd-input" @input="onMarginTopChange(($event.target as HTMLInputElement).valueAsNumber)" :min="0" :max="50" :step="1" style="width: 100%" />
+              <StepperInput :model-value="marginTop" :min="0" :max="50" @update:model-value="onMarginTopChange" />
             </div>
             <div class="pd-field"><span class="pd-label">下</span>
-              <input :value="marginBottom" type="number" class="pd-input" @input="onMarginBottomChange(($event.target as HTMLInputElement).valueAsNumber)" :min="0" :max="50" :step="1" style="width: 100%" />
+              <StepperInput :model-value="marginBottom" :min="0" :max="50" @update:model-value="onMarginBottomChange" />
             </div>
             <div class="pd-field"><span class="pd-label">左</span>
-              <input :value="marginLeft" type="number" class="pd-input" @input="onMarginLeftChange(($event.target as HTMLInputElement).valueAsNumber)" :min="0" :max="50" :step="1" style="width: 100%" />
+              <StepperInput :model-value="marginLeft" :min="0" :max="50" @update:model-value="onMarginLeftChange" />
             </div>
             <div class="pd-field"><span class="pd-label">右</span>
-              <input :value="marginRight" type="number" class="pd-input" @input="onMarginRightChange(($event.target as HTMLInputElement).valueAsNumber)" :min="0" :max="50" :step="1" style="width: 100%" />
+              <StepperInput :model-value="marginRight" :min="0" :max="50" @update:model-value="onMarginRightChange" />
             </div>
           </div>
 
           <h3 class="pd-divider">三区高度 (mm)</h3>
           <div class="pd-field"><span class="pd-label">页眉高度</span>
-            <input :value="headerHeight" type="number" class="pd-input" @input="onHeaderHeightChange(($event.target as HTMLInputElement).valueAsNumber)" :min="0" :max="100" :step="0.1" style="width: 100%" />
+            <StepperInput :model-value="headerHeight" :min="0" :max="100" :step="0.1" @update:model-value="onHeaderHeightChange" />
           </div>
           <div class="pd-field"><span class="pd-label">页脚高度</span>
-            <input :value="footerHeight" type="number" class="pd-input" @input="onFooterHeightChange(($event.target as HTMLInputElement).valueAsNumber)" :min="0" :max="100" :step="0.1" style="width: 100%" />
+            <StepperInput :model-value="footerHeight" :min="0" :max="100" :step="0.1" @update:model-value="onFooterHeightChange" />
           </div>
           <div class="pd-field"><span class="pd-label">首页叠加高度</span>
-            <input :value="overlayHeight" type="number" class="pd-input" @input="onOverlayHeightChange(($event.target as HTMLInputElement).valueAsNumber)" :min="0" :max="200" style="width: 100%" />
+            <StepperInput :model-value="overlayHeight" :min="0" :max="200" @update:model-value="onOverlayHeightChange" />
           </div>
         </form>
       </div>
@@ -150,6 +146,7 @@ import PropertySearch from './property/PropertySearch.vue'
 import PositionSizeGroup from './property/PositionSizeGroup.vue'
 import AppearanceGroup from './property/AppearanceGroup.vue'
 import PropertyGroup from './property/PropertyGroup.vue'
+import StepperInput from './property/StepperInput.vue'
 import BindingControl from './property/BindingControl.vue'
 import TableSettingsGroup from './property/TableSettingsGroup.vue'
 import BorderBgGroup from './property/BorderBgGroup.vue'

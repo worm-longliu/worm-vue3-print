@@ -3,11 +3,10 @@
     <form class="pd-form" @submit.prevent>
       <div class="border-row">
         <div class="pd-field" v-show="showItem('bb-border-width')"><span class="pd-label">边框宽度</span>
-          <input type="number" class="pd-input" v-model.number="element.options.borderWidth"
+          <StepperInput v-model="element.options.borderWidth"
             :min="0"
             :max="20"
-            :step="0.25"
-            />
+            :step="0.25" />
         </div>
         <div class="pd-field" v-show="showItem('bb-border-color')"><span class="pd-label">边框颜色</span>
           <PresetColorPicker v-model="element.options.borderColor" />
@@ -24,6 +23,7 @@
 import type { RuntimeElement } from '../../types'
 import PresetColorPicker from '../PresetColorPicker.vue'
 import PropertyGroup from './PropertyGroup.vue'
+import StepperInput from './StepperInput.vue'
 
 const props = defineProps<{
   element: RuntimeElement

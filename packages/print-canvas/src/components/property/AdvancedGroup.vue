@@ -10,10 +10,9 @@
         </div>
       </div>
       <div class="pd-field" v-show="showItem('ad-z-index')"><span class="pd-label">层级</span>
-        <input type="number" class="pd-input" v-model.number="element.options.zIndex"
+        <StepperInput v-model="element.options.zIndex"
           :min="0"
-          :max="999"
-          style="width: 100%" />
+          :max="999" />
       </div>
       <div class="pd-field" v-show="showItem('ad-delete')">
         <button type="button" class="pd-button danger" @click="$emit('delete-element')">
@@ -27,6 +26,7 @@
 <script setup lang="ts">
 import type { RuntimeElement } from '../../types'
 import PropertyGroup from './PropertyGroup.vue'
+import StepperInput from './StepperInput.vue'
 
 const props = defineProps<{
   element: RuntimeElement

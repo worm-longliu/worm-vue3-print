@@ -11,11 +11,10 @@
         </select>
       </div>
       <div class="pd-field"><span class="pd-label">行高 (mm)</span>
-        <input :value="row.height" type="number" class="pd-input"
+        <StepperInput :model-value="row.height"
           :min="3"
           :max="100"
-          :step="0.5"
-          style="width: 100%" @input="onHeightChange(($event.target as HTMLInputElement).valueAsNumber)" />
+          :step="0.5" @update:model-value="onHeightChange" />
       </div>
       <div class="pd-field" v-if="row.type === 'header'"><span class="pd-label">每页顶部重复</span>
         <input :checked="row.repeatOnPage ?? false" type="checkbox" class="pd-switch" @input="onRepeatChange(!!($event.target as HTMLInputElement).checked)" />
@@ -30,6 +29,7 @@ import type { RuntimeElement, TableSelection, TableRowType } from '../../types'
 import { setRowType, syncTableElementSize } from '../../utils/table-matrix'
 import { TABLE_EDIT_KEY } from '../../composables/useTableSelection'
 import PropertyGroup from './PropertyGroup.vue'
+import StepperInput from './StepperInput.vue'
 
 const props = defineProps<{ element: RuntimeElement; selection: TableSelection }>()
 const ctx = inject(TABLE_EDIT_KEY)!

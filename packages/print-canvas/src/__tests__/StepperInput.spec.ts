@@ -105,4 +105,67 @@ describe('StepperInput', () => {
     // 输入框回显原值
     expect((input.element as HTMLInputElement).value).toBe('10')
   })
+
+  // ─── 小数精度（按 step 推导） ───
+
+  it('小数步进：step=0.5 保留 1 位小数', async () => {
+    const wrapper = makeWrapper({ modelValue: 1.5, step: 0.5 })
+    expect((wrapper.find('input').element as HTMLInputElement).value).toBe('1.5')
+    await wrapper.findAll('button')[1].trigger('click')
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual([2])
+  })
+
+  it('小数步进：step=0.25 保留 2 位小数', async () => {
+    const wrapper = makeWrapper({ modelValue: 0.75, step: 0.25 })
+    expect((wrapper.find('input').element as HTMLInputElement).value).toBe('0.75')
+    await wrapper.findAll('button')[0].trigger('click')
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual([0.5])
+  })
+
+  it('小数步进：step=0.1 保留 1 位小数并规避浮点误差', async () => {
+    const wrapper = makeWrapper({ modelValue: 0.3, step: 0.1 })
+    expect((wrapper.find('input').element as HTMLInputElement).value).toBe('0.3')
+    await wrapper.findAll('button')[1].trigger('click')
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual([0.4])
+  })
+
+  it('小数步进：手动输入按 step 精度保留小数', async () => {
+    const wrapper = makeWrapper({ modelValue: 1, step: 0.25 })
+    const input = wrapper.find('input')
+    await input.setValue('1.77')
+    await input.trigger('change')
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual([1.77])
+  })
+
+  // ─── 未设置（undefined / 继承默认）态 ───
+
+  it('未设置时输入框显示空值并展示占位提示', () => {
+    const wrapper = mount(StepperInput, {
+      props: { modelValue: undefined, placeholder: '默认' },
+    })
+    const input = wrapper.find('input')
+    expect((input.element as HTMLInputElement).value).toBe('')
+    expect((input.element as HTMLInputElement).placeholder).toBe('默认')
+  })
+
+  it('未设置时点击加号：从 min 起步生成具体值', async () => {
+    const wrapper = mount(StepperInput, {
+      props: { modelValue: undefined, min: 5, step: 1 },
+    })
+    await wrapper.findAll('button')[1].trigger('click')
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual([6])
+  })
+
+  it('未设置时减号禁用，清空失焦保持未设置', async () => {
+    const wrapper = mount(StepperInput, {
+      props: { modelValue: undefined, min: 0 },
+    })
+    expect(wrapper.findAll('button')[0].attributes('disabled')).toBeDefined()
+    const input = wrapper.find('input')
+    ;(input.element as HTMLInputElement).value = ''
+    await input.trigger('input')
+    await input.trigger('change')
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    expect((input.element as HTMLInputElement).value).toBe('')
+  })
 })

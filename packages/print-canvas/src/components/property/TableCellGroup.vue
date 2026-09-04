@@ -66,9 +66,10 @@
           </select>
         </div>
         <div class="pd-field"><span class="pd-label">字号 (pt)</span>
-          <input :value="mainCell.fontSize" type="number" class="pd-input"
+          <StepperInput :model-value="mainCell.fontSize"
             :min="5"
-            :max="72" @input="write(c => { c.fontSize = ($event.target as HTMLInputElement).valueAsNumber ?? undefined })" />
+            :max="72"
+            placeholder="默认" @update:model-value="write(c => { c.fontSize = $event ?? undefined })" />
         </div>
         <div class="pd-field"><span class="pd-label">加粗</span>
           <input :checked="mainCell.fontWeight === 'bold'" type="checkbox" class="pd-switch" @input="write(c => { c.fontWeight = ($event.target as HTMLInputElement).checked ? 'bold' : undefined })" />
@@ -89,11 +90,10 @@
           <option value="dotted">点线</option>
           <option value="double">双线</option>
         </select>
-        <input type="number" class="pd-input" v-model.number="borderWidth"
+        <div style="width: 112px; flex-shrink: 0"><StepperInput v-model="borderWidth"
           :min="0.25"
           :max="5"
-          :step="0.25"
-          style="width: 90px" />
+          :step="0.25" /></div>
         <PresetColorPicker v-model="borderColor" />
       </div>
       <div class="pd-button-group border-presets">
@@ -110,10 +110,11 @@
       </div>
 
       <div class="pd-field"><span class="pd-label">内边距 (mm)</span>
-        <input :value="mainCell.padding" type="number" class="pd-input"
+        <StepperInput :model-value="mainCell.padding"
           :min="0"
           :max="10"
-          :step="0.5" @input="write(c => { c.padding = ($event.target as HTMLInputElement).valueAsNumber ?? undefined })" />
+          :step="0.5"
+          placeholder="默认" @update:model-value="write(c => { c.padding = $event ?? undefined })" />
       </div>
       <div class="pd-field"><span class="pd-label">自动换行</span>
         <input :checked="mainCell.wordWrap ?? true" type="checkbox" class="pd-switch" @input="write(c => { c.wordWrap = !!($event.target as HTMLInputElement).checked })" />
@@ -147,6 +148,7 @@ import {
 } from '../../utils/table-matrix'
 import { TABLE_EDIT_KEY } from '../../composables/useTableSelection'
 import PropertyGroup from './PropertyGroup.vue'
+import StepperInput from './StepperInput.vue'
 import ExpressionEditor from '../ExpressionEditor.vue'
 import PresetColorPicker from '../PresetColorPicker.vue'
 
