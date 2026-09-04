@@ -86,7 +86,7 @@ export interface RenderCell {
   content: string
   /** 小计行专用：单元格原始 formatter 表达式，渲染阶段以当前页数据行上下文求值 */
   rawFormatter?: string
-  /** 内容类型：text（默认）/ barcode / qrcode，非 text 时 content 为码值 */
+  /** 内容类型：text（默认）/ barcode / qrcode / image，非 text 时 content 为码值或图片 URL */
   cellType?: string
   /** 条形码码制（jsbarcode 格式名），仅 cellType='barcode' 时生效 */
   barcodeType?: string
@@ -94,6 +94,12 @@ export interface RenderCell {
   qrCodeLevel?: string
   /** 条形码下方是否显示文本，仅 cellType='barcode' 时生效 */
   showBarcodeText?: boolean
+  /** 图片缩放模式，仅 cellType='image' 时生效 */
+  fit?: string
+  /** 图片最大宽度（mm），仅 cellType='image' 时生效 */
+  maxWidth?: number
+  /** 图片最大高度（mm），仅 cellType='image' 时生效 */
+  maxHeight?: number
   rowspan: number
   colspan: number
   merged: boolean

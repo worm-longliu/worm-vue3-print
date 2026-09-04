@@ -343,6 +343,12 @@ function renderMatrixRows(
           // 单元格条形码按单元格等比填满（fill）；单元格二维码保持原 shrink-to-fit 行为
           const cellFill = cell.cellType === 'barcode'
           inner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;">${codeImgHtml(cell.content, cell.cellType as 'barcode' | 'qrcode', cell, esc(cell.content), cellFill, ctx?.codeRenderer)}</div>`
+        } else if (cell.cellType === 'image') {
+          // 图片类型单元格：渲染 <img> 标签
+          const fit = cell.fit || 'contain'
+          const maxWidth = cell.maxWidth ? `max-width:${cell.maxWidth}mm;` : 'max-width:100%;'
+          const maxHeight = cell.maxHeight ? `max-height:${cell.maxHeight}mm;` : 'max-height:100%;'
+          inner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;"><img src="${esc(cell.content)}" style="object-fit:${fit};${maxWidth}${maxHeight}display:block;" /></div>`
         } else {
           inner = esc(cell.content)
         }
