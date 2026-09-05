@@ -32,6 +32,18 @@ npm run build    # 构建所有包
 npm test         # 运行所有包测试
 ```
 
+## 安装
+
+```bash
+# 安装核心包（模板表达式引擎 + 同构渲染管线）
+npm install @worm-vue3-print/core
+
+# 安装设计器画布（Vue 3 可视化设计器 + 预览组件）
+npm install @worm-vue3-print/canvas
+```
+
+> 当前版本：`1.1.0`
+
 ## 快速使用
 
 ```ts

@@ -1,6 +1,6 @@
 {
   "name": "@worm-vue3-print/canvas",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "description": "Vue 3 可视化打印模板设计器画布（开源核心，无 Element Plus、无宿主业务依赖）",
   "main": "./dist/index.cjs",
