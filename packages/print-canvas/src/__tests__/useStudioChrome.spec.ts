@@ -1,5 +1,21 @@
+/**
+ * @vitest-environment happy-dom
+ */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useStudioChrome } from '../composables/useStudioChrome'
+
+// happy-dom 在 vitest v4 下 localStorage 可能为 undefined，手动 mock
+const mockStorage = new Map<string, string>()
+if (typeof localStorage === 'undefined' || !localStorage) {
+  ;(globalThis as any).localStorage = {
+    getItem: (k: string) => mockStorage.get(k) ?? null,
+    setItem: (k: string, v: string) => { mockStorage.set(k, v) },
+    removeItem: (k: string) => { mockStorage.delete(k) },
+    clear: () => { mockStorage.clear() },
+    length: 0,
+    key: () => null,
+  }
+}
 
 describe('useStudioChrome', () => {
   beforeEach(() => localStorage.clear())

@@ -294,7 +294,7 @@ function codeImgHtml(
     // 构建样式
     const styleParts: string[] = []
     if (fill) {
-      styleParts.push('width:100%', 'height:100%', 'display:block', 'margin:auto')
+      styleParts.push('width:100%', 'height:100%', 'object-fit:contain', 'display:block', 'margin:auto')
     } else {
       // 默认 shrink-to-fit 行为
       styleParts.push('max-width:100%', 'max-height:100%', 'display:block', 'margin:auto')
