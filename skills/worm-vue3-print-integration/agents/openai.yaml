@@ -1,0 +1,3 @@
+interface:
+  display_name: "worm-vue3-print 集成支持"
+  short_description: "辅助在 Vue 3 项目中选择 NPM 或源码安装并集成打印模板能力"
