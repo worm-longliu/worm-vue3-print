@@ -29,6 +29,7 @@
       @add-overlay-element="onAddOverlayElement"
       @fit-window="onFitWindow"
       @zoom="onZoom"
+      @help="helpVisible = true"
     />
 
     <!-- 三栏布局 -->
@@ -114,6 +115,12 @@
       :expression="dblEditorExpression"
       @update:expression="onDblEditorConfirm"
     />
+
+    <!-- 帮助文档模态框 -->
+    <HelpModal
+      :visible="helpVisible"
+      @close="helpVisible = false"
+    />
   </div>
 </template>
 
@@ -129,6 +136,7 @@ import { getZoneRects } from '../utils/zone-layout'
 import { getPaperDimensions } from '../utils/default-config'
 import { DEFAULT_DEMO_DATA } from '../utils/demo-data'
 import { findMainCell } from '../utils/table-matrix'
+import { clampScalePercent } from '../utils/scale'
 import { UPLOAD_IMAGE_KEY } from '../composables/useHostAdapter'
 import type { AlignMode } from '../composables/useAlign'
 import DesignerToolbar from './DesignerToolbar.vue'
@@ -137,6 +145,7 @@ import CanvasArea from './CanvasArea.vue'
 import PropertyPanel from './PropertyPanel.vue'
 import StatusBar from './StatusBar.vue'
 import ExpressionEditor from './ExpressionEditor.vue'
+import HelpModal from './HelpModal.vue'
 import { useStudioChrome } from '../composables/useStudioChrome'
 
 const props = defineProps<{
@@ -156,6 +165,9 @@ const emit = defineEmits<{
   preview: []
   save: [json: string]
 }>()
+
+// 帮助文档状态
+const helpVisible = ref(false)
 
 // 装配层状态：面板折叠（localStorage 持久）+ 未保存 dirty
 const { leftCollapsed, rightCollapsed, toggleLeft, toggleRight, dirty, markSaved } = useStudioChrome()
@@ -248,7 +260,7 @@ function onFitWindow() {
   if (el) fitToWindow(el.clientWidth, el.clientHeight)
 }
 function onZoom(delta: number) {
-  scale.value = Math.min(200, Math.max(50, scale.value + delta))
+  scale.value = clampScalePercent(scale.value + delta)
 }
 
 // Ctrl+0 适应窗口:需容器尺寸,由本组件单独监听(useKeyboard 不处理)

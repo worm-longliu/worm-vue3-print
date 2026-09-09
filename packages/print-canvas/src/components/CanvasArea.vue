@@ -82,9 +82,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onBeforeUnmount } from 'vue'
+import { ref, reactive, nextTick, onBeforeUnmount } from 'vue'
 import type { RuntimeElement, TemplateData, AlignLine } from '../types'
 import { pxToMm } from '../utils/units'
+import { nextWheelScale } from '../utils/scale'
 import CanvasPaper from './CanvasPaper.vue'
 
 const props = defineProps<{
@@ -202,23 +203,47 @@ function onMouseLeave() { emit('coordinate', null) }
 function onWheel(e: WheelEvent) {
   if (!(e.ctrlKey || e.metaKey)) return
   e.preventDefault()
-  const oldScale = props.scale
-  const newScale = Math.max(0.25, Math.min(3, oldScale + (e.deltaY > 0 ? -0.1 : 0.1)))
-  if (newScale === oldScale) return
+  // props.scale 为小数;统一在百分比整数域做乘性步进,
+  // 取消放大上限,同时避免浮点累加产生脏显示
+  const oldScale = props.scale || 1
+  const oldPercent = Math.round(oldScale * 100)
+  const newPercent = nextWheelScale(oldPercent, e.deltaY > 0 ? -1 : 1)
+  if (newPercent === oldPercent) return
+  const newScale = newPercent / 100
 
-  // 缩放中心换算:scroll' = (scroll + mouse) * ratio - mouse
   const container = rootRef.value
+  // 记录鼠标下的内容点(相对滚动内容原点)。容器存在非对称 padding,
+  // 换算时必须扣除,否则每次缩放锚点会漂移 pad*(ratio-1)
+  let anchor: { x: number; y: number; ratio: number; mouseX: number; mouseY: number } | null = null
   if (container) {
     const rect = container.getBoundingClientRect()
-    const mouseX = e.clientX - rect.left
-    const mouseY = e.clientY - rect.top
-    const ratio = newScale / oldScale
-    container.scrollLeft = (container.scrollLeft + mouseX) * ratio - mouseX
-    container.scrollTop = (container.scrollTop + mouseY) * ratio - mouseY
+    const cs = getComputedStyle(container)
+    const padX = parseFloat(cs.paddingLeft) || 0
+    const padY = parseFloat(cs.paddingTop) || 0
+    anchor = {
+      x: container.scrollLeft + (e.clientX - rect.left) - padX,
+      y: container.scrollTop + (e.clientY - rect.top) - padY,
+      ratio: newScale / oldScale,
+      mouseX: e.clientX - rect.left,
+      mouseY: e.clientY - rect.top,
+    }
   }
 
-  // 以百分比增量上报(父级 scale 为百分比)
-  emit('zoom', (newScale - oldScale) * 100)
+  // 以百分比整数增量上报(父级 scale 为百分比)
+  emit('zoom', newPercent - oldPercent)
+
+  // 待新比例应用到 DOM 后再校正滚动位置:缩放前若该方向没有滚动条,
+  // 提前写入 scrollTop/Left 会被浏览器钳制为 0,导致锚点失效
+  if (container && anchor) {
+    const a = anchor
+    void nextTick(() => {
+      const cs = getComputedStyle(container)
+      const padX = parseFloat(cs.paddingLeft) || 0
+      const padY = parseFloat(cs.paddingTop) || 0
+      container.scrollLeft = a.x * a.ratio - a.mouseX + padX
+      container.scrollTop = a.y * a.ratio - a.mouseY + padY
+    })
+  }
 }
 
 function onCanvasMouseDown(e: MouseEvent) {
@@ -357,8 +382,6 @@ onBeforeUnmount(() => {
   background-image: radial-gradient(circle, rgba(23, 32, 60, .13) 1px, transparent 1.2px);
   background-size: 20px 20px;
   background-position: center;
-  display: flex;
-  justify-content: center;
   padding: 44px 28px 32px 44px;
   position: relative;
 }
@@ -368,6 +391,8 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 20px;
   position: relative;
+  margin: 0 auto;
+  width: fit-content;
 }
 /* 叠层对比 */
 .overlay-layer {

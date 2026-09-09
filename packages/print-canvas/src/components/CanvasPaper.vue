@@ -1,13 +1,17 @@
 <template>
   <div
-    class="hiprint-printPaper"
-    :style="paperStyle"
+    class="paper-wrapper"
+    :style="wrapperStyle"
   >
     <div
-      class="hiprint-printPaper-content"
-      ref="contentRef"
-      :style="contentStyle"
+      class="hiprint-printPaper"
+      :style="paperStyle"
     >
+      <div
+        class="hiprint-printPaper-content"
+        ref="contentRef"
+        :style="contentStyle"
+      >
       <!-- 刻度标尺 -->
       <template v-if="showRulerComputed">
         <Ruler orientation="horizontal" :length-m-m="paperWidthMM" :scale="scale" @add-guide="(t: 'vertical' | 'horizontal', p: number) => emit('add-guide', t, p)" />
@@ -177,12 +181,14 @@
       />
     </div>
   </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, onUnmounted } from 'vue'
 import type { RuntimeElement, TemplateData, ElementRect, ElementZone, AlignLine } from '../types'
 import { getPaperDimensions } from '../utils/default-config'
+import { mmToPx } from '../utils/units'
 import BaseElement from './elements/BaseElement.vue'
 import Ruler from './Ruler.vue'
 import { useAdsorbManager } from '../composables/useAdsorbManager'
@@ -223,6 +229,18 @@ const paperWidthMM = computed(() => {
 })
 const paperHeightMM = computed(() => {
   return getPaperDimensions(props.templateData).height
+})
+
+/** wrapper 尺寸：缩放后的实际像素尺寸，让滚动容器正确感知内容大小 */
+const wrapperStyle = computed(() => {
+  const s = props.scale || 1
+  const widthPx = mmToPx(paperWidthMM.value) * s
+  const heightPx = mmToPx(paperHeightMM.value) * s
+  return {
+    width: widthPx + 'px',
+    height: heightPx + 'px',
+    position: 'relative' as const,
+  }
 })
 
 /** 三区矩形（mm，纸面坐标系）：上边距→页眉→内容→页脚→下边距 */
@@ -326,7 +344,6 @@ const paperStyle = computed(() => ({
   minHeight: paperHeightMM.value + 'mm',
   background: props.templateData.pageBackground || 'var(--pd-paper, #fff)',
   boxShadow: 'var(--pd-shadow-paper, 0 1px 2px rgba(0,0,0,.12), 0 8px 24px rgba(0,0,0,.08))',
-  margin: '0 auto',
   overflow: 'hidden',
   position: 'relative' as const,
   transform: props.scale ? `scale(${props.scale})` : undefined,
@@ -495,6 +512,14 @@ defineExpose({ contentRef })
 </script>
 
 <style scoped>
+/* wrapper：承载缩放后的实际尺寸，让滚动容器正确感知内容大小 */
+.paper-wrapper {
+  /* 仅承载缩放后的布局尺寸（宽高 = 纸张尺寸 × scale，见 wrapperStyle）。
+     纸张固定以左上角为原点缩放（transform-origin: 0 0），wrapper 内不能再居中，
+     否则缩小时 flex 压缩布局宽度会使视觉宽度变为 W·s²、放大时纸张向右偏移；
+     水平居中统一由外层 .canvas-scroll 的 align-items: center 负责。 */
+  display: block;
+}
 /* 纸张缩放平滑过渡(配合鼠标位置缩放中心) */
 .hiprint-printPaper {
   transition: transform 0.15s ease-out;

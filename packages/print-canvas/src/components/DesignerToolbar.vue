@@ -64,6 +64,9 @@
     <!-- 操作 -->
     <div class="tb-spacer" />
     <div class="tb-group">
+      <HelpButton @click="$emit('help')" />
+    </div>
+    <div class="tb-group">
       <button class="tb-btn" @click="$emit('add-overlay-element')">首页专属</button>
       <button class="tb-btn" :class="{ warn: overlayVisible }" @click="$emit('toggle-overlay')">叠层对比</button>
     </div>
@@ -76,6 +79,8 @@
 </template>
 
 <script setup lang="ts">
+import HelpButton from './HelpButton.vue'
+
 const scale = defineModel<number>('scale', { default: 100 })
 
 defineProps<{
@@ -110,6 +115,7 @@ defineEmits<{
   'add-overlay-element': []
   'fit-window': []
   zoom: [delta: number]
+  help: []
 }>()
 </script>
 

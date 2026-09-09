@@ -1,6 +1,7 @@
 <template>
   <div class="demo-app">
     <header class="demo-topbar">
+      <span class="demo-project">worm-vue3-print</span>
       <span class="demo-logo">打印模板设计器 Demo</span>
       <span class="demo-badge">模板 ID：{{ TEMPLATE_ID }}</span>
       <span class="demo-badge">业务类型：采购收货单（purchase_receipt）</span>
@@ -138,6 +139,20 @@ body,
 .demo-logo {
   font-weight: 600;
   color: #165dff;
+}
+.demo-project {
+  font-weight: 700;
+  color: #2a2e37;
+  font-size: 14px;
+}
+.demo-project::after {
+  content: '';
+  display: inline-block;
+  width: 1px;
+  height: 14px;
+  margin: 0 4px 0 12px;
+  background: #e9ecf2;
+  vertical-align: middle;
 }
 .demo-badge {
   padding: 2px 10px;
