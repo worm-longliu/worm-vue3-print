@@ -47,6 +47,9 @@
     </div>
     <!-- 视图 -->
     <div class="tb-group">
+      <button class="tb-btn" :class="{ on: showRuler }" title="显示/隐藏标尺" @click="$emit('toggle-ruler')">
+        <span class="dot" /> 标尺
+      </button>
       <button class="tb-btn" :class="{ on: showGrid }" @click="$emit('toggle-grid')">
         <span class="dot" /> 网格
       </button>
@@ -83,12 +86,13 @@ import HelpButton from './HelpButton.vue'
 
 const scale = defineModel<number>('scale', { default: 100 })
 
-defineProps<{
+withDefaults(defineProps<{
   isEdit?: boolean
   canUndo?: boolean
   canRedo?: boolean
   hasMultiSelection?: boolean
   hasSelection?: boolean
+  showRuler?: boolean
   showGrid?: boolean
   snapToGrid?: boolean
   showTableGhostBorder?: boolean
@@ -96,7 +100,9 @@ defineProps<{
   overlayVisible?: boolean
   /** 是否展示「加载默认布局」按钮（宿主注入 loadDefaultTemplate 时由 PrintDesigner 开启） */
   showLoadDefault?: boolean
-}>()
+}>(), {
+  showRuler: true,
+})
 
 defineEmits<{
   preview: []
@@ -106,6 +112,7 @@ defineEmits<{
   redo: []
   align: [mode: string]
   'move-layer': [direction: string]
+  'toggle-ruler': []
   'toggle-grid': []
   'toggle-snap': []
   'toggle-table-ghost-border': []

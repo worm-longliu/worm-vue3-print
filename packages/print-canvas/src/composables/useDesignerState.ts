@@ -78,6 +78,7 @@ export function toRuntimePool(data: TemplateData): TemplateData {
 
 export function useDesignerState(options: DesignerStateOptions = {}) {
   const scale = ref(100)
+  const showRuler = ref(true)
   const showGrid = ref(true)
   const snapToGrid = ref(false)
   // 设计态下无边框表格单元格的虚拟虚线边框开关（默认开启）
@@ -435,7 +436,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
   })
 
   return {
-    scale, showGrid, snapToGrid, showTableGhostBorder,
+    scale, showRuler, showGrid, snapToGrid, showTableGhostBorder,
     templateData, elements, fields,
     selectedIds, selectedElements, selectedElement, select, clearSelection, selectAll,
     previewIds, setPreview, clearPreview, commitPreview,

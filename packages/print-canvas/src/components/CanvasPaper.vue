@@ -12,11 +12,6 @@
         ref="contentRef"
         :style="contentStyle"
       >
-      <!-- 刻度标尺 -->
-      <template v-if="showRulerComputed">
-        <Ruler orientation="horizontal" :length-m-m="paperWidthMM" :scale="scale" @add-guide="(t: 'vertical' | 'horizontal', p: number) => emit('add-guide', t, p)" />
-        <Ruler orientation="vertical" :length-m-m="paperHeightMM" :scale="scale" @add-guide="(t: 'vertical' | 'horizontal', p: number) => emit('add-guide', t, p)" />
-      </template>
       <!-- 网格背景 -->
       <div
         v-if="showGrid && designMode"
@@ -174,8 +169,8 @@
         class="manual-guide"
         :class="[`guide-${g.type}`]"
         :style="g.type === 'vertical'
-          ? { left: g.position + 'mm', top: '0', height: paperHeightMM + 'mm' }
-          : { top: g.position + 'mm', left: '0', width: paperWidthMM + 'mm' }"
+          ? { left: g.position + 'mm', top: '0', height: paperHeightMM + 'mm', '--guide-hit': guideHitPx }
+          : { top: g.position + 'mm', left: '0', width: paperWidthMM + 'mm', '--guide-hit': guideHitPx }"
         @mousedown.prevent.stop="onGuideDown($event, g)"
         @dblclick.prevent.stop="g.id && emit('guide-remove', g.id)"
       />
@@ -190,7 +185,6 @@ import type { RuntimeElement, TemplateData, ElementRect, ElementZone, AlignLine 
 import { getPaperDimensions } from '../utils/default-config'
 import { mmToPx } from '../utils/units'
 import BaseElement from './elements/BaseElement.vue'
-import Ruler from './Ruler.vue'
 import { useAdsorbManager } from '../composables/useAdsorbManager'
 
 const props = defineProps<{
@@ -199,7 +193,6 @@ const props = defineProps<{
   designMode?: boolean
   printData?: Record<string, any>[]
   scale?: number
-  showRuler?: boolean
   showGrid?: boolean
   snapToGrid?: boolean
   showTableGhostBorder?: boolean
@@ -215,7 +208,6 @@ const emit = defineEmits<{
   'contextmenu': [id: string, e: MouseEvent]
   'zone-height-change': [zone: 'header' | 'footer', height: number]
   'zone-height-commit': [zone: 'header' | 'footer']
-  'add-guide': [type: 'vertical' | 'horizontal', positionMm: number]
   'guide-move': [id: string, positionMm: number]
   'guide-remove': [id: string]
   'clone-element': [element: RuntimeElement, position: { left: number; top: number }]
@@ -230,6 +222,9 @@ const paperWidthMM = computed(() => {
 const paperHeightMM = computed(() => {
   return getPaperDimensions(props.templateData).height
 })
+
+/** 参考线交互热区：换算到缩放前坐标，保证任意缩放比例下屏幕热区恒定 */
+const guideHitPx = computed(() => `${8 / (props.scale || 1)}px`)
 
 /** wrapper 尺寸：缩放后的实际像素尺寸，让滚动容器正确感知内容大小 */
 const wrapperStyle = computed(() => {
@@ -329,7 +324,9 @@ function onGuideDown(e: MouseEvent, g: AlignLine) {
   const MM_PER_PX = 25.4 / 96
   const onMove = (ev: MouseEvent) => {
     const delta = (g.type === 'vertical' ? (ev.clientX - startX) : (ev.clientY - startY)) / s * MM_PER_PX
-    emit('guide-move', g.id!, startPt + delta)
+    const maxPosition = g.type === 'vertical' ? paperWidthMM.value : paperHeightMM.value
+    const nextPosition = Math.min(Math.max(startPt + delta, 0), maxPosition)
+    emit('guide-move', g.id!, nextPosition)
   }
   const onUp = () => {
     window.removeEventListener('mousemove', onMove)
@@ -359,8 +356,6 @@ const contentStyle = computed(() => {
     minHeight: paperHeightMM.value + 'mm',
   }
 })
-
-const showRulerComputed = computed(() => props.showRuler !== false && !!props.designMode)
 
 const gridBgStyle = computed(() => {
   const size = 5 // mm
@@ -586,7 +581,6 @@ defineExpose({ contentRef })
   white-space: nowrap;
   pointer-events: none;
 }
-/* 刻度标尺由 Ruler.vue Canvas 绘制 */
 .grid-bg {
   position: absolute;
   top: 0;
@@ -632,5 +626,24 @@ defineExpose({ contentRef })
 .manual-guide { position: absolute; pointer-events: auto; z-index: 9998; cursor: move; }
 .manual-guide.guide-vertical { border-left: 1px solid #3B82F6; width: 0; }
 .manual-guide.guide-horizontal { border-top: 1px solid #3B82F6; height: 0; }
+.manual-guide::before {
+  content: '';
+  position: absolute;
+  pointer-events: auto;
+}
+.manual-guide.guide-vertical::before {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: var(--guide-hit, 8px);
+  transform: translateX(-50%);
+}
+.manual-guide.guide-horizontal::before {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: var(--guide-hit, 8px);
+  transform: translateY(-50%);
+}
 .manual-guide:hover { border-color: #EF4444 !important; }
 </style>

@@ -8,6 +8,7 @@
     @mousemove="onMouseMove"
     @mouseleave="onMouseLeave"
     @wheel="onWheel"
+    @scroll="onScroll"
     @contextmenu.prevent="onContextMenu"
   >
     <div class="canvas-scroll">
@@ -22,7 +23,6 @@
         :show-table-ghost-border="showTableGhostBorder"
         :guides="guides"
         @select="onSelectElement"
-        @add-guide="(t: 'vertical' | 'horizontal', p: number) => $emit('add-guide', t, p)"
         @guide-move="(id: string, p: number) => $emit('guide-move', id, p)"
         @guide-remove="(id: string) => $emit('guide-remove', id)"
         @drag-start="$emit('drag-start')"
@@ -39,6 +39,38 @@
         <img :src="screenshotUrl" class="overlay-image" :style="{ opacity: overlayOpacity ?? 0.5 }" />
       </div>
     </div>
+
+    <!-- 视口固定式标尺：不随纸张滚动/缩放，刻度随滚动平移 -->
+    <div v-if="showRuler" class="ruler-overlay" :style="overlayStyle">
+      <div class="ruler-corner" />
+      <Ruler
+        orientation="horizontal"
+        :viewport-px="rulerGeom.viewW"
+        :origin-px="rulerGeom.originX"
+        :paper-length-m-m="paperWidthMM"
+        :scale="rulerGeom.paperScale"
+        :cursor-px="rulerCursor.x"
+        @add-guide="(t: 'vertical' | 'horizontal', p: number) => emit('add-guide', t, p)"
+        @guide-dragging="(mm: number | null) => onGuideDragging('vertical', mm)"
+      />
+      <Ruler
+        orientation="vertical"
+        :viewport-px="rulerGeom.viewH"
+        :origin-px="rulerGeom.originY"
+        :paper-length-m-m="paperHeightMM"
+        :scale="rulerGeom.paperScale"
+        :cursor-px="rulerCursor.y"
+        @add-guide="(t: 'vertical' | 'horizontal', p: number) => emit('add-guide', t, p)"
+        @guide-dragging="(mm: number | null) => onGuideDragging('horizontal', mm)"
+      />
+    </div>
+    <!-- 从标尺拖出参考线时的预览虚线（fixed 定位，不能放进带 transform 的 overlay） -->
+    <div
+      v-if="guidePreview"
+      class="ruler-guide-preview"
+      :class="`guide-${guidePreview.type}`"
+      :style="guidePreviewStyle"
+    />
 
     <!-- 框选选框 -->
     <div
@@ -82,13 +114,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, nextTick, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import type { RuntimeElement, TemplateData, AlignLine } from '../types'
-import { pxToMm } from '../utils/units'
+import { pxToMm, mmToPx } from '../utils/units'
 import { nextWheelScale } from '../utils/scale'
+import { getPaperDimensions } from '../utils/default-config'
+import { RULER_THICKNESS } from '../utils/ruler'
 import CanvasPaper from './CanvasPaper.vue'
+import Ruler from './Ruler.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   templateData: TemplateData
   elements: RuntimeElement[]
   scale: number
@@ -101,7 +136,11 @@ const props = defineProps<{
   screenshotUrl?: string
   overlayOpacity?: number
   selectedElementHasGroup?: boolean
-}>()
+  /** 是否显示视口固定标尺，默认开启 */
+  showRuler?: boolean
+}>(), {
+  showRuler: true,
+})
 
 const emit = defineEmits<{
   select: [id: string, multiple: boolean]
@@ -137,6 +176,78 @@ function onSelectElement(id: string, multiple: boolean) {
 }
 
 const rootRef = ref<HTMLElement | null>(null)
+
+// ─── 视口固定标尺：纸张几何测量与滚动/缩放同步 ───
+const paperWidthMM = computed(() => getPaperDimensions(props.templateData).width)
+const paperHeightMM = computed(() => getPaperDimensions(props.templateData).height)
+
+/** 纸张原点相对各尺条起点的屏幕偏移 + 尺条可见长度 */
+const rulerGeom = reactive({ originX: 0, originY: 0, viewW: 0, viewH: 0, paperScale: 1 })
+/** 鼠标相对各尺条起点的屏幕位置，驱动尺上指示线 */
+const rulerCursor = reactive<{ x: number | null; y: number | null }>({ x: null, y: null })
+/** 滚动偏移：绝对定位的标尺层会随滚动内容移动，用同向 transform 补偿以保持视口固定 */
+const scrollPos = reactive({ x: 0, y: 0 })
+const overlayStyle = computed(() => ({
+  transform: `translate(${scrollPos.x}px, ${scrollPos.y}px)`,
+}))
+
+function measureRuler() {
+  const area = rootRef.value
+  // 读取纸张本体而非 wrapper：缩放时 wrapper 尺寸立即变为目标值，
+  // 纸张本体有 150ms transform 过渡，标尺需要跟随实时视觉位置与比例。
+  const paper = area?.querySelector('.hiprint-printPaper') as HTMLElement | null
+  if (!area || !paper) return
+  const ar = area.getBoundingClientRect()
+  const pr = paper.getBoundingClientRect()
+  const targetScale = props.scale || 1
+  const measuredScale = pr.width / mmToPx(paperWidthMM.value)
+  // 过渡终点附近消除子像素误差，静止时保持与业务 scale 完全一致
+  rulerGeom.paperScale = Math.abs(measuredScale - targetScale) < 0.002
+    ? targetScale
+    : measuredScale
+  rulerGeom.originX = pr.left - ar.left - RULER_THICKNESS
+  rulerGeom.originY = pr.top - ar.top - RULER_THICKNESS
+  rulerGeom.viewW = area.clientWidth - RULER_THICKNESS
+  rulerGeom.viewH = area.clientHeight - RULER_THICKNESS
+}
+
+function onScroll() {
+  scrollPos.x = rootRef.value?.scrollLeft ?? 0
+  scrollPos.y = rootRef.value?.scrollTop ?? 0
+  measureRuler()
+}
+
+let resizeObserver: ResizeObserver | null = null
+/** 缩放切换后纸张有 150ms CSS 过渡，期间持续重测，刻度才不会跳变 */
+let scaleMeasureRaf = 0
+function startScaleMeasureLoop() {
+  cancelAnimationFrame(scaleMeasureRaf)
+  const endAt = performance.now() + 220
+  const loop = () => {
+    measureRuler()
+    if (performance.now() < endAt) scaleMeasureRaf = requestAnimationFrame(loop)
+  }
+  scaleMeasureRaf = requestAnimationFrame(loop)
+}
+
+/** 从标尺拖出参考线的预览态（纸面 mm 坐标） */
+const guidePreview = ref<{ type: 'vertical' | 'horizontal'; mm: number } | null>(null)
+function onGuideDragging(type: 'vertical' | 'horizontal', mm: number | null) {
+  guidePreview.value = mm === null ? null : { type, mm }
+}
+const guidePreviewStyle = computed(() => {
+  const g = guidePreview.value
+  const paper = rootRef.value?.querySelector('.hiprint-printPaper') as HTMLElement | null
+  if (!g || !paper) return {}
+  // position: fixed，直接采用视口坐标（与框选选框一致）
+  const pr = paper.getBoundingClientRect()
+  const liveScale = pr.width / mmToPx(paperWidthMM.value)
+  const along = mmToPx(g.mm) * (liveScale > 0 ? liveScale : (props.scale || 1))
+  if (g.type === 'vertical') {
+    return { left: pr.left + along + 'px', top: pr.top + 'px', height: pr.height + 'px' }
+  }
+  return { left: pr.left + 'px', top: pr.top + along + 'px', width: pr.width + 'px' }
+})
 
 /** 客户端坐标 → 纸面 mm 坐标；纸张未挂载或落点在纸外时返回 undefined（走默认落位） */
 function toPaperPoint(e: DragEvent): { x: number; y: number } | undefined {
@@ -188,8 +299,12 @@ function isCanvasBackground(target: EventTarget | null): boolean {
 
 const MM_TO_PX = 96 / 25.4
 function onMouseMove(e: MouseEvent) {
-  const paper = rootRef.value?.querySelector('.hiprint-printPaper') as HTMLElement | null
-  if (!paper) return
+  const area = rootRef.value
+  const paper = area?.querySelector('.hiprint-printPaper') as HTMLElement | null
+  if (!area || !paper) return
+  const areaRect = area.getBoundingClientRect()
+  rulerCursor.x = e.clientX - areaRect.left - RULER_THICKNESS
+  rulerCursor.y = e.clientY - areaRect.top - RULER_THICKNESS
   const rect = paper.getBoundingClientRect()
   const s = props.scale || 1
   const xMm = pxToMm((e.clientX - rect.left) / s)
@@ -197,7 +312,11 @@ function onMouseMove(e: MouseEvent) {
   if (xMm < 0 || yMm < 0) { emit('coordinate', null); return }
   emit('coordinate', { x: xMm, y: yMm })
 }
-function onMouseLeave() { emit('coordinate', null) }
+function onMouseLeave() {
+  emit('coordinate', null)
+  rulerCursor.x = null
+  rulerCursor.y = null
+}
 
 /** Ctrl/Cmd+滚轮缩放:以鼠标位置为缩放中心,缩放前后保持鼠标下的内容点不动 */
 function onWheel(e: WheelEvent) {
@@ -367,9 +486,22 @@ function emitAction(action: string, arg?: string) {
   else if (action === 'ungroup' && props.selectedElementHasGroup) emit('ungroup')
 }
 
+onMounted(() => {
+  nextTick(measureRuler)
+  if (rootRef.value && typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(measureRuler)
+    resizeObserver.observe(rootRef.value)
+  }
+})
+
+watch(() => props.scale, startScaleMeasureLoop)
+watch([paperWidthMM, paperHeightMM], () => nextTick(measureRuler))
+
 onBeforeUnmount(() => {
   window.removeEventListener('mousemove', onMarqueeMove)
   window.removeEventListener('mouseup', onMarqueeUp)
+  resizeObserver?.disconnect()
+  cancelAnimationFrame(scaleMeasureRaf)
 })
 </script>
 
@@ -451,5 +583,45 @@ onBeforeUnmount(() => {
   height: 1px;
   background: var(--pd-border-soft, #e9ecf2);
   margin: 5px 8px;
+}
+
+/* ─── 视口固定标尺 ─── */
+.ruler-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+}
+.ruler-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 22px;
+  height: 22px;
+  background: var(--pd-ruler-bg, #f8f9fc);
+  box-shadow: 1px 1px 0 var(--pd-border-soft, #e9ecf2);
+  z-index: 2;
+}
+.ruler-overlay :deep(.pd-ruler.is-horizontal) {
+  top: 0;
+  left: 22px;
+}
+.ruler-overlay :deep(.pd-ruler.is-vertical) {
+  top: 22px;
+  left: 0;
+}
+/* 拖出参考线的预览虚线 */
+.ruler-guide-preview {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9997;
+}
+.ruler-guide-preview.guide-vertical {
+  width: 0;
+  border-left: 1px dashed var(--pd-accent, #165dff);
+}
+.ruler-guide-preview.guide-horizontal {
+  height: 0;
+  border-top: 1px dashed var(--pd-accent, #165dff);
 }
 </style>

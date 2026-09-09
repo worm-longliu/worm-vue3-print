@@ -6,6 +6,7 @@
       :can-redo="canRedo"
       :has-multi-selection="selectedIds.size >= 2"
       :has-selection="selectedIds.size >= 1"
+      :show-ruler="showRuler"
       :show-grid="showGrid"
       :snap-to-grid="snapToGrid"
       :show-table-ghost-border="showTableGhostBorder"
@@ -20,6 +21,7 @@
       @redo="onRedo"
       @align="(mode: string) => onAlign(mode as AlignMode)"
       @move-layer="onMoveLayer"
+      @toggle-ruler="showRuler = !showRuler"
       @toggle-grid="showGrid = !showGrid"
       @toggle-snap="snapToGrid = !snapToGrid"
       @toggle-table-ghost-border="showTableGhostBorder = !showTableGhostBorder"
@@ -50,6 +52,7 @@
         :template-data="templateData"
         :elements="elements"
         :scale="scale / 100"
+        :show-ruler="showRuler"
         :show-grid="showGrid"
         :snap-to-grid="snapToGrid"
         :show-table-ghost-border="showTableGhostBorder"
@@ -174,7 +177,7 @@ const { leftCollapsed, rightCollapsed, toggleLeft, toggleRight, dirty, markSaved
 
 // 设计器核心状态统一由 useDesignerState 管理
 const {
-  scale, showGrid, snapToGrid, showTableGhostBorder,
+  scale, showRuler, showGrid, snapToGrid, showTableGhostBorder,
   templateData, elements, fields,
   selectedIds, selectedElement, select, clearSelection, selectAll,
   previewIds, setPreview, commitPreview,
