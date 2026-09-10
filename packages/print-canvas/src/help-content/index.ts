@@ -2,6 +2,7 @@ import gettingStarted from './getting-started'
 import features from './features'
 import shortcuts from './shortcuts'
 import faq from './faq'
+import changelog from './changelog'
 
 export type HelpSection = {
   id: string
@@ -14,6 +15,7 @@ export const helpSections: HelpSection[] = [
   features,
   shortcuts,
   faq,
+  changelog,
 ]
 
 export type { HelpSection as default }
