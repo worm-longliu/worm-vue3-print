@@ -218,18 +218,21 @@ describe('TableElement 列宽拖拽', () => {
     return { wrapper, recordHistory }
   }
 
-  it('选中+设计态且多列时，每个内部列边界渲染一个拖拽手柄', () => {
+  it('选中+设计态时，内部列边界与最后一列右边界都渲染拖拽手柄', () => {
     const { wrapper } = mountTable()
-    expect(wrapper.findAll('.col-resize-handle')).toHaveLength(2)
+    expect(wrapper.findAll('.col-resize-handle')).toHaveLength(3)
   })
 
-  it('未选中/锁定/非设计态/单列时不渲染手柄', () => {
+  it('未选中/锁定/非设计态时不渲染手柄', () => {
     expect(mountTable({ selected: false }).wrapper.findAll('.col-resize-handle')).toHaveLength(0)
     const locked = makeTableElement([40, 40, 40])
     locked.options.locked = true
     expect(mountTable({ element: locked }).wrapper.findAll('.col-resize-handle')).toHaveLength(0)
     expect(mountTable({ designMode: false }).wrapper.findAll('.col-resize-handle')).toHaveLength(0)
-    expect(mountTable({ element: makeTableElement([40]) }).wrapper.findAll('.col-resize-handle')).toHaveLength(0)
+  })
+
+  it('单一列表格仅在右边界渲染一个手柄', () => {
+    expect(mountTable({ element: makeTableElement([40]) }).wrapper.findAll('.col-resize-handle')).toHaveLength(1)
   })
 
   it('拖拽手柄按位移（px/scale）修改目标列宽，其余列不变，mouseup 记一次历史', async () => {
@@ -237,21 +240,23 @@ describe('TableElement 列宽拖拽', () => {
     const { wrapper, recordHistory } = mountTable({ element, scale: 1 })
     const handle = wrapper.findAll('.col-resize-handle')[0]!
     await handle.trigger('mousedown', { clientX: 100 })
-    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 140 })) // dx=40px → 40mm
-    expect(element.options.tableColWidths).toEqual([80, 40, 40])
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 140 })) // dx=40px → 40/3.78≈10.58mm
+    expect(element.options.tableColWidths[0]).toBe(50.6) // 40 + 10.58，四舍五入到 0.1mm
+    expect(element.options.tableColWidths[1]).toBe(40)
+    expect(element.options.tableColWidths[2]).toBe(40)
     expect(recordHistory).not.toHaveBeenCalled() // 拖拽过程中不记历史
     document.dispatchEvent(new MouseEvent('mouseup'))
     expect(recordHistory).toHaveBeenCalledTimes(1)
-    expect(element.options.width).toBe(160) // 列宽和同步
+    expect(element.options.width).toBe(130.6) // 列宽和同步
   })
 
-  it('scale 折算位移：scale=2 时 40px → 20mm', async () => {
+  it('scale 折算位移：scale=2 时 40px → 约 5.29mm', async () => {
     const element = reactive(makeTableElement([40, 40, 40]))
     const { wrapper } = mountTable({ element, scale: 2 })
     const handle = wrapper.findAll('.col-resize-handle')[0]!
     await handle.trigger('mousedown', { clientX: 100 })
     document.dispatchEvent(new MouseEvent('mousemove', { clientX: 140 }))
-    expect(element.options.tableColWidths[0]).toBe(60) // 40 + 40/2
+    expect(element.options.tableColWidths[0]).toBe(45.3) // 40 + 40/(2*3.78)≈5.29，四舍五入到 0.1mm
     document.dispatchEvent(new MouseEvent('mouseup'))
   })
 
@@ -260,18 +265,79 @@ describe('TableElement 列宽拖拽', () => {
     const { wrapper } = mountTable({ element, maxW: 120 })
     const handle = wrapper.findAll('.col-resize-handle')[0]!
     await handle.trigger('mousedown', { clientX: 100 })
-    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 300 })) // dx=200mm
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 300 })) // dx=200px → 200/3.78≈52.9mm
     expect(element.options.tableColWidths[0]).toBe(40) // 120 - 40 - 40
     document.dispatchEvent(new MouseEvent('mouseup'))
   })
 
-  it('拖拽不低于最小列宽 5mm', async () => {
+  it('内部列边界向左拖：左侧第 i-1 列变窄、边界跟随光标，mouseup 同步元素尺寸', async () => {
+    const element = reactive(makeTableElement([40, 40, 40]))
+    const { wrapper, recordHistory } = mountTable({ element })
+    const handle = wrapper.findAll('.col-resize-handle')[0]!
+    await handle.trigger('mousedown', { clientX: 100 })
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 0 })) // dx=-100px → -100/3.78≈-26.46mm
+    expect(element.options.tableColWidths[0]).toBe(13.5) // 40 - 26.46，四舍五入到 0.1mm
+    expect(element.options.tableColWidths[1]).toBe(40) // 右侧列不动
+    expect(element.options.tableColWidths[2]).toBe(40)
+    document.dispatchEvent(new MouseEvent('mouseup'))
+    expect(recordHistory).toHaveBeenCalledTimes(1)
+    expect(element.options.width).toBe(93.5) // 13.5 + 40 + 40
+  })
+
+  it('内部列边界向左拖到最小列宽 5mm 时被钳制', async () => {
     const element = reactive(makeTableElement([40, 40, 40]))
     const { wrapper } = mountTable({ element })
     const handle = wrapper.findAll('.col-resize-handle')[0]!
     await handle.trigger('mousedown', { clientX: 100 })
-    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 0 })) // dx=-100mm
-    expect(element.options.tableColWidths[0]).toBe(5)
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: -300 })) // dx=-400px → -400/3.78≈-105.83mm
+    expect(element.options.tableColWidths[0]).toBe(5) // 40 - 105.83 被钳制到最小列宽
+    expect(element.options.tableColWidths[1]).toBe(40)
+    expect(element.options.tableColWidths[2]).toBe(40)
+    document.dispatchEvent(new MouseEvent('mouseup'))
+  })
+
+  it('中间列边界向左拖：左侧第 i-1 列变窄、右侧列不变', async () => {
+    const element = reactive(makeTableElement([40, 40, 40]))
+    const { wrapper } = mountTable({ element })
+    const handle = wrapper.findAll('.col-resize-handle')[1]! // 第 2/3 列之间
+    await handle.trigger('mousedown', { clientX: 100 })
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 60 })) // dx=-40px → -40/3.78≈-10.58mm
+    expect(element.options.tableColWidths[0]).toBe(40)
+    expect(element.options.tableColWidths[1]).toBe(29.4) // 40 - 10.58
+    expect(element.options.tableColWidths[2]).toBe(40)
+    document.dispatchEvent(new MouseEvent('mouseup'))
+  })
+
+  it('末列右边界向左拖缩窄末列，不低于最小列宽 5mm', async () => {
+    const element = reactive(makeTableElement([40, 40, 40]))
+    const { wrapper } = mountTable({ element })
+    const last = wrapper.findAll('.col-resize-handle')[2]!
+    await last.trigger('mousedown', { clientX: 100 })
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: -100 })) // dx=-200px → -200/3.78≈-52.92mm
+    expect(element.options.tableColWidths).toEqual([40, 40, 5]) // 40 - 52.92 被钳制到最小列宽
+    document.dispatchEvent(new MouseEvent('mouseup'))
+  })
+
+  it('最后一列右边界手柄可拖拽，调整末列宽度并同步元素尺寸', async () => {
+    const element = reactive(makeTableElement([40, 40, 40]))
+    const { wrapper, recordHistory } = mountTable({ element })
+    const last = wrapper.findAll('.col-resize-handle')[2]!
+    await last.trigger('mousedown', { clientX: 100 })
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 140 })) // dx=40px → 40/3.78≈10.58mm
+    expect(element.options.tableColWidths).toEqual([40, 40, 50.6])
+    document.dispatchEvent(new MouseEvent('mouseup'))
+    expect(recordHistory).toHaveBeenCalledTimes(1)
+    expect(element.options.width).toBe(130.6) // 40 + 40 + 50.6
+  })
+
+  it('末列右边界拖拽受 maxTableWidth 钳制', async () => {
+    const element = reactive(makeTableElement([40, 40, 40]))
+    const { wrapper } = mountTable({ element, maxW: 120 })
+    const last = wrapper.findAll('.col-resize-handle')[2]!
+    await last.trigger('mousedown', { clientX: 100 })
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 300 })) // dx=200px → 200/3.78≈52.9mm
+    expect(element.options.tableColWidths[0]).toBe(40)
+    expect(element.options.tableColWidths[2]).toBe(40) // 120 - 40 - 40
     document.dispatchEvent(new MouseEvent('mouseup'))
   })
 })

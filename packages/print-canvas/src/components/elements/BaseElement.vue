@@ -52,6 +52,7 @@ import { useDrag } from '../../composables/useDrag'
 import type { DragOptions } from '../../composables/useDrag'
 import { generateId } from '../../utils/element-factory'
 import { useResize, RESIZE_POINTS } from '../../composables/useResize'
+import { mmToPx } from '../../utils/units'
 
 import { SELECTED_IDS_KEY, PREVIEW_IDS_KEY } from '../../composables/useSelection'
 import TextElement from './TextElement.vue'
@@ -158,7 +159,7 @@ let dragStartLeft = 0
 let dragStartTop = 0
 const dragConfig = reactive<DragOptions>({
   disabled: !props.designMode || !!props.element.options.locked,
-  getScale: () => props.scale || 1,
+  getScale: () => (props.scale || 1) * mmToPx(1),
   // 拖拽中：仅设置 style.transform，不修改响应式数据
   onDrag: (pos) => {
     const dx = pos.left - dragStartLeft
@@ -254,7 +255,7 @@ const resizeEnabled = computed(
 const { startResize, cleanup: cleanupResize } = useResize({
   minWidth: 3.5,
   minHeight: 3.5,
-  getScale: () => props.scale || 1,
+  getScale: () => (props.scale || 1) * mmToPx(1),
   getRect: () => ({
     left: props.element.options.left,
     top: props.element.options.top,

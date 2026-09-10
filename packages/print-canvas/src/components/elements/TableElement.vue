@@ -54,6 +54,8 @@
         v-for="i in colResizeBoundaries"
         :key="i"
         class="col-resize-handle"
+        role="separator"
+        :aria-label="'列宽手柄' + i"
         :class="{ dragging: colResizeBoundary === i }"
         :style="{ left: colBoundaryLeftMm(i) + 'mm' }"
         @mousedown.stop.prevent="onColResizeStart(i, $event)"
@@ -385,18 +387,18 @@ function onMenuAction(name: string, payload?: string) {
 }
 
 // ─── 列宽拖拽 ───
-// 仅设计态选中且未锁定的多列表格渲染内部列边界手柄；拖拽期间实时回写列宽，
+// 设计态选中且未锁定即渲染列边界手柄：1..n-1 为内部列边界（= 第 i 列右边缘），
+// 拖拽时调整其左侧第 i-1 列宽，使边界跟随光标移动；n 为最后一列右边界，
+// 拖拽时调整末列宽（右拖增宽、左拖缩窄）。拖拽期间实时回写列宽，
 // mouseup 时同步元素尺寸并记一次历史（与右键菜单结构操作一致）。
 const colResizeEnabled = computed(
-  () => props.designMode && !!props.isSelected && !props.element.options.locked && colWidths.value.length > 1,
+  () => props.designMode && !!props.isSelected && !props.element.options.locked && colWidths.value.length >= 1,
 )
-/** 内部列边界索引（1..n-1），单列无边界 */
+/** 列边界索引（1..n），n 为最后一列右边界 */
 const colResizeBoundaries = computed<number[]>(() =>
-  colWidths.value.length > 1
-    ? Array.from({ length: colWidths.value.length - 1 }, (_, k) => k + 1)
-    : [],
+  Array.from({ length: colWidths.value.length }, (_, k) => k + 1),
 )
-/** 第 i 列左边界位置（mm）= 前 i 列宽和 */
+/** 边界 i 的水平位置（mm）= 前 i 列宽度和；i=n 时即表格右边界 */
 function colBoundaryLeftMm(i: number): number {
   return colWidths.value.slice(0, i).reduce((s, w) => s + w, 0)
 }
@@ -405,7 +407,8 @@ const colResizeBoundary = ref<number | null>(null)
 let resizeStartX = 0
 let resizeStartWidth = 0
 
-/** 拖拽边界 i（第 i 列左边界）：调整其左侧第 i-1 列的宽度，使被拖动的边界线跟随光标 */
+/** 拖拽边界 i：始终调整其左侧第 i-1 列（即第 i 列）宽 = startWidth + deltaMm，
+ *  让边界线跟随光标移动。clampResizedColumnWidth 负责最小列宽与总宽上限钳制。 */
 function onColResizeStart(i: number, e: MouseEvent) {
   if (!colResizeEnabled.value) return
   colResizeBoundary.value = i
@@ -418,12 +421,16 @@ function onColResizeStart(i: number, e: MouseEvent) {
 function onColResizeMove(e: MouseEvent) {
   if (colResizeBoundary.value === null) return
   const scale = props.scale || 1
-  const deltaMm = (e.clientX - resizeStartX) / scale
+  // 鼠标位移 px → mm：画布 transform:scale(props.scale) 下 1mm ≈ PX_PER_MM*scale px
+  const deltaMm = (e.clientX - resizeStartX) / (scale * PX_PER_MM)
   const colIndex = colResizeBoundary.value - 1
   const widths = props.element.options.tableColWidths!
   widths[colIndex] = clampResizedColumnWidth(
     widths, colIndex, resizeStartWidth + deltaMm, editCtx.maxTableWidth.value,
   )
+  // 实时同步元素 width = 列宽和：避免 table-layout:fixed 下表格 CSS width(100%)
+  // 与列宽和失配导致浏览器按比例拉伸列，进而使边界线与右侧内容偏离光标。
+  syncElementSize()
 }
 
 function onColResizeEnd() {
