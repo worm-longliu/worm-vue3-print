@@ -42,7 +42,24 @@ npm install @worm-vue3-print/core
 npm install @worm-vue3-print/canvas
 ```
 
-> 当前版本：`1.1.0`
+> 当前版本：`1.2.0`
+
+## 更新
+
+```bash
+# 检查可用更新
+npm outdated
+
+# 更新到最新版本
+npm update @worm-vue3-print/core @worm-vue3-print/canvas
+
+# 或直接安装最新版
+npm install @worm-vue3-print/core@latest @worm-vue3-print/canvas@latest
+```
+
+其他包管理器：
+- yarn: `yarn upgrade @worm-vue3-print/core @worm-vue3-print/canvas`
+- pnpm: `pnpm update @worm-vue3-print/core @worm-vue3-print/canvas`
 
 ## 快速使用
 

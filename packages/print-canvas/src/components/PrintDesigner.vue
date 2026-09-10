@@ -260,7 +260,16 @@ const paperLabel = computed(() => {
 
 function onFitWindow() {
   const el = (canvasAreaRef.value as any)?.$el as HTMLElement | undefined
-  if (el) fitToWindow(el.clientWidth, el.clientHeight)
+  if (el) {
+    // canvas-area 有非对称 padding（上44/右28/下32/左44），
+    // 需扣除后方为真实可用视口，否则 padding 会被算进可用空间，导致适应后仍有溢出
+    const cs = getComputedStyle(el)
+    const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+    const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)
+    fitToWindow(el.clientWidth - padX, el.clientHeight - padY)
+    // 适应后将滚动位置归中
+    canvasAreaRef.value?.centerScroll()
+  }
 }
 function onZoom(delta: number) {
   scale.value = clampScalePercent(scale.value + delta)

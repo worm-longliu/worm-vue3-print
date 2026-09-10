@@ -497,6 +497,37 @@ onMounted(() => {
 watch(() => props.scale, startScaleMeasureLoop)
 watch([paperWidthMM, paperHeightMM], () => nextTick(measureRuler))
 
+/** 适应窗口后将滚动位置归中。
+ *  纸张有 150ms CSS transform 过渡，期间 scrollWidth/Height 持续变化，
+ *  用多帧检测数值稳定后再设置居中，避免固定 setTimeout 落在过渡中间。 */
+function centerScroll() {
+  const container = rootRef.value
+  if (!container) return
+  let stableFrames = 0
+  let prevSW = 0, prevSH = 0
+  const deadline = performance.now() + 800
+  const loop = () => {
+    const { scrollWidth: sw, scrollHeight: sh } = container
+    if (sw === prevSW && sh === prevSH) {
+      stableFrames++
+    } else {
+      stableFrames = 0
+    }
+    prevSW = sw; prevSH = sh
+    if (stableFrames >= 2 || performance.now() > deadline) {
+      const sw2 = container.scrollWidth, sh2 = container.scrollHeight
+      const cw = container.clientWidth, ch = container.clientHeight
+      container.scrollLeft = Math.max(0, (sw2 - cw) / 2)
+      container.scrollTop  = Math.max(0, (sh2 - ch) / 2)
+      return
+    }
+    requestAnimationFrame(loop)
+  }
+  requestAnimationFrame(loop)
+}
+
+defineExpose({ centerScroll })
+
 onBeforeUnmount(() => {
   window.removeEventListener('mousemove', onMarqueeMove)
   window.removeEventListener('mouseup', onMarqueeUp)
