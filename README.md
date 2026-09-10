@@ -42,7 +42,7 @@ npm install @worm-vue3-print/core
 npm install @worm-vue3-print/canvas
 ```
 
-> 当前版本：`1.2.0`
+> 当前版本：`1.2.1`
 
 ## 更新
 
@@ -63,6 +63,8 @@ npm install @worm-vue3-print/core@latest @worm-vue3-print/canvas@latest
 
 ## 快速使用
 
+### `@worm-vue3-print/core`（模板表达式引擎 + 同构渲染管线）
+
 ```ts
 import { bindData, paginate, generateHtml } from '@worm-vue3-print/core'
 
@@ -71,8 +73,78 @@ const pages = paginate(bound, measured, options)     // 分页排版
 const html = generateHtml(pages)                     // 生成 HTML
 ```
 
-`canvas` 提供 `PrintDesigner`（可视化设计）与 `PrintHtmlPreview`（同构预览）组件；
-模板保存、字段查询、图片上传、截图等能力通过 props / 事件 / 适配器由宿主注入。
+### `@worm-vue3-print/canvas`（Vue 3 可视化设计器）
+
+以下接入配置与仓库 `demo/App.vue` 保持一致：
+
+```ts
+import { PrintDesigner, PrintHtmlPreview, createDefaultTemplate } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+// 设计器内部控件基于原生样式，需全局引入一次
+import '@worm-vue3-print/canvas/native-controls.css'
+```
+
+```vue
+<template>
+  <PrintDesigner
+    ref="designerRef"
+    :initial-template="templateData"
+    :fields="fields"
+    :is-edit="true"
+    :load-default-template="loadDefaultTemplate"
+    :show-help="true"
+    @preview="onPreview"
+    @save="onSave"
+  />
+
+  <!-- 浏览器端免保存预览：直接使用当前画布 JSON + 业务数据 -->
+  <Teleport to="body">
+    <PrintHtmlPreview
+      v-if="previewVisible"
+      ref="htmlPreviewRef"
+      :template-json="previewTemplateJson"
+      :print-data="printData"
+      @rendered="(n) => previewPages = n"
+    />
+  </Teleport>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const templateData = ref<TemplateData>(/* 初始模板 TemplateData */)
+const fields = ref<PrintBusinessField[]>(/* 业务字段 PrintBusinessField[] */)
+const designerRef = ref<InstanceType<typeof PrintDesigner> | null>(null)
+const previewTemplateJson = ref<Record<string, any> | null>(null)
+
+function onPreview() {
+  // 获取当前画布模板 JSON，供免保存预览
+  const json = designerRef.value?.getTemplateJson?.()
+  if (!json) return
+  previewTemplateJson.value = json
+}
+
+function onSave(json: string) {
+  // 宿主持久化模板 JSON
+}
+
+/** 加载默认布局：宿主在此实现自己的业务逻辑（如按业务类型拉取默认模板） */
+function loadDefaultTemplate() {
+  return createDefaultTemplate()
+}
+</script>
+```
+
+关键 props / 事件 / 方法：
+
+- `initial-template`：初始模板 `TemplateData`；`fields`：业务字段 `PrintBusinessField[]`；
+  `is-edit`：是否编辑态。
+- `load-default-template`：可选。「加载默认布局」回调（支持异步），未注入时工具栏不展示该按钮。
+- `show-help`：帮助入口开关，默认开启，传 `false` 可关闭帮助按钮与帮助弹框。
+- `@preview` / `@save`：预览与保存事件，宿主持有 `getTemplateJson()`/`getTemplateJson` 之外的业务逻辑自理。
+- `getTemplateJson()`：通过 `ref` 获取当前画布模板 JSON，用于预览 / 保存 / 截图。
+- `PrintHtmlPreview`：同构预览组件，`template-json` 传画布模板 JSON，`print-data` 传业务数据，
+  事件 `rendered` 回调预览页数，`ref.print()` 触发打印。
 
 ## 渲染服务
 
