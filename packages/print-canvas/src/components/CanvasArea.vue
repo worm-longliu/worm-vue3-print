@@ -540,6 +540,9 @@ onBeforeUnmount(() => {
 .canvas-area {
   flex: 1;
   overflow: auto;
+  /* flex + margin:auto：纸张在可视区内水平/垂直居中；内容超出容器时
+     margin auto 自动退化为起点对齐，滚动条仍可达纸张两端 */
+  display: flex;
   /* 制图垫：略深冷灰 + 极淡点阵，让白纸浮起 */
   background-color: var(--pd-canvas-bg, #e6e9f0);
   background-image: radial-gradient(circle, rgba(23, 32, 60, .13) 1px, transparent 1.2px);
@@ -554,7 +557,9 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 20px;
   position: relative;
-  margin: 0 auto;
+  /* 禁 dock 到容器的收缩，部件宽高始终以纸张真实尺寸为准 */
+  flex: none;
+  margin: auto;
   width: fit-content;
 }
 /* 叠层对比 */
