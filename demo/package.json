@@ -1,6 +1,6 @@
 {
   "name": "@worm-vue3-print/demo",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "description": "打印模板设计器使用示例（加载真实模板 106977040967000141）",
