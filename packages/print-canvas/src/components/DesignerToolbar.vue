@@ -66,7 +66,7 @@
     </div>
     <!-- 操作 -->
     <div class="tb-spacer" />
-    <div class="tb-group">
+    <div class="tb-group" v-if="showHelp">
       <HelpButton @click="$emit('help')" />
     </div>
     <div class="tb-group">
@@ -100,8 +100,11 @@ withDefaults(defineProps<{
   overlayVisible?: boolean
   /** 是否展示「加载默认布局」按钮（宿主注入 loadDefaultTemplate 时由 PrintDesigner 开启） */
   showLoadDefault?: boolean
+  /** 是否展示帮助入口（工具栏帮助按钮）；默认开启，传 false 关闭 */
+  showHelp?: boolean
 }>(), {
   showRuler: true,
+  showHelp: true,
 })
 
 defineEmits<{

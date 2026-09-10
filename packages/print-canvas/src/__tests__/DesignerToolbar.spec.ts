@@ -17,6 +17,25 @@ describe('DesignerToolbar 加载默认布局按钮', () => {
   })
 })
 
+describe('DesignerToolbar 帮助入口开关', () => {
+  it('默认开启，渲染帮助按钮且点击发出 help', async () => {
+    const wrapper = mount(DesignerToolbar)
+    expect(wrapper.find('.help-button').exists()).toBe(true)
+    await wrapper.find('.help-button').trigger('click')
+    expect(wrapper.emitted('help')).toBeTruthy()
+  })
+
+  it('showHelp 为 true 时渲染帮助按钮', () => {
+    const wrapper = mount(DesignerToolbar, { props: { showHelp: true } })
+    expect(wrapper.find('.help-button').exists()).toBe(true)
+  })
+
+  it('showHelp 为 false 时不渲染帮助按钮', () => {
+    const wrapper = mount(DesignerToolbar, { props: { showHelp: false } })
+    expect(wrapper.find('.help-button').exists()).toBe(false)
+  })
+})
+
 describe('DesignerToolbar 标尺开关', () => {
   it('默认开启，渲染标尺按钮且点击发出 toggle-ruler', async () => {
     const wrapper = mount(DesignerToolbar)

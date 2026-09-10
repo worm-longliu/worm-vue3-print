@@ -15,6 +15,7 @@
         :fields="fields"
         :is-edit="true"
         :load-default-template="loadDefaultTemplate"
+        :show-help="true" 
         @preview="onPreview"
         @save="onSave"
       />

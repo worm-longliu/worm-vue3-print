@@ -13,6 +13,7 @@
       :selected-element-has-group="selectedElement?.options.groupId ? true : false"
       :overlay-visible="overlayVisible"
       :show-load-default="!!loadDefaultTemplate"
+      :show-help="showHelp !== false"
       v-model:scale="scale"
       @preview="$emit('preview')"
       @save="handleSave"
@@ -162,6 +163,8 @@ const props = defineProps<{
   uploadImage?: UploadImageFn
   /** 加载默认布局回调（宿主实现业务逻辑；未注入时工具栏不展示该按钮），返回 null/undefined 视为无默认布局 */
   loadDefaultTemplate?: () => TemplateData | Promise<TemplateData | null | undefined> | null | undefined
+  /** 是否展示帮助入口（帮助按钮与帮助弹框）；默认开启，传 false 关闭 */
+  showHelp?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -171,6 +174,11 @@ const emit = defineEmits<{
 
 // 帮助文档状态
 const helpVisible = ref(false)
+
+// showHelp 关闭时强制收起帮助弹框（并隐藏工具栏帮助入口）
+watch(() => props.showHelp, (v) => {
+  if (v === false) helpVisible.value = false
+})
 
 // 装配层状态：面板折叠（localStorage 持久）+ 未保存 dirty
 const { leftCollapsed, rightCollapsed, toggleLeft, toggleRight, dirty, markSaved } = useStudioChrome()
