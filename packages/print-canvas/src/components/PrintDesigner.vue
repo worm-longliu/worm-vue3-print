@@ -139,7 +139,7 @@ import { getZoneRects } from '../utils/zone-layout'
 import { getPaperDimensions } from '../utils/default-config'
 import { DEFAULT_DEMO_DATA } from '../utils/demo-data'
 import { findMainCell } from '../utils/table-matrix'
-import { clampScalePercent } from '../utils/scale'
+import { computeFitScale, FIT_SCALE_MIN_PERCENT } from '../utils/scale'
 import { UPLOAD_IMAGE_KEY } from '../composables/useHostAdapter'
 import type { AlignMode } from '../composables/useAlign'
 import DesignerToolbar from './DesignerToolbar.vue'
@@ -187,7 +187,7 @@ const {
   groupSelected: onGroup, ungroupSelected: onUngroup, deleteSelected: onDeleteElement,
   dragStart: onDragStart, dragStop: onDragStop,
   addElement: onDropElement, addFieldElement: onDropField,
-  moveLayer: onMoveLayer, updateTemplateData, fitToWindow,
+  moveLayer: onMoveLayer, updateTemplateData,
   getTemplateJson, loadTemplate,
   tableSelection, setTableSelection, recordHistory,
 } = useDesignerState({
@@ -266,13 +266,22 @@ function onFitWindow() {
     const cs = getComputedStyle(el)
     const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
     const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)
-    fitToWindow(el.clientWidth - padX, el.clientHeight - padY)
-    // 适应后将滚动位置归中
-    canvasAreaRef.value?.centerScroll()
+    const dim = getPaperDimensions(templateData.value)
+    const MM_TO_PX = 96 / 25.4
+    // 目标比例由纸张尺寸与可用视口算出；CanvasArea 的 fitToWindow
+    // 以视口中心为锚点一步到位，平滑动画由纸张 transform 过渡产生
+    const target = computeFitScale(
+      el.clientWidth - padX,
+      el.clientHeight - padY,
+      dim.width * MM_TO_PX,
+      dim.height * MM_TO_PX,
+    )
+    canvasAreaRef.value?.fitToWindow(target)
   }
 }
 function onZoom(delta: number) {
-  scale.value = clampScalePercent(scale.value + delta)
+  // 交互缩放下限保持 25%；适应窗口动画可达更低(见 FIT_SCALE_MIN_PERCENT)，故不再钳制到 25
+  scale.value = Math.max(FIT_SCALE_MIN_PERCENT, scale.value + delta)
 }
 
 // Ctrl+0 适应窗口:需容器尺寸,由本组件单独监听(useKeyboard 不处理)

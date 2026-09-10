@@ -117,7 +117,7 @@
 import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import type { RuntimeElement, TemplateData, AlignLine } from '../types'
 import { pxToMm, mmToPx } from '../utils/units'
-import { nextWheelScale } from '../utils/scale'
+import { nextWheelScale, FIT_SCALE_MIN_PERCENT } from '../utils/scale'
 import { getPaperDimensions } from '../utils/default-config'
 import { RULER_THICKNESS } from '../utils/ruler'
 import CanvasPaper from './CanvasPaper.vue'
@@ -365,6 +365,37 @@ function onWheel(e: WheelEvent) {
   }
 }
 
+// ─── 适应窗口:一步到位(调用方已算好目标比例),以视口中心为锚点,
+//    与 Ctrl+滚轮同一管线;平滑动画由纸张 150ms transform 过渡自然产生 ───
+function fitToWindow(targetPercent: number) {
+  const container = rootRef.value
+  if (!container) return
+  const target = Math.max(FIT_SCALE_MIN_PERCENT, Math.round(targetPercent))
+  const cur = Math.round((props.scale || 1) * 100)
+  if (target === cur) return
+
+  // 锚点取视口几何中心(相对内容原点,扣除容器 padding),与 onWheel 换算一致
+  const oldScale = props.scale || 1
+  const newScale = target / 100
+  const ratio = newScale / oldScale
+  const cs = getComputedStyle(container)
+  const padX = parseFloat(cs.paddingLeft) || 0
+  const padY = parseFloat(cs.paddingTop) || 0
+  const mouseX = container.clientWidth / 2
+  const mouseY = container.clientHeight / 2
+  const ax = container.scrollLeft + mouseX - padX
+  const ay = container.scrollTop + mouseY - padY
+
+  emit('zoom', target - cur)
+  void nextTick(() => {
+    const cs2 = getComputedStyle(container)
+    const padX2 = parseFloat(cs2.paddingLeft) || 0
+    const padY2 = parseFloat(cs2.paddingTop) || 0
+    container.scrollLeft = ax * ratio - mouseX + padX2
+    container.scrollTop = ay * ratio - mouseY + padY2
+  })
+}
+
 function onCanvasMouseDown(e: MouseEvent) {
   // 右键由 contextmenu 处理
   if (e.button === 2) return
@@ -526,7 +557,7 @@ function centerScroll() {
   requestAnimationFrame(loop)
 }
 
-defineExpose({ centerScroll })
+defineExpose({ centerScroll, fitToWindow })
 
 onBeforeUnmount(() => {
   window.removeEventListener('mousemove', onMarqueeMove)
