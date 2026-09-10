@@ -17,8 +17,8 @@
     </div>
     <!-- 编辑 -->
     <div class="tb-group">
-      <button class="tb-btn tb-icon" :disabled="!canUndo" @click="$emit('undo')" title="撤销">↶</button>
-      <button class="tb-btn tb-icon" :disabled="!canRedo" @click="$emit('redo')" title="重做">↷</button>
+      <button class="tb-btn tb-icon" :disabled="!canUndo" @click="$emit('undo')" data-tip="撤销">↶</button>
+      <button class="tb-btn tb-icon" :disabled="!canRedo" @click="$emit('redo')" data-tip="重做">↷</button>
     </div>
     <!-- 对齐分布(多选) -->
     <div class="tb-group" v-if="hasMultiSelection">
@@ -47,22 +47,22 @@
     </div>
     <!-- 视图 -->
     <div class="tb-group">
-      <button class="tb-btn" :class="{ on: showRuler }" title="显示/隐藏标尺" @click="$emit('toggle-ruler')">
+      <button class="tb-btn" :class="{ on: showRuler }" data-tip="显示/隐藏标尺" @click="$emit('toggle-ruler')">
         <span class="dot" /> 标尺
       </button>
-      <button class="tb-btn" :class="{ on: showGrid }" @click="$emit('toggle-grid')">
+      <button class="tb-btn" :class="{ on: showGrid }" data-tip="显示/隐藏网格背景" @click="$emit('toggle-grid')">
         <span class="dot" /> 网格
       </button>
-      <button class="tb-btn" :class="{ on: showTableGhostBorder }" title="显示/隐藏无边框表格的虚拟虚线" @click="$emit('toggle-table-ghost-border')">
+      <button class="tb-btn" :class="{ on: showTableGhostBorder }" data-tip="显示/隐藏无边框表格的虚拟虚线" @click="$emit('toggle-table-ghost-border')">
         <span class="dot" /> 虚框
       </button>
-      <button class="tb-btn" :class="{ on: snapToGrid }" @click="$emit('toggle-snap')">
+      <button class="tb-btn" :class="{ on: snapToGrid }" data-tip="开启/关闭元素吸附到网格" @click="$emit('toggle-snap')">
         <span class="dot" /> 吸附
       </button>
-      <button class="tb-btn tb-icon" @click="$emit('fit-window')" title="适应窗口">⤢</button>
-      <button class="tb-btn tb-icon" @click="$emit('zoom', -10)" title="缩小">−</button>
+      <button class="tb-btn tb-icon" @click="$emit('fit-window')" data-tip="适应窗口">⤢</button>
+      <button class="tb-btn tb-icon" @click="$emit('zoom', -10)" data-tip="缩小">−</button>
       <span class="tb-zoom">{{ scale }}%</span>
-      <button class="tb-btn tb-icon" @click="$emit('zoom', 10)" title="放大">＋</button>
+      <button class="tb-btn tb-icon" @click="$emit('zoom', 10)" data-tip="放大">＋</button>
     </div>
     <!-- 操作 -->
     <div class="tb-spacer" />
@@ -138,7 +138,7 @@ defineEmits<{
   box-shadow: 0 1px 2px rgba(23, 32, 60, .04), 0 6px 16px -12px rgba(23, 32, 60, .25);
   flex-shrink: 0;
   position: relative;
-  z-index: 20;
+  z-index: 100;
 }
 .tb-group {
   display: flex;
@@ -226,6 +226,9 @@ defineEmits<{
 }
 .tb-btn[data-tip]:hover::after {
   opacity: 1;
+}
+.tb-btn:disabled[data-tip]::after {
+  display: none;
 }
 .tb-mark {
   width: 28px;
