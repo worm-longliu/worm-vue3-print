@@ -42,9 +42,6 @@
     <div v-if="isSelected && designMode" class="selected-indicator">
       <div class="position-label">{{ posLabel }}</div>
     </div>
-    <div v-if="designMode && bindingState" class="binding-badge" :style="{ color: bindingState.badgeColor }">
-      {{ bindingState.badge }}
-    </div>
   </div>
 </template>
 
@@ -55,7 +52,7 @@ import { useDrag } from '../../composables/useDrag'
 import type { DragOptions } from '../../composables/useDrag'
 import { generateId } from '../../utils/element-factory'
 import { useResize, RESIZE_POINTS } from '../../composables/useResize'
-import { useBindingDisplay } from '../../composables/useBindingDisplay'
+
 import { SELECTED_IDS_KEY, PREVIEW_IDS_KEY } from '../../composables/useSelection'
 import TextElement from './TextElement.vue'
 import ImageElement from './ImageElement.vue'
@@ -126,13 +123,6 @@ const componentMap: Record<string, any> = {
     html: markRaw(HtmlElement),
     pageNumber: markRaw(PageNumberElement),
 }
-
-const { getBindingDisplayState } = useBindingDisplay()
-
-const bindingState = computed(() => {
-  if (!props.designMode) return null
-  return getBindingDisplayState(props.element)
-})
 
 const contentComponent = computed(() => componentMap[props.element.printElementType.type])
 
@@ -394,24 +384,6 @@ onUnmounted(() => {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-}
-.binding-badge {
-  position: absolute;
-  top: -1px;
-  left: -1px;
-  font-size: 9px;
-  font-family: monospace;
-  padding: 1px 4px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid currentColor;
-  border-radius: 2px;
-  line-height: 1.4;
-  max-width: calc(100% - 4px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 1;
 }
 .resize-handles {
   position: absolute;
