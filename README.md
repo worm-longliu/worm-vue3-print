@@ -42,7 +42,7 @@ npm install @worm-vue3-print/core
 npm install @worm-vue3-print/canvas
 ```
 
-> 当前版本：`1.2.1`
+> 当前版本：`1.2.2`
 
 ## 更新
 

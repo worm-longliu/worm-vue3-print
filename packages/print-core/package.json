@@ -1,6 +1,6 @@
 {
   "name": "@worm-vue3-print/core",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "type": "module",
   "description": "打印模板表达式引擎、同构渲染管线与框架无关的设计器内核（HTML 生成/分页/数据绑定/设计器模型与工具），无 Vue/React 依赖",
   "main": "dist/index.cjs",

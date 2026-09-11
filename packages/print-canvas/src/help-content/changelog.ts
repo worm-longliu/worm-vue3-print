@@ -2,6 +2,20 @@ export default {
   id: 'changelog',
   title: '更新记录',
   content: `
+<h2>v1.2.2 <small>2026-09-11</small></h2>
+
+<h3>变更</h3>
+<ul>
+  <li><code>@worm-vue3-print/core</code> 新增子路径 <code>/designer</code>：框架无关的设计器内核，包含完整模板模型类型、通用工具（元素工厂、表格矩阵、单位换算、模板迁移、标尺等）与纯交互逻辑（对齐、分组、键盘、缩放、吸附计算），不依赖 Vue/React。</li>
+  <li><code>@worm-vue3-print/core</code> 新增子路径 <code>/browser</code>：浏览器侧渲染适配器（<code>renderHtmlPages</code> 两遍分页渲染、条形码/二维码渲染器）。</li>
+  <li>设计器模型、工具与纯逻辑下沉至 core 子路径，canvas 仅保留 Vue 适配层；公共 API 保持不变，core 主入口仍为零运行时依赖，为后续多框架适配打下基础。</li>
+</ul>
+
+<h3>修复</h3>
+<ul>
+  <li>修复工具栏放大/缩小按钮直接线性改缩放比例、未做滚动锚点校正导致画面漂移的问题；按钮缩放改为与 Ctrl+滚轮一致的乘性步进，并以视口中心为锚点（与「适应窗口」同一缩放管线）。</li>
+</ul>
+
 <h2>v1.2.1 <small>2026-09-11</small></h2>
 
 <h3>变更</h3>
