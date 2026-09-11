@@ -157,3 +157,14 @@ function loadDefaultTemplate() {
 - License：MIT（见 `LICENSE`）。
 - 清晰的分层边界：`core`（纯逻辑）→ `canvas`（设计器 UI）。
 - 发布与协作流程见 `CONTRIBUTING.md`。
+
+## 仓库地址
+
+- Gitee：https://gitee.com/liulong_oschina/worm-vue3-print
+- GitHub：https://github.com/worm-longliu/worm-vue3-print
+
+## 抖音
+
+<p align="center">
+  <img src="./douyin.png" width="180" alt="抖音码" />
+</p>

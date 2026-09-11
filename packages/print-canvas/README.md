@@ -90,6 +90,17 @@ function loadDefaultTemplate() {
 > 模板名称、业务类型、备注等元信息不属于设计器核心：模板 JSON 不含元信息，宿主在自己的
 > 列表/保存流程中管理。
 
+## 相关链接
+
+- Gitee：https://gitee.com/liulong_oschina/worm-vue3-print
+- GitHub：https://github.com/worm-longliu/worm-vue3-print
+
+抖音码：
+
+<p align="center">
+  <img src="../../douyin.png" width="180" alt="抖音码" />
+</p>
+
 ## 开发
 
 ```bash

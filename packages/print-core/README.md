@@ -100,6 +100,17 @@ function loadDefaultTemplate() {
 - `@preview` / `@save`：预览与保存事件，具体业务（字段查询、持久化）由宿主实现。
 - 需要服务端 / Node 输出时，直接调用 `core` 的 `bindData` / `paginate` / `generateHtml` 即可。
 
+## 相关链接
+
+- Gitee：https://gitee.com/liulong_oschina/worm-vue3-print
+- GitHub：https://github.com/worm-longliu/worm-vue3-print
+
+抖音码：
+
+<p align="center">
+  <img src="../../douyin.png" width="180" alt="抖音码" />
+</p>
+
 ## 开发
 
 ```bash
