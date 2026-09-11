@@ -31,7 +31,7 @@
       @ungroup="onUngroup"
       @add-overlay-element="onAddOverlayElement"
       @fit-window="onFitWindow"
-      @zoom="onZoom"
+      @zoom="onToolbarZoom"
       @help="helpVisible = true"
     />
 
@@ -290,6 +290,16 @@ function onFitWindow() {
 function onZoom(delta: number) {
   // 交互缩放下限保持 25%；适应窗口动画可达更低(见 FIT_SCALE_MIN_PERCENT)，故不再钳制到 25
   scale.value = Math.max(FIT_SCALE_MIN_PERCENT, scale.value + delta)
+}
+
+/**
+ * 工具栏放大/缩小按钮：委托 CanvasArea.zoomByStep，
+ * 与滚轮缩放共用乘性步进与锚点校正（以视口中心为不动点），
+ * 避免直接改 scale 导致画面相对滚动位置漂移。
+ * @param delta 工具栏固定传 ±10，仅用于判定放大/缩小方向
+ */
+function onToolbarZoom(delta: number) {
+  canvasAreaRef.value?.zoomByStep(delta > 0 ? 1 : -1)
 }
 
 // Ctrl+0 适应窗口:需容器尺寸,由本组件单独监听(useKeyboard 不处理)

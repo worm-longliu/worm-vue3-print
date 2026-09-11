@@ -117,7 +117,7 @@
 import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import type { RuntimeElement, TemplateData, AlignLine } from '@worm-vue3-print/core/designer'
 import { pxToMm, mmToPx } from '@worm-vue3-print/core/designer'
-import { nextWheelScale, FIT_SCALE_MIN_PERCENT } from '@worm-vue3-print/core/designer'
+import { nextWheelScale, MIN_SCALE_PERCENT, FIT_SCALE_MIN_PERCENT } from '@worm-vue3-print/core/designer'
 import { getPaperDimensions } from '@worm-vue3-print/core/designer'
 import { RULER_THICKNESS } from '@worm-vue3-print/core/designer'
 import CanvasPaper from './CanvasPaper.vue'
@@ -318,51 +318,68 @@ function onMouseLeave() {
   rulerCursor.y = null
 }
 
-/** Ctrl/Cmd+滚轮缩放:以鼠标位置为缩放中心,缩放前后保持鼠标下的内容点不动 */
+/**
+ * 统一缩放入口：所有缩放交互（滚轮 / 按钮 / 适应窗口）共用同一管线。
+ * 以容器内锚点 (anchorX/Y，相对容器的 client 坐标，含 padding) 为不动点，
+ * 缩放后在 nextTick 校正滚动位置，保证锚点下的内容不漂移。
+ */
+function applyZoom(
+  targetPercent: number,
+  anchorX: number,
+  anchorY: number,
+  minPercent: number,
+) {
+  const container = rootRef.value
+  if (!container) return
+  const target = Math.max(minPercent, Math.round(targetPercent))
+  const cur = Math.round((props.scale || 1) * 100)
+  if (target === cur) return
+
+  const oldScale = props.scale || 1
+  const ratio = (target / 100) / oldScale
+
+  // 容器存在非对称 padding，换算锚点时必须扣除，否则每次缩放锚点会漂移 pad*(ratio-1)
+  const cs = getComputedStyle(container)
+  const padX = parseFloat(cs.paddingLeft) || 0
+  const padY = parseFloat(cs.paddingTop) || 0
+  const ax = container.scrollLeft + anchorX - padX
+  const ay = container.scrollTop + anchorY - padY
+
+  // 以百分比整数增量上报（父级 scale 为百分比）
+  emit('zoom', target - cur)
+
+  // 待新比例应用到 DOM 后再校正滚动位置：缩放前若该方向没有滚动条，
+  // 提前写入 scrollTop/Left 会被浏览器钳制为 0，导致锚点失效
+  void nextTick(() => {
+    const cs2 = getComputedStyle(container)
+    const padX2 = parseFloat(cs2.paddingLeft) || 0
+    const padY2 = parseFloat(cs2.paddingTop) || 0
+    container.scrollLeft = ax * ratio - anchorX + padX2
+    container.scrollTop = ay * ratio - anchorY + padY2
+  })
+}
+
+/** Ctrl/Cmd+滚轮缩放：乘性步进，以鼠标位置为缩放中心，保持鼠标下的内容点不动 */
 function onWheel(e: WheelEvent) {
   if (!(e.ctrlKey || e.metaKey)) return
   e.preventDefault()
-  // props.scale 为小数;统一在百分比整数域做乘性步进,
-  // 取消放大上限,同时避免浮点累加产生脏显示
-  const oldScale = props.scale || 1
-  const oldPercent = Math.round(oldScale * 100)
+  const container = rootRef.value
+  if (!container) return
+  const oldPercent = Math.round((props.scale || 1) * 100)
   const newPercent = nextWheelScale(oldPercent, e.deltaY > 0 ? -1 : 1)
   if (newPercent === oldPercent) return
-  const newScale = newPercent / 100
+  const rect = container.getBoundingClientRect()
+  applyZoom(newPercent, e.clientX - rect.left, e.clientY - rect.top, MIN_SCALE_PERCENT)
+}
 
+/** 工具栏放大/缩小按钮：与滚轮相同的乘性步进，以视口几何中心为锚点 */
+function zoomByStep(direction: 1 | -1) {
   const container = rootRef.value
-  // 记录鼠标下的内容点(相对滚动内容原点)。容器存在非对称 padding,
-  // 换算时必须扣除,否则每次缩放锚点会漂移 pad*(ratio-1)
-  let anchor: { x: number; y: number; ratio: number; mouseX: number; mouseY: number } | null = null
-  if (container) {
-    const rect = container.getBoundingClientRect()
-    const cs = getComputedStyle(container)
-    const padX = parseFloat(cs.paddingLeft) || 0
-    const padY = parseFloat(cs.paddingTop) || 0
-    anchor = {
-      x: container.scrollLeft + (e.clientX - rect.left) - padX,
-      y: container.scrollTop + (e.clientY - rect.top) - padY,
-      ratio: newScale / oldScale,
-      mouseX: e.clientX - rect.left,
-      mouseY: e.clientY - rect.top,
-    }
-  }
-
-  // 以百分比整数增量上报(父级 scale 为百分比)
-  emit('zoom', newPercent - oldPercent)
-
-  // 待新比例应用到 DOM 后再校正滚动位置:缩放前若该方向没有滚动条,
-  // 提前写入 scrollTop/Left 会被浏览器钳制为 0,导致锚点失效
-  if (container && anchor) {
-    const a = anchor
-    void nextTick(() => {
-      const cs = getComputedStyle(container)
-      const padX = parseFloat(cs.paddingLeft) || 0
-      const padY = parseFloat(cs.paddingTop) || 0
-      container.scrollLeft = a.x * a.ratio - a.mouseX + padX
-      container.scrollTop = a.y * a.ratio - a.mouseY + padY
-    })
-  }
+  if (!container) return
+  const cur = Math.round((props.scale || 1) * 100)
+  // nextWheelScale 内部已做整数取整与 25% 下限钳制，与滚轮完全一致
+  const target = nextWheelScale(cur, direction)
+  applyZoom(target, container.clientWidth / 2, container.clientHeight / 2, MIN_SCALE_PERCENT)
 }
 
 // ─── 适应窗口:一步到位(调用方已算好目标比例),以视口中心为锚点,
@@ -370,30 +387,13 @@ function onWheel(e: WheelEvent) {
 function fitToWindow(targetPercent: number) {
   const container = rootRef.value
   if (!container) return
-  const target = Math.max(FIT_SCALE_MIN_PERCENT, Math.round(targetPercent))
-  const cur = Math.round((props.scale || 1) * 100)
-  if (target === cur) return
-
-  // 锚点取视口几何中心(相对内容原点,扣除容器 padding),与 onWheel 换算一致
-  const oldScale = props.scale || 1
-  const newScale = target / 100
-  const ratio = newScale / oldScale
-  const cs = getComputedStyle(container)
-  const padX = parseFloat(cs.paddingLeft) || 0
-  const padY = parseFloat(cs.paddingTop) || 0
-  const mouseX = container.clientWidth / 2
-  const mouseY = container.clientHeight / 2
-  const ax = container.scrollLeft + mouseX - padX
-  const ay = container.scrollTop + mouseY - padY
-
-  emit('zoom', target - cur)
-  void nextTick(() => {
-    const cs2 = getComputedStyle(container)
-    const padX2 = parseFloat(cs2.paddingLeft) || 0
-    const padY2 = parseFloat(cs2.paddingTop) || 0
-    container.scrollLeft = ax * ratio - mouseX + padX2
-    container.scrollTop = ay * ratio - mouseY + padY2
-  })
+  // 适应窗口允许低于交互缩放下限（见 FIT_SCALE_MIN_PERCENT），保证超大纸张整版可见
+  applyZoom(
+    targetPercent,
+    container.clientWidth / 2,
+    container.clientHeight / 2,
+    FIT_SCALE_MIN_PERCENT,
+  )
 }
 
 function onCanvasMouseDown(e: MouseEvent) {
@@ -557,7 +557,7 @@ function centerScroll() {
   requestAnimationFrame(loop)
 }
 
-defineExpose({ centerScroll, fitToWindow })
+defineExpose({ centerScroll, fitToWindow, zoomByStep })
 
 onBeforeUnmount(() => {
   window.removeEventListener('mousemove', onMarqueeMove)
