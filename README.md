@@ -148,9 +148,19 @@ function loadDefaultTemplate() {
 
 ## 渲染服务
 
-本仓库不包含服务端渲染。独立开源仓库 `worm-vue3-print-render` 基于 Playwright 提供
-服务端 PDF / 截图渲染微服务（`/render/pdf`、`/render/screenshot`），与本仓库的 `core`
-渲染管线配合，保证浏览器预览与服务端输出结果一致。
+服务端渲染位于本仓库 monorepo 的 `services/print-render`（私有服务包，不发布 npm）：
+基于 Playwright 提供服务端 PDF / 截图渲染微服务（`/render/pdf`、`/render/screenshot`），
+通过 workspace 本地软链依赖 `core` 渲染管线，保证浏览器预览与服务端输出结果一致。
+
+```bash
+# 本地开发（首次需 npx playwright install chromium，macOS 可直接使用系统 Chrome）
+npm run dev -w @worm-vue3-print/render
+
+# Docker 构建（在仓库根执行）
+docker build -f services/print-render/Dockerfile -t worm-vue3-print-render .
+```
+
+详见 [`services/print-render/README.md`](services/print-render/README.md)。
 
 ## 开源
 

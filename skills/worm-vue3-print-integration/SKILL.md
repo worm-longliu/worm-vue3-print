@@ -17,7 +17,7 @@ description: 用于在 Vue 3 项目中集成 @worm-vue3-print/core 或 @worm-vue
 | 需要 Vue 3 可视化设计器或浏览器端打印预览 | `@worm-vue3-print/canvas` + `@worm-vue3-print/core` | NPM 包 |
 | 需要使用未发布修复、调试库源码、修改/回传补丁 | `core`、按需 `canvas` | 源码安装 |
 | 外部宿主要直接消费 monorepo 中的 `.vue/.ts` | 两者按需 | 源码 + Vite 别名 |
-| 服务端 PDF / 截图微服务 | 使用独立的 `worm-vue3-print-render`，本仓库只提供 `core` 管线 | 按 render 仓库文档安装 |
+| 服务端 PDF / 截图微服务 | 使用 monorepo 内的 `services/print-render`（workspace 软链 core） | 按 `services/print-render/README.md` 安装运行 |
 
 生产项目优先使用 NPM 包；只有用户明确需要改动/调试库源码、消费未发布代码，或项目本身就在该 monorepo 中时，才使用源码安装。
 

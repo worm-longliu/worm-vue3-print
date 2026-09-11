@@ -13,4 +13,4 @@
 ## 已知注意事项
 
 - 打印模板为宿主用户自定义内容，HTML 渲染在 Node 侧/浏览器侧；接入方应自行对模板内容做信任边界控制。
-- 渲染服务（`worm-vue3-print-render`）的 `/render/*` 接口使用 `X-Render-Key` 鉴权，请勿在公网以默认密钥暴露。
+- 渲染服务（`services/print-render`）的 `/render/*` 接口使用 `X-Render-Key` 鉴权，请勿在公网以默认密钥暴露。

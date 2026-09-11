@@ -175,4 +175,4 @@ const pageLayouts = paginate(bound, measuredElements)
 const html = generateHtml(bound, pageLayouts, printData, { codeRenderer })
 ```
 
-若用户要服务端 PDF 或截图，引导其查看/接入独立的 `worm-vue3-print-render` 服务；不要在本仓库中虚构 `/render/pdf` 实现。
+若用户要服务端 PDF 或截图，引导其查看/接入 monorepo 内的 `services/print-render` 服务（`@worm-vue3-print/render`）；在接入方业务仓库中不要虚构 `/render/pdf` 实现。

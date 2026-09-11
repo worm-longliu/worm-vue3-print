@@ -6,10 +6,11 @@
   "description": "Vue 3 可视化打印模板设计器 + 表达式引擎 + 同构渲染管线（开源 monorepo）",
   "license": "MIT",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "services/*"
   ],
   "scripts": {
-    "build": "npm run build -w @worm-vue3-print/core && npm run build -w @worm-vue3-print/canvas",
+    "build": "npm run build -w @worm-vue3-print/core && npm run build -w @worm-vue3-print/canvas && npm run build -w @worm-vue3-print/render",
     "test": "npm run test -w @worm-vue3-print/core && npm run test -w @worm-vue3-print/canvas",
     "publish:local": "npm run build && npm -w @worm-vue3-print/core exec yalc push && npm -w @worm-vue3-print/canvas exec yalc push",
     "publish:npm": "npm run build && npm test && npm publish -w @worm-vue3-print/core --registry=https://registry.npmjs.org --access public && npm publish -w @worm-vue3-print/canvas --registry=https://registry.npmjs.org --access public",

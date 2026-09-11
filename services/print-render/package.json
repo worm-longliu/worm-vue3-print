@@ -1,0 +1,30 @@
+{
+  "name": "@worm-vue3-print/render",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "基于 Playwright(Headless Chromium) 的 PDF/截图打印渲染微服务（monorepo 服务包，Docker 部署）",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@worm-vue3-print/core": "^1.2.2",
+    "bwip-js": "^4.11.4",
+    "express": "^4.21.0",
+    "playwright": "^1.60.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.0.0"
+  }
+}

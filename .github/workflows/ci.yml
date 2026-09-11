@@ -8,6 +8,9 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    env:
+      # render 服务的 Playwright 浏览器由独立的 render job 按需安装
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,3 +20,28 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: 安装依赖（不下载浏览器）
+        run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      - name: 安装 Chromium 与系统依赖
+        run: npx playwright install --with-deps chromium
+      - name: 构建 core 与 render
+        run: npm run build -w @worm-vue3-print/core && npm run build -w @worm-vue3-print/render
+      - name: 条码渲染单元测试（无需浏览器）
+        run: npm run test -w @worm-vue3-print/render -- src/barcode-renderer.test.ts
+      - name: 截图集成测试
+        run: npm run test -w @worm-vue3-print/render -- src/screenshot.test.ts
+        timeout-minutes: 5
+      - name: 明细分页集成测试
+        run: npm run test -w @worm-vue3-print/render -- src/subtotal.integration.test.ts
+        timeout-minutes: 5

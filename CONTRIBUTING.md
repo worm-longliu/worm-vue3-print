@@ -16,8 +16,8 @@ npm test
 ## 分支与提交
 
 - 遵循 Conventional Commits：`fix:`、`feat:`、`refactor:`、`docs:`、`chore:`、`test:` 等。
-- 改动请在提交前运行 `npm run build` 与 `npm test`（core + canvas 全量）。
-- 涉及渲染管线的改动需同步 `worm-vue3-print-render` 的验证（两遍渲染逻辑在 core，render 消费 `@worm-vue3-print/core`）。
+- 改动请在提交前运行 `npm run build` 与 `npm test`（根测试覆盖 core + canvas）。
+- 涉及渲染管线的改动可在同仓库验证 `services/print-render`（两遍渲染逻辑在 core，render 经 workspace 软链消费 `@worm-vue3-print/core`）：先 `npx playwright install chromium`，再 `npm run test -w @worm-vue3-print/render`。
 
 ## 发布流程
 
@@ -91,7 +91,7 @@ npm publish -w @worm-vue3-print/core
 npm publish -w @worm-vue3-print/canvas
 ```
 
-> 范围说明：渲染微服务不在本仓库发布，见 `worm-vue3-print-render`。
+> 范围说明：渲染微服务为本仓库私有 workspace 包 `services/print-render`（`@worm-vue3-print/render`），不发布 npm。
 
 ## 代码规范
 

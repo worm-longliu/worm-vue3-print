@@ -74,4 +74,4 @@ npm run build
 1. 浏览器和浏览器/服务端必须使用同一份模板 JSON、同一份打印数据和同一个 `baseUrl`。
 2. 检查浏览器字体、图片是否加载完成；分页前会等待，但有兜底超时。
 3. 比较第一遍测量结果和 `paginate` 输入，不要只看最终 HTML。
-4. 服务端 PDF 最终由独立的 `worm-vue3-print-render` 服务负责；先确认 render 服务与浏览器使用一致的 `core` 版本。
+4. 服务端 PDF 最终由 monorepo 内的 `services/print-render` 服务负责（经 workspace 软链使用同仓库 core）；先确认 render 服务与浏览器使用一致的 core 代码。
