@@ -21,6 +21,13 @@ npm test
 
 ## 发布流程
 
+需要执行以下脚本进行登录和发布
+
+```
+npm login --registry=https://registry.npmjs.org
+npm run publish:npm
+```
+
 发布为 npm 包（core 先于 canvas）：
 
 ```bash
