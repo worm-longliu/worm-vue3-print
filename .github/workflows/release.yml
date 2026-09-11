@@ -1,0 +1,70 @@
+name: Release
+
+# 推送 v 开头的标签时触发，例如：git tag -a v1.2.2 -m "v1.2.2" && git push origin v1.2.2
+on:
+  push:
+    tags:
+      - 'v*'
+  # 允许在 Actions 页面手动触发（可选）
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # 创建 GitHub Release 需要 contents 写权限
+    permissions:
+      contents: write
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建
+        run: npm run build
+
+      - name: 测试
+        run: npm test
+
+      - name: 校验标签与包版本一致
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          for pkg in core canvas; do
+            VER=$(node -p "require('./packages/print-$pkg/package.json').version")
+            if [ "$VER" != "$TAG" ]; then
+              echo "::error::print-$pkg 版本 $VER 与标签 $TAG 不一致"
+              exit 1
+            fi
+          done
+          echo "标签与两个包版本一致：$TAG"
+
+      # canvas 依赖 core，必须先发 core
+      - name: 发布 @worm-vue3-print/core
+        working-directory: packages/print-core
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 发布 @worm-vue3-print/canvas
+        working-directory: packages/print-canvas
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # 顺带自动创建 GitHub 发行版（正文见 .release/，无需手工建）
+      - name: 创建 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: .github/release/notes.md
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
