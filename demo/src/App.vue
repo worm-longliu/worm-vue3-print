@@ -5,7 +5,19 @@
       <span class="demo-logo">打印模板设计器 Demo</span>
       <span class="demo-badge">模板 ID：{{ TEMPLATE_ID }}</span>
       <span class="demo-badge">业务类型：采购收货单（purchase_receipt）</span>
-      <span class="demo-note">加载真实模板数据 · 支持浏览器端免保存预览 / 打印</span>
+      <span class="demo-note">加载真实模板数据 · 浏览器端免保存预览 · 服务端 PDF 打印</span>
+      <span class="demo-server">
+        <span class="server-status" :class="renderStatus" :title="renderStatusTitle">
+          <i class="status-dot"></i>{{ renderStatusText }}
+        </span>
+        <button
+          type="button"
+          class="server-pdf-btn"
+          :disabled="rendering || renderStatus !== 'online'"
+          @click="onServerPdf"
+        >{{ rendering ? '生成中…' : '服务端 PDF' }}</button>
+        <span v-if="renderError" class="server-error">{{ renderError }}</span>
+      </span>
     </header>
 
     <main class="demo-container">
@@ -37,7 +49,7 @@
             ref="htmlPreviewRef"
             :template-json="previewTemplateJson"
             :print-data="DEFAULT_DEMO_DATA"
-            :base-url="'http://localhost:10103'"
+            :base-url="RENDER_BASE_URL"
             @rendered="(n: number) => previewPages = n"
           />
         </div>
@@ -47,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import {
   PrintDesigner,
   PrintHtmlPreview,
@@ -60,6 +72,14 @@ import {
   TEMPLATE_ID,
   PURCHASE_RECEIPT_FIELDS,
 } from './business'
+import {
+  checkRenderHealth,
+  requestServerPdf,
+  openPdfBlob,
+} from './render-client'
+
+/** 相对路径图片（/docfiles/...）拼接基址：浏览器预览与服务端渲染保持一致 */
+const RENDER_BASE_URL = 'http://localhost:10103'
 
 // 真实模板数据（模板 106977040967000141 的 elements 已存在本地 JSON）
 const templateData = ref<TemplateData>(rawTemplate as TemplateData)
@@ -99,6 +119,78 @@ function onPreview() {
 function printPreview() {
   htmlPreviewRef.value?.print()
 }
+
+// ── 服务端 PDF 打印：当前画布 JSON + demo 数据 → render 微服务 → 新标签页打开 PDF ──
+type RenderStatus = 'checking' | 'online' | 'offline'
+const renderStatus = ref<RenderStatus>('checking')
+const rendering = ref(false)
+const renderError = ref('')
+
+const renderStatusText = ref('渲染服务检测中…')
+const renderStatusTitle = ref('探测 render 微服务 /render-api/health')
+
+function setRenderOffline(message = '渲染服务未连接（请启动 services/print-render）') {
+  renderStatus.value = 'offline'
+  renderStatusText.value = '渲染服务离线'
+  renderStatusTitle.value = message
+}
+
+async function refreshRenderStatus() {
+  renderStatus.value = 'checking'
+  renderStatusText.value = '渲染服务检测中…'
+  const health = await checkRenderHealth()
+  if (!health) {
+    setRenderOffline()
+    return
+  }
+  renderStatus.value = 'online'
+  renderStatusText.value = '渲染服务在线'
+  renderStatusTitle.value = `活跃 ${health.activeRenders} / 并发 ${health.maxConcurrent} · 队列 ${health.queueLength}`
+}
+
+let renderErrorTimer: ReturnType<typeof setTimeout> | undefined
+function showRenderError(message: string) {
+  renderError.value = message
+  clearTimeout(renderErrorTimer)
+  renderErrorTimer = setTimeout(() => (renderError.value = ''), 5000)
+}
+
+async function onServerPdf() {
+  if (rendering.value) return
+  const rawJson = designerRef.value?.getTemplateJson?.()
+  if (!rawJson) {
+    showRenderError('未获取到当前画布模板 JSON')
+    return
+  }
+
+  let templateJson: Record<string, unknown>
+  try {
+    templateJson = typeof rawJson === 'string' ? JSON.parse(rawJson) : (rawJson as unknown as Record<string, unknown>)
+  } catch {
+    showRenderError('模板 JSON 解析失败')
+    return
+  }
+
+  rendering.value = true
+  renderError.value = ''
+  try {
+    const pdf = await requestServerPdf(
+      templateJson,
+      DEFAULT_DEMO_DATA as unknown as Record<string, unknown>,
+      RENDER_BASE_URL,
+    )
+    openPdfBlob(pdf, `purchase-receipt-${Date.now()}.pdf`)
+    await refreshRenderStatus()
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '服务端渲染失败'
+    showRenderError(`PDF 生成失败：${message}`)
+    await refreshRenderStatus()
+  } finally {
+    rendering.value = false
+  }
+}
+
+onMounted(refreshRenderStatus)
 
 /** 加载默认布局：宿主在此实现自己的业务逻辑（如按业务类型拉取默认模板）；demo 返回空白默认模板 */
 function loadDefaultTemplate() {
@@ -164,9 +256,57 @@ body,
   font-size: 12px;
 }
 .demo-note {
-  margin-left: auto;
   color: #8b909c;
   font-size: 12px;
+}
+.demo-server {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.server-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #5a667f;
+}
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c2c7d0;
+}
+.server-status.online { color: #16a34a; }
+.server-status.online .status-dot { background: #22c55e; }
+.server-status.offline { color: #dc2626; }
+.server-status.offline .status-dot { background: #ef4444; }
+.server-status.checking .status-dot { background: #f59e0b; }
+.server-pdf-btn {
+  padding: 4px 14px;
+  border: 1px solid #165dff;
+  border-radius: 6px;
+  background: #165dff;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+.server-pdf-btn:hover:not(:disabled) {
+  background: #0e4fd8;
+}
+.server-pdf-btn:disabled {
+  border-color: #c2c7d0;
+  background: #c2c7d0;
+  cursor: not-allowed;
+}
+.server-error {
+  font-size: 12px;
+  color: #dc2626;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .demo-container {
   flex: 1;
