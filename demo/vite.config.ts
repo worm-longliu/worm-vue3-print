@@ -6,11 +6,14 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   resolve: {
-    alias: {
-      '@worm-vue3-print/canvas/native-controls.css': fileURLToPath(new URL('../packages/print-canvas/src/styles/native-controls.css', import.meta.url)),
-      '@worm-vue3-print/canvas': fileURLToPath(new URL('../packages/print-canvas/src/index.ts', import.meta.url)),
-      '@worm-vue3-print/core': fileURLToPath(new URL('../packages/print-core/src/index.ts', import.meta.url)),
-    },
+    // 数组按顺序匹配：子路径（browser/designer）必须在主入口之前命中
+    alias: [
+      { find: '@worm-vue3-print/canvas/native-controls.css', replacement: fileURLToPath(new URL('../packages/print-canvas/src/styles/native-controls.css', import.meta.url)) },
+      { find: /^@worm-vue3-print\/core\/browser$/, replacement: fileURLToPath(new URL('../packages/print-core/src/browser/index.ts', import.meta.url)) },
+      { find: /^@worm-vue3-print\/core\/designer$/, replacement: fileURLToPath(new URL('../packages/print-core/src/designer/index.ts', import.meta.url)) },
+      { find: /^@worm-vue3-print\/core$/, replacement: fileURLToPath(new URL('../packages/print-core/src/index.ts', import.meta.url)) },
+      { find: /^@worm-vue3-print\/canvas$/, replacement: fileURLToPath(new URL('../packages/print-canvas/src/index.ts', import.meta.url)) },
+    ],
   },
   server: {
     port: 9303,

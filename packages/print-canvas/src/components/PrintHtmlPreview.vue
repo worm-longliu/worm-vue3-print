@@ -21,8 +21,8 @@
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount } from 'vue'
 import type { PrintTemplateData } from '@worm-vue3-print/core'
-import { renderHtmlPages } from '../render/browser-pagination'
-import { browserCodeRenderer } from '../render/browser-code-renderer'
+import { renderHtmlPages } from '@worm-vue3-print/core/browser'
+import { browserCodeRenderer } from '@worm-vue3-print/core/browser'
 
 const props = defineProps<{
   /** 模板 JSON（设计器 TemplateData 结构兼容） */

@@ -25,8 +25,8 @@
 
 <script setup lang="ts">
 import { computed, inject } from 'vue'
-import type { RuntimeElement, TableSelection, TableRowType } from '../../types'
-import { setRowType, syncTableElementSize } from '../../utils/table-matrix'
+import type { RuntimeElement, TableSelection, TableRowType } from '@worm-vue3-print/core/designer'
+import { setRowType, syncTableElementSize } from '@worm-vue3-print/core/designer'
 import { TABLE_EDIT_KEY } from '../../composables/useTableSelection'
 import PropertyGroup from './PropertyGroup.vue'
 import StepperInput from './StepperInput.vue'

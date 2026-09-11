@@ -1,7 +1,7 @@
 // web/src/components/print/composables/useGuides.ts
 // 手动参考线管理:增删改 + 吸附目标生成,增删改入历史栈
 import { computed, type Ref } from 'vue'
-import type { TemplateData, AlignLine } from '../types'
+import type { TemplateData, AlignLine } from '@worm-vue3-print/core/designer'
 
 let guideSeq = 0
 function genId(): string {

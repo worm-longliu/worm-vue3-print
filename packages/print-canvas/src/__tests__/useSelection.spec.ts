@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { useSelection } from '../composables/useSelection'
-import type { RuntimeElement } from '../types'
+import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 
 function makeEl(id: string, left = 0, top = 0, width = 100, height = 50): RuntimeElement {
   return { id, options: { left, top, width, height }, printElementType: { type: 'text', title: '文本' } }

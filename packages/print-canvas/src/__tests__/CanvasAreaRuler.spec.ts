@@ -3,8 +3,8 @@ import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import CanvasArea from '../components/CanvasArea.vue'
 import Ruler from '../components/Ruler.vue'
-import { mmToPx } from '../utils/units'
-import type { TemplateData } from '../types'
+import { mmToPx } from '@worm-vue3-print/core/designer'
+import type { TemplateData } from '@worm-vue3-print/core/designer'
 
 function makeTemplate(): TemplateData {
   return {

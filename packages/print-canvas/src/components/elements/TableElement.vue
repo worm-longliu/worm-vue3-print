@@ -89,18 +89,18 @@
 
 <script setup lang="ts">
 import { computed, inject, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import type { RuntimeElement, TableRow, TableCell, TableRowType } from '../../types'
+import type { RuntimeElement, TableRow, TableCell, TableRowType } from '@worm-vue3-print/core/designer'
 import {
   normalizeSelection, canMergeReason, mergeCells, splitCells,
   insertRow, deleteRow, insertCol, deleteCol, setRowType, syncTableElementSize,
   resolveCellBorderCss, clampResizedColumnWidth,
-} from '../../utils/table-matrix'
+} from '@worm-vue3-print/core/designer'
 import { TABLE_EDIT_KEY, type TableEditContext } from '../../composables/useTableSelection'
 import TableContextMenu from './TableContextMenu.vue'
 import CellBarcode from './CellBarcode.vue'
 import CellImage from './CellImage.vue'
-import { resolveBarcodeDesignValue } from '../../utils/binding'
-import { DEFAULT_DEMO_DATA } from '../../utils/demo-data'
+import { resolveBarcodeDesignValue } from '@worm-vue3-print/core/designer'
+import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
 
 const ROW_TYPE_BADGE: Record<TableRowType, string> = {
   header: '题', data: '数', subtotal: '小', summary: '汇',

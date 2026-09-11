@@ -79,7 +79,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { PRESET_COLORS } from '../utils/preset-colors'
+import { PRESET_COLORS } from '@worm-vue3-print/core/designer'
 
 const props = defineProps<{
   modelValue?: string

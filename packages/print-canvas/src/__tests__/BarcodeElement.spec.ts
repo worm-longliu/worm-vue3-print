@@ -7,7 +7,7 @@ vi.mock('jsbarcode', () => ({ default: vi.fn() }))
 
 import JsBarcode from 'jsbarcode'
 import BarcodeElement from '../components/elements/BarcodeElement.vue'
-import type { RuntimeElement } from '../types'
+import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 
 function makeElement(options: Partial<RuntimeElement['options']> = {}): RuntimeElement {
   return {

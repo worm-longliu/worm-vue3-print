@@ -4,22 +4,22 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type {
   RuntimeElement, ElementType, ElementZone, PrintBusinessField, TemplateData,
   TableSelection, PrintElementData,
-} from '../types'
-import { createRuntimeElement, generateId } from '../utils/element-factory'
-import { createFieldElement } from '../utils/binding'
-import { normalizeTemplateUnits } from '../utils/migrate'
-import { syncTableElementSize } from '../utils/table-matrix'
-import { getPaperDimensions } from '../utils/default-config'
-import { computeFitScale } from '../utils/scale'
+} from '@worm-vue3-print/core/designer'
+import { createRuntimeElement, generateId } from '@worm-vue3-print/core/designer'
+import { createFieldElement } from '@worm-vue3-print/core/designer'
+import { normalizeTemplateUnits } from '@worm-vue3-print/core/designer'
+import { syncTableElementSize } from '@worm-vue3-print/core/designer'
+import { getPaperDimensions } from '@worm-vue3-print/core/designer'
+import { computeFitScale } from '@worm-vue3-print/core/designer'
 import {
   getZoneRects, zoneFromPaperPoint, clampToZone, finalizeElementZone, ZONE_ALLOWED_TYPES,
-} from '../utils/zone-layout'
+} from '@worm-vue3-print/core/designer'
 import { useSelection } from './useSelection'
 import { useClipboard } from './useClipboard'
-import { useAlign, type AlignMode } from './useAlign'
-import { useGroup } from './useGroup'
+import { useAlign, type AlignMode } from '@worm-vue3-print/core/designer'
+import { useGroup } from '@worm-vue3-print/core/designer'
 import { useHistory, type HistoryState } from './useHistory'
-import { useKeyboard } from './useKeyboard'
+import { useKeyboard } from '@worm-vue3-print/core/designer'
 
 export interface DesignerStateOptions {
   initialTemplate?: TemplateData

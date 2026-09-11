@@ -8,8 +8,8 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { evaluateTemplate } from '../../utils/expression-eval'
-import { DEFAULT_DEMO_DATA } from '../../utils/demo-data'
+import { evaluateTemplate } from '@worm-vue3-print/core/designer'
+import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
 
 const props = defineProps<{
   value: string

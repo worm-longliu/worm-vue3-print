@@ -115,11 +115,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import type { RuntimeElement, TemplateData, AlignLine } from '../types'
-import { pxToMm, mmToPx } from '../utils/units'
-import { nextWheelScale, FIT_SCALE_MIN_PERCENT } from '../utils/scale'
-import { getPaperDimensions } from '../utils/default-config'
-import { RULER_THICKNESS } from '../utils/ruler'
+import type { RuntimeElement, TemplateData, AlignLine } from '@worm-vue3-print/core/designer'
+import { pxToMm, mmToPx } from '@worm-vue3-print/core/designer'
+import { nextWheelScale, FIT_SCALE_MIN_PERCENT } from '@worm-vue3-print/core/designer'
+import { getPaperDimensions } from '@worm-vue3-print/core/designer'
+import { RULER_THICKNESS } from '@worm-vue3-print/core/designer'
 import CanvasPaper from './CanvasPaper.vue'
 import Ruler from './Ruler.vue'
 

@@ -1,7 +1,7 @@
 // web/src/components/print/composables/useAdsorbManager.ts
 // 吸附管理器：在 CanvasPaper 层创建单例，统一处理吸附检测与引导线渲染
 // BaseElement 拖拽时通过函数 props 调用 requestAdsorb / clearGuides
-import type { RuntimeElement, ElementRect, AdsorbResult } from '../types'
+import type { RuntimeElement, ElementRect, AdsorbResult } from '@worm-vue3-print/core/designer'
 import { useAdsorb, type AdsorbConfig } from './useAdsorb'
 
 export interface AdsorbManagerOptions {

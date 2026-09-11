@@ -6,7 +6,7 @@ import { nextTick, reactive, ref } from 'vue'
 import TableElement from '../components/elements/TableElement.vue'
 import TableContextMenu from '../components/elements/TableContextMenu.vue'
 import { TABLE_EDIT_KEY } from '../composables/useTableSelection'
-import type { RuntimeElement, TableSelection } from '../types'
+import type { RuntimeElement, TableSelection } from '@worm-vue3-print/core/designer'
 
 function makeElement(): RuntimeElement {
   return {

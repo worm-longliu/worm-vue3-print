@@ -165,10 +165,10 @@ import { computed, inject, ref } from 'vue'
 import type {
   RuntimeElement, TableSelection, TableCell, TableCellBorder, TableCellBorders, TableCellType, TextAlign,
   PrintBusinessField,
-} from '../../types'
+} from '@worm-vue3-print/core/designer'
 import {
   canMergeReason, mergeCells, splitCells, applyBorderPreset, findMainCell, type BorderPreset,
-} from '../../utils/table-matrix'
+} from '@worm-vue3-print/core/designer'
 import { TABLE_EDIT_KEY } from '../../composables/useTableSelection'
 import PropertyGroup from './PropertyGroup.vue'
 import StepperInput from './StepperInput.vue'
