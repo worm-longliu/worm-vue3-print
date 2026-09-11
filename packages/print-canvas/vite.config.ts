@@ -18,7 +18,8 @@ export default defineConfig({
     rollupOptions: {
       external: [
         'vue',
-        '@worm-vue3-print/core',
+        // 匹配主包及 /designer、/browser 等全部子路径，均作为外部依赖不打进 canvas
+        /^@worm-vue3-print\/core(\/.*)?$/,
         'dompurify',
         'jsbarcode',
         'qrcode',

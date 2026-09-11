@@ -9,8 +9,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build -w @worm-vue3-print/core && npm run build -w @worm-vue3-print/canvas",
+    "test": "npm run test -w @worm-vue3-print/core && npm run test -w @worm-vue3-print/canvas",
     "publish:local": "npm run build && npm -w @worm-vue3-print/core exec yalc push && npm -w @worm-vue3-print/canvas exec yalc push",
     "publish:npm": "npm run build && npm test && npm publish -w @worm-vue3-print/core --registry=https://registry.npmjs.org --access public && npm publish -w @worm-vue3-print/canvas --registry=https://registry.npmjs.org --access public",
     "publish:dry-run": "npm run build && npm test && npm publish -w @worm-vue3-print/core --dry-run --registry=https://registry.npmjs.org --access public && npm publish -w @worm-vue3-print/canvas --dry-run --registry=https://registry.npmjs.org --access public"
