@@ -47,12 +47,12 @@
 
 <script setup lang="ts">
 import { computed, inject, markRaw, reactive, ref, watchEffect, onMounted, onUnmounted } from 'vue'
-import type { RuntimeElement, ElementRect, AdsorbResult } from '../../types'
+import type { RuntimeElement, ElementRect, AdsorbResult } from '@worm-vue3-print/core/designer'
 import { useDrag } from '../../composables/useDrag'
 import type { DragOptions } from '../../composables/useDrag'
-import { generateId } from '../../utils/element-factory'
-import { useResize, RESIZE_POINTS } from '../../composables/useResize'
-import { mmToPx } from '../../utils/units'
+import { generateId } from '@worm-vue3-print/core/designer'
+import { useResize, RESIZE_POINTS } from '@worm-vue3-print/core/designer'
+import { mmToPx } from '@worm-vue3-print/core/designer'
 
 import { SELECTED_IDS_KEY, PREVIEW_IDS_KEY } from '../../composables/useSelection'
 import TextElement from './TextElement.vue'

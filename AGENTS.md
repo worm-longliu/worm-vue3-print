@@ -28,7 +28,7 @@
 
 - **worm-vue3-print**：Vue 3 可视化打印模板设计器 + 模板表达式引擎 + 同构渲染管线的开源 monorepo（npm workspaces）。
 - 包结构：
-  - `@worm-vue3-print/core`：模板表达式引擎与同构渲染管线（纯 TypeScript，无 Vue、无宿主依赖）。
+  - `@worm-vue3-print/core`：模板表达式引擎、同构渲染管线与框架无关的设计器内核（纯 TypeScript，无 Vue/React 依赖；设计器内核与浏览器适配器分别位于 `/designer`、`/browser` 子路径导出）。
   - `@worm-vue3-print/canvas`：Vue 3 可视化设计器画布（原生控件，不依赖 UI 组件库）。
 - 边界约定：`core`（纯逻辑）→ `canvas`（设计器 UI），分层清晰，改动不得破坏该边界。
 - 开发命令：`npm install` / `npm run build` / `npm test`。

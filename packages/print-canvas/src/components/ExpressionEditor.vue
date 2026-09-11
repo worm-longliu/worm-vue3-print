@@ -184,10 +184,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import type { PrintBusinessField } from '../types'
-import { evaluateTemplate } from '../utils/expression-eval'
-import { DEFAULT_DEMO_DATA } from '../utils/demo-data'
-import { groupFields, filterGroups } from '../utils/field-groups'
+import type { PrintBusinessField } from '@worm-vue3-print/core/designer'
+import { evaluateTemplate } from '@worm-vue3-print/core/designer'
+import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
+import { groupFields, filterGroups } from '@worm-vue3-print/core/designer'
 
 const props = defineProps<{
   modelValue: boolean

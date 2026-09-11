@@ -2,7 +2,7 @@
   "name": "@worm-vue3-print/core",
   "version": "1.2.1",
   "type": "module",
-  "description": "打印模板表达式引擎与同构渲染管线（HTML 生成/分页/数据绑定），无 Vue、无宿主依赖",
+  "description": "打印模板表达式引擎、同构渲染管线与框架无关的设计器内核（HTML 生成/分页/数据绑定/设计器模型与工具），无 Vue/React 依赖",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,6 +11,16 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./designer": {
+      "types": "./dist/designer/index.d.ts",
+      "import": "./dist/designer/index.js",
+      "require": "./dist/designer/index.cjs"
+    },
+    "./browser": {
+      "types": "./dist/browser/index.d.ts",
+      "import": "./dist/browser/index.js",
+      "require": "./dist/browser/index.cjs"
     }
   },
   "files": [
@@ -22,7 +32,8 @@
     "template",
     "expression",
     "pagination",
-    "pdf-render-pipeline"
+    "pdf-render-pipeline",
+    "designer"
   ],
   "scripts": {
     "build": "tsup",
@@ -30,8 +41,14 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
+    "@types/qrcode": "^1.5.6",
+    "happy-dom": "^20.10.6",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
+  },
+  "dependencies": {
+    "jsbarcode": "^3.12.3",
+    "qrcode": "^1.5.4"
   }
 }

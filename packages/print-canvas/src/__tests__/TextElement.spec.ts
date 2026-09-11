@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import TextElement from '../components/elements/TextElement.vue'
-import type { RuntimeElement } from '../types'
+import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 
 function makeElement(options: Partial<RuntimeElement['options']> = {}): RuntimeElement {
   return {

@@ -181,9 +181,9 @@
 
 <script setup lang="ts">
 import { computed, ref, onUnmounted } from 'vue'
-import type { RuntimeElement, TemplateData, ElementRect, ElementZone, AlignLine } from '../types'
-import { getPaperDimensions } from '../utils/default-config'
-import { mmToPx } from '../utils/units'
+import type { RuntimeElement, TemplateData, ElementRect, ElementZone, AlignLine } from '@worm-vue3-print/core/designer'
+import { getPaperDimensions } from '@worm-vue3-print/core/designer'
+import { mmToPx } from '@worm-vue3-print/core/designer'
 import BaseElement from './elements/BaseElement.vue'
 import { useAdsorbManager } from '../composables/useAdsorbManager'
 

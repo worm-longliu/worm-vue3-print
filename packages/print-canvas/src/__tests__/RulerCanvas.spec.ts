@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import Ruler from '../components/Ruler.vue'
-import { RULER_THICKNESS } from '../utils/ruler'
+import { RULER_THICKNESS } from '@worm-vue3-print/core/designer'
 
 function createCanvasContext() {
   return {

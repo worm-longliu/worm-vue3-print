@@ -1,6 +1,6 @@
 // web/src/components/print/composables/useSelection.ts
 import { ref, computed, type InjectionKey, type Ref } from 'vue'
-import type { RuntimeElement } from '../types'
+import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 
 /** 通过 provide/inject 共享选中状态，每个 BaseElement 精确追踪自身是否被选中 */
 export const SELECTED_IDS_KEY: InjectionKey<Ref<Set<string>>> = Symbol('selected-ids')

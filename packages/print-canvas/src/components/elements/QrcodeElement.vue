@@ -7,8 +7,8 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import QRCode from 'qrcode'
-import { resolveTextBinding } from '../../utils/binding'
-import type { RuntimeElement } from '../../types'
+import { resolveTextBinding } from '@worm-vue3-print/core/designer'
+import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 
 const props = defineProps<{
   element: RuntimeElement

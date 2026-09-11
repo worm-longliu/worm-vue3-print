@@ -139,9 +139,9 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { RuntimeElement, PrintBusinessField, TemplateData, TableSelection } from '../types'
-import { PAPER_PRESETS } from '../utils/default-config'
-import { searchProperties } from '../utils/property-search'
+import type { RuntimeElement, PrintBusinessField, TemplateData, TableSelection } from '@worm-vue3-print/core/designer'
+import { PAPER_PRESETS } from '@worm-vue3-print/core/designer'
+import { searchProperties } from '@worm-vue3-print/core/designer'
 import PropertySearch from './property/PropertySearch.vue'
 import PositionSizeGroup from './property/PositionSizeGroup.vue'
 import AppearanceGroup from './property/AppearanceGroup.vue'
@@ -156,8 +156,8 @@ import ImageContentUpload from './property/ImageContentUpload.vue'
 import TableRowGroup from './property/TableRowGroup.vue'
 import TableCellGroup from './property/TableCellGroup.vue'
 import PresetColorPicker from './PresetColorPicker.vue'
-import { getElementBindings, getTableCellBindings } from '../utils/binding-registry'
-import type { BindingDescriptor } from '../types'
+import { getElementBindings, getTableCellBindings } from '@worm-vue3-print/core/designer'
+import type { BindingDescriptor } from '@worm-vue3-print/core/designer'
 
 const props = defineProps<{
   element: RuntimeElement | null

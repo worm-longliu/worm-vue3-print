@@ -14,10 +14,25 @@ print-core/
       css-builder.ts        # mm 单位布局 → CSS
       expression-eval.ts    # 表达式安全求值（safelist）
       types.ts              # 模板/请求类型（JSON 可序列化）
+    designer/                                       # 框架无关的设计器内核（无 Vue/React 依赖）
+      types.ts              # 设计器完整模板模型（TemplateData/RuntimeElement 等）
+      utils/                # 元素工厂/表格矩阵/单位换算/迁移/吸附参考线等通用工具
+      interactions/         # 对齐/分组/缩放/键盘/吸附等纯交互逻辑
+    browser/                # 渲染管线浏览器适配器（iframe 两遍分页、jsbarcode/qrcode）
 ```
 
 `core` 无 Vue、无宿主依赖，可在 Node 服务端（`@worm-vue3-print/render`）与浏览器端（`@worm-vue3-print/canvas`）共用，
 保证「浏览器预览」与「服务端 PDF」结果一致。
+
+### 子路径导出
+
+| 子路径 | 内容 | 运行环境 |
+| --- | --- | --- |
+| `@worm-vue3-print/core` | 表达式引擎 + 同构渲染管线（零运行时依赖） | Node / 浏览器 |
+| `@worm-vue3-print/core/designer` | 设计器模型类型、通用工具、纯交互逻辑 | 任意（交互中的 DOM 事件绑定需浏览器） |
+| `@worm-vue3-print/core/browser` | 浏览器分页渲染（`renderHtmlPages`）、条形码/二维码渲染器 | 仅浏览器 |
+
+> 注意：`/designer` 子路径的 `TemplateData` 等类型是设计器完整模型，与主入口渲染管线的简化同名类型有意分离，因此不从主入口转出。
 
 ## 使用
 

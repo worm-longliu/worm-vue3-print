@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import type { RuntimeElement } from '../../types'
+import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 import PresetColorPicker from '../PresetColorPicker.vue'
 import PropertyGroup from './PropertyGroup.vue'
 import StepperInput from './StepperInput.vue'

@@ -48,7 +48,7 @@
 
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
-import type { WatermarkOptions, PrintBusinessField } from '../types'
+import type { WatermarkOptions, PrintBusinessField } from '@worm-vue3-print/core/designer'
 import PresetColorPicker from './PresetColorPicker.vue'
 
 const props = defineProps<{

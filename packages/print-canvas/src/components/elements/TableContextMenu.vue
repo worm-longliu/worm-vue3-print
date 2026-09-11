@@ -59,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import type { TableRowType } from '../../types'
+import type { TableRowType } from '@worm-vue3-print/core/designer'
 
 const ROW_TYPES: { value: TableRowType; label: string }[] = [
   { value: 'header', label: '标题行' },

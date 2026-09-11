@@ -4,7 +4,7 @@ import { mount } from '@vue/test-utils'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import PageNumberElement from '../components/elements/PageNumberElement.vue'
-import type { RuntimeElement, TextAlign } from '../types'
+import type { RuntimeElement, TextAlign } from '@worm-vue3-print/core/designer'
 
 function makeElement(textAlign?: TextAlign): RuntimeElement {
   return {

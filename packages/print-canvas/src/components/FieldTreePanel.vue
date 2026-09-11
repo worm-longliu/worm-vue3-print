@@ -36,8 +36,8 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { PrintBusinessField } from '../types'
-import { groupFields, filterGroups } from '../utils/field-groups'
+import type { PrintBusinessField } from '@worm-vue3-print/core/designer'
+import { groupFields, filterGroups } from '@worm-vue3-print/core/designer'
 
 const props = defineProps<{
   fields: PrintBusinessField[]

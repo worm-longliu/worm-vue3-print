@@ -4,7 +4,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { RuntimeElement } from '../../types'
+import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 
 const props = defineProps<{
   element: RuntimeElement

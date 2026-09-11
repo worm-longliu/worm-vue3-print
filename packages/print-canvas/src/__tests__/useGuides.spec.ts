@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { ref } from 'vue'
 import { useGuides } from '../composables/useGuides'
-import type { TemplateData } from '../types'
+import type { TemplateData } from '@worm-vue3-print/core/designer'
 
 function mkTemplate(): TemplateData {
   return {

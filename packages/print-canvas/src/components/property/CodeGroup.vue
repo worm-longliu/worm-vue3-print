@@ -48,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import type { RuntimeElement } from '../../types'
+import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 import PropertyGroup from './PropertyGroup.vue'
 
 const props = defineProps<{

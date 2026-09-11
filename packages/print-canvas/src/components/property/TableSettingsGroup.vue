@@ -29,9 +29,9 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue'
 import PresetColorPicker from '../PresetColorPicker.vue'
-import type { RuntimeElement, PrintBusinessField } from '../../types'
+import type { RuntimeElement, PrintBusinessField } from '@worm-vue3-print/core/designer'
 import { TABLE_EDIT_KEY } from '../../composables/useTableSelection'
-import { syncTableElementSize } from '../../utils/table-matrix'
+import { syncTableElementSize } from '@worm-vue3-print/core/designer'
 import PropertyGroup from './PropertyGroup.vue'
 import StepperInput from './StepperInput.vue'
 

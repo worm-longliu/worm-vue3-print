@@ -7,9 +7,9 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { RuntimeElement } from '../../types'
-import { evaluateTemplate } from '../../utils/expression-eval'
-import { DEFAULT_DEMO_DATA } from '../../utils/demo-data'
+import type { RuntimeElement } from '@worm-vue3-print/core/designer'
+import { evaluateTemplate } from '@worm-vue3-print/core/designer'
+import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
 
 const props = defineProps<{
   element: RuntimeElement

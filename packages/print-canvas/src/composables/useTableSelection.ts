@@ -1,6 +1,6 @@
 // 表格单元格选区跨组件共享契约：PrintDesigner provide，TableElement/PropertyPanel inject
 import type { InjectionKey, Ref } from 'vue'
-import type { TableSelection } from '../types'
+import type { TableSelection } from '@worm-vue3-print/core/designer'
 
 export interface TableEditContext {
   tableSelection: Ref<TableSelection | null>
