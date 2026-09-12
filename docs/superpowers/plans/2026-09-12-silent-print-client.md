@@ -2618,6 +2618,8 @@ async function probeContentBottomMm(finalHtml: string, paperWidthMm: number): Pr
 
 c. 探针流程在 Step 8 接线：`paginate`（连续纸 Infinity → 恒单页，flow-group 仍被正常生成）后，**先用 `pageHeightMm=undefined`（297）生成一次最终 HTML 做探针**，得到 `contentBottomMm → composeContinuousHeight → 最终 H`，再用 H 重新 `generateHtml` 产出真正下发的 HTML。即连续纸为「测量 + 探针 + 最终」三次生成，普通纸仍两次，成本可接受。
 
+d. **探针可测性**：`probeContentBottomMm` 依赖真实布局，happy-dom 的 `getBoundingClientRect()` 恒返回 0，**不纳入 happy-dom 单测**；正确性通过 Task 8 Step 11 的设计器/手工验证（短小票、动态长表格 + 合计/签名跟随区、空模板三例）与 Task 14 真机清单保证。CI 单测只覆盖 `composeContinuousHeight` 纯函数。
+
 - [ ] **Step 7: css-builder 与 html-generator 支持显式纸高**
 
 a. `css-builder.ts` 的 `buildPageCss` 增加可选第二参数，连续纸用推导高度替换内部纸张高度：
