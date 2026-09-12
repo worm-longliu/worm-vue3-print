@@ -1,11 +1,103 @@
-import { app, BrowserWindow } from 'electron'
+// 应用入口：单实例 → 加载配置/日志 → 渲染池 → 打印引擎 → 回环 WS 服务 → 托盘驻留。
+import { app } from 'electron'
+import { join } from 'node:path'
+import { APP_ID } from '@worm-vue3-print/client'
+import { ConfigStore, generatePairingToken } from './config.js'
+import { Logger } from './logger.js'
+import { JobHistoryStore } from './job-history.js'
+import { RendererPool } from './renderer-pool.js'
+import { RenderEngine } from './render-engine.js'
+import { PrinterService } from './printer-service.js'
+import { PrintEngine } from './print-engine.js'
+import { WsServer } from './ws-server.js'
+import { checkAccess } from './security.js'
+import { makeMessageHandler } from './protocol-handler.js'
+import { createTray } from './tray.js'
+import { TEST_TEMPLATE } from './test-template.js'
+
+let quitting = false
 
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
   app.quit()
 } else {
-  app.whenReady().then(() => {
-    const win = new BrowserWindow({ width: 800, height: 600 })
-    win.loadURL('data:text/html,<meta charset="utf-8">worm-vue3-print 客户端骨架启动成功')
+  // 窗口全部关闭也驻留托盘（设置窗口关闭同理）
+  app.on('window-all-closed', () => {
+    // 保留默认行为时 Electron 会退出全部窗口的应用；这里显式驻留
   })
+
+  app
+    .whenReady()
+    .then(async () => {
+      const userData = app.getPath('userData')
+      const configStore = new ConfigStore(join(userData, 'config.json'))
+      configStore.load()
+      if (configStore.current.securityEnabled && !configStore.current.pairingToken) {
+        configStore.update({ pairingToken: generatePairingToken() })
+      }
+
+      const logger = new Logger({
+        level: configStore.current.logLevel,
+        filePath: join(userData, 'logs', 'client.log'),
+      })
+
+      const history = new JobHistoryStore(join(userData, 'jobs.jsonl'), 500)
+      const pool = new RendererPool(logger)
+      await pool.init()
+      const printerService = new PrinterService(() => pool.getPrintersAsync())
+      const renderEngine = new RenderEngine(pool)
+      const printEngine = new PrintEngine({ printerService, renderEngine, pool, history, logger })
+
+      let actualPort = 0
+      const server = new WsServer({
+        preferredPort: configStore.current.port,
+        handler: makeMessageHandler({
+          appId: APP_ID,
+          version: app.getVersion(),
+          getPort: () => actualPort,
+          printerService,
+          printEngine,
+        }),
+        checkAccess: input => checkAccess(input, configStore.current),
+        logger,
+      })
+      actualPort = await server.start()
+
+      const testPrint = async (printerName?: string) => {
+        await printEngine.submit({
+          templateJson: TEST_TEMPLATE,
+          printData: {},
+          print: { printerName },
+        })
+      }
+
+      // Task 13 将替换此占位为创建配置窗口
+      const showSettings = () => {
+        logger.info('设置窗口将在后续版本提供')
+      }
+      createTray({
+        getPort: () => server.port,
+        testPrint,
+        showSettings,
+        quit: () => app.quit(),
+      })
+
+      app.setLoginItemSettings({ openAtLogin: configStore.current.autoStart })
+      logger.info('客户端启动完成', { port: actualPort, version: app.getVersion() })
+
+      app.on('before-quit', e => {
+        if (quitting) return
+        e.preventDefault()
+        quitting = true
+        void (async () => {
+          await server.stop().catch(() => {})
+          await pool.dispose().catch(() => {})
+          app.exit(0)
+        })()
+      })
+    })
+    .catch(err => {
+      console.error('启动失败：', err)
+      app.quit()
+    })
 }

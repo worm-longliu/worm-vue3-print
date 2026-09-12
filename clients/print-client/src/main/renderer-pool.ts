@@ -113,6 +113,14 @@ export class RendererPool {
     })
   }
 
+  /** 枚举系统打印机（委托 worker WebContents） */
+  async getPrintersAsync(): Promise<
+    Array<{ name: string; isDefault?: boolean; status?: number }>
+  > {
+    if (!this.worker) throw new ProtocolFailure('INTERNAL', '渲染 worker 未就绪')
+    return this.worker.webContents.getPrintersAsync()
+  }
+
   /** 新建隐藏打印窗口承载最终 HTML；调用方负责打印完成后 win.close() */
   async loadPrintHtml(html: string): Promise<BrowserWindow> {
     const id = randomUUID()
