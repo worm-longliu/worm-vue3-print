@@ -1,2 +1,5 @@
-// Task 13 实现：配置窗口 Vue 入口
-export {}
+import { createApp } from 'vue'
+import App from './App.vue'
+import './style.css'
+
+createApp(App).mount('#app')

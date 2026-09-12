@@ -2,7 +2,7 @@
 import { randomUUID } from 'node:crypto'
 import type { PrintOptions } from '@worm-vue3-print/client'
 import type { Logger } from './logger.js'
-import type { JobHistoryStore } from './job-history.js'
+import type { JobHistoryStore, JobRecord } from './job-history.js'
 import type { PrinterService } from './printer-service.js'
 import { buildWebPrintSettings, type WebPrintSettings } from './render-engine.js'
 import type { RenderEngine } from './render-engine.js'
@@ -15,6 +15,19 @@ const FONTS_READY_TIMEOUT_MS = 5000
 
 export class PrintEngine {
   private readonly gate = new SerialGate()
+  private readonly settledCbs = new Set<(record: JobRecord) => void>()
+
+  /** 订阅任务最终结果（成功/失败均回调，已含落盘记录）；返回取消订阅函数 */
+  onSettled(cb: (record: JobRecord) => void): () => void {
+    this.settledCbs.add(cb)
+    return () => {
+      this.settledCbs.delete(cb)
+    }
+  }
+
+  private emitSettled(record: JobRecord): void {
+    for (const cb of this.settledCbs) cb(record)
+  }
 
   constructor(
     private readonly deps: {
@@ -58,7 +71,7 @@ export class PrintEngine {
     try {
       await this.waitReady(win.webContents)
       await this.silentPrint(win.webContents, settings)
-      history.append({
+      const record: JobRecord = {
         jobId,
         ts: new Date().toISOString(),
         templateName: readTemplateName(spec.templateJson),
@@ -67,24 +80,28 @@ export class PrintEngine {
         paperMicrometers: prepared.paper,
         paperHeightSource: prepared.heightSource,
         outcome: 'success',
-      })
+      }
+      history.append(record)
+      this.emitSettled(record)
       logger.info('打印完成', { jobId })
       return { jobId }
     } catch (err) {
       const code = err instanceof ProtocolFailure ? err.code : 'PRINT_FAILED'
       const message = err instanceof Error ? err.message : '打印失败'
-      history.append({
+      const record: JobRecord = {
         jobId,
         ts: new Date().toISOString(),
         templateName: readTemplateName(spec.templateJson),
-        printerName: target.name,
+        printerName: target?.name ?? printOptions.printerName ?? '',
         copies: printOptions.copies ?? 1,
-        paperMicrometers: prepared.paper,
-        paperHeightSource: prepared.heightSource,
+        paperMicrometers: prepared?.paper ?? { width: 0, height: 0 },
+        paperHeightSource: prepared?.heightSource ?? 'config',
         outcome: 'failed',
         errorCode: code,
         errorMessage: message,
-      })
+      }
+      history.append(record)
+      this.emitSettled(record)
       throw err instanceof ProtocolFailure ? err : new ProtocolFailure('PRINT_FAILED', message)
     } finally {
       if (!win.isDestroyed()) win.close()

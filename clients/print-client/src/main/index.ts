@@ -13,9 +13,11 @@ import { WsServer } from './ws-server.js'
 import { checkAccess } from './security.js'
 import { makeMessageHandler } from './protocol-handler.js'
 import { createTray } from './tray.js'
+import { MainWindowManager } from './main-window.js'
 import { TEST_TEMPLATE } from './test-template.js'
 
 let quitting = false
+let mainWindow: MainWindowManager | null = null
 
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
@@ -72,9 +74,18 @@ if (!gotLock) {
       }
 
       // Task 13 将替换此占位为创建配置窗口
-      const showSettings = () => {
-        logger.info('设置窗口将在后续版本提供')
-      }
+      mainWindow = new MainWindowManager({
+        configStore,
+        logger,
+        history,
+        printerService,
+        printEngine,
+        getPort: () => server.port,
+      })
+      mainWindow.registerIpc()
+      mainWindow.bindPushEvents()
+      const showSettings = () => mainWindow?.show()
+      app.on('second-instance', () => mainWindow?.show())
       createTray({
         getPort: () => server.port,
         testPrint,
