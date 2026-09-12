@@ -72,7 +72,7 @@ flowchart LR
   end
   subgraph 隐藏渲染窗口 renderer
     IPC <--> W[print-worker 页面]
-    W --> CORE["core: bindData/paginate/generateHtml + bwip-js"]
+    W --> CORE["core/browser: renderHtmlPages（jsbarcode/qrcode）"]
   end
   W -.测量/最终 HTML.-> E
   E -->|webContents.print silent| PRINTER[(系统打印机)]
@@ -97,7 +97,7 @@ flowchart LR
   - `src/main/`：上述主进程模块
   - `src/preload/`：配置窗口 preload
   - `src/renderer/`：配置窗口（Vue 3，原生控件，不引入 UI 组件库，风格对齐 print-canvas）
-  - `src/worker/`：隐藏打印 worker 页面（承载 core 渲染与测量）
+  - `src/worker/`：隐藏打印 worker 页面（承载 core 渲染与测量；运行在 sandbox + contextIsolation，经专用 preload `src/preload/worker-preload.ts` 暴露的 `window.wormRender` IPC 桥通信，不开启 nodeIntegration）
   - 打包配置（electron-vite 或等价 Vite 方案，实现阶段确定并写明理由）
 - `packages/print-client-sdk/`：发布名 `@worm-vue3-print/client`
   - 框架无关纯 TypeScript，无 Vue 依赖
@@ -105,15 +105,14 @@ flowchart LR
 
 ### 4.3 渲染复用
 
-平移 `services/print-render` 的两遍渲染：
+直接复用 core 的浏览器侧管线 `@worm-vue3-print/core/browser`（`renderHtmlPages`，内部封装 bindData → 测量 iframe → paginate → generateHtml 两遍渲染），无需从 print-render 迁移 Playwright 逻辑：
 
-1. `bindData(template, printData, baseUrl)` 数据绑定；
-2. 第一遍：worker 窗口加载测量模式 HTML（`generateHtml(..., { isMeasurementPass: true, codeRenderer })`），等待 `document.fonts.ready` 与网络空闲，`executeJavaScript` 读取 `[data-measure-id]` 元素实测高度（mm，96dpi 换算 1mm≈3.7795px），表格元素读取逐行高度；
-3. `paginate(boundTemplate, measuredMap)` 分页；
-4. 第二遍：加载最终 HTML；
-5. 出纸：对承载最终 HTML 的 webContents 调 `webContents.print`。
+1. worker 主世界页面 import `renderHtmlPages(template, data, baseUrl, browserCodeRenderer)`；
+2. 该函数内部完成测量与分页，返回最终 HTML、页数；客户端增量取测量文档总高 `contentHeightMm`（连续纸推导用，见 6.2）；
+3. 最终 HTML 经 `wormprint://` 内存协议载入打印窗口；
+4. 出纸：对承载最终 HTML 的 webContents 调 `webContents.print`。
 
-条码：bwip-js 浏览器版实现 core 的 `CodeRenderer`（替代 print-render 的 Node 侧实现）。
+条码/二维码：使用 core/browser 自带的 `browserCodeRenderer`（jsbarcode + qrcode），客户端不直接依赖 bwip-js。
 
 单任务渲染超时 30s，超时返回 `RENDER_TIMEOUT`，并重建 worker 窗口防止污染后续任务。
 
@@ -154,7 +153,7 @@ interface PrintSubmitPayload {
     printerName?: string               // 缺省走系统默认打印机
     copies?: number                    // 默认 1
     paperName?: string                 // 优先走打印机已配置纸型
-    paperSize?: { width: number; height: number } // 单位微米，热敏/标签自定义纸
+    paperSize?: { width?: number; height?: number } // 单位微米；均可选，缺省取模板纸张；连续纸仅在覆盖时传
     landscape?: boolean
     margins?: { top: number; bottom: number; left: number; right: number } // 微米
     color?: boolean
@@ -187,14 +186,18 @@ interface PrintSubmitPayload {
 - SDK `connect()` 从默认端口起逐端口连接并发送 `hello`，握手成功即定位客户端，全部失败则判定客户端未运行并抛出可识别错误；
 - 后续如需固定端口冲突排查，配置窗口支持手动指定端口。
 
-### 6.2 纸长策略（热敏连续纸）
+### 6.2 纸长策略（连续纸）
 
-采用**测量高度推导 + 配置覆盖**：
+连续纸是**模板级页面属性**：core `PaperSize` 新增 `'CONTINUOUS'`，设计器页面属性可选「连续纸」——设计高度固定 297mm（仅画布/预览用），纸宽取 `customWidth`（默认 80mm，可改 58/76 等），强制纵向，底边距即末尾走纸留白，复用模板既有 `margins.bottom`（切到连续纸时默认 0，可改）。连续纸模板分页引擎恒定单页、CSS 不强制最小纸高。
 
-1. `print.paperSize.height` 显式传入时（宿主打印配置覆盖），直接使用；
-2. 未传时，以第一遍测量得到的内容实际总高度（mm → 微米）作为纸高，宽度仍取模板/配置纸宽；
-3. 推导结果在任务记录中记录实际下发的纸宽纸高，便于排查；
-4. 实现阶段须在真机热敏打印机上验证推导精度（公差、走纸余量），若系统驱动对自定义纸高有最小步进/舍入，以实测为准并在客户端文档中写明。
+出纸采用**测量高度推导 + 配置覆盖**：
+
+1. 仅当模板 `paperSize === 'CONTINUOUS'` 时启用推导；普通纸始终使用模板纸张（`print.paperSize` 显式传入时可覆盖）；
+2. `print.paperSize.height` 显式正整数时（宿主打印配置逃生门），直接使用；
+3. 未传时，以第一遍测量得到的文档总高（含模板 padding 底边距，mm → 微米）作为纸高，宽度取 `print.paperSize.width` 或模板纸宽；推导高度最小钳制 25.4mm（1 英寸）；
+4. worker 回传 `continuous` 标志，客户端据此判定，与宿主是否传 paperSize 无关；
+5. 推导结果（含纸长来源 config/derived）在任务记录中记录实际下发的纸宽纸高，便于排查；
+6. 实现阶段须在真机连续纸打印机（58/80mm）上验证推导精度（末尾留白、走纸长度公差，即 p4 问题），若系统驱动对自定义纸高有最小步进/舍入，以实测为准并在客户端文档中写明；不满足时宿主显式传 height 覆盖。
 
 ### 6.3 安全开关（默认关闭，可选开启）
 
@@ -255,7 +258,7 @@ await client.print(templateJson, printData, { printerName, copies, /* ... */ })
 1. SDK 包骨架：协议类型/错误码 + WS 传输 + 端口探测 + 单测；
 2. Electron 工程骨架：托盘、配置窗口、单实例、配置读写；
 3. 主进程 WS 服务 + 协议层，打通 `hello` / `printers.list`；
-4. 隐藏 worker 窗口 + core 两遍渲染迁移 + bwip-js 浏览器接入；
+4. core/设计器连续纸页面属性（CONTINUOUS：默认 80×297、强制纵向、底边距）+ 沙箱 worker（preload）接入 core/browser 两遍渲染；
 5. `webContents.print` 静默出纸与 `print.submit` 全链路（含纸长推导、BUSY、超时）；
 6. 任务记录、日志、测试打印、安全开关；
 7. 绿色目录打包（三平台）与真机清单验证；

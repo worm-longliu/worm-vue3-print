@@ -4,9 +4,9 @@
 
 **Goal:** 交付一个 Electron 跨平台（Win/Linux/Mac）静默打印桌面客户端与浏览器端 SDK：宿主页面经本机 WebSocket 下发「模板 JSON + 数据」，客户端本地用 core 同构管线渲染并调用 `webContents.print({ silent: true })` 静默出纸。
 
-**Architecture:** Electron 主进程启动仅绑定 `127.0.0.1` 的 `ws` 服务；隐藏渲染窗口分两个职责——常驻 worker 窗口（nodeIntegration 可信页面）跑 core 两遍渲染生成最终 HTML，经自定义 `wormprint://` protocol 载入打印窗口后静默打印；协议类型/错误码定义在 SDK 包，客户端 import 同一份类型。单任务串行锁，无队列。
+**Architecture:** Electron 主进程启动仅绑定 `127.0.0.1` 的 `ws` 服务；隐藏渲染窗口分两个职责——常驻 worker 窗口（**sandbox + contextIsolation + 专用 preload**，不开启 nodeIntegration）跑 core 两遍渲染生成最终 HTML，经自定义 `wormprint://` protocol 载入打印窗口后静默打印；协议类型/错误码定义在 SDK 包，客户端 import 同一份类型。连续纸（`paperSize: 'CONTINUOUS'`，热敏/标签）由 core 与设计器原生支持：设计高度默认 297mm、可配连续纸底边距，出纸时按渲染测量总高（含底边距）推导纸高，显式高度可覆盖。单任务串行锁，无队列。
 
-**Tech Stack:** Electron 37、electron-vite 3、Vue 3.5（仅配置窗口）、ws 8、TypeScript 5.9、Vitest 3、tsup 8（SDK 打包）、bwip-js 4（条码，与 print-render 同实现）、`@worm-vue3-print/core` workspace 依赖。
+**Tech Stack:** Electron 37、electron-vite 3、Vue 3.5（仅配置窗口）、ws 8、TypeScript 5.9、Vitest 3、tsup 8（SDK 打包）、`@worm-vue3-print/core` workspace 依赖（条码由 core/browser 的 jsbarcode + qrcode 渲染，客户端不直接依赖 bwip-js）。
 
 **Spec:** `docs/superpowers/specs/2026-09-12-print-client-design.md`（执行任务时 spec 与本计划同时阅读）
 
@@ -19,7 +19,7 @@
 - WebSocket 仅绑定 `127.0.0.1`；默认端口 `17521`，占用时 +1 重试，上限 20 个端口。
 - 安全开关（Origin 白名单 + 配对 token）默认关闭；开启后 token 经连接 URL `?token=` 携带，握手前校验。
 - 渲染超时 30 秒；任务并发拒绝并返回 `BUSY`；不做本地队列/离线缓存。
-- 纸长策略：`print.paperSize.height` 显式传入优先；否则用第一遍测量内容高度（mm）推导；宽度取 `paperSize.width` 或模板纸张宽度。
+- 纸长策略：模板 `paperSize==='CONTINUOUS'`（连续纸）时，`print.paperSize.height` 显式传入优先；否则用第一遍测量内容总高（mm，含模板底边距）推导；宽度取 `print.paperSize.width` 或模板纸宽（默认 80mm）。普通纸始终取模板纸张，除非显式覆盖。
 - 长度单位：协议/`webContents.print` 一律微米（1mm = 1000μm），core 内部为 mm。
 - 任务记录 JSONL 环形保留最近 500 条；日志默认 info 级别。
 - 配置窗口用 Vue 3 原生控件，不引入任何 UI 组件库（对齐 print-canvas 约定）。
@@ -61,7 +61,8 @@
 | `src/main/print-engine.ts` | 串行锁 + 渲染 + `webContents.print` 静默出纸 + 记录落盘 |
 | `src/main/tray.ts` | 系统托盘菜单 |
 | `src/main/main-window.ts` | 配置窗口创建与 IPC 注册 |
-| `src/worker/index.html` / `worker.ts` | 可信隐藏页（nodeIntegration）：import core + bwip-js，执行两遍渲染，返回最终 HTML 与测量总高 |
+| `src/worker/index.html` / `worker.ts` | 沙箱化隐藏页（sandbox + contextIsolation，经 `worker-preload` 暴露 `wormRender`）：import core，执行两遍渲染，返回最终 HTML 与测量总高 |
+| `src/preload/worker-preload.ts` | worker 专用 preload：仅暴露 `renderPages(spec)` IPC 桥 |
 | `src/preload/index.ts` | 配置窗口 contextBridge API |
 | `src/renderer/index.html` / `main.ts` / `App.vue` | 配置窗口 UI（设置/任务记录/日志/测试打印） |
 | `README.md` | 客户端说明（含绿色版运行、三平台注意事项） |
@@ -311,9 +312,19 @@ export interface PrintOptions {
   copies?: number
   /** 打印机驱动内已配置纸型名，针式打印机优先使用 */
   paperName?: string
-  /** 自定义纸宽纸高（微米）；热敏/标签使用；height 缺省时由客户端按内容高度推导 */
-  paperSize?: { width: number; height?: number }
+  /**
+   * 纸张覆盖项（微米）。
+   * - 普通模板：缺省（或仅给 width）时以模板自带纸张（getPaperDimensions）为准；
+   * - 连续纸模板（templateJson.paperSize === 'CONTINUOUS'）：高度缺省或 <=0 时按渲染测量内容高度
+   *   ＋连续纸底边距推导实际纸高；显式 height>0 为配置覆盖（逃生门）。
+   *   宽度缺省取模板 customWidth（默认 80mm）。
+   */
+  paperSize?: { width?: number; height?: number }
   landscape?: boolean
+  /**
+   * 页边距覆盖（微米）；缺省使用模板 margins。
+   * 连续纸的末尾留白由模板连续纸底边距（默认 0）控制，已计入推导纸高。
+   */
   margins?: { top: number; bottom: number; left: number; right: number }
   color?: boolean
   pageRanges?: Array<{ from: number; to: number }>
@@ -1094,12 +1105,12 @@ client.onStatusChange(s => console.log('客户端状态：', s))
 await client.connect()
 
 const printers = await client.listPrinters()
+// 模板 paperSize 已设为 CONTINUOUS（customWidth 80mm）：无需传 paperSize，客户端按内容自动推导纸高
 await client.print(templateJson, { orderNo: 'A001' }, {
   printerName: printers[0]?.name,
   copies: 1,
-  // 热敏 80mm：宽 80000μm；纸高不传，由客户端按内容高度推导
-  paperSize: { width: 80000 },
 })
+// 需要固定纸长（逃生门）时：paperSize: { height: 200000 }；改纸宽：{ width: 58000 }
 ```
 
 - [ ] **Step 7: 提交**
@@ -1154,8 +1165,7 @@ git commit -m "feat(client-sdk)：新增对外 PrintClient 门面与集成文档
   },
   "dependencies": {
     "@worm-vue3-print/client": "*",
-    "@worm-vue3-print/core": "^1.2.2",
-    "bwip-js": "^4.11.4",
+    "@worm-vue3-print/core": "*",
     "ws": "^8.18.0"
   },
   "devDependencies": {}
@@ -1361,7 +1371,7 @@ export class ConfigStore {
 }
 ```
 
-`electron.vite.config.ts`（main/preload/renderer 三环境；worker 作为 renderer 第二入口，Task 9 用到，先配好）：
+`electron.vite.config.ts`（main/preload/renderer 三环境；worker 作为 renderer 第二入口，Task 10 用到，先配好）：
 
 ```ts
 import { resolve } from 'node:path'
@@ -1378,7 +1388,12 @@ export default defineConfig({
   preload: {
     plugins: [externalizeDepsPlugin()],
     build: {
-      rollupOptions: { input: { index: resolve(__dirname, 'src/preload/index.ts') } },
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/preload/index.ts'),
+          'worker-preload': resolve(__dirname, 'src/preload/worker-preload.ts'),
+        },
+      },
     },
   },
   renderer: {
@@ -1428,9 +1443,10 @@ if (!gotLock) {
 ```
 
 创建占位文件（后续任务填充，保证 build 入口存在）：
-- `src/preload/index.ts`：`// Task 6 实现`
+- `src/preload/index.ts`：`// Task 13 实现`
+- `src/preload/worker-preload.ts`：`// Task 9 实现`
 - `src/renderer/index.html`：最小 HTML 骨架（`<div id="app"></div><script type="module" src="./main.ts"></script>`，charset utf-8）
-- `src/renderer/main.ts`：`// Task 11 实现`
+- `src/renderer/main.ts`：`// Task 13 实现`
 - `src/worker/index.html`：与 renderer 同构的最小 HTML，引用 `./worker.ts`
 - `src/worker/worker.ts`：`// Task 9 实现`
 
@@ -1440,7 +1456,7 @@ Run: `npm run test -w @worm-vue3-print/print-client`
 Expected: config 用例全绿。
 
 Run: `npm run build -w @worm-vue3-print/print-client`
-Expected: electron-vite 构建 main/preload/renderer（含 worker）成功，`out/` 三个子目录齐备，无 TS/打包报错。
+Expected: electron-vite 构建 main/preload（含 worker-preload）/renderer（含 worker）成功，`out/` 三个子目录齐备，无 TS/打包报错。
 
 - [ ] **Step 8: 提交**
 
@@ -2314,24 +2330,313 @@ git commit -m "feat(print-client)：新增打印机服务（枚举/状态归一�
 
 ---
 
-## Task 8: 渲染 worker 与纸高推导（复用 core `/browser` 管线）
+## Task 8: core 与设计器支持「连续纸」页面属性
+
+> 背景：连续纸（热敏 58/80mm、标签）需要模板级声明——设计高度固定 297mm（设计/预览画布），可配连续纸底边距；打印时（Task 9/11）按渲染测量总高推导实际纸高。底边距不新增字段，直接使用模板既有 `margins.bottom`（切到连续纸时默认置 0，可改），测量文档 `scrollHeight` 天然含 padding-bottom，推导纸高自动包含底边距。
+
+**Files:**
+- Modify: `packages/print-core/src/render/types.ts`（`PaperSize`、`PAPER_DIMENSIONS`、`getPaperDimensions`）
+- Modify: `packages/print-core/src/designer/types.ts`（设计器侧 `PaperSize`、`TemplateData` 注释）
+- Modify: `packages/print-core/src/designer/utils/default-config.ts`（设计器侧 `PAPER_PRESETS`、`getPaperDimensions`）
+- Modify: `packages/print-core/src/render/pagination-engine.ts`（连续纸不分页）
+- Modify: `packages/print-core/src/render/css-builder.ts`（连续纸 CSS：页面随内容撑开、页脚文档流化）
+- Modify: `packages/print-canvas/src/components/PropertyPanel.vue`（纸张下拉新增「连续纸」选项、连续纸专属字段）
+- Create: `packages/print-core/src/render/__tests__/continuous-paper.test.ts`
+
+**Interfaces:**
+- Consumes: 无新依赖。
+- Produces:
+  - 两处 `PaperSize` 联合类型新增 `'CONTINUOUS'`。
+  - `PAPER_DIMENSIONS.CONTINUOUS` 与 `PAPER_PRESETS.CONTINUOUS` = `{ width: 80, height: 297 }`（默认 80mm 热敏；高度仅为设计/预览画布高度）。
+  - `getPaperDimensions` 对 CONTINUOUS 的解析与 CUSTOM 同构：`width = customWidth ?? 80`、`height = customHeight ?? 297`，方向强制 portrait（横向对连续纸无意义）。
+  - 导出判定函数 `isContinuousPaper(template): boolean`（放 `render/types.ts`，designer 侧从同构位置复制/复用 designer 版）。
+  - 连续纸模板：分页引擎恒定单页；最终 HTML 不强制最小纸高、页脚不钉在 297mm 底部。
+
+- [ ] **Step 1: 写失败测试 `continuous-paper.test.ts`**
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { getPaperDimensions, isContinuousPaper } from './types.js'
+import { paginate } from './pagination-engine.js'
+import { buildPageCss } from './css-builder.js'
+import type { TemplateData, TemplateElement } from './types.js'
+
+function continuousTemplate(over: Partial<TemplateData> = {}): TemplateData {
+  return {
+    paperSize: 'CONTINUOUS',
+    orientation: 'portrait',
+    margins: { top: 5, right: 5, bottom: 0, left: 5 },
+    header: { height: 0, elements: [] },
+    footer: { height: 0, elements: [] },
+    firstPageOverlay: { height: 0, elements: [] },
+    elements: [],
+    customWidth: 80,
+    ...over,
+  } as TemplateData
+}
+
+const tallEl = (top: number, height: number): TemplateElement => ({
+  id: `el-${top}-${height}`, type: 'text',
+  options: { top, left: 0, width: 70, height },
+})
+
+describe('CONTINUOUS 纸型', () => {
+  it('默认尺寸 80×297，宽度取 customWidth', () => {
+    expect(getPaperDimensions(continuousTemplate())).toEqual({ width: 80, height: 297 })
+    expect(getPaperDimensions(continuousTemplate({ customWidth: 58 }))).toEqual({ width: 58, height: 297 })
+  })
+
+  it('isContinuousPaper 判定', () => {
+    expect(isContinuousPaper(continuousTemplate())).toBe(true)
+    expect(isContinuousPaper(continuousTemplate({ paperSize: 'A4' } as Partial<TemplateData>))).toBe(false)
+  })
+
+  it('内容累计超过 297mm 也只产生一页（不按设计高度分页）', () => {
+    const t = continuousTemplate({
+      elements: Array.from({ length: 20 }, (_, i) => tallEl(i * 30, 28)),
+    })
+    const measured = new Map(t.elements.map(el => [el.id, { id: el.id, measuredHeight: 28 }]))
+    const pages = paginate(t, measured)
+    expect(pages).toHaveLength(1)
+  })
+
+  it('CSS：连续纸页面不强制最小高度，页脚不绝对定位', () => {
+    const css = buildPageCss(continuousTemplate({ footer: { height: 10, elements: [] } }))
+    // 连续纸标记类
+    expect(css).toContain('continuous')
+    // 普通规则仍输出 @page；连续纸覆盖规则必须存在
+    expect(css).toMatch(/\.continuous\b[\s\S]*min-height:\s*auto/)
+  })
+})
+```
+
+- [ ] **Step 2: 运行确认失败**
+
+Run: `npm run test -w @worm-vue3-print/core -- continuous`
+Expected: FAIL（类型上 `'CONTINUOUS'` 不能赋给 PaperSize；`isContinuousPaper` 不存在）。
+
+- [ ] **Step 3: 修改 render/types.ts**
+
+a. 第 7 行类型改为：
+
+```ts
+export type PaperSize = 'A4' | 'A3' | 'A5' | 'Letter' | 'Legal' | 'CUSTOM' | 'CONTINUOUS'
+```
+
+b. `PAPER_DIMENSIONS` 增加：
+
+```ts
+  CONTINUOUS: { width: 80, height: 297 }, // 连续纸：默认 80mm 热敏；高度仅为设计画布高度，出纸按内容推导
+```
+
+c. `getPaperDimensions` 改为 CUSTOM/CONTINUOUS 同分支：
+
+```ts
+export function getPaperDimensions(template: TemplateData): { width: number; height: number } {
+  const base = template.paperSize === 'CUSTOM' || template.paperSize === 'CONTINUOUS'
+    ? {
+        width: template.customWidth ?? (template.paperSize === 'CONTINUOUS' ? 80 : 210),
+        height: template.customHeight ?? 297,
+      }
+    : PAPER_DIMENSIONS[template.paperSize]
+  // 连续纸只有纵向
+  if (template.orientation === 'landscape' && template.paperSize !== 'CONTINUOUS') {
+    return { width: base.height, height: base.width }
+  }
+  return { ...base }
+}
+
+/** 是否连续纸（热敏/标签）：出纸高度按渲染内容推导 */
+export function isContinuousPaper(template: { paperSize: string }): boolean {
+  return template.paperSize === 'CONTINUOUS'
+}
+```
+
+- [ ] **Step 4: 修改 designer/types.ts 与 default-config.ts**
+
+a. `designer/types.ts` 第 8 行：
+
+```ts
+/** 纸张尺寸；CONTINUOUS=连续纸（热敏/标签，设计高度固定 297mm，出纸高度按内容推导，底边距用 margins.bottom） */
+export type PaperSize = 'A4' | 'A3' | 'A5' | 'Letter' | 'Legal' | 'CUSTOM' | 'CONTINUOUS'
+```
+
+并在 `customHeight` 注释旁补充：CONTINUOUS 时 customWidth 为纸宽（默认 80），customHeight 不使用（固定 297 设计画布）。
+
+b. `default-config.ts`：
+
+```ts
+export const PAPER_PRESETS: Record<string, { width: number; height: number }> = {
+  A4:  { width: 210, height: 297 },
+  A3:  { width: 297, height: 420 },
+  A5:  { width: 148, height: 210 },
+  Letter: { width: 216, height: 279 },
+  Legal: { width: 216, height: 356 },
+  CONTINUOUS: { width: 80, height: 297 },
+}
+```
+
+`getPaperDimensions` 同步：
+
+```ts
+  const isFree = t.paperSize === 'CUSTOM' || t.paperSize === 'CONTINUOUS'
+  if (isFree) {
+    base = {
+      width: t.customWidth ?? (t.paperSize === 'CONTINUOUS' ? 80 : 210),
+      height: t.customHeight ?? 297,
+    }
+  } else {
+    base = PAPER_PRESETS[t.paperSize] || PAPER_PRESETS['A4']!
+  }
+  return t.orientation === 'landscape' && t.paperSize !== 'CONTINUOUS'
+    ? { width: base.height, height: base.width }
+    : base
+```
+
+- [ ] **Step 5: 分页引擎——连续纸不分页**
+
+`pagination-engine.ts` 的 `paginate()` 中，计算 `contentHeight` 处改为：
+
+```ts
+  const continuous = template.paperSize === 'CONTINUOUS'
+  // 连续纸：不按设计高度分页，单页承载全部内容（纸高在打印侧按测量高度推导）
+  const contentHeight = continuous
+    ? Number.POSITIVE_INFINITY
+    : paper.height - mt - mb - headerH - footerH
+  if (!continuous && contentHeight <= 0) {
+    throw new Error(
+      `页面可用高度不足: paper=${paper.height}mm, margins=${mt + mb}mm, header=${headerH}mm, footer=${footerH}mm`,
+    )
+  }
+```
+
+验证 Infinity 与各分页分支兼容：`remaining = Infinity - ...`、所有「放不下」判断恒为 false；表格切片同理不切。逐行检查 `paginateTable/paginateNonTable` 内对 `contentHeight` 的算术不产生 NaN（Infinity - 有限值 = Infinity）；若存在乘法/除法分支，对连续纸提前走单页路径并在评审中说明。
+
+- [ ] **Step 6: CSS——连续纸页面随内容撑开**
+
+`css-builder.ts` 的 `buildPageCss` 返回模板中增加连续纸覆盖块（插在测量模式规则之前）：
+
+```ts
+${template.paperSize === 'CONTINUOUS' ? `
+/* ── 连续纸：单页随内容撑开；出纸高度由打印侧按测量总高设置 ── */
+body.continuous .print-page { min-height: auto; page-break-after: auto; }
+body.continuous .page-footer { position: static; }
+@page { size: ${mm(paper.width)} auto; }
+` : ''}
+```
+
+最终页容器需要连续纸标记类供高级样式/调试：修改 `html-generator.ts` 的 `generateFinalHtml`，body 输出：
+
+```ts
+<body${template.paperSize === 'CONTINUOUS' ? ' class="continuous"' : ''}>
+```
+
+（普通模板保持无 class。）
+
+- [ ] **Step 7: 运行 core 全量测试与构建**
+
+Run: `npm run test -w @worm-vue3-print/core`
+Expected: 新用例 4 条 + 既有用例全绿。
+Run: `npm run build -w @worm-vue3-print/core`
+Expected: 构建通过。
+
+- [ ] **Step 8: 设计器页面属性面板**
+
+修改 `packages/print-canvas/src/components/PropertyPanel.vue`：
+
+a. 纸张尺寸下拉在 `CUSTOM` 选项前增加：
+
+```html
+              <option value="CONTINUOUS">连续纸</option>
+```
+
+b. 自定义宽高区块条件改为同时覆盖 CUSTOM 与 CONTINUOUS，但连续纸只显示宽度：
+
+```html
+          <div class="pd-field" v-if="paperSizeModel === 'CUSTOM' || paperSizeModel === 'CONTINUOUS'">
+            <span class="pd-label">{{ paperSizeModel === 'CONTINUOUS' ? '纸宽 (mm)' : '自定义宽高 (mm)' }}</span>
+            <div class="custom-size-grid">
+              <StepperInput :model-value="customWidth" :min="25" :max="2000"
+                @update:model-value="onCustomWidthChange" />
+              <template v-if="paperSizeModel === 'CUSTOM'">
+                <span class="custom-size-x">×</span>
+                <StepperInput :model-value="customHeight" :min="25" :max="2000"
+                  @update:model-value="onCustomHeightChange" />
+              </template>
+            </div>
+          </div>
+```
+
+c. 方向区块对连续纸隐藏（连续纸强制纵向）：给方向 `.pd-field` 加 `v-if="paperSizeModel !== 'CONTINUOUS'"`。
+
+d. 边距 UI：连续纸时把「下」边距输入标签语义改为底边距（现有 margin-grid 是四向 StepperInput，只需在连续纸时在区块旁显示提示文案「底部边距即连续纸走纸留白」，不改控件结构）。`marginBottom` 计算属性与 `onMarginBottomChange` 复用，:max 放宽到 100（若当前为 50）。
+
+e. `onPaperSizeChange` 增加切换归一化（script 区）：
+
+```ts
+function onPaperSizeChange(size: string) {
+  if (size === 'CONTINUOUS') {
+    // 连续纸默认：80mm 宽、纵向、底边距 0（走纸留白由用户配置）
+    emitUpdate({
+      paperSize: 'CONTINUOUS',
+      customWidth: props.templateData?.customWidth ?? 80,
+      orientation: 'portrait',
+      margins: { ...props.templateData!.margins, bottom: props.templateData?.margins.bottom ?? 0 },
+    })
+    return
+  }
+  if (size === 'CUSTOM') { emitUpdate({ paperSize: 'CUSTOM' }); return }
+  emitUpdate({ paperSize: size as TemplateData['paperSize'] })
+}
+```
+
+替换原有同名函数（原 CUSTOM/预设两分支逻辑并入）。
+
+f. `customWidth` 计算属性缺省值对连续纸为 80：
+
+```ts
+const customWidth = computed(() => props.templateData?.customWidth ?? (paperSizeModel.value === 'CONTINUOUS' ? 80 : 210))
+```
+
+- [ ] **Step 9: canvas 回归与设计器手工验证**
+
+Run: `npm run test -w @worm-vue3-print/canvas`
+Expected: 全绿。
+Run: `npm run dev`（仓库 demo，若根脚本为其它名以 package.json 为准）
+Expected（手工）：
+1. 页面属性纸张下拉出现「连续纸」；选中后画布变为 80×297，方向控件隐藏，只显示纸宽；
+2. 改纸宽为 58 画布跟随；底边距改 3mm 后预览底部留白；
+3. 切回 A4 一切正常，原模板打开不受影响（旧 JSON 无 CONTINUOUS，类型扩展不破坏迁移）。
+
+- [ ] **Step 10: 提交**
+
+```bash
+git add packages/print-core packages/print-canvas
+git commit -m "feat(core,canvas)：新增连续纸页面属性（CONTINUOUS，默认80×297，不分页，底边距可配）"
+```
+
+---
+
+## Task 9: 渲染 worker（沙箱 preload）与纸高推导（复用 core `/browser` 管线）
 
 **Files:**
 - Modify: `packages/print-core/src/browser/browser-pagination.ts`（`BrowserRenderResult` 增量返回 `contentHeightMm`）
 - Create: `clients/print-client/src/shared/render-protocol.ts`（main ↔ worker IPC 契约类型）
-- Create: `clients/print-client/src/worker/worker.ts`（填充 Task 4 占位）
+- Create: `clients/print-client/src/preload/worker-preload.ts`（worker 专用沙箱 preload）
+- Create: `clients/print-client/src/worker/worker.ts`（填充 Task 4 占位；运行在 contextIsolation 主世界，经 `window.wormRender` 桥通信）
 - Create: `clients/print-client/src/worker/index.html`（填充 Task 4 占位）
 - Create: `clients/print-client/src/main/paper.ts`
 - Create: `clients/print-client/src/main/paper.test.ts`
-- Modify: `clients/print-client/package.json`（移除不再需要的 `bwip-js` 依赖）
+- Modify: `clients/print-client/electron.vite.config.ts`（preload 增加 worker-preload 第二入口）
+- Modify: `clients/print-client/package.json`（确认不引入 bwip-js；条码由 core/browser 承担）
 
 **Interfaces:**
-- Consumes: `@worm-vue3-print/core/browser` 的 `renderHtmlPages`、`browserCodeRenderer`；`@worm-vue3-print/core` 的 `getPaperDimensions`；SDK 协议类型 `PrintOptions`。
+- Consumes: `@worm-vue3-print/core/browser` 的 `renderHtmlPages`、`browserCodeRenderer`；`@worm-vue3-print/core` 的 `getPaperDimensions`、`isContinuousPaper`；SDK 协议类型 `PrintOptions`。
 - Produces:
-  - core 侧 `BrowserRenderResult` 新增 `contentHeightMm: number`（测量文档连续内容总高，mm；增量字段，canvas 既有消费不受影响）。
-  - shared：`RenderJobSpec = { templateJson: Record<string, unknown>; printData?: Record<string, unknown>; baseUrl?: string }`；`RenderJobResult = { html: string; pageCount: number; contentHeightMm: number; templatePaperMm: { width: number; height: number } }`；IPC 通道常量 `RENDER_REQUEST_CHANNEL = 'worm:render-request'`、`RENDER_RESPONSE_CHANNEL = 'worm:render-response'`。
-  - `resolvePaper(input: { print: PrintOptions; templatePaperMm: { width: number; height: number }; contentHeightMm: number }): { paper: { width: number; height: number }; heightSource: 'config' | 'derived' }`（纯函数，单位微米）。
-  - worker 侧监听 `RENDER_REQUEST_CHANNEL`，经 `RENDER_RESPONSE_CHANNEL` 回 `{ ok: true, result } | { ok: false, message }`（Task 9 的 renderer-pool 负责配对与超时）。
+  - core 侧 `BrowserRenderResult` 新增 `contentHeightMm: number`（测量文档连续内容总高，mm，**已含模板 padding 底边距**；增量字段，canvas 既有消费不受影响）。
+  - shared：`RenderJobSpec = { templateJson: Record<string, unknown>; printData?: Record<string, unknown>; baseUrl?: string }`；`RenderJobResult = { html: string; pageCount: number; contentHeightMm: number; templatePaperMm: { width: number; height: number }; continuous: boolean }`；IPC 通道常量 `RENDER_REQUEST_CHANNEL = 'worm:render-request'`、`RENDER_RESPONSE_CHANNEL = 'worm:render-response'`。
+  - `resolvePaper(input: { print: PrintOptions; templatePaperMm: { width: number; height: number }; contentHeightMm: number; continuous: boolean }): { paper: { width: number; height: number }; heightSource: 'config' | 'derived' }`（纯函数，单位微米）。连续纸由**模板 `paperSize==='CONTINUOUS'` 标志**判定，与调用方是否传 paperSize 无关。
+  - worker-preload 暴露 `window.wormRender = { onRequest(cb), respond(id, response) }`；worker 页面注册渲染回调（Task 10 的 renderer-pool 负责配对与超时）。
 
 - [ ] **Step 1: core 增量返回内容总高**
 
@@ -2382,7 +2687,7 @@ async function measureElements(
   return { html, pageCount: pageLayouts.length, pageLayouts, contentHeightMm }
 ```
 
-c. 验证 core 不回归（happy-dom 下 iframe 布局不真实，不为该字段强写伪单测；字段正确性由 Task 9 Electron 真机渲染验证）：
+c. 验证 core 不回归（happy-dom 下 iframe 布局不真实，不为该字段强写伪单测；字段正确性由 Task 10 Electron 真机渲染验证）：
 
 Run: `npm run test -w @worm-vue3-print/core`
 Expected: 既有测试全绿。
@@ -2396,58 +2701,66 @@ import { describe, it, expect } from 'vitest'
 import { resolvePaper } from './paper.js'
 
 const A4 = { width: 210, height: 297 }
+const CONT = { width: 80, height: 297 } // 连续纸模板尺寸（设计高度 297）
 
 describe('resolvePaper', () => {
-  it('未传 paperSize：标准纸，宽高取模板纸张（微米），来源 config 语义取默认纸', () => {
-    const r = resolvePaper({ print: {}, templatePaperMm: A4, contentHeightMm: 120 })
+  it('普通模板未传 paperSize：宽高取模板纸张（微米），来源 config', () => {
+    const r = resolvePaper({ print: {}, templatePaperMm: A4, contentHeightMm: 120, continuous: false })
     expect(r.paper).toEqual({ width: 210000, height: 297000 })
     expect(r.heightSource).toBe('config')
   })
 
-  it('只传 width 不传 height：连续纸，高度按测量内容推导', () => {
-    const r = resolvePaper({
-      print: { paperSize: { width: 80000 } },
-      templatePaperMm: { width: 80, height: 297 },
-      contentHeightMm: 123.456,
-    })
+  it('连续纸模板未传 paperSize：宽度取模板 80mm，高度按测量内容（含底边距）推导', () => {
+    const r = resolvePaper({ print: {}, templatePaperMm: CONT, contentHeightMm: 123.456, continuous: true })
     expect(r.paper.width).toBe(80000)
     expect(r.paper.height).toBe(123456)
     expect(r.heightSource).toBe('derived')
   })
 
-  it('width 与 height 都传：全部以配置为准', () => {
+  it('连续纸显式传 height：配置覆盖，不走推导', () => {
     const r = resolvePaper({
-      print: { paperSize: { width: 100000, height: 150000 } },
-      templatePaperMm: A4,
-      contentHeightMm: 50,
+      print: { paperSize: { height: 200000 } },
+      templatePaperMm: CONT, contentHeightMm: 50, continuous: true,
     })
-    expect(r.paper).toEqual({ width: 100000, height: 150000 })
+    expect(r.paper).toEqual({ width: 80000, height: 200000 })
     expect(r.heightSource).toBe('config')
   })
 
-  it('width 缺省时连续纸宽度回退模板纸宽；推导高度最小钳制 25.4mm（1 英寸）', () => {
+  it('连续纸显式传 width+height：全部以配置为准', () => {
     const r = resolvePaper({
-      print: { paperSize: { width: undefined as unknown as number } },
-      templatePaperMm: { width: 80, height: 297 },
-      contentHeightMm: 0,
+      print: { paperSize: { width: 58000, height: 150000 } },
+      templatePaperMm: CONT, contentHeightMm: 50, continuous: true,
     })
-    expect(r.paper.width).toBe(80000)
-    expect(r.paper.height).toBe(25400)
+    expect(r.paper).toEqual({ width: 58000, height: 150000 })
+    expect(r.heightSource).toBe('config')
   })
 
-  it('显式高度为 0/负数视为未传，走推导', () => {
+  it('连续纸推导高度最小钳制 25.4mm（1 英寸）', () => {
+    const r = resolvePaper({ print: {}, templatePaperMm: CONT, contentHeightMm: 0, continuous: true })
+    expect(r.paper.width).toBe(80000)
+    expect(r.paper.height).toBe(25400)
+    expect(r.heightSource).toBe('derived')
+  })
+
+  it('连续纸显式高度为 0/负数视为未传，走推导', () => {
     const r = resolvePaper({
-      print: { paperSize: { width: 80000, height: 0 } },
-      templatePaperMm: { width: 80, height: 297 },
-      contentHeightMm: 90,
+      print: { paperSize: { height: 0 } },
+      templatePaperMm: CONT, contentHeightMm: 90, continuous: true,
     })
     expect(r.paper.height).toBe(90000)
     expect(r.heightSource).toBe('derived')
   })
+
+  it('非连续纸传了 paperSize.height：以配置覆盖（自定义纸场景）', () => {
+    const r = resolvePaper({
+      print: { paperSize: { width: 100000, height: 150000 } },
+      templatePaperMm: A4, contentHeightMm: 50, continuous: false,
+    })
+    expect(r.paper).toEqual({ width: 100000, height: 150000 })
+    expect(r.heightSource).toBe('config')
+  })
 })
 ```
-
-说明第 1 条用语义：标准纸（未提供 paperSize）时 `heightSource` 固定记为 `'config'`（模板纸张即确定配置，非推导）。
 
 - [ ] **Step 3: 运行确认失败**
 
@@ -2459,7 +2772,8 @@ Expected: FAIL，`Cannot find module './paper.js'`。
 `paper.ts`：
 
 ```ts
-// 打印纸张解析：显式配置优先；连续纸（只给宽不给高）按渲染内容测量高度推导。单位：微米。
+// 打印纸张解析：连续纸（模板 paperSize==='CONTINUOUS'）按渲染测量高度推导，显式配置可覆盖；其余取模板纸张。
+// 单位：微米。
 import type { PrintOptions } from '@worm-vue3-print/client'
 
 /** 连续纸推导高度下限：1 英寸（25.4mm），避免 0 高度被驱动拒绝 */
@@ -2475,39 +2789,41 @@ export function resolvePaper(input: {
   print: PrintOptions
   templatePaperMm: { width: number; height: number }
   contentHeightMm: number
+  /** 模板是否连续纸（来自渲染结果 RenderJobResult.continuous） */
+  continuous: boolean
 }): ResolvedPaper {
-  const { print, templatePaperMm, contentHeightMm } = input
+  const { print, templatePaperMm, contentHeightMm, continuous } = input
   const ps = print.paperSize
-  const hasWidth = typeof ps?.width === 'number' && ps.width > 0
-  const hasExplicitHeight = typeof ps?.height === 'number' && ps.height > 0
+  const overrideWidth = typeof ps?.width === 'number' && ps.width > 0 ? ps.width : undefined
+  const overrideHeight = typeof ps?.height === 'number' && ps.height > 0 ? ps.height : undefined
 
-  const width = hasWidth ? ps!.width : Math.round(templatePaperMm.width * MM_TO_UM)
+  const templateWidthUm = Math.round(templatePaperMm.width * MM_TO_UM)
 
-  // 标准纸场景：完全未给 paperSize，宽高取模板纸张
-  if (!ps) {
-    return {
-      paper: { width, height: Math.round(templatePaperMm.height * MM_TO_UM) },
-      heightSource: 'config',
+  if (continuous) {
+    const width = overrideWidth ?? templateWidthUm
+    // 显式高度覆盖；否则用测量总高（含模板底边距）推导
+    if (overrideHeight) {
+      return { paper: { width, height: overrideHeight }, heightSource: 'config' }
     }
-  }
-
-  // 连续纸：给了纸宽但未给有效纸高 → 按内容测量高度推导
-  if (!hasExplicitHeight) {
-    const derived = Math.max(
-      MIN_CONTINUOUS_HEIGHT_UM,
-      Math.round(contentHeightMm * MM_TO_UM),
-    )
+    const derived = Math.max(MIN_CONTINUOUS_HEIGHT_UM, Math.round(contentHeightMm * MM_TO_UM))
     return { paper: { width, height: derived }, heightSource: 'derived' }
   }
 
-  return { paper: { width, height: ps.height }, heightSource: 'config' }
+  // 普通纸：显式覆盖优先，否则取模板纸张
+  return {
+    paper: {
+      width: overrideWidth ?? templateWidthUm,
+      height: overrideHeight ?? Math.round(templatePaperMm.height * MM_TO_UM),
+    },
+    heightSource: 'config',
+  }
 }
 ```
 
 `src/shared/render-protocol.ts`：
 
 ```ts
-// 主进程 ↔ 隐藏渲染 worker 的 IPC 契约（仅类型与通道常量，两侧共用）。
+// 主进程 ↔ 隐藏渲染 worker 的 IPC 契约（仅类型与通道常量，main / worker-preload 共用）。
 
 export const RENDER_REQUEST_CHANNEL = 'worm:render-request'
 export const RENDER_RESPONSE_CHANNEL = 'worm:render-response'
@@ -2519,13 +2835,15 @@ export interface RenderJobSpec {
 }
 
 export interface RenderJobResult {
-  /** 最终多页 HTML */
+  /** 最终 HTML */
   html: string
   pageCount: number
-  /** 连续内容总高（mm），用于连续纸纸高推导 */
+  /** 连续内容总高（mm，含模板底边距），用于连续纸纸高推导 */
   contentHeightMm: number
-  /** 模板声明的纸张尺寸（mm，已含方向） */
+  /** 模板声明的纸张尺寸（mm，已含方向；连续纸为 纸宽×297 设计高度） */
   templatePaperMm: { width: number; height: number }
+  /** 模板是否连续纸 */
+  continuous: boolean
 }
 
 export type RenderResponse =
@@ -2533,9 +2851,47 @@ export type RenderResponse =
   | { ok: false; message: string }
 ```
 
-- [ ] **Step 5: 实现 worker 页面**
+- [ ] **Step 5: 实现 worker 沙箱 preload 与页面**
 
-`src/worker/index.html`：
+a. `electron.vite.config.ts` 的 preload 改为多入口（数组形式）：
+
+```ts
+  preload: {
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/preload/index.ts'),
+          'worker-preload': resolve(__dirname, 'src/preload/worker-preload.ts'),
+        },
+      },
+    },
+  },
+```
+
+b. `src/preload/worker-preload.ts`（沙箱 preload 可用最小 Electron API：`ipcRenderer.on/send`）：
+
+```ts
+// worker 专用 preload：sandbox=true 下仅暴露渲染请求/响应桥，不泄露其它 ipcRenderer 能力。
+import { contextBridge, ipcRenderer } from 'electron'
+import { RENDER_REQUEST_CHANNEL, RENDER_RESPONSE_CHANNEL } from '../shared/render-protocol.js'
+import type { RenderJobSpec, RenderResponse } from '../shared/render-protocol.js'
+
+contextBridge.exposeInMainWorld('wormRender', {
+  /** 注册主进程渲染请求回调，回调返回响应（异步） */
+  onRequest(cb: (id: string, spec: RenderJobSpec) => Promise<RenderResponse>): void {
+    ipcRenderer.on(RENDER_REQUEST_CHANNEL, (_event, id: string, spec: RenderJobSpec) => {
+      void cb(id, spec).then(response => {
+        ipcRenderer.send(RENDER_RESPONSE_CHANNEL, id, response)
+      })
+    })
+  },
+})
+```
+
+> 注意：沙箱 preload 中只能 `require('electron')` 的有限 API；`contextBridge` 与 `ipcRenderer` 均在白名单内。禁止在 preload 里 import core（core 由主世界 worker.ts 打包加载）。
+
+c. `src/worker/index.html`：
 
 ```html
 <!doctype html>
@@ -2547,23 +2903,24 @@ export type RenderResponse =
 </html>
 ```
 
-`src/worker/worker.ts`（可信页面，Task 9 创建窗口时开启 nodeIntegration、关闭 contextIsolation）：
+d. `src/worker/worker.ts`（**主世界**代码，无 Node API，core 由 vite 打包进 renderer 产物；经桥通信）：
 
 ```ts
-// 隐藏渲染 worker：跑 core 浏览器侧两遍渲染，返回最终 HTML 与测量信息。
-import { ipcRenderer } from 'electron'
+// 隐藏渲染 worker（contextIsolation 主世界）：跑 core 浏览器侧两遍渲染，经 wormRender 桥返回结果。
 import { renderHtmlPages, browserCodeRenderer } from '@worm-vue3-print/core/browser'
-import { getPaperDimensions } from '@worm-vue3-print/core'
+import { getPaperDimensions, isContinuousPaper } from '@worm-vue3-print/core'
 import type { PrintTemplateData } from '@worm-vue3-print/core'
-import {
-  RENDER_REQUEST_CHANNEL,
-  RENDER_RESPONSE_CHANNEL,
-  type RenderJobSpec,
-  type RenderResponse,
-} from '../shared/render-protocol.js'
+import type { RenderJobSpec, RenderResponse } from '../shared/render-protocol.js'
 
-ipcRenderer.on(RENDER_REQUEST_CHANNEL, async (_event, id: string, spec: RenderJobSpec) => {
-  let response: RenderResponse
+declare global {
+  interface Window {
+    wormRender: {
+      onRequest(cb: (id: string, spec: RenderJobSpec) => Promise<RenderResponse>): void
+    }
+  }
+}
+
+window.wormRender.onRequest(async (_id, spec) => {
   try {
     const template = spec.templateJson as PrintTemplateData
     const rendered = await renderHtmlPages(
@@ -2572,43 +2929,42 @@ ipcRenderer.on(RENDER_REQUEST_CHANNEL, async (_event, id: string, spec: RenderJo
       spec.baseUrl,
       browserCodeRenderer,
     )
-    response = {
+    return {
       ok: true,
       result: {
         html: rendered.html,
         pageCount: rendered.pageCount,
         contentHeightMm: rendered.contentHeightMm,
         templatePaperMm: getPaperDimensions(template),
+        continuous: isContinuousPaper(template),
       },
     }
   } catch (err) {
-    response = { ok: false, message: err instanceof Error ? err.message : '渲染失败' }
+    return { ok: false, message: err instanceof Error ? err.message : '渲染失败' }
   }
-  ipcRenderer.send(RENDER_RESPONSE_CHANNEL, id, response)
 })
 ```
 
-- [ ] **Step 6: 移除 bwip-js 依赖并确认构建**
-
-```bash
-npm uninstall -w @worm-vue3-print/print-client bwip-js
-```
+- [ ] **Step 6: 确认构建（worker 沙箱化 + core 打包）**
 
 Run: `npm run test -w @worm-vue3-print/print-client`
-Expected: paper 5 条及既有用例全绿。
+Expected: paper 7 条及既有用例全绿。
 Run: `npm run build -w @worm-vue3-print/print-client`
-Expected: 构建通过（worker 入口打包 core/browser 进 renderer 产物；`@worm-vue3-print/core` 在 renderer 侧需被打包，若被 externalizeDepsPlugin 外置导致 worker 找不到模块，在 electron.vite.config.ts 的 renderer 配置中增加 `build.rollupOptions.external` 覆盖，把 `@worm-vue3-print/core` 与 `@worm-vue3-print/core/browser` 从外置列表移除——以实际构建产物验证为准）。
+Expected:
+1. `out/preload/worker-preload.js` 与 `out/preload/index.js` 均产出；
+2. worker 入口把 `@worm-vue3-print/core`、`@worm-vue3-print/core/browser` 打包进 renderer 产物（若被 `externalizeDepsPlugin` 外置导致主世界 `import` 失败，在 renderer 配置中覆盖：`build.rollupOptions.external = id => /node_modules\/electron|^electron$/.test(id)` 即只外置 electron，其余 workspace 依赖全部打包——以实际产物验证为准）；
+3. worker.ts 中**不得出现**任何 `from 'electron'`（lint 检查：`grep -n "from 'electron'" src/worker/*.ts` 应无输出）。
 
 - [ ] **Step 7: 提交**
 
 ```bash
 git add packages/print-core clients/print-client package-lock.json
-git commit -m "feat(print-client)：渲染 worker 接入 core 浏览器管线并实现纸高推导"
+git commit -m "feat(print-client)：沙箱 worker 接入 core 浏览器管线，连续纸按测量高度推导纸高"
 ```
 
 ---
 
-## Task 9: 渲染窗口池、渲染引擎与打印参数映射
+## Task 10: 渲染窗口池、渲染引擎与打印参数映射
 
 **Files:**
 - Create: `clients/print-client/src/main/renderer-pool.ts`
@@ -2616,7 +2972,7 @@ git commit -m "feat(print-client)：渲染 worker 接入 core 浏览器管线并
 - Create: `clients/print-client/src/main/render-engine.test.ts`
 
 **Interfaces:**
-- Consumes: Task 8 shared 契约（`RenderJobSpec/RenderJobResult/RENDER_*_CHANNEL`）、`resolvePaper`；SDK 类型 `PrintOptions`；Task 6 `ProtocolFailure`。
+- Consumes: Task 9 shared 契约（`RenderJobSpec/RenderJobResult/RENDER_*_CHANNEL`）、`resolvePaper`；SDK 类型 `PrintOptions`；Task 6 `ProtocolFailure`。
 - Produces:
   - `interface PreparedPrint { html: string; pageCount: number; paper: { width: number; height: number }; heightSource: 'config' | 'derived' }`
   - `buildWebPrintSettings(print: PrintOptions, paper: { width: number; height: number }): WebPrintSettings`（纯函数；`WebPrintSettings` 为不依赖 electron 类型的本地结构，字段与 Electron `webContents.print` 的 options 对齐）
@@ -2738,6 +3094,7 @@ export class RenderEngine {
       print,
       templatePaperMm: result.templatePaperMm,
       contentHeightMm: result.contentHeightMm,
+      continuous: result.continuous,
     })
     return {
       html: result.html,
@@ -2814,10 +3171,11 @@ export class RendererPool {
     const worker = new BrowserWindow({
       show: false,
       webPreferences: {
-        // worker 只加载本地可信构建产物，需要 ipcRenderer 与打包进来的 core
-        nodeIntegration: true,
-        contextIsolation: false,
-        sandbox: false,
+        // 沙箱化：worker 主世界页面经 worker-preload 暴露的 wormRender 桥通信
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: true,
+        preload: join(__dirname, '../preload/worker-preload.js'),
       },
     })
     worker.webContents.on('render-process-gone', (_e, details) => {
@@ -2939,7 +3297,7 @@ git commit -m "feat(print-client)：新增渲染窗口池、渲染引擎与打�
 
 ---
 
-## Task 10: 串行锁、请求校验与打印引擎
+## Task 11: 串行锁、请求校验与打印引擎
 
 **Files:**
 - Create: `clients/print-client/src/main/serial-gate.ts`
@@ -2949,7 +3307,7 @@ git commit -m "feat(print-client)：新增渲染窗口池、渲染引擎与打�
 - Create: `clients/print-client/src/main/print-engine.ts`
 
 **Interfaces:**
-- Consumes: Task 7 `PrinterService`；Task 8 `RenderJobSpec`；Task 9 `RendererPool/RenderEngine/buildWebPrintSettings`；Task 5 `JobHistoryStore/JobRecord`；SDK 类型 `PrintSubmitRequest/PrintOptions`；Task 6 `ProtocolFailure`。
+- Consumes: Task 7 `PrinterService`；Task 9 `RenderJobSpec`；Task 10 `RendererPool/RenderEngine/buildWebPrintSettings`；Task 5 `JobHistoryStore/JobRecord`；SDK 类型 `PrintSubmitRequest/PrintOptions`；Task 6 `ProtocolFailure`。
 - Produces:
   - `class SerialGate`：`run<T>(fn: () => Promise<T>): Promise<T>`（进入时忙则抛 `ProtocolFailure('BUSY', ...)`；finally 释放）；`get isBusy(): boolean`。
   - `parsePrintSubmit(raw: unknown): { spec: RenderJobSpec; print: PrintOptions }`（纯函数；校验失败抛 `ProtocolFailure('INVALID_REQUEST', ...)`；`print` 缺省时给 `{}`）。
@@ -3304,7 +3662,7 @@ git commit -m "feat(print-client)：新增串行打印引擎（校验/静默出�
 
 ---
 
-## Task 11: 协议分发、测试模板、托盘与应用装配
+## Task 12: 协议分发、测试模板、托盘与应用装配
 
 **Files:**
 - Create: `clients/print-client/src/main/test-template.ts`
@@ -3313,7 +3671,7 @@ git commit -m "feat(print-client)：新增串行打印引擎（校验/静默出�
 - Create: `clients/print-client/src/main/tray.ts`
 - Create: `clients/print-client/scripts/smoke.mjs`（真机冒烟脚本，随包提供）
 - Modify: `clients/print-client/src/main/renderer-pool.ts`（暴露 `getPrintersAsync()`）
-- Modify: `clients/print-client/src/main/index.ts`（替换 Task 4 骨架为完整装配；本任务暂不挂配置窗口，Task 12 接入）
+- Modify: `clients/print-client/src/main/index.ts`（替换 Task 4 骨架为完整装配；本任务暂不挂配置窗口，Task 13 接入）
 
 **Interfaces:**
 - Consumes: Task 5–10 全部模块；SDK 的 `APP_ID`、`MESSAGE_TYPES`。
@@ -3423,7 +3781,7 @@ export function makeMessageHandler(deps: MessageHandlerDeps): MessageHandler {
 - [ ] **Step 5: 实现 `src/main/test-template.ts`**
 
 ```ts
-// 内置测试打印模板：A4 竖版，静态标题 + 时间变量，无外部资源，用于「测试打印」全链路自检。
+// 内置测试打印模板：A4 竖版，静态标题 + {printDate} 系统变量，无外部资源，用于「测试打印」全链路自检。
 export const TEST_TEMPLATE: Record<string, unknown> = {
   unit: 'mm',
   paperSize: 'A4',
@@ -3448,7 +3806,7 @@ export const TEST_TEMPLATE: Record<string, unknown> = {
       type: 'text',
       options: {
         left: 0, top: 20, width: 180, height: 8,
-        formatter: '打印时间：{now}',
+        formatter: '打印日期：{printDate}',
         fontSize: 11, textAlign: 'center',
       },
       printElementType: { type: 'text', title: '文本' },
@@ -3467,15 +3825,12 @@ export const TEST_TEMPLATE: Record<string, unknown> = {
 }
 ```
 
-先确认 `{now}` 是 core 注入的系统变量：
-
-Run: `grep -n "now" packages/print-core/src/render/data-binder.ts | head`
-Expected: 能看到系统变量注入（若变量名不是 `now` 而是 `currentTime`/`date` 等，以源码实际名称为准修改 formatter；若没有时间系统变量，则 formatter 直接写死「客户端测试页」，不引变量）。
+`{printDate}` 是 core 已内置的系统变量（`packages/print-core/src/render/data-binder.ts` 的 `injectSystemVariables`，渲染时替换为 `YYYY-MM-DD`），无需自行注入；不要使用不存在的 `{now}`。
 
 - [ ] **Step 6: 实现 `tray.ts`**
 
 ```ts
-// 系统托盘：显示端口状态、测试打印、设置（Task 12 接入）、退出。
+// 系统托盘：显示端口状态、测试打印、设置（Task 13 接入）、退出。
 import { Tray, Menu, nativeImage } from 'electron'
 
 export interface TrayDeps {
@@ -3534,7 +3889,7 @@ const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
   app.quit()
 } else {
-  // 窗口全部关闭也驻留托盘（Task 12 设置窗口关闭同理）
+  // 窗口全部关闭也驻留托盘（Task 13 设置窗口关闭同理）
   app.on('window-all-closed', (e: Event) => e.preventDefault())
 
   app.whenReady().then(async () => {
@@ -3575,7 +3930,7 @@ if (!gotLock) {
       await printEngine.submit({ templateJson: TEST_TEMPLATE, printData: {}, print: { printerName } })
     }
 
-    // Task 12 将替换此占位为创建配置窗口
+    // Task 13 将替换此占位为创建配置窗口
     const showSettings = () => { logger.info('设置窗口将在后续版本提供') }
     const tray = createTrayQuiet({ getPort: () => server.port, testPrint, showSettings, quit: () => app.quit() })
     void tray
@@ -3684,7 +4039,7 @@ git commit -m "feat(print-client)：装配应用（协议分发/托盘/测试打
 
 ---
 
-## Task 12: 配置窗口（preload 桥、IPC、Vue 设置/记录/日志界面）
+## Task 13: 配置窗口（preload 桥、IPC、Vue 设置/记录/日志界面）
 
 **Files:**
 - Create: `clients/print-client/src/main/main-window.ts`
@@ -4138,7 +4493,7 @@ git commit -m "feat(print-client)：新增配置窗口（设置/任务记录/日
 
 ---
 
-## Task 13: 绿色目录打包、全仓接线与文档
+## Task 14: 绿色目录打包、全仓接线与文档
 
 **Files:**
 - Create: `clients/print-client/electron-builder.yml`
@@ -4248,10 +4603,11 @@ Expected: `clients/print-client/dist/mac/WormPrintClient.app` 生成。
 4. 绿色版打包：`npm run pack:dir`，三平台产物目录与「各平台需在本系统构建」说明；
 5. WebSocket 协议：帧格式、三类消息、错误码表、端口发现（17521 起 +1）、`print.submit` payload 字段表（单位微米）；
 6. 安全：默认仅回环；开关开启后 token（连接 URL `?token=`）+ Origin 白名单语义；宿主 SDK `pair(token)`；
-7. 纸长策略：显式 height 优先，否则按测量内容高度推导（最小 1 英寸）；真机热敏精度需现场验证；
-8. 配置/日志/任务记录文件位置（mac `~/Library/Application Support/<userData>/`、Win `%APPDATA%\<userData>\`、Linux `~/.config/<userData>/`）；
-9. 平台注意：mac 未签名右键打开；Linux 依赖 CUPS（`libgtk-3-0` 等 electron-builder 提示的系统库按报错安装）；针式打印机优先用驱动纸型 `paperName`；字体需客户机已装；
-10. 真机验证清单（枚举 → A4 测试页 → 指定打印机/份数 → 热敏自定义纸长 → 脱机报错 → 安全开关），标注 macOS 已验证、Win/Linux 待验证项。
+7. 纸长策略：仅对模板「连续纸」（paperSize=CONTINUOUS）生效——显式 height 优先，否则按渲染测量总高（含模板底边距）推导（最小 1 英寸）；普通纸使用模板纸张；真机连续纸精度需现场验证；
+8. 连续纸设计：设计器页面属性选择「连续纸」，默认纸宽 80mm（可改 58/76 等）、设计高度固定 297mm、强制纵向、底边距即末尾走纸留白（默认 0）；
+9. 配置/日志/任务记录文件位置（mac `~/Library/Application Support/<userData>/`、Win `%APPDATA%\<userData>\`、Linux `~/.config/<userData>/`）；
+10. 平台注意：mac 未签名右键打开；Linux 依赖 CUPS（`libgtk-3-0` 等 electron-builder 提示的系统库按报错安装）；针式打印机优先用驱动纸型 `paperName`；字体需客户机已装；
+11. 真机验证清单（枚举 → A4 测试页 → 指定打印机/份数 → 连续纸 58/80 推导纸长与底边距 → 脱机报错 → 安全开关），标注 macOS 已验证、Win/Linux 待验证项。
 
 - [ ] **Step 7: 根 README 生态章节**
 
@@ -4273,20 +4629,22 @@ git commit -m "feat(print-client)：绿色目录打包、全仓构建接线与�
 
 ## 真机验证总清单（交付前勾选）
 
-自动化测试覆盖协议、编解码、校验、串行锁、纸高推导、安全纯函数、WS 回环集成；以下为必须在真实系统确认的事项：
+自动化测试覆盖协议、编解码、校验、串行锁、连续纸分页/CSS、纸高推导、安全纯函数、WS 回环集成；以下为必须在真实系统确认的事项：
 
-- [ ] macOS：绿色版启动、托盘、设置窗口三个标签页、A4 测试页出纸、指定打印机、任务记录与日志实时刷新（Task 12/13 执行）。
-- [ ] macOS：安全开关开/关两路径（Task 13 Step 5）。
+- [ ] macOS：绿色版启动、托盘、设置窗口三个标签页、A4 测试页（含 `{printDate}` 替换）出纸、指定打印机、任务记录与日志实时刷新（Task 13/14 执行）。
+- [ ] macOS：安全开关开/关两路径（Task 14 Step 5）。
 - [ ] Windows 10/11：绿色目录启动、默认打印机、`getPrintersAsync` 中文打印机名、针式驱动纸型 `paperName`。
 - [ ] Linux（Ubuntu 桌面）：绿色目录启动、CUPS 打印、缺系统库时按 README 安装。
-- [ ] 热敏 58/80mm：`paperSize: { width }` 推导纸高出纸长度公差；不满足时宿主显式传 height 覆盖（spec 6.2 要求的真机精度结论补记到客户端 README）。
+- [ ] 连续纸 58/80mm：设计器配置「连续纸」（默认 80×297、可改纸宽与底边距），客户端按测量总高（含底边距）推导纸高出纸，检查末尾留白/走纸长度公差（即原 p4 问题，开发后真机验证）；不满足时宿主显式传 `print.paperSize.height` 覆盖，结论补记客户端 README。
 - [ ] 脱机/缺纸：返回 `PRINTER_OFFLINE`/`PRINT_FAILED` 且任务记录可查、锁已释放可再次打印。
 
-Win/Linux/热敏三项若当次无法验证，在 PR 描述中明确列为待验证项，不得声称已通过。
+Win/Linux/连续纸三项若当次无法验证，在 PR 描述中明确列为待验证项，不得声称已通过。
 
 ## Self-Review 记录（计划作者自检，执行者无需操作）
 
-- spec 覆盖：协议三消息 ✓、八类错误码均有产生点 ✓、端口发现（SDK 探测 + 服务端递增）✓、安全开关（默认关/token/Origin/UI/pair）✓、纸长推导+覆盖+最小钳制 ✓、JSONL 500 条 ✓、分级日志与窗口推送 ✓、托盘/设置/记录/日志/测试打印 ✓、单实例/驻留/自启 ✓、worker 崩溃重建 ✓、绿色版三平台 ✓、SDK README ✓、core 增量字段对 canvas 无破坏（Step 全量回归）✓。
-- 任务 8 对 core 的修改是唯一的既有包改动，已安排 core/canvas 回归。
-- 类型一致性：`PrintOptions.paperSize.height` 在协议中为可选（Task 1），Task 10 校验允许 `0` 表示推导，Task 8 `resolvePaper` 以 `>0` 判定显式高度，三处语义一致。
-- 已知执行期校正点（已在对应任务内写明，不是占位）：tray 图标 API、`{now}` 变量名以源码为准、electron-vite 对 core 的外置处理、print 选项以 Electron 实际类型微调、pack 脚本位置。
+- spec 覆盖：协议三消息 ✓、八类错误码均有产生点 ✓、端口发现（SDK 探测 + 服务端递增）✓、安全开关（默认关/token/Origin/UI/pair）✓、连续纸（core CONTINUOUS 纸型/设计器配置/测量推导/显式覆盖/最小钳制）✓、JSONL 500 条 ✓、分级日志与窗口推送 ✓、托盘/设置/记录/日志/测试打印 ✓、单实例/驻留/自启 ✓、worker 崩溃重建 ✓、worker 沙箱 preload ✓、绿色版三平台 ✓、SDK README ✓。
+- 既有包改动有两处，均安排全量回归：Task 8 给 core/canvas 增加 CONTINUOUS（纯增量联合类型，旧 JSON 不受影响）；Task 9 给 core/browser 增加 `contentHeightMm` 增量字段。
+- 连续纸判定只看模板 `paperSize==='CONTINUOUS'`（worker 回传 `continuous` 标志），与宿主是否传 `print.paperSize` 解耦；`resolvePaper` 单一判定点。
+- 底边距不新增字段，复用模板 `margins.bottom`；测量文档 scrollHeight 含 padding-bottom，推导高度自动包含走纸留白。
+- 类型一致性：`PrintOptions.paperSize.width/height` 均为可选（Task 1），Task 11 校验逐字段校验、height 允许 0，Task 9 `resolvePaper` 以 `>0` 判定显式值，三处语义一致。
+- 已知执行期校正点（已在对应任务内写明，不是占位）：tray 图标 API、electron-vite 对 core 的外置处理（worker 主世界必须打包 core）、print 选项以 Electron 实际类型微调、pack 脚本位置。
