@@ -8,7 +8,7 @@
     :title="modelValue || '自动'"
     @click="toggle"
   >
-    <span class="preset-color-swatch" :style="{ background: normalizedValue }"></span>
+    <span class="preset-color-swatch" :style="swatchStyle"></span>
   </button>
 
   <Teleport to="body">
@@ -22,7 +22,7 @@
       @pointerdown.stop
     >
       <div class="picker-preview">
-        <span class="picker-current" :style="{ background: activeColor }"></span>
+        <span class="picker-current" :class="{ 'is-empty': !modelValue }" :style="modelValue ? { background: activeColor } : undefined"></span>
         <input
           v-model="hexInput"
           class="picker-hex"
@@ -59,14 +59,29 @@
         aria-label="色相"
       />
 
-      <div class="picker-heading">常用颜色</div>
+      <div class="picker-heading">
+        <span>常用颜色</span>
+        <button
+          v-if="clearable"
+          type="button"
+          class="picker-clear"
+          :disabled="!modelValue"
+          title="清除选中的颜色"
+          @click="selectNone"
+        >
+          <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+            <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+          </svg>
+          清除
+        </button>
+      </div>
       <div class="preset-color-grid">
         <button
           v-for="color in PRESET_COLORS"
           :key="color"
           type="button"
           class="preset-color-item"
-          :class="{ active: color.toLowerCase() === activeColor.toLowerCase() }"
+          :class="{ active: !!modelValue && color.toLowerCase() === modelValue.toLowerCase() }"
           :style="{ background: color }"
           :title="color"
           :aria-label="color"
@@ -81,11 +96,16 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { PRESET_COLORS } from '@worm-vue3-print/core/designer'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue?: string
-}>()
+  /** 是否允许清除颜色，边框等颜色必填场景可关闭 */
+  clearable?: boolean
+}>(), {
+  clearable: true,
+})
 
 const emit = defineEmits<{
+  /** 空字符串表示清除颜色（恢复默认/继承） */
   'update:modelValue': [value: string]
 }>()
 
@@ -101,10 +121,14 @@ const value = ref(0)
 const hexInput = ref('#000000')
 const areaDragging = ref(false)
 
-const normalizedValue = computed({
-  get: () => props.modelValue || '#000000',
-  set: (color: string) => emit('update:modelValue', color),
-})
+const normalizedValue = computed(() => props.modelValue || '#000000')
+
+/** 色块样式：无颜色时显示透明棋盘格 */
+const swatchStyle = computed(() => (
+  props.modelValue
+    ? { background: props.modelValue }
+    : { background: 'transparent' }
+))
 
 const activeColor = computed(() => {
   return rgbToHex(hsvToRgb(hue.value, saturation.value, value.value))
@@ -115,7 +139,14 @@ const hueModel = computed({
   set: (degree: number) => setHsv(clampDegree(degree), saturation.value, value.value),
 })
 
-watch(normalizedValue, syncFromColor, { immediate: true })
+watch(() => props.modelValue, (color) => {
+  // 无颜色时输入框与预览置空，HSV 保持上一次状态，方便用户重新选色
+  if (!color) {
+    hexInput.value = ''
+    return
+  }
+  syncFromColor(color)
+}, { immediate: true })
 
 function select(color: string) {
   hexInput.value = color.toUpperCase()
@@ -123,9 +154,20 @@ function select(color: string) {
   emit('update:modelValue', color)
 }
 
+/** 清除颜色：标题栏「清除」按钮 */
+function selectNone() {
+  if (!props.clearable) return
+  emit('update:modelValue', '')
+}
+
 function onHexInput(event: Event) {
   const input = event.target as HTMLInputElement
   const color = input.value.trim()
+  // 输入框清空时同步清除颜色（仅在允许清除时）
+  if (!color) {
+    if (props.clearable) emit('update:modelValue', '')
+    return
+  }
   if (!parseHex(color)) return
   syncFromColor(color)
   emit('update:modelValue', normalizeHex(color))
@@ -196,7 +238,7 @@ function toggle() {
 async function open() {
   const trigger = triggerRef.value
   if (!trigger) return
-  syncFromColor(normalizedValue.value)
+  if (props.modelValue) syncFromColor(normalizedValue.value)
   visible.value = true
   await nextTick()
   const rect = trigger.getBoundingClientRect()
@@ -368,6 +410,23 @@ onBeforeUnmount(() => {
   height: 24px;
   border: 1px solid rgb(0 0 0 / 12%);
   border-radius: 5px;
+  background-image: linear-gradient(45deg, #e9ecef 25%, transparent 25%, transparent 75%, #e9ecef 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 4px 4px;
+}
+
+.picker-current.is-empty {
+  position: relative;
+  background-color: #fff;
+}
+
+.picker-current.is-empty::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 0.7px), #f53f3f calc(50% - 0.7px), #f53f3f calc(50% + 0.7px), transparent calc(50% + 0.7px));
+  border-radius: 3px;
 }
 
 .picker-hex {
@@ -444,10 +503,38 @@ onBeforeUnmount(() => {
 }
 
 .picker-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-top: 10px;
   margin-bottom: 6px;
   font-size: 11px;
   color: var(--pd-text-muted, #909399);
+}
+
+/* 标题栏右侧的清除按钮 */
+.picker-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--pd-text-muted, #909399);
+  cursor: pointer;
+}
+
+.picker-clear:hover:not(:disabled) {
+  background: rgb(0 0 0 / 6%);
+  color: var(--pd-danger, #f53f3f);
+}
+
+.picker-clear:disabled {
+  opacity: .45;
+  cursor: not-allowed;
 }
 
 .preset-color-grid {

@@ -117,7 +117,7 @@
           :min="0.25"
           :max="5"
           :step="0.25" /></div>
-        <PresetColorPicker v-model="borderColor" />
+        <PresetColorPicker v-model="borderColor" :clearable="false" />
       </div>
       <div class="pd-button-group border-presets">
         <button type="button" class="pd-button small" @click="preset('all')">全部</button>
