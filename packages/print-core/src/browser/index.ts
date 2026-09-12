@@ -3,5 +3,5 @@
 // 仅可在浏览器环境使用（依赖 document / DOM 测量）。
 
 export { renderHtmlPages } from './browser-pagination.js'
-export type { BrowserRenderResult } from './browser-pagination.js'
+export type { BrowserRenderResult, BrowserRenderOptions } from './browser-pagination.js'
 export { browserCodeRenderer } from './browser-code-renderer.js'

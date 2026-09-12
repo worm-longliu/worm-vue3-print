@@ -74,24 +74,26 @@
 
           <div class="pd-field"><span class="pd-label">纸张尺寸</span>
             <select :value="paperSizeModel" class="pd-select" @change="onPaperSizeChange(($event.target as HTMLSelectElement).value)" style="width: 100%">
-              <option v-for="(_ps, key) in paperPresets" :key="key" :value="key">{{ key }}</option>
+              <option v-for="key in paperPresetKeys" :key="key" :value="key">{{ paperPresetLabel(key) }}</option>
               <option value="CUSTOM">自定义</option>
             </select>
           </div>
-          <div class="pd-field" v-if="paperSizeModel === 'CUSTOM'"><span class="pd-label">自定义宽高 (mm)</span>
+          <div class="pd-field" v-if="paperSizeModel === 'CUSTOM' || paperSizeModel === 'CONTINUOUS'"><span class="pd-label">{{ paperSizeModel === 'CONTINUOUS' ? '纸宽 (mm)' : '自定义宽高 (mm)' }}</span>
             <div class="custom-size-grid">
               <StepperInput :model-value="customWidth"
                 :min="25"
                 :max="2000"
                 @update:model-value="onCustomWidthChange" />
-              <span class="custom-size-x">×</span>
-              <StepperInput :model-value="customHeight"
-                :min="25"
-                :max="2000"
-                @update:model-value="onCustomHeightChange" />
+              <template v-if="paperSizeModel === 'CUSTOM'">
+                <span class="custom-size-x">×</span>
+                <StepperInput :model-value="customHeight"
+                  :min="25"
+                  :max="2000"
+                  @update:model-value="onCustomHeightChange" />
+              </template>
             </div>
           </div>
-          <div class="pd-field"><span class="pd-label">方向</span>
+          <div class="pd-field" v-if="paperSizeModel !== 'CONTINUOUS'"><span class="pd-label">方向</span>
             <div class="pd-radio-group" role="radiogroup">
               <label class="pd-radio"><input type="radio" value="portrait" :checked="orientationModel === 'portrait'" @change="onOrientationChange(($event.target as HTMLInputElement).value)"><span>纵向</span></label>
               <label class="pd-radio"><input type="radio" value="landscape" :checked="orientationModel === 'landscape'" @change="onOrientationChange(($event.target as HTMLInputElement).value)"><span>横向</span></label>
@@ -105,12 +107,13 @@
           </div>
 
           <h3 class="pd-divider">页边距 (mm)</h3>
+          <p v-if="paperSizeModel === 'CONTINUOUS'" class="pd-hint">底部边距即连续纸走纸留白</p>
           <div class="margin-grid">
             <div class="pd-field"><span class="pd-label">上</span>
               <StepperInput :model-value="marginTop" :min="0" :max="50" @update:model-value="onMarginTopChange" />
             </div>
             <div class="pd-field"><span class="pd-label">下</span>
-              <StepperInput :model-value="marginBottom" :min="0" :max="50" @update:model-value="onMarginBottomChange" />
+              <StepperInput :model-value="marginBottom" :min="0" :max="100" @update:model-value="onMarginBottomChange" />
             </div>
             <div class="pd-field"><span class="pd-label">左</span>
               <StepperInput :model-value="marginLeft" :min="0" :max="50" @update:model-value="onMarginLeftChange" />
@@ -177,6 +180,10 @@ const emit = defineEmits<{
 }>()
 
 const paperPresets = PAPER_PRESETS
+const paperPresetKeys = Object.keys(paperPresets)
+function paperPresetLabel(key: string): string {
+  return key === 'CONTINUOUS' ? '连续纸' : key
+}
 const searchText = ref('')
 
 const isTextType = computed(() => {
@@ -289,15 +296,33 @@ const headerHeight = computed(() => props.templateData?.header.height ?? 10)
 const footerHeight = computed(() => props.templateData?.footer.height ?? 10)
 const overlayHeight = computed(() => props.templateData?.firstPageOverlay.height ?? 0)
 
-const customWidth = computed(() => props.templateData?.customWidth ?? 210)
+const customWidth = computed(() => props.templateData?.customWidth ?? (paperSizeModel.value === 'CONTINUOUS' ? 80 : 210))
 const customHeight = computed(() => props.templateData?.customHeight ?? 297)
 
 function emitUpdate(partial: Partial<TemplateData>) {
   if (!props.templateData) return
-  emit('update:templateData', { ...props.templateData, ...partial })
+  const next = {
+    ...props.templateData,
+    ...partial,
+  } as TemplateData
+  emit('update:templateData', next)
 }
 
 function onPaperSizeChange(size: string) {
+  if (!props.templateData) return
+  if (size === 'CONTINUOUS') {
+    // 连续纸默认：80mm 宽、纵向、底边距 0（走纸留白由用户配置）
+    emitUpdate({
+      paperSize: 'CONTINUOUS',
+      customWidth: props.templateData?.customWidth ?? 80,
+      orientation: 'portrait',
+      margins: {
+        ...props.templateData!.margins,
+        bottom: props.templateData?.margins.bottom ?? 0,
+      },
+    })
+    return
+  }
   if (size === 'CUSTOM') {
     emitUpdate({ paperSize: 'CUSTOM' })
     return
@@ -487,6 +512,12 @@ function expandTab(tab: 'element' | 'page') {
 .custom-size-x {
   color: var(--pd-text-muted, #8b909c);
   font-size: 12px;
+}
+.pd-hint {
+  margin: 2px 0 6px;
+  color: var(--pd-text-muted, #8b909c);
+  font-size: 12px;
+  line-height: 1.4;
 }
 .page-bg-row {
   display: flex;

@@ -3,7 +3,7 @@
 
 // ─── 纸张 ───
 
-export type PaperSize = 'A4' | 'A3' | 'A5' | 'Letter' | 'Legal' | 'CUSTOM'
+export type PaperSize = 'A4' | 'A3' | 'A5' | 'Letter' | 'Legal' | 'CUSTOM' | 'CONTINUOUS'
 
 /** 纸张尺寸映射（mm） */
 export const PAPER_DIMENSIONS: Record<PaperSize, { width: number; height: number }> = {
@@ -13,6 +13,8 @@ export const PAPER_DIMENSIONS: Record<PaperSize, { width: number; height: number
   Letter: { width: 216, height: 279 },
   Legal: { width: 216, height: 356 },
   CUSTOM: { width: 210, height: 297 },
+  // 连续纸：默认 80mm 热敏；高度仅为设计画布高度，出纸按内容推导
+  CONTINUOUS: { width: 80, height: 297 },
 }
 
 // ─── 模板数据模型（PRD 3.2 节） ───
@@ -20,9 +22,9 @@ export const PAPER_DIMENSIONS: Record<PaperSize, { width: number; height: number
 export interface TemplateData {
   paperSize: PaperSize
   orientation: 'portrait' | 'landscape'
-  /** 自定义纸张宽度（mm），仅 paperSize='CUSTOM' 时生效 */
+  /** 自定义纸张宽度（mm），paperSize='CUSTOM' 时生效；CONTINUOUS 时为纸宽（默认 80） */
   customWidth?: number
-  /** 自定义纸张高度（mm），仅 paperSize='CUSTOM' 时生效 */
+  /** 自定义纸张高度（mm），仅 paperSize='CUSTOM' 时生效；CONTINUOUS 时不使用（固定 297 设计画布，出纸按内容推导） */
   customHeight?: number
   /** 页面（纸张）背景色；未设置时默认白色 */
   pageBackground?: string
@@ -205,13 +207,23 @@ export interface PageSection {
 
 // ─── 纸张辅助 ───
 
-/** 获取纸张物理尺寸（考虑方向） */
+/** 获取纸张物理尺寸（考虑方向；CONTINUOUS 强制纵向，宽度取 customWidth，默认 80） */
 export function getPaperDimensions(template: TemplateData): { width: number; height: number } {
-  const base = template.paperSize === 'CUSTOM'
-    ? { width: template.customWidth ?? 210, height: template.customHeight ?? 297 }
-    : PAPER_DIMENSIONS[template.paperSize]
-  if (template.orientation === 'landscape') {
+  const base =
+    template.paperSize === 'CUSTOM' || template.paperSize === 'CONTINUOUS'
+      ? {
+          width: template.customWidth ?? (template.paperSize === 'CONTINUOUS' ? 80 : 210),
+          height: template.customHeight ?? 297,
+        }
+      : PAPER_DIMENSIONS[template.paperSize]
+  // 连续纸只有纵向
+  if (template.orientation === 'landscape' && template.paperSize !== 'CONTINUOUS') {
     return { width: base.height, height: base.width }
   }
   return { ...base }
+}
+
+/** 是否连续纸（热敏/标签）：出纸高度按渲染内容推导 */
+export function isContinuousPaper(template: { paperSize: string }): boolean {
+  return template.paperSize === 'CONTINUOUS'
 }

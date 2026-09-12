@@ -26,6 +26,8 @@ export interface GenerateOptions {
   isMeasurementPass?: boolean
   /** 条码/二维码 SVG 渲染器；缺省或渲染抛错时降级为文本占位 */
   codeRenderer?: CodeRenderer
+  /** 连续纸探针推导出的最终纸高（mm）；仅最终生成时传入，使 @page/.print-page/footer 对齐 */
+  pageHeightMm?: number
 }
 
 /**
@@ -40,7 +42,7 @@ export function generateHtml(
   printData?: Record<string, any>,
   options?: GenerateOptions,
 ): string {
-  const css = buildPageCss(template)
+  const css = buildPageCss(template, options?.pageHeightMm)
   const isMeasure = options?.isMeasurementPass === true
   const totalPages = isMeasure ? 1 : pageLayouts.length
   const ctx: RenderCtx = { codeRenderer: options?.codeRenderer }
@@ -118,7 +120,7 @@ function generateFinalHtml(
 <meta charset="UTF-8">
 <style>${css}</style>
 </head>
-<body>
+<body${template.paperSize === 'CONTINUOUS' ? ' class="continuous"' : ''}>
 ${pagesHtml}
 </body>
 </html>`

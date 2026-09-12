@@ -5,7 +5,8 @@
 import { bindData } from '../render/data-binder.js'
 import { generateHtml } from '../render/html-generator.js'
 import { paginate } from '../render/pagination-engine.js'
-import { getPaperDimensions } from '../render/types.js'
+import { getPaperDimensions, isContinuousPaper } from '../render/types.js'
+import { composeContinuousHeight } from '../render/continuous-paper.js'
 import type {
   TemplateData as PrintTemplateData,
   MeasuredElement,
@@ -25,6 +26,15 @@ export interface BrowserRenderResult {
   pageCount: number
   /** 分页布局（调试/高级用途） */
   pageLayouts: PageLayout[]
+  /** 最终纸张尺寸（mm，已含方向）；连续纸为探针推导后的高度，其余为模板纸张 */
+  paperMm: { width: number; height: number }
+  /** 模板是否连续纸 */
+  continuous: boolean
+}
+
+export interface BrowserRenderOptions {
+  /** 连续纸显式纸高覆盖（mm，宿主逃生门）；仅对 CONTINUOUS 生效，undefined 时探针推导 */
+  paperHeightMm?: number
 }
 
 /**
@@ -33,12 +43,14 @@ export interface BrowserRenderResult {
  * @param printData 业务数据
  * @param baseUrl 图片相对路径拼接前缀
  * @param codeRenderer 条码渲染器（browserCodeRenderer）
+ * @param options 渲染选项（连续纸纸高覆盖等）
  */
 export async function renderHtmlPages(
   template: PrintTemplateData,
   printData?: Record<string, any> | Record<string, any>[],
   baseUrl?: string,
   codeRenderer?: CodeRenderer,
+  options?: BrowserRenderOptions,
 ): Promise<BrowserRenderResult> {
   // Step 1: 数据绑定
   const boundTemplate = bindData(template, printData, baseUrl)
@@ -46,15 +58,96 @@ export async function renderHtmlPages(
   // Step 2: 第一遍测量（隐藏 iframe）
   const measuredElements = await measureElements(boundTemplate, codeRenderer)
 
-  // Step 3: 分页计算（与服务端同一套算法）
+  // Step 3: 分页计算（与服务端同一套算法；连续纸内容高 Infinity → 恒单页）
   const pageLayouts = paginate(boundTemplate, measuredElements)
 
-  // Step 4: 最终多页 HTML
+  const continuous = isContinuousPaper(boundTemplate)
+  const templatePaper = getPaperDimensions(boundTemplate)
+
+  // Step 4: 连续纸推导最终纸高
+  // 先用 297 设计高度生成一次最终单页 HTML 作为探针页，量出内容区最大底边，
+  // 再组合出纸高（flow-group 跟随区/动态表格超高由真实引擎布局如实反映）。
+  let pageHeightMm: number | undefined
+  if (continuous) {
+    const override = options?.paperHeightMm
+    if (override && override > 0) {
+      pageHeightMm = override
+    } else {
+      const probeHtml = generateHtml(
+        boundTemplate,
+        pageLayouts,
+        printData as Record<string, any>,
+        { codeRenderer },
+      )
+      const contentBottomMm = await probeContentBottomMm(probeHtml, templatePaper.width)
+      pageHeightMm = composeContinuousHeight(boundTemplate, contentBottomMm)
+    }
+  }
+
+  // Step 5: 最终 HTML（连续纸用推导高度再生成一次，@page/.print-page/footer 全部对齐）
   const html = generateHtml(boundTemplate, pageLayouts, printData as Record<string, any>, {
     codeRenderer,
+    pageHeightMm,
   })
 
-  return { html, pageCount: pageLayouts.length, pageLayouts }
+  return {
+    html,
+    pageCount: pageLayouts.length,
+    pageLayouts,
+    paperMm: { width: templatePaper.width, height: pageHeightMm ?? templatePaper.height },
+    continuous,
+  }
+}
+
+/**
+ * 连续纸探针：把分页后的最终单页 HTML（纸高仍为 297）载入离屏 iframe，
+ * 遍历 .content-area 全部后代取相对 .print-page 顶部的最大底边（mm）。
+ * absolute 元素的几何位置不依赖纸高，overflow:hidden 不改变 getBoundingClientRect，
+ * flow-group/动态表格/小计汇总/重叠均由引擎如实计算。
+ *
+ * 依赖真实布局：happy-dom 的 getBoundingClientRect 恒返回 0，本函数不走单测，
+ * 正确性由设计器手工验证与真机打印清单保证。
+ */
+async function probeContentBottomMm(finalHtml: string, paperWidthMm: number): Promise<number> {
+  const iframe = document.createElement('iframe')
+  iframe.setAttribute('aria-hidden', 'true')
+  iframe.style.cssText =
+    `position:fixed;left:-10000px;top:0;width:${paperWidthMm}mm;height:297mm;` +
+    'border:0;visibility:hidden;pointer-events:none;'
+  document.body.appendChild(iframe)
+  try {
+    const win = iframe.contentWindow
+    const doc = iframe.contentDocument
+    if (!win || !doc) throw new Error('无法创建连续纸探针 iframe')
+
+    doc.open()
+    doc.write(finalHtml)
+    doc.close()
+
+    await waitForRenderReady(win)
+
+    const page = doc.querySelector('.print-page') as HTMLElement | null
+    const area = doc.querySelector('.content-area') as HTMLElement | null
+    if (!page || !area) return 0
+
+    const pageRect = page.getBoundingClientRect()
+    let maxBottom = 0
+    area.querySelectorAll<HTMLElement>('*').forEach(node => {
+      const r = node.getBoundingClientRect()
+      // 仅统计可见且有面积的节点，避免空容器/折叠边框干扰
+      if (r.height > 0) {
+        maxBottom = Math.max(maxBottom, (r.bottom - pageRect.top) / PX_PER_MM)
+      }
+    })
+    // content-area 自身（无绝对定位子元素时的兜底，如空模板）
+    const ar = area.getBoundingClientRect()
+    if (ar.height > 0) {
+      maxBottom = Math.max(maxBottom, (ar.bottom - pageRect.top) / PX_PER_MM)
+    }
+    return maxBottom
+  } finally {
+    iframe.remove()
+  }
 }
 
 // ─── 隐藏 iframe 测量 ───

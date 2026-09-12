@@ -3,8 +3,8 @@
 
 // ─── 新模板数据模型（PRD 3.2 节） ───
 
-/** 纸张尺寸 */
-export type PaperSize = 'A4' | 'A3' | 'A5' | 'Letter' | 'Legal' | 'CUSTOM'
+/** 纸张尺寸；CONTINUOUS=连续纸（热敏/标签，设计高度固定 297mm，出纸高度按内容推导，底边距用 margins.bottom） */
+export type PaperSize = 'A4' | 'A3' | 'A5' | 'Letter' | 'Legal' | 'CUSTOM' | 'CONTINUOUS'
 
 /** 元素所属区域（运行时标记，序列化时剥离；区域元素 left/top 相对所在区域左上角，单位 pt） */
 export type ElementZone = 'content' | 'header' | 'footer'
@@ -40,9 +40,9 @@ export interface TemplateData {
   elements: TemplateElement[] // 内容区主体元素
   /** 元素坐标单位（新保存模板固定 'mm'；旧数据无此字段按 pt 迁移） */
   unit?: 'pt' | 'mm'
-  /** 自定义纸张宽度（mm），仅 paperSize='CUSTOM' 时有效 */
+  /** 自定义纸张宽度（mm），paperSize='CUSTOM' 时有效；CONTINUOUS 时为纸宽（默认 80） */
   customWidth?: number
-  /** 自定义纸张高度（mm），仅 paperSize='CUSTOM' 时有效 */
+  /** 自定义纸张高度（mm），仅 paperSize='CUSTOM' 时有效；CONTINUOUS 时不使用（固定 297 设计画布） */
   customHeight?: number
   /** 页面（纸张）背景色；未设置时默认白色 */
   pageBackground?: string

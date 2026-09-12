@@ -12,9 +12,15 @@ export function mm(value: number): string {
 /**
  * 生成完整的打印页面 CSS。
  * 包含纸张尺寸、边距、页眉页脚、内容区、首页叠加区域等样式。
+ * @param pageHeightMm 连续纸由浏览器探针推导出的最终纸高（mm）；传入时替换模板纸张高度，
+ *                     使 @page/.print-page/footer 全部对齐该高度。普通纸不传。
  */
-export function buildPageCss(template: TemplateData): string {
-  const paper = getPaperDimensions(template)
+export function buildPageCss(template: TemplateData, pageHeightMm?: number): string {
+  const basePaper = getPaperDimensions(template)
+  const paper =
+    pageHeightMm && pageHeightMm > 0
+      ? { width: basePaper.width, height: pageHeightMm }
+      : basePaper
   const { top: mt, right: mr, bottom: mb, left: ml } = template.margins
   const headerH = template.header?.height ?? 0
   const footerH = template.footer?.height ?? 0

@@ -110,8 +110,12 @@ export function paginate(
   const overlayH = template.firstPageOverlay?.height ?? 0
 
   // PRD 4.3: contentHeight = paperHeight - marginTop - marginBottom - headerHeight - footerHeight
-  const contentHeight = paper.height - mt - mb - headerH - footerH
-  if (contentHeight <= 0) {
+  const continuous = template.paperSize === 'CONTINUOUS'
+  // 连续纸：内容高视为无限，单页承载全部（实际纸高由浏览器探针 + composeContinuousHeight 推导）
+  const contentHeight = continuous
+    ? Number.POSITIVE_INFINITY
+    : paper.height - mt - mb - headerH - footerH
+  if (!continuous && contentHeight <= 0) {
     throw new Error(
       `页面可用高度不足: paper=${paper.height}mm, margins=${mt + mb}mm, header=${headerH}mm, footer=${footerH}mm`,
     )
