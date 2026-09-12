@@ -75,3 +75,25 @@ npm run build
 2. 检查浏览器字体、图片是否加载完成；分页前会等待，但有兜底超时。
 3. 比较第一遍测量结果和 `paginate` 输入，不要只看最终 HTML。
 4. 服务端 PDF 最终由 monorepo 内的 `services/print-render` 服务负责（经 workspace 软链使用同仓库 core）；先确认 render 服务与浏览器使用一致的 core 代码。
+
+## 调用了组件上不存在的方法/事件
+
+- `PrintDesigner` 只 emit `save`、`preview`，只 expose `getTemplateJson()`。
+- 不存在 `back` 事件（返回导航属宿主职责），也不存在 `setTemplateMeta` 方法——若宿主用无类型 `ref` + 可选链调用它，TS 不报错但**静默失效**。模板名称/业务类型/备注等元信息由宿主自行展示和持久化。
+- 以包内 `.d.ts`（`dist/components/PrintDesigner.vue.d.ts`）为唯一契约来源，不要信旧文档或 demo README 的过时描述。
+
+## 模板重新进入设计器后是空白模板
+
+1. 回填前先 `JSON.parse(elements)`，并判断 `json.paperSize` 存在才赋给 `initial-template`，否则保留 `createDefaultTemplate()`（损坏/空 elements 会拖垮画布）。
+2. 新建模板时 elements 不要留空，服务端应存入 `JSON.stringify(createDefaultTemplate())`。
+3. 确认设计器页父容器有确定高度（`height:100%` 链不断）。
+
+## render 微服务相关（服务端 PDF）
+
+- **401 UNAUTHORIZED**：请求头 `X-Render-Key` 与服务端 `RENDER_API_KEY` 不一致；确认密钥只在服务端/代理层注入。
+- **504 RENDER_TIMEOUT**：超过服务端 30s 上限；复杂模板先排查图片/字体加载，宿主后端读取超时要 ≥30s（建议 40s）。
+- **PDF 中文方块/分页错位**：渲染服务器缺中文字体，装 `fonts-noto-cjk`（或对应中文字体）后重试。
+- **图片不显示/403**：渲染进程访问不到图片地址；相对路径用正确的对外 `baseUrl`，内网地址/鉴权图片要保证渲染环境可达。
+- **浏览器起不来**：确认 `PLAYWRIGHT_CHROME_PATH`、Linux 已装 Chromium 与 `libnss3 libatk-bridge2.0-0 libx11-xcb1`，容器内使用 `--no-sandbox`（已默认）。
+- **前端跨域/密钥泄露**：浏览器不要直连 3001；dev 用 Vite proxy 注入密钥，生产用宿主后端反代。参见 `demo/vite.config.ts`。
+- 先用 `GET /health` 判断服务与浏览器池状态，再排查业务请求。

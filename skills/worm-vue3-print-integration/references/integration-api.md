@@ -98,6 +98,7 @@ Props：
 - `request-screenshot?: (request: ScreenshotRequest) => Promise<Blob>`
 - `upload-image?: (file: File) => Promise<string>`
 - `load-default-template?: () => TemplateData | Promise<TemplateData | null | undefined> | null | undefined`
+- `show-help?: boolean`（默认 `true`，传 `false` 关闭帮助入口）
 
 事件：
 
@@ -106,9 +107,9 @@ Props：
 
 暴露方法：
 
-- `getTemplateJson(): TemplateData | null | undefined`
+- `getTemplateJson(): TemplateData`
 
-不要假设存在 `back` 事件；返回上一页等导航属于宿主业务层。
+不要假设存在 `back` 事件；返回上一页等导航属于宿主业务层。组件**只 expose 了 `getTemplateJson`**，不存在 `setTemplateMeta` 等方法——模板名称、业务类型、备注等元信息由宿主自行维护并随保存接口提交，不要试图写进设计器实例。
 
 ### `PrintHtmlPreview`
 
