@@ -27,6 +27,15 @@ interface PendingRequest {
   timer: ReturnType<typeof setTimeout>
 }
 
+/** 探测期间的内部信号：服务端明确拒绝鉴权，应停止端口探测 */
+class AuthRejectedError extends Error {
+  readonly code = 'UNAUTHORIZED' as const
+  constructor(message: string) {
+    super(message)
+    this.name = 'AuthRejectedError'
+  }
+}
+
 export class WsTransport {
   private ws: WebSocket | null = null
   private status_: TransportStatus = 'disconnected'
@@ -74,7 +83,14 @@ export class WsTransport {
         this.reconnectAttempts = 0
         this.setStatus('connected')
         return this.hello
-      } catch {
+      } catch (err) {
+        if (err instanceof AuthRejectedError) {
+          this.setStatus('disconnected')
+          throw new WormPrintError(
+            'UNAUTHORIZED',
+            err.message || '配对 token 无效或来源未授权',
+          )
+        }
         // 该端口无客户端，继续探测下一个
       }
     }
@@ -147,6 +163,10 @@ export class WsTransport {
           settled = true
           this.bindLifecycle(ws)
           resolve(msg.payload as HelloResponsePayload)
+        } else if (!msg.ok && msg.error.code === 'UNAUTHORIZED') {
+          if (settled) return
+          settled = true
+          reject(new AuthRejectedError(msg.error.message))
         } else if (!settled) {
           settled = true
           reject(new Error('握手失败'))

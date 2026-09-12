@@ -35,7 +35,12 @@ class FakeWebSocket {
     this.sent.push(data)
     const frame = JSON.parse(data)
     if (frame.type === MESSAGE_TYPES.HELLO) {
-      queueMicrotask(() =>
+      queueMicrotask(() => {
+        // 模拟安全开关开启后的鉴权拒绝
+        if (this.url.includes('token=bad')) {
+          this.emit({ id: frame.id, ok: false, error: { code: 'UNAUTHORIZED', message: 'denied' } })
+          return
+        }
         this.emit({
           id: frame.id,
           ok: true,
@@ -44,8 +49,8 @@ class FakeWebSocket {
             version: '0.1.0',
             port: Number(new URL(this.url).port),
           },
-        }),
-      )
+        })
+      })
     }
   }
 }
@@ -97,6 +102,16 @@ describe('WsTransport.connect', () => {
     expect(FakeWebSocket.instances[0]!.url).toContain('token=abc123')
     FakeWebSocket.instances[0]!.open()
     await p
+  })
+
+  it('服务端返回 UNAUTHORIZED 时立即中止探测，不透传为 CLIENT_NOT_RUNNING', async () => {
+    const t = setupTransport({ token: 'bad' })
+    const p = t.connect()
+    await Promise.resolve()
+    FakeWebSocket.instances[0]!.open()
+    await expect(p).rejects.toMatchObject({ code: 'UNAUTHORIZED' })
+    // 没有继续开启第二个端口的探测连接
+    expect(FakeWebSocket.instances).toHaveLength(1)
   })
 })
 
