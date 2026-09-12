@@ -27,9 +27,9 @@ export function useDrag(target: { value: HTMLElement | null }, options: DragOpti
 
   function onMouseDown(e: MouseEvent) {
     if (options.disabled) return
-    // 忽略 resize 手柄点击
+    // 忽略 resize 手柄点击；条码等 SVG 元素的 e.target 是 SVGElement，需一并放行（classList 在 Element 基类上）
     const targetEl = e.target
-    if (!(targetEl instanceof HTMLElement) || targetEl.classList.contains('resize-handle')) return
+    if (!(targetEl instanceof Element) || targetEl.classList.contains('resize-handle')) return
 
     isDragging.value = true
     downAltKey = e.altKey
