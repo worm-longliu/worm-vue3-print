@@ -1,0 +1,38 @@
+{
+  "name": "@worm-vue3-print/client",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "worm-vue3-print 静默打印桌面客户端的浏览器端 SDK（WebSocket 连接/打印机枚举/静默打印）",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "print",
+    "silent-print",
+    "electron",
+    "websocket",
+    "worm-vue3-print"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "~5.9.3",
+    "vitest": "^3.0.0"
+  }
+}
