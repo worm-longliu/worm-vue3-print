@@ -2544,10 +2544,22 @@ Expected: 构建通过。
 
 修改 `packages/print-canvas/src/components/PropertyPanel.vue`：
 
-a. 纸张尺寸下拉在 `CUSTOM` 选项前增加：
+a. 纸张尺寸下拉：CONTINUOUS 已在 Task 8 Step 4 加入 core 的 `PAPER_PRESETS`，现有 `v-for="(_ps, key) in paperPresets"` 会自动遍历到它，**不要**再在 CUSTOM option 旁手写重复 option；改为给 key 加中文显示名。下拉改为：
 
 ```html
-              <option value="CONTINUOUS">连续纸</option>
+            <select :value="paperSizeModel" class="pd-select" @change="onPaperSizeChange(($event.target as HTMLSelectElement).value)" style="width: 100%">
+              <option v-for="key in paperPresetKeys" :key="key" :value="key">{{ paperPresetLabel(key) }}</option>
+              <option value="CUSTOM">自定义</option>
+            </select>
+```
+
+script 区增加（`paperPresets` 常量保留给尺寸查询）：
+
+```ts
+const paperPresetKeys = Object.keys(paperPresets)
+function paperPresetLabel(key: string): string {
+  return key === 'CONTINUOUS' ? '连续纸' : key
+}
 ```
 
 b. 自定义宽高区块条件改为同时覆盖 CUSTOM 与 CONTINUOUS，但连续纸只显示宽度：
