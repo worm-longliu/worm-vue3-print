@@ -34,13 +34,15 @@
 ## 本地开发
 
 浏览器**不随 `npm install` 自动下载**（仓库根 `.npmrc` 设置了
-`playwright_skip_browser_download=true`），首次开发需手动安装一次 Chromium：
+`playwright_skip_browser_download=true`）。运行时 `BrowserPool` 会自动探测并使用
+系统已安装的 Chromium/Chrome（PATH → 常见安装路径），因此本机有 Chrome 时无需额外操作；
+只有系统中没有任何 Chromium 内核浏览器时，才需要手动安装一次：
 
 ```bash
 # 在仓库根安装依赖
 npm install
 
-# 仅首次：安装 Playwright Chromium（macOS 也可不装，运行时优先使用系统 Chrome）
+# 仅在系统没有 Chromium/Chrome 时执行：安装 Playwright 自带 Chromium
 npx playwright install chromium
 
 # 常用命令（仓库根执行）
@@ -50,7 +52,8 @@ npm run start -w @worm-vue3-print/render   # 生产运行（node dist/server.js�
 npm run test -w @worm-vue3-print/render    # vitest（截图/分页用例需可启动浏览器）
 ```
 
-> macOS 下 `BrowserPool` 优先使用系统 Chrome，其次回退 Playwright 自带 Chromium。
+> `BrowserPool` 自动探测系统浏览器（env 覆盖 → PATH → 常见安装路径），找不到才回退
+> Playwright 自带 Chromium。
 > render 的浏览器集成测试不包含在根 `npm test` 中（根测试仅覆盖 core/canvas），
 > 由 CI 的独立 `render` job 执行。
 
@@ -60,14 +63,11 @@ npm run test -w @worm-vue3-print/render    # vitest（截图/分页用例需可�
 |------|--------|------|
 | `PORT` | `3001` | 服务端口 |
 | `RENDER_API_KEY` | `dev-render-key` | `X-Render-Key` 鉴权密钥 |
-| `PLAYWRIGHT_CHROME_PATH` | （空） | 自定义 Chromium/Chrome 可执行路径；不设时优先 macOS 系统 Chrome，再回退 Playwright 自带 Chromium |
+| `PLAYWRIGHT_CHROME_PATH` | （空） | 自定义 Chromium/Chrome 可执行路径，优先级最高；不设时自动探测 PATH 与系统常见安装位置，再回退 Playwright 自带 Chromium |
 
 ## Linux 无界面（命令行）环境浏览器安装
 
-打印依赖 Playwright 启动浏览器。在不带图形界面的 Linux 服务器上，可安装
-Chromium 或 Google Chrome 并以 headless 模式运行。`BrowserPool.launchBrowser`
-优先读取环境变量 `PLAYWRIGHT_CHROME_PATH`，其次使用 macOS 系统 Chrome，最后
-回退到 Playwright 自带 Chromium。
+打印依赖 Playwright 启动浏览器。**推荐直接安装系统 Chromium/Chrome，`BrowserPool` 会自动探测使用，无需下载 Playwright 浏览器、也无需设置环境变量。** 探测顺序：`PLAYWRIGHT_CHROME_PATH` → PATH 中的 `chromium`/`google-chrome` 等 → 各平台常见安装路径 → Playwright 自带 Chromium。
 
 **Debian/Ubuntu 安装 Chromium：**
 
@@ -83,16 +83,16 @@ wget -qO- https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.
   -O /tmp/chrome.deb && apt-get install -y /tmp/chrome.deb
 ```
 
-**启用系统 Chrome（二选一）：**
+安装在非标准路径（或需要强制指定）时才设置：
 
 ```bash
-export PLAYWRIGHT_CHROME_PATH="$(command -v chromium)"   # Chromium
-# 或
-export PLAYWRIGHT_CHROME_PATH="$(command -v google-chrome)"   # Google Chrome
+export PLAYWRIGHT_CHROME_PATH="/opt/google/chrome/chrome"
 ```
 
 提示：容器内启动依赖 `--no-sandbox` 参数（`browser-pool.ts` 已默认带上）；若提示
-缺少共享库，安装 `libnss3 libatk-bridge2.0-0 libx11-xcb1` 后重试。
+缺少共享库，安装 `libnss3 libatk-bridge2.0-0 libx11-xcb1` 后重试。系统浏览器与
+Playwright 自带 Chromium 都不存在时，服务启动会报明确错误，按提示安装系统浏览器或执行
+`npx playwright install chromium` 即可。
 
 ## Docker 构建
 

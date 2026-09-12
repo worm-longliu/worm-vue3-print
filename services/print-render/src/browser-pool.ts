@@ -3,6 +3,80 @@
 
 import { chromium, type Browser, type Page } from 'playwright'
 import * as fs from 'node:fs'
+import * as path from 'node:path'
+
+// ─── 系统浏览器探测 ───
+// 优先复用系统已安装的 Chromium/Chrome，避免 npx playwright install 下载。
+// 顺序：环境变量 → PATH 查找 → 各平台常见安装路径；全部未命中再回退 Playwright 自带浏览器。
+
+const SYSTEM_BROWSER_CANDIDATES: Partial<Record<NodeJS.Platform, string[]>> = {
+  darwin: [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+  ],
+  linux: [
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/microsoft-edge',
+    '/snap/bin/chromium',
+  ],
+  win32: [
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+  ],
+}
+
+const PATH_BROWSER_NAMES: Record<string, string[]> = {
+  darwin: ['google-chrome', 'chromium', 'chromium-browser', 'microsoft-edge'],
+  linux: ['chromium', 'chromium-browser', 'google-chrome', 'google-chrome-stable', 'microsoft-edge'],
+  win32: ['chrome.exe', 'msedge.exe'],
+}
+
+/** 在 PATH（含 Windows PATHEXT）中查找可执行文件，返回绝对路径或 undefined */
+function resolveFromPath(bin: string): string | undefined {
+  const exeExts = process.platform === 'win32'
+    ? (process.env.PATHEXT || '.EXE;.CMD;.BAT').split(';')
+    : ['']
+  const dirs = (process.env.PATH || '').split(path.delimiter).filter(Boolean)
+  for (const dir of dirs) {
+    for (const ext of exeExts) {
+      const candidate = path.join(dir, bin + ext)
+      try {
+        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate
+      } catch {
+        // ignore stat errors
+      }
+    }
+  }
+  return undefined
+}
+
+/** 解析系统中已存在的浏览器可执行路径；找不到返回 undefined */
+function resolveSystemBrowser(): string | undefined {
+  // 1. 环境变量显式指定（最高优先级）
+  const envPath = process.env.PLAYWRIGHT_CHROME_PATH
+  if (envPath) {
+    if (fs.existsSync(envPath)) return envPath
+    console.warn(`[BrowserPool] PLAYWRIGHT_CHROME_PATH 指向的文件不存在: ${envPath}，继续探测系统浏览器`)
+  }
+
+  // 2. PATH 查找（Linux 上 apt/snap 安装的 chromium 通常在 /usr/bin）
+  for (const name of PATH_BROWSER_NAMES[process.platform] || []) {
+    const found = resolveFromPath(name)
+    if (found) return found
+  }
+
+  // 3. 各平台常见安装路径
+  for (const candidate of SYSTEM_BROWSER_CANDIDATES[process.platform] || []) {
+    if (fs.existsSync(candidate)) return candidate
+  }
+
+  return undefined
+}
 
 // ─── 内存检测 ───
 
@@ -175,10 +249,8 @@ export class BrowserPool {
   }
 
   private async launchBrowser(): Promise<Browser> {
-    // 优先使用环境变量指定的 Chrome，其次 macOS 系统 Chrome，最后回退到 Playwright 自带 Chromium
-    const macChrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-    const executablePath = process.env.PLAYWRIGHT_CHROME_PATH
-      || (fs.existsSync(macChrome) ? macChrome : undefined)
+    // 选择顺序：PLAYWRIGHT_CHROME_PATH → PATH 中的 chromium/chrome → 各平台常见安装路径 → Playwright 自带 Chromium
+    const executablePath = resolveSystemBrowser()
 
     const opts: Parameters<typeof chromium.launch>[0] = {
       headless: true,
@@ -189,6 +261,19 @@ export class BrowserPool {
     }
     if (executablePath) {
       opts.executablePath = executablePath
+      console.log(`[BrowserPool] 使用系统浏览器: ${executablePath}`)
+    } else {
+      // 根 .npmrc 默认 playwright_skip_browser_download=true，未装系统浏览器时这里会启动失败；
+      // 提前抛出可读错误，避免 Playwright 原始的「Executable doesn't exist」误导排查。
+      const bundledPath = chromium.executablePath()
+      if (!bundledPath || !fs.existsSync(bundledPath)) {
+        throw new Error(
+          '[BrowserPool] 未找到可用浏览器：请安装系统 Chromium/Chrome（如 apt-get install chromium），'
+          + '或设置 PLAYWRIGHT_CHROME_PATH 指向浏览器可执行文件；'
+          + '也可执行 npx playwright install chromium 下载 Playwright 自带版本。',
+        )
+      }
+      console.log(`[BrowserPool] 未找到系统浏览器，回退 Playwright 自带 Chromium: ${bundledPath}`)
     }
     return chromium.launch(opts)
   }
