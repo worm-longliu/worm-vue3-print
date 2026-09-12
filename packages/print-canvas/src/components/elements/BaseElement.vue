@@ -280,6 +280,8 @@ const { startResize, cleanup: cleanupResize } = useResize({
 
 function onMouseDown(e: MouseEvent) {
   if (!props.designMode) return
+  // 仅左键触发选中，右键交给 contextmenu 菜单
+  if (e.button !== 0) return
   emit('select', props.element.id, e.ctrlKey || e.metaKey)
 }
 

@@ -84,11 +84,15 @@
       }"
     />
 
-    <!-- 右键菜单 -->
+    <!-- 右键菜单：fixed 定位脱离滚动容器，避免撑大 scrollWidth/Height 触发滚动条 -->
     <div
       v-if="contextMenu.visible"
+      ref="contextMenuRef"
       class="context-menu"
-      :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+      :style="{
+        left: (contextMenu.x + contextMenu.flipX) + 'px',
+        top: (contextMenu.y + contextMenu.flipY) + 'px',
+      }"
     >
       <template v-if="contextMenu.targetId">
         <div class="context-menu-item" @click="emitAction('copy')">复制</div>
@@ -473,17 +477,42 @@ function onMarqueeUp() {
 }
 
 // ─── 右键菜单 ───
-const contextMenu = reactive({ visible: false, x: 0, y: 0, targetId: null as string | null })
+// 菜单使用 position: fixed，坐标为视口坐标（e.clientX/Y），脱离 overflow:auto
+// 容器，避免菜单撑大 scrollWidth/Height 而出现滚动条导致画布抖动
+const contextMenu = reactive({
+  visible: false,
+  x: 0,
+  y: 0,
+  /** 右/下边缘空间不足时的翻转移位（负值），由实际菜单尺寸测量得出 */
+  flipX: 0,
+  flipY: 0,
+  targetId: null as string | null,
+})
+const contextMenuRef = ref<HTMLElement | null>(null)
 
 function onContextMenu(e: MouseEvent, elId?: string) {
   // 元素右键:由 BaseElement 上抛(已 stop);空白右键:无 elId,仅背景区域弹菜单
   if (!elId && !isCanvasBackground(e.target)) return
-  const containerRect = rootRef.value?.getBoundingClientRect()
-  if (!containerRect) return
-  contextMenu.x = e.clientX - containerRect.left
-  contextMenu.y = e.clientY - containerRect.top
   contextMenu.targetId = elId ?? null
   contextMenu.visible = true
+  contextMenu.x = e.clientX
+  contextMenu.y = e.clientY
+  contextMenu.flipX = 0
+  contextMenu.flipY = 0
+
+  // 菜单渲染后按实际尺寸做视口边缘翻转，防止右下区域右键时菜单溢出屏幕
+  void nextTick(() => {
+    const menu = contextMenuRef.value
+    if (!menu) return
+    const rect = menu.getBoundingClientRect()
+    const gap = 4
+    if (e.clientX + rect.width + gap > window.innerWidth) {
+      contextMenu.flipX = -rect.width
+    }
+    if (e.clientY + rect.height + gap > window.innerHeight) {
+      contextMenu.flipY = -rect.height
+    }
+  })
 
   // 点击其他区域关闭：先清理旧监听器防止重复绑定
   window.removeEventListener('mousedown', closeContextMenu)
@@ -577,7 +606,12 @@ onBeforeUnmount(() => {
 <style scoped>
 .canvas-area {
   flex: 1;
-  overflow: auto;
+  /* 横向：常驻滚动条轨道预留占位；竖向：用 scrollbar-gutter 预留槽位
+     （无溢出时不渲染轨道，视觉更干净）。二者保证缩放/窗口尺寸变化导致
+     滚动条出现或消失时不挤压画布，避免抖动 */
+  overflow-x: scroll;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
   /* flex + margin:auto：纸张在可视区内水平/垂直居中；内容超出容器时
      margin auto 自动退化为起点对齐，滚动条仍可达纸张两端 */
   display: flex;
@@ -621,9 +655,9 @@ onBeforeUnmount(() => {
   pointer-events: none;
   z-index: 10000;
 }
-/* 右键菜单 */
+/* 右键菜单：fixed 定位，不参与滚动容器的内容尺寸计算，避免出现滚动条 */
 .context-menu {
-  position: absolute;
+  position: fixed;
   background: var(--pd-surface, #ffffff);
   border: 1px solid var(--pd-border-soft, #e9ecf2);
   border-radius: 8px;

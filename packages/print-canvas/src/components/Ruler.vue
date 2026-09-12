@@ -219,6 +219,8 @@ function axialFromEvent(e: MouseEvent): number | null {
 }
 
 function onDown(e: MouseEvent) {
+  // 仅响应左键，右键不从标尺拖出参考线
+  if (e.button !== 0) return
   dragging = true
   e.preventDefault()
   window.addEventListener('mousemove', onWinMove)

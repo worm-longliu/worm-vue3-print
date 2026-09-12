@@ -54,6 +54,8 @@ export function useResize(options: ResizeOptions) {
   let activePoint: ResizePoint | null = null
 
   function startResize(point: ResizePoint, e: MouseEvent) {
+    // 仅响应左键，右键/中键不启动缩放（右键由 contextmenu 处理）
+    if (e.button !== 0) return
     activePoint = point
     startX = e.clientX
     startY = e.clientY

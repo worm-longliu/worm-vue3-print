@@ -318,6 +318,8 @@ function requestAdsorb(rect: ElementRect): ReturnType<typeof rawRequestAdsorb> {
 
 /** 拖动手动参考线 */
 function onGuideDown(e: MouseEvent, g: AlignLine) {
+  // 仅响应左键，右键不拖动参考线
+  if (e.button !== 0) return
   const startPt = g.position
   const startX = e.clientX, startY = e.clientY
   const s = props.scale ?? 1
@@ -454,6 +456,8 @@ function buildWatermarkSvg(text: string, color: string, rotate: number): string 
 const zoneResizing = ref<{ zone: 'header' | 'footer'; startY: number; startH: number } | null>(null)
 
 function startZoneResize(zone: 'header' | 'footer', e: MouseEvent) {
+  // 仅响应左键，右键不拖动页眉/页脚高度
+  if (e.button !== 0) return
   // 防止重复绑定：先清理再绑定
   cleanupZoneResize()
   zoneResizing.value = { zone, startY: e.clientY, startH: props.templateData[zone].height }

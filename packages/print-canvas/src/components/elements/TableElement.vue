@@ -411,6 +411,8 @@ let resizeStartWidth = 0
  *  让边界线跟随光标移动。clampResizedColumnWidth 负责最小列宽与总宽上限钳制。 */
 function onColResizeStart(i: number, e: MouseEvent) {
   if (!colResizeEnabled.value) return
+  // 仅响应左键，右键不拖动列宽
+  if (e.button !== 0) return
   colResizeBoundary.value = i
   resizeStartX = e.clientX
   resizeStartWidth = colWidths.value[i - 1]!
