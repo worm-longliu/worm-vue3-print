@@ -107,8 +107,8 @@ flowchart LR
 
 直接复用 core 的浏览器侧管线 `@worm-vue3-print/core/browser`（`renderHtmlPages`，内部封装 bindData → 测量 iframe → paginate → generateHtml 两遍渲染），无需从 print-render 迁移 Playwright 逻辑：
 
-1. worker 主世界页面 import `renderHtmlPages(template, data, baseUrl, browserCodeRenderer)`；
-2. 该函数内部完成测量与分页，返回最终 HTML、页数；客户端增量取测量文档总高 `contentHeightMm`（连续纸推导用，见 6.2）；
+1. worker 主世界页面 import `renderHtmlPages(template, data, baseUrl, browserCodeRenderer, options?)`；
+2. 该函数内部完成测量与分页，返回最终 HTML、页数，以及最终纸张尺寸 `paperMm` 与 `continuous` 标志（连续纸在 core 内部用测量 Map 做几何推导，见 6.2）；
 3. 最终 HTML 经 `wormprint://` 内存协议载入打印窗口；
 4. 出纸：对承载最终 HTML 的 webContents 调 `webContents.print`。
 
@@ -194,8 +194,8 @@ interface PrintSubmitPayload {
 
 1. 仅当模板 `paperSize === 'CONTINUOUS'` 时启用推导；普通纸始终使用模板纸张（`print.paperSize` 显式传入时可覆盖）；
 2. `print.paperSize.height` 显式正整数时（宿主打印配置逃生门），直接使用；
-3. 未传时，以第一遍测量得到的文档总高（含模板 padding 底边距，mm → 微米）作为纸高，宽度取 `print.paperSize.width` 或模板纸宽；推导高度最小钳制 25.4mm（1 英寸）；
-4. worker 回传 `continuous` 标志，客户端据此判定，与宿主是否传 paperSize 无关；
+3. 未传时，由 **core 在两遍渲染中**做**浏览器布局探针**：`paginate` 得到连续纸恒单页布局（含 flow-group）后，先用设计高度 297 生成一次最终 HTML 载入离屏 iframe，遍历 `.content-area` 全部后代取 `getBoundingClientRect().bottom` 相对纸顶的最大值（mm），再加 `footer 高 + 底边距`，最小钳制 25.4mm（1 英寸）。**不读 `scrollHeight`、也不用「元素设计 top + 实测高」包络公式**——前者因测量 iframe 固定 297mm 高且元素绝对定位而失效；后者对「动态表格 + 表下跟随元素（合计/签名）」会少算表格超高部分导致走纸裁切（p4），因为跟随元素在 flow-group 内被重定位到表格**实际**渲染底之后。探针由真实引擎布局，天然覆盖 flow-group/动态表格/小计汇总/重叠。推导后的显式高度再用于重新生成最终 HTML，使 `@page`、`.print-page`、footer 定位与出纸 `pageSize.height` 四者同源；宽度取 `print.paperSize.width` 或模板纸宽；
+4. core 的 `renderHtmlPages` 直接回传 `paperMm`（最终纸尺寸）与 `continuous` 标志，客户端据此换算微米出纸，与宿主是否传 paperSize 无关；
 5. 推导结果（含纸长来源 config/derived）在任务记录中记录实际下发的纸宽纸高，便于排查；
 6. 实现阶段须在真机连续纸打印机（58/80mm）上验证推导精度（末尾留白、走纸长度公差，即 p4 问题），若系统驱动对自定义纸高有最小步进/舍入，以实测为准并在客户端文档中写明；不满足时宿主显式传 height 覆盖。
 

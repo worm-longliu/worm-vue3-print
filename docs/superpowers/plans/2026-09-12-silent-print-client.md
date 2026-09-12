@@ -4,7 +4,7 @@
 
 **Goal:** 交付一个 Electron 跨平台（Win/Linux/Mac）静默打印桌面客户端与浏览器端 SDK：宿主页面经本机 WebSocket 下发「模板 JSON + 数据」，客户端本地用 core 同构管线渲染并调用 `webContents.print({ silent: true })` 静默出纸。
 
-**Architecture:** Electron 主进程启动仅绑定 `127.0.0.1` 的 `ws` 服务；隐藏渲染窗口分两个职责——常驻 worker 窗口（**sandbox + contextIsolation + 专用 preload**，不开启 nodeIntegration）跑 core 两遍渲染生成最终 HTML，经自定义 `wormprint://` protocol 载入打印窗口后静默打印；协议类型/错误码定义在 SDK 包，客户端 import 同一份类型。连续纸（`paperSize: 'CONTINUOUS'`，热敏/标签）由 core 与设计器原生支持：设计高度默认 297mm、可配连续纸底边距，出纸时按渲染测量总高（含底边距）推导纸高，显式高度可覆盖。单任务串行锁，无队列。
+**Architecture:** Electron 主进程启动仅绑定 `127.0.0.1` 的 `ws` 服务；隐藏渲染窗口分两个职责——常驻 worker 窗口（**sandbox + contextIsolation + 专用 preload**，不开启 nodeIntegration）跑 core 两遍渲染生成最终 HTML，经自定义 `wormprint://` protocol 载入打印窗口后静默打印；协议类型/错误码定义在 SDK 包，客户端 import 同一份类型。连续纸（`paperSize: 'CONTINUOUS'`，热敏/标签）由 core 与设计器原生支持：设计高度默认 297mm、可配连续纸底边距，出纸高度由 core 在两遍渲染中按内容几何（测量 Map）推导，显式高度可覆盖。单任务串行锁，无队列。
 
 **Tech Stack:** Electron 37、electron-vite 3、Vue 3.5（仅配置窗口）、ws 8、TypeScript 5.9、Vitest 3、tsup 8（SDK 打包）、`@worm-vue3-print/core` workspace 依赖（条码由 core/browser 的 jsbarcode + qrcode 渲染，客户端不直接依赖 bwip-js）。
 
@@ -61,7 +61,7 @@
 | `src/main/print-engine.ts` | 串行锁 + 渲染 + `webContents.print` 静默出纸 + 记录落盘 |
 | `src/main/tray.ts` | 系统托盘菜单 |
 | `src/main/main-window.ts` | 配置窗口创建与 IPC 注册 |
-| `src/worker/index.html` / `worker.ts` | 沙箱化隐藏页（sandbox + contextIsolation，经 `worker-preload` 暴露 `wormRender`）：import core，执行两遍渲染，返回最终 HTML 与测量总高 |
+| `src/worker/index.html` / `worker.ts` | 沙箱化隐藏页（sandbox + contextIsolation，经 `worker-preload` 暴露 `wormRender`）：import core，执行两遍渲染，返回最终 HTML 与 core 推导后的最终纸尺寸 paperMm |
 | `src/preload/worker-preload.ts` | worker 专用 preload：仅暴露 `renderPages(spec)` IPC 桥 |
 | `src/preload/index.ts` | 配置窗口 contextBridge API |
 | `src/renderer/index.html` / `main.ts` / `App.vue` | 配置窗口 UI（设置/任务记录/日志/测试打印） |
@@ -2332,25 +2332,33 @@ git commit -m "feat(print-client)：新增打印机服务（枚举/状态归一�
 
 ## Task 8: core 与设计器支持「连续纸」页面属性
 
-> 背景：连续纸（热敏 58/80mm、标签）需要模板级声明——设计高度固定 297mm（设计/预览画布），可配连续纸底边距；打印时（Task 9/11）按渲染测量总高推导实际纸高。底边距不新增字段，直接使用模板既有 `margins.bottom`（切到连续纸时默认置 0，可改），测量文档 `scrollHeight` 天然含 padding-bottom，推导纸高自动包含底边距。
+> 背景：连续纸（热敏 58/80mm、标签）需要模板级声明——设计高度固定 297mm（设计画布用），可配连续纸底边距；出纸高度按内容布局探针推导。底边距不新增字段，复用模板既有 `margins.bottom`（切到连续纸时默认置 0，可改）。
+>
+> **关键实现约束（已核对 core 源码，不可走 scrollHeight 方案）**：① 测量 iframe 被固定为 `height:${paper.height}mm`（browser-pagination.ts），读 `scrollHeight` 短内容也必然 ≥297mm；② `.print-element` 全部 `position:absolute`，不撑开父容器，`.content-area` 高度塌缩，`scrollHeight` 不含内容、`@page size:auto` 跨平台不可控。因此推导高度必须用**浏览器布局探针**：把 paginate 后的最终单页 HTML（纸高仍 297）载入离屏 iframe，遍历 `.content-area` 后代取 `getBoundingClientRect` 相对纸顶的最大底边（flow-group/动态表格/小计汇总/重叠均由引擎如实计算），再加上 footer 高与底边距（纯组合函数 `composeContinuousHeight` 可在 happy-dom 下单测），并让最终 HTML 的 `@page`、`.print-page`、footer 定位与 `webContents.print.pageSize.height` **统一使用该显式高度**（沿用普通纸 absolute footer 机制，不引入 auto/static）。
 
 **Files:**
-- Modify: `packages/print-core/src/render/types.ts`（`PaperSize`、`PAPER_DIMENSIONS`、`getPaperDimensions`）
+- Modify: `packages/print-core/src/render/types.ts`（`PaperSize`、`PAPER_DIMENSIONS`、`getPaperDimensions`、`isContinuousPaper`）
 - Modify: `packages/print-core/src/designer/types.ts`（设计器侧 `PaperSize`、`TemplateData` 注释）
 - Modify: `packages/print-core/src/designer/utils/default-config.ts`（设计器侧 `PAPER_PRESETS`、`getPaperDimensions`）
-- Modify: `packages/print-core/src/render/pagination-engine.ts`（连续纸不分页）
-- Modify: `packages/print-core/src/render/css-builder.ts`（连续纸 CSS：页面随内容撑开、页脚文档流化）
-- Modify: `packages/print-canvas/src/components/PropertyPanel.vue`（纸张下拉新增「连续纸」选项、连续纸专属字段）
+- Modify: `packages/print-core/src/render/pagination-engine.ts`（连续纸单页：内容高 Infinity）
+- Create: `packages/print-core/src/render/continuous-paper.ts`（推导纸高纯函数）
+- Modify: `packages/print-core/src/render/css-builder.ts`（`buildPageCss` 支持显式纸高覆盖）
+- Modify: `packages/print-core/src/render/html-generator.ts`（`generateHtml` 透传纸高；连续纸 body class）
+- Modify: `packages/print-core/src/browser/browser-pagination.ts`（测量后推导纸高、最终 HTML 用推导高度、结果返回 `paperMm/continuous`）
+- Modify: `packages/print-canvas/src/components/PropertyPanel.vue`（纸张下拉「连续纸」、连续纸专属字段）
 - Create: `packages/print-core/src/render/__tests__/continuous-paper.test.ts`
 
 **Interfaces:**
 - Consumes: 无新依赖。
 - Produces:
   - 两处 `PaperSize` 联合类型新增 `'CONTINUOUS'`。
-  - `PAPER_DIMENSIONS.CONTINUOUS` 与 `PAPER_PRESETS.CONTINUOUS` = `{ width: 80, height: 297 }`（默认 80mm 热敏；高度仅为设计/预览画布高度）。
-  - `getPaperDimensions` 对 CONTINUOUS 的解析与 CUSTOM 同构：`width = customWidth ?? 80`、`height = customHeight ?? 297`，方向强制 portrait（横向对连续纸无意义）。
-  - 导出判定函数 `isContinuousPaper(template): boolean`（放 `render/types.ts`，designer 侧从同构位置复制/复用 designer 版）。
-  - 连续纸模板：分页引擎恒定单页；最终 HTML 不强制最小纸高、页脚不钉在 297mm 底部。
+  - `PAPER_DIMENSIONS.CONTINUOUS` 与 `PAPER_PRESETS.CONTINUOUS` = `{ width: 80, height: 297 }`（默认 80mm 热敏；高度仅为设计画布高度）。
+  - `getPaperDimensions` 对 CONTINUOUS：`width = customWidth ?? 80`、`height = customHeight ?? 297`，方向强制 portrait。
+  - `isContinuousPaper(template): boolean`（render/types.ts 导出）。
+  - `composeContinuousHeight(template, contentBottomMm): number`（continuous-paper.ts，纯函数，mm，探针底边 + footer + mb，见 Step 6）；探针函数 `probeContentBottomMm` 在 browser-pagination.ts（依赖真实 DOM）。
+  - `BrowserRenderResult` 增量字段：`paperMm: { width: number; height: number }`（连续纸为推导后的最终纸高，普通纸为模板纸张）、`continuous: boolean`。
+  - 连续纸模板：分页恒定单页；最终 HTML 的纸高 = 推导高度（`@page`/`.print-page`/footer 三者一致）。
+  - `PrintHtmlPreview`（canvas）自动按推导高度预览，无需改动（它本就调用 `renderHtmlPages`）。
 
 - [ ] **Step 1: 写失败测试 `continuous-paper.test.ts`**
 
@@ -2359,13 +2367,14 @@ import { describe, it, expect } from 'vitest'
 import { getPaperDimensions, isContinuousPaper } from './types.js'
 import { paginate } from './pagination-engine.js'
 import { buildPageCss } from './css-builder.js'
-import type { TemplateData, TemplateElement } from './types.js'
+import { composeContinuousHeight, MIN_CONTINUOUS_HEIGHT_MM } from './continuous-paper.js'
+import type { TemplateData, TemplateElement, MeasuredElement } from './types.js'
 
 function continuousTemplate(over: Partial<TemplateData> = {}): TemplateData {
   return {
     paperSize: 'CONTINUOUS',
     orientation: 'portrait',
-    margins: { top: 5, right: 5, bottom: 0, left: 5 },
+    margins: { top: 5, right: 5, bottom: 3, left: 5 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
     firstPageOverlay: { height: 0, elements: [] },
@@ -2375,37 +2384,66 @@ function continuousTemplate(over: Partial<TemplateData> = {}): TemplateData {
   } as TemplateData
 }
 
-const tallEl = (top: number, height: number): TemplateElement => ({
-  id: `el-${top}-${height}`, type: 'text',
+const el = (id: string, top: number, height: number): TemplateElement => ({
+  id, type: 'text',
   options: { top, left: 0, width: 70, height },
 })
 
+function measuredOf(t: TemplateData, heightOf: (id: string) => number): Map<string, MeasuredElement> {
+  return new Map(t.elements.map(e => [e.id, { id: e.id, measuredHeight: heightOf(e.id) }]))
+}
+
 describe('CONTINUOUS 纸型', () => {
-  it('默认尺寸 80×297，宽度取 customWidth', () => {
+  it('默认尺寸 80×297（设计画布），宽度取 customWidth', () => {
     expect(getPaperDimensions(continuousTemplate())).toEqual({ width: 80, height: 297 })
     expect(getPaperDimensions(continuousTemplate({ customWidth: 58 }))).toEqual({ width: 58, height: 297 })
   })
 
   it('isContinuousPaper 判定', () => {
     expect(isContinuousPaper(continuousTemplate())).toBe(true)
-    expect(isContinuousPaper(continuousTemplate({ paperSize: 'A4' } as Partial<TemplateData>))).toBe(false)
+    expect(isContinuousPaper({ paperSize: 'A4' })).toBe(false)
   })
 
-  it('内容累计超过 297mm 也只产生一页（不按设计高度分页）', () => {
+  it('内容超过 297mm 也只产生一页（不按设计高度分页）', () => {
     const t = continuousTemplate({
-      elements: Array.from({ length: 20 }, (_, i) => tallEl(i * 30, 28)),
+      elements: Array.from({ length: 20 }, (_, i) => el(`e${i}`, i * 30, 28)),
     })
-    const measured = new Map(t.elements.map(el => [el.id, { id: el.id, measuredHeight: 28 }]))
-    const pages = paginate(t, measured)
+    const pages = paginate(t, measuredOf(t, () => 28))
     expect(pages).toHaveLength(1)
   })
 
-  it('CSS：连续纸页面不强制最小高度，页脚不绝对定位', () => {
-    const css = buildPageCss(continuousTemplate({ footer: { height: 10, elements: [] } }))
-    // 连续纸标记类
-    expect(css).toContain('continuous')
-    // 普通规则仍输出 @page；连续纸覆盖规则必须存在
-    expect(css).toMatch(/\.continuous\b[\s\S]*min-height:\s*auto/)
+  it('composeContinuousHeight：探针底边 + footer + mb（探针底边已含 mt/header/overlay/内容偏移）', () => {
+    const t = continuousTemplate({
+      margins: { top: 5, right: 5, bottom: 3, left: 5 },
+      header: { height: 8, elements: [] },
+      firstPageOverlay: { height: 4, elements: [] },
+      footer: { height: 6, elements: [] },
+    })
+    // 探针测得内容区最大底边相对纸顶 = mt5 + header8 + overlay4 + 内容底80 = 97
+    expect(composeContinuousHeight(t, 97)).toBe(106)
+  })
+
+  it('推导高度最小钳制 25.4mm（探针底边为 0 的空模板）', () => {
+    expect(composeContinuousHeight(continuousTemplate(), 0)).toBe(MIN_CONTINUOUS_HEIGHT_MM)
+  })
+
+  it('表格超高：探针底边（含动态表格实际底）参与组合，跟随区不被裁切', () => {
+    const t = continuousTemplate({ margins: { top: 5, right: 5, bottom: 3, left: 5 } })
+    // 探针已如实量到动态表格（含全部渲染行）底边相对纸顶 315
+    // 315 + footer0 + mb3 = 318
+    expect(composeContinuousHeight(t, 315)).toBe(318)
+  })
+
+  it('buildPageCss 接收显式纸高：@page/.print-page/footer 全部对齐该高度', () => {
+    const t = continuousTemplate({
+      margins: { top: 5, right: 5, bottom: 3, left: 5 },
+      footer: { height: 6, elements: [] },
+    })
+    const css = buildPageCss(t, 106)
+    expect(css).toContain('@page { size: 80mm 106mm')
+    expect(css).toContain('min-height: 106mm')
+    // footer 钉在推导高度底部：106 - mb3 - footer6 = 97
+    expect(css).toContain('top: 97mm')
   })
 })
 ```
@@ -2493,13 +2531,13 @@ export const PAPER_PRESETS: Record<string, { width: number; height: number }> = 
     : base
 ```
 
-- [ ] **Step 5: 分页引擎——连续纸不分页**
+- [ ] **Step 5: 分页引擎——连续纸单页**
 
 `pagination-engine.ts` 的 `paginate()` 中，计算 `contentHeight` 处改为：
 
 ```ts
   const continuous = template.paperSize === 'CONTINUOUS'
-  // 连续纸：不按设计高度分页，单页承载全部内容（纸高在打印侧按测量高度推导）
+  // 连续纸：内容高视为无限，单页承载全部（实际纸高由浏览器探针 + composeContinuousHeight 推导）
   const contentHeight = continuous
     ? Number.POSITIVE_INFINITY
     : paper.height - mt - mb - headerH - footerH
@@ -2510,37 +2548,195 @@ export const PAPER_PRESETS: Record<string, { width: number; height: number }> = 
   }
 ```
 
-验证 Infinity 与各分页分支兼容：`remaining = Infinity - ...`、所有「放不下」判断恒为 false；表格切片同理不切。逐行检查 `paginateTable/paginateNonTable` 内对 `contentHeight` 的算术不产生 NaN（Infinity - 有限值 = Infinity）；若存在乘法/除法分支，对连续纸提前走单页路径并在评审中说明。
+已核对：`paginateTable/paginateNonTable` 对 contentHeight 只做加减与大小比较，无乘除/取模；`Infinity - 有限值 = Infinity`，所有「放不下」比较恒为 false、不切片不换页，无 NaN 风险。空模板收尾逻辑（无 section 时补一页空页）保留。
 
-- [ ] **Step 6: CSS——连续纸页面随内容撑开**
+- [ ] **Step 6: 连续纸高度推导（浏览器布局探针 + 纯组合函数）**
 
-`css-builder.ts` 的 `buildPageCss` 返回模板中增加连续纸覆盖块（插在测量模式规则之前）：
+a. 新建 `continuous-paper.ts`，只放可在 happy-dom 下单测的纯函数：
 
 ```ts
-${template.paperSize === 'CONTINUOUS' ? `
-/* ── 连续纸：单页随内容撑开；出纸高度由打印侧按测量总高设置 ── */
-body.continuous .print-page { min-height: auto; page-break-after: auto; }
-body.continuous .page-footer { position: static; }
-@page { size: ${mm(paper.width)} auto; }
-` : ''}
+// 连续纸出纸高度的最后一步组合（不依赖 DOM）。
+// contentBottomMm：探针测得的内容区后代相对 .print-page 顶部的最大底边（mm，
+// 已天然包含上边距/页眉/首页叠加的纵向偏移；flow-group 跟随区由真实引擎布局如实反映）。
+import type { TemplateData } from './types.js'
+
+/** 连续纸推导高度下限：1 英寸（25.4mm），避免过矮被打印驱动拒绝 */
+export const MIN_CONTINUOUS_HEIGHT_MM = 25.4
+
+/** 探针 CSS：页脚是 .content-area 的兄弟节点，天然不在测量集合内，无需隐藏 */
+
+export function composeContinuousHeight(template: TemplateData, contentBottomMm: number): number {
+  const mb = template.margins?.bottom ?? 0
+  const footerH = template.footer?.height ?? 0
+  const height = Math.max(contentBottomMm, 0) + footerH + mb
+  return Math.max(MIN_CONTINUOUS_HEIGHT_MM, Math.round(height * 100) / 100)
+}
 ```
 
-最终页容器需要连续纸标记类供高级样式/调试：修改 `html-generator.ts` 的 `generateFinalHtml`，body 输出：
+> 不用「元素设计 top + 实测高」包络公式：动态表格表下跟随元素（合计/签名）在最终 HTML 中是 flow-group 内的相对定位，实际 top = 表格设计底 + 表格真实渲染高（小计/汇总行），跟随元素**设计 top** 不含表格超高部分，包络公式必然少算导致走纸裁切（p4）。布局复用 html-generator 产物后由引擎算，TS 不重复布局规则，杜绝双份漂移。
+
+b. 探针放在 `browser-pagination.ts`（唯一能访问真实 DOM 的层），新增：
 
 ```ts
+/**
+ * 连续纸探针：把分页后的最终单页 HTML（纸高仍为 297）载入离屏 iframe，
+ * 遍历 .content-area 全部后代取相对 .print-page 顶部的最大底边（mm）。
+ * absolute 元素的几何位置不依赖纸高，overflow:hidden 不改变 getBoundingClientRect，
+ * flow-group/动态表格/小计汇总/重叠均由引擎如实计算。
+ */
+async function probeContentBottomMm(finalHtml: string, paperWidthMm: number): Promise<number> {
+  const iframe = document.createElement('iframe')
+  iframe.style.cssText =
+    `position:fixed;left:-10000px;top:0;width:${paperWidthMm}mm;height:297mm;border:0;visibility:hidden;`
+  document.body.appendChild(iframe)
+  try {
+    const win = iframe.contentWindow
+    const doc = iframe.contentDocument
+    if (!win || !doc) throw new Error('无法创建连续纸探针 iframe')
+    doc.open(); doc.write(finalHtml); doc.close()
+    await waitForRenderReady(win) // 复用字体/图片就绪等待
+    const page = doc.querySelector('.print-page') as HTMLElement | null
+    const area = doc.querySelector('.content-area') as HTMLElement | null
+    if (!win || !page || !area) return 0
+    const pageRect = page.getBoundingClientRect()
+    let maxBottom = 0
+    const all = area.querySelectorAll<HTMLElement>('*')
+    all.forEach(el => {
+      const r = el.getBoundingClientRect()
+      // 仅统计可见且有面积的节点，避免空容器/折叠边框干扰
+      if (r.height > 0) maxBottom = Math.max(maxBottom, (r.bottom - pageRect.top) / PX_PER_MM)
+    })
+    // content-area 自身（无绝对定位子元素时的兜底，如空模板）
+    const ar = area.getBoundingClientRect()
+    if (ar.height > 0) maxBottom = Math.max(maxBottom, (ar.bottom - pageRect.top) / PX_PER_MM)
+    return maxBottom
+  } finally {
+    iframe.remove()
+  }
+}
+```
+
+c. 探针流程在 Step 8 接线：`paginate`（连续纸 Infinity → 恒单页，flow-group 仍被正常生成）后，**先用 `pageHeightMm=undefined`（297）生成一次最终 HTML 做探针**，得到 `contentBottomMm → composeContinuousHeight → 最终 H`，再用 H 重新 `generateHtml` 产出真正下发的 HTML。即连续纸为「测量 + 探针 + 最终」三次生成，普通纸仍两次，成本可接受。
+
+- [ ] **Step 7: css-builder 与 html-generator 支持显式纸高**
+
+a. `css-builder.ts` 的 `buildPageCss` 增加可选第二参数，连续纸用推导高度替换内部纸张高度：
+
+```ts
+export function buildPageCss(template: TemplateData, pageHeightMm?: number): string {
+  const basePaper = getPaperDimensions(template)
+  const paper = pageHeightMm && pageHeightMm > 0
+    ? { width: basePaper.width, height: pageHeightMm }
+    : basePaper
+  // ...函数体内原本所有 paper.height 引用保持不变（此时 paper 已是推导高度）
+}
+```
+
+即：仅把第一行 `const paper = getPaperDimensions(template)` 替换为上面 4 行；后续 `@page size`、`.print-page min-height`、footer `top: paper.height - mb - footerH` 自动全部对齐推导高度。**不新增** auto/static 覆盖块。
+
+b. `html-generator.ts`：
+- `GenerateOptions` 增加 `pageHeightMm?: number`；
+- `generateHtml` 中 `const css = buildPageCss(template, options?.pageHeightMm)`；
+- 最终 HTML body 加连续纸标记类（便于调试/高级样式）：
+
+```ts
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>${css}</style>
+</head>
 <body${template.paperSize === 'CONTINUOUS' ? ' class="continuous"' : ''}>
+${pagesHtml}
+</body>
+</html>`
 ```
 
-（普通模板保持无 class。）
+测量模式（`generateMeasurementHtml`）不传 pageHeightMm，仍按 297 设计高度测量。
 
-- [ ] **Step 7: 运行 core 全量测试与构建**
+- [ ] **Step 8: browser-pagination 接线（测量后推导、最终 HTML 用推导高度、结果回传）**
+
+修改 `packages/print-core/src/browser/browser-pagination.ts`：
+
+a. `BrowserRenderResult` 增加：
+
+```ts
+  /** 最终纸张尺寸（mm，已含方向）；连续纸为探针推导后的高度，其余为模板纸张 */
+  paperMm: { width: number; height: number }
+  /** 模板是否连续纸 */
+  continuous: boolean
+```
+
+b. `renderHtmlPages` 增加可选第 5 参，`measureElements` 保持只返回元素尺寸 Map。测量与分页后改为探针流程：
+
+```ts
+import { isContinuousPaper } from '../render/types.js'
+import { composeContinuousHeight } from '../render/continuous-paper.js'
+
+export interface BrowserRenderOptions {
+  /** 连续纸显式纸高覆盖（mm，宿主逃生门）；仅对 CONTINUOUS 生效，undefined 时探针推导 */
+  paperHeightMm?: number
+}
+
+export async function renderHtmlPages(
+  template: PrintTemplateData,
+  printData: Record<string, unknown> = {},
+  baseUrl?: string,
+  codeRenderer: BrowserCodeRenderer = browserCodeRenderer,
+  options?: BrowserRenderOptions,
+): Promise<BrowserRenderResult> {
+  // ...原有 bindData、measureElements 流程不变...
+  const measuredElements = await measureElements(boundTemplate, codeRenderer)
+  const continuous = isContinuousPaper(boundTemplate)
+  const templatePaper = getPaperDimensions(boundTemplate)
+  const pageLayouts = paginate(boundTemplate, measuredElements)
+
+  let pageHeightMm: number | undefined
+  if (continuous) {
+    const override = options?.paperHeightMm
+    if (override && override > 0) {
+      pageHeightMm = override
+    } else {
+      // 探针：先用 297 生成最终单页 HTML，量出内容区最大底边，再组合出纸高
+      const probeHtml = generateHtml(boundTemplate, pageLayouts, printData as Record<string, any>, {
+        codeRenderer,
+      })
+      const contentBottomMm = await probeContentBottomMm(probeHtml, templatePaper.width)
+      pageHeightMm = composeContinuousHeight(boundTemplate, contentBottomMm)
+    }
+  }
+
+  // 连续纸用推导高度再生成一次（@page/.print-page/footer 全部对齐）；普通纸直接生成
+  const html = generateHtml(boundTemplate, pageLayouts, printData as Record<string, any>, {
+    codeRenderer, pageHeightMm,
+  })
+
+  return {
+    html,
+    pageCount: pageLayouts.length,
+    pageLayouts,
+    paperMm: { width: templatePaper.width, height: pageHeightMm ?? templatePaper.height },
+    continuous,
+  }
+}
+```
+
+> 现有调用方（demo、services/print-render）不传第 5 参，普通纸行为零变化（连续纸才多一次探针生成）。
+
+c. 测量 HTML 由 `measureElements` 通过 `generateHtml(template, [], undefined, { isMeasurementPass: true, codeRenderer })` 生成（browser-pagination.ts:68，最终走 html-generator 的 `generateMeasurementHtml`）。该分支**不传** pageHeightMm，仍按 297 设计高度：连续纸元素绝对定位、测量页 `overflow:hidden` 不影响 `offsetHeight`；超长表格行高由 `readMeasurements` 逐 `tbody tr` 累加，不依赖页面高度。
+
+d. 导出确认：`packages/print-core/src/index.ts` 补充导出 `composeContinuousHeight`、`MIN_CONTINUOUS_HEIGHT_MM`、`isContinuousPaper`（若未导出）；`/browser` 子路径返回类型自动携带新字段。
+
+- [ ] **Step 9: 运行 core 全量测试与构建**
 
 Run: `npm run test -w @worm-vue3-print/core`
-Expected: 新用例 4 条 + 既有用例全绿。
+Expected: 新用例（连续纸 7 条）+ 既有用例全绿。
 Run: `npm run build -w @worm-vue3-print/core`
 Expected: 构建通过。
+Run: `npm run build -w @worm-vue3-print/render`（print-render 依赖 core）
+Expected: 构建通过；print-render 不调用 `/browser`、不传 pageHeightMm，CONTINUOUS 对其零影响（CONTINUOUS 模板走 PDF 不在本期支持范围，评审已知晓）。
 
-- [ ] **Step 8: 设计器页面属性面板**
+- [ ] **Step 10: 设计器页面属性面板**
 
 修改 `packages/print-canvas/src/components/PropertyPanel.vue`：
 
@@ -2610,7 +2806,7 @@ f. `customWidth` 计算属性缺省值对连续纸为 80：
 const customWidth = computed(() => props.templateData?.customWidth ?? (paperSizeModel.value === 'CONTINUOUS' ? 80 : 210))
 ```
 
-- [ ] **Step 9: canvas 回归与设计器手工验证**
+- [ ] **Step 11: canvas 回归与设计器手工验证**
 
 Run: `npm run test -w @worm-vue3-print/canvas`
 Expected: 全绿。
@@ -2620,7 +2816,7 @@ Expected（手工）：
 2. 改纸宽为 58 画布跟随；底边距改 3mm 后预览底部留白；
 3. 切回 A4 一切正常，原模板打开不受影响（旧 JSON 无 CONTINUOUS，类型扩展不破坏迁移）。
 
-- [ ] **Step 10: 提交**
+- [ ] **Step 12: 提交**
 
 ```bash
 git add packages/print-core packages/print-canvas
@@ -2629,10 +2825,9 @@ git commit -m "feat(core,canvas)：新增连续纸页面属性（CONTINUOUS，�
 
 ---
 
-## Task 9: 渲染 worker（沙箱 preload）与纸高推导（复用 core `/browser` 管线）
+## Task 9: 渲染 worker（沙箱 preload）接入 core `/browser` 管线
 
 **Files:**
-- Modify: `packages/print-core/src/browser/browser-pagination.ts`（`BrowserRenderResult` 增量返回 `contentHeightMm`）
 - Create: `clients/print-client/src/shared/render-protocol.ts`（main ↔ worker IPC 契约类型）
 - Create: `clients/print-client/src/preload/worker-preload.ts`（worker 专用沙箱 preload）
 - Create: `clients/print-client/src/worker/worker.ts`（填充 Task 4 占位；运行在 contextIsolation 主世界，经 `window.wormRender` 桥通信）
@@ -2643,153 +2838,82 @@ git commit -m "feat(core,canvas)：新增连续纸页面属性（CONTINUOUS，�
 - Modify: `clients/print-client/package.json`（确认不引入 bwip-js；条码由 core/browser 承担）
 
 **Interfaces:**
-- Consumes: `@worm-vue3-print/core/browser` 的 `renderHtmlPages`、`browserCodeRenderer`；`@worm-vue3-print/core` 的 `getPaperDimensions`、`isContinuousPaper`；SDK 协议类型 `PrintOptions`。
+- Consumes: `@worm-vue3-print/core/browser` 的 `renderHtmlPages`、`browserCodeRenderer`（Task 8 后返回 `paperMm/continuous`）；SDK 协议类型 `PrintOptions`。
 - Produces:
-  - core 侧 `BrowserRenderResult` 新增 `contentHeightMm: number`（测量文档连续内容总高，mm，**已含模板 padding 底边距**；增量字段，canvas 既有消费不受影响）。
-  - shared：`RenderJobSpec = { templateJson: Record<string, unknown>; printData?: Record<string, unknown>; baseUrl?: string }`；`RenderJobResult = { html: string; pageCount: number; contentHeightMm: number; templatePaperMm: { width: number; height: number }; continuous: boolean }`；IPC 通道常量 `RENDER_REQUEST_CHANNEL = 'worm:render-request'`、`RENDER_RESPONSE_CHANNEL = 'worm:render-response'`。
-  - `resolvePaper(input: { print: PrintOptions; templatePaperMm: { width: number; height: number }; contentHeightMm: number; continuous: boolean }): { paper: { width: number; height: number }; heightSource: 'config' | 'derived' }`（纯函数，单位微米）。连续纸由**模板 `paperSize==='CONTINUOUS'` 标志**判定，与调用方是否传 paperSize 无关。
-  - worker-preload 暴露 `window.wormRender = { onRequest(cb), respond(id, response) }`；worker 页面注册渲染回调（Task 10 的 renderer-pool 负责配对与超时）。
+  - shared：`RenderJobSpec = { templateJson: Record<string, unknown>; printData?: Record<string, unknown>; baseUrl?: string }`；`RenderJobResult = { html: string; pageCount: number; paperMm: { width: number; height: number }; continuous: boolean }`（paperMm 直接来自 core：连续纸已探针推导，普通纸为模板纸张）；IPC 通道常量 `RENDER_REQUEST_CHANNEL = 'worm:render-request'`、`RENDER_RESPONSE_CHANNEL = 'worm:render-response'`。
+  - `resolvePaper(input: { print: PrintOptions; paperMm: { width: number; height: number }; continuous: boolean }): { paper: { width: number; height: number }; heightSource: 'config' | 'derived' }`（纯函数，单位微米）。以 core 的 paperMm 为基准应用宿主覆盖；连续纸未覆盖高度时 heightSource='derived'。
+  - worker-preload 暴露 `window.wormRender = { onRequest(cb) }`；worker 页面注册渲染回调（Task 10 的 renderer-pool 负责配对与超时）。
 
-- [ ] **Step 1: core 增量返回内容总高**
+> Task 8 已完成 core 侧全部改造（CONTINUOUS 类型/分页/布局探针/CSS 显式纸高/browser-pagination 返回 paperMm 与 continuous），本任务**不再修改 core**，只消费其产物。
 
-修改 `packages/print-core/src/browser/browser-pagination.ts`：
-
-a. `BrowserRenderResult` 增加字段：
-
-```ts
-export interface BrowserRenderResult {
-  /** 最终多页 HTML 字符串 */
-  html: string
-  /** 总页数 */
-  pageCount: number
-  /** 分页布局（调试/高级用途） */
-  pageLayouts: PageLayout[]
-  /** 测量文档连续内容总高（mm），供连续纸（热敏/标签）推导纸高 */
-  contentHeightMm: number
-}
-```
-
-b. `measureElements` 改为同时返回总高（在读取逐元素高度的同一文档上取连续内容总高）：
-
-```ts
-async function measureElements(
-  template: PrintTemplateData,
-  codeRenderer?: CodeRenderer,
-): Promise<{ measured: Map<string, MeasuredElement>; contentHeightMm: number }> {
-```
-
-在 `readMeasurements(doc)` 之后、`finally` 之前增加：
-
-```ts
-    // 连续内容总高：测量文档为单页连续区域，取文档实际滚动高度（mm）
-    const contentHeightMm = Math.max(
-      doc.documentElement.scrollHeight,
-      doc.body?.scrollHeight ?? 0,
-    ) / PX_PER_MM
-```
-
-返回 `{ measured: measuredMap, contentHeightMm }`；`renderHtmlPages` 中改为：
-
-```ts
-  const { measured: measuredElements, contentHeightMm } = await measureElements(boundTemplate, codeRenderer)
-  const pageLayouts = paginate(boundTemplate, measuredElements)
-  const html = generateHtml(boundTemplate, pageLayouts, printData as Record<string, any>, {
-    codeRenderer,
-  })
-  return { html, pageCount: pageLayouts.length, pageLayouts, contentHeightMm }
-```
-
-c. 验证 core 不回归（happy-dom 下 iframe 布局不真实，不为该字段强写伪单测；字段正确性由 Task 10 Electron 真机渲染验证）：
-
-Run: `npm run test -w @worm-vue3-print/core`
-Expected: 既有测试全绿。
-Run: `npm run build -w @worm-vue3-print/core`
-Expected: 类型与构建通过。
-
-- [ ] **Step 2: 写失败测试 `src/main/paper.test.ts`**
+- [ ] **Step 1: 写失败测试 `src/main/paper.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest'
 import { resolvePaper } from './paper.js'
 
 const A4 = { width: 210, height: 297 }
-const CONT = { width: 80, height: 297 } // 连续纸模板尺寸（设计高度 297）
+const CONT = { width: 80, height: 123.456 } // core 已推导的连续纸尺寸（mm）
 
 describe('resolvePaper', () => {
-  it('普通模板未传 paperSize：宽高取模板纸张（微米），来源 config', () => {
-    const r = resolvePaper({ print: {}, templatePaperMm: A4, contentHeightMm: 120, continuous: false })
+  it('普通模板无覆盖：宽高取 core paperMm（微米），来源 config', () => {
+    const r = resolvePaper({ print: {}, paperMm: A4, continuous: false })
     expect(r.paper).toEqual({ width: 210000, height: 297000 })
     expect(r.heightSource).toBe('config')
   })
 
-  it('连续纸模板未传 paperSize：宽度取模板 80mm，高度按测量内容（含底边距）推导', () => {
-    const r = resolvePaper({ print: {}, templatePaperMm: CONT, contentHeightMm: 123.456, continuous: true })
-    expect(r.paper.width).toBe(80000)
-    expect(r.paper.height).toBe(123456)
+  it('连续纸无覆盖：采用 core 推导高度（四舍五入到微米），来源 derived', () => {
+    const r = resolvePaper({ print: {}, paperMm: CONT, continuous: true })
+    expect(r.paper).toEqual({ width: 80000, height: 123456 })
     expect(r.heightSource).toBe('derived')
   })
 
-  it('连续纸显式传 height：配置覆盖，不走推导', () => {
-    const r = resolvePaper({
-      print: { paperSize: { height: 200000 } },
-      templatePaperMm: CONT, contentHeightMm: 50, continuous: true,
-    })
+  it('连续纸显式传 height：覆盖推导值，来源 config', () => {
+    const r = resolvePaper({ print: { paperSize: { height: 200000 } }, paperMm: CONT, continuous: true })
     expect(r.paper).toEqual({ width: 80000, height: 200000 })
     expect(r.heightSource).toBe('config')
   })
 
-  it('连续纸显式传 width+height：全部以配置为准', () => {
-    const r = resolvePaper({
-      print: { paperSize: { width: 58000, height: 150000 } },
-      templatePaperMm: CONT, contentHeightMm: 50, continuous: true,
-    })
+  it('连续纸显式传 width+height：全部覆盖', () => {
+    const r = resolvePaper({ print: { paperSize: { width: 58000, height: 150000 } }, paperMm: CONT, continuous: true })
     expect(r.paper).toEqual({ width: 58000, height: 150000 })
     expect(r.heightSource).toBe('config')
   })
 
-  it('连续纸推导高度最小钳制 25.4mm（1 英寸）', () => {
-    const r = resolvePaper({ print: {}, templatePaperMm: CONT, contentHeightMm: 0, continuous: true })
-    expect(r.paper.width).toBe(80000)
-    expect(r.paper.height).toBe(25400)
+  it('连续纸只覆盖 width：高度仍用推导值，来源仍 derived', () => {
+    const r = resolvePaper({ print: { paperSize: { width: 58000 } }, paperMm: CONT, continuous: true })
+    expect(r.paper).toEqual({ width: 58000, height: 123456 })
     expect(r.heightSource).toBe('derived')
   })
 
-  it('连续纸显式高度为 0/负数视为未传，走推导', () => {
-    const r = resolvePaper({
-      print: { paperSize: { height: 0 } },
-      templatePaperMm: CONT, contentHeightMm: 90, continuous: true,
-    })
-    expect(r.paper.height).toBe(90000)
-    expect(r.heightSource).toBe('derived')
-  })
-
-  it('非连续纸传了 paperSize.height：以配置覆盖（自定义纸场景）', () => {
-    const r = resolvePaper({
-      print: { paperSize: { width: 100000, height: 150000 } },
-      templatePaperMm: A4, contentHeightMm: 50, continuous: false,
-    })
+  it('非连续纸显式覆盖 paperSize：以覆盖为准，来源 config', () => {
+    const r = resolvePaper({ print: { paperSize: { width: 100000, height: 150000 } }, paperMm: A4, continuous: false })
     expect(r.paper).toEqual({ width: 100000, height: 150000 })
     expect(r.heightSource).toBe('config')
+  })
+
+  it('显式 height 为 0/负数视为未传（连续纸回退推导）', () => {
+    const r = resolvePaper({ print: { paperSize: { height: 0 } }, paperMm: CONT, continuous: true })
+    expect(r.paper).toEqual({ width: 80000, height: 123456 })
+    expect(r.heightSource).toBe('derived')
   })
 })
 ```
 
-- [ ] **Step 3: 运行确认失败**
+- [ ] **Step 2: 运行确认失败**
 
 Run: `npm run test -w @worm-vue3-print/print-client`
 Expected: FAIL，`Cannot find module './paper.js'`。
 
-- [ ] **Step 4: 实现 `src/main/paper.ts` 与 `src/shared/render-protocol.ts`**
+- [ ] **Step 3: 实现 `src/main/paper.ts` 与 `src/shared/render-protocol.ts`**
 
 `paper.ts`：
 
 ```ts
-// 打印纸张解析：连续纸（模板 paperSize==='CONTINUOUS'）按渲染测量高度推导，显式配置可覆盖；其余取模板纸张。
-// 单位：微米。
+// 打印纸张解析：以 core 返回的 paperMm 为基准应用宿主覆盖。
+// 连续纸时 core 已完成探针推导（HTML 纸高即该值），此处只做微米换算与逃生门覆盖。单位：微米。
 import type { PrintOptions } from '@worm-vue3-print/client'
 
-/** 连续纸推导高度下限：1 英寸（25.4mm），避免 0 高度被驱动拒绝 */
-const MIN_CONTINUOUS_HEIGHT_UM = 25400
 const MM_TO_UM = 1000
 
 export interface ResolvedPaper {
@@ -2799,34 +2923,26 @@ export interface ResolvedPaper {
 
 export function resolvePaper(input: {
   print: PrintOptions
-  templatePaperMm: { width: number; height: number }
-  contentHeightMm: number
-  /** 模板是否连续纸（来自渲染结果 RenderJobResult.continuous） */
+  /** core renderHtmlPages 返回的最终纸张尺寸（mm；连续纸已推导） */
+  paperMm: { width: number; height: number }
   continuous: boolean
 }): ResolvedPaper {
-  const { print, templatePaperMm, contentHeightMm, continuous } = input
+  const { print, paperMm, continuous } = input
   const ps = print.paperSize
   const overrideWidth = typeof ps?.width === 'number' && ps.width > 0 ? ps.width : undefined
   const overrideHeight = typeof ps?.height === 'number' && ps.height > 0 ? ps.height : undefined
 
-  const templateWidthUm = Math.round(templatePaperMm.width * MM_TO_UM)
+  const width = overrideWidth ?? Math.round(paperMm.width * MM_TO_UM)
 
   if (continuous) {
-    const width = overrideWidth ?? templateWidthUm
-    // 显式高度覆盖；否则用测量总高（含模板底边距）推导
     if (overrideHeight) {
       return { paper: { width, height: overrideHeight }, heightSource: 'config' }
     }
-    const derived = Math.max(MIN_CONTINUOUS_HEIGHT_UM, Math.round(contentHeightMm * MM_TO_UM))
-    return { paper: { width, height: derived }, heightSource: 'derived' }
+    return { paper: { width, height: Math.round(paperMm.height * MM_TO_UM) }, heightSource: 'derived' }
   }
 
-  // 普通纸：显式覆盖优先，否则取模板纸张
   return {
-    paper: {
-      width: overrideWidth ?? templateWidthUm,
-      height: overrideHeight ?? Math.round(templatePaperMm.height * MM_TO_UM),
-    },
+    paper: { width, height: overrideHeight ?? Math.round(paperMm.height * MM_TO_UM) },
     heightSource: 'config',
   }
 }
@@ -2844,16 +2960,16 @@ export interface RenderJobSpec {
   templateJson: Record<string, unknown>
   printData?: Record<string, unknown>
   baseUrl?: string
+  /** 连续纸显式纸高覆盖（mm，宿主逃生门）；undefined 时 core 按内容探针推导 */
+  paperHeightMm?: number
 }
 
 export interface RenderJobResult {
-  /** 最终 HTML */
+  /** 最终 HTML（连续纸纸高已在 core 内按推导值写进 @page/.print-page） */
   html: string
   pageCount: number
-  /** 连续内容总高（mm，含模板底边距），用于连续纸纸高推导 */
-  contentHeightMm: number
-  /** 模板声明的纸张尺寸（mm，已含方向；连续纸为 纸宽×297 设计高度） */
-  templatePaperMm: { width: number; height: number }
+  /** 最终纸张尺寸（mm，来自 core：连续纸为探针推导高度，其余为模板纸张） */
+  paperMm: { width: number; height: number }
   /** 模板是否连续纸 */
   continuous: boolean
 }
@@ -2863,7 +2979,7 @@ export type RenderResponse =
   | { ok: false; message: string }
 ```
 
-- [ ] **Step 5: 实现 worker 沙箱 preload 与页面**
+- [ ] **Step 4: 实现 worker 沙箱 preload 与页面**
 
 a. `electron.vite.config.ts` 的 preload 改为多入口（数组形式）：
 
@@ -2915,12 +3031,11 @@ c. `src/worker/index.html`：
 </html>
 ```
 
-d. `src/worker/worker.ts`（**主世界**代码，无 Node API，core 由 vite 打包进 renderer 产物；经桥通信）：
+d. `src/worker/worker.ts`（**主世界**代码，无 Node API，core 由 vite 打包进 renderer 产物；经桥通信。仅从 shared 导入**类型**，编译后擦除，无运行时跨包 require）：
 
 ```ts
 // 隐藏渲染 worker（contextIsolation 主世界）：跑 core 浏览器侧两遍渲染，经 wormRender 桥返回结果。
 import { renderHtmlPages, browserCodeRenderer } from '@worm-vue3-print/core/browser'
-import { getPaperDimensions, isContinuousPaper } from '@worm-vue3-print/core'
 import type { PrintTemplateData } from '@worm-vue3-print/core'
 import type { RenderJobSpec, RenderResponse } from '../shared/render-protocol.js'
 
@@ -2935,43 +3050,37 @@ declare global {
 window.wormRender.onRequest(async (_id, spec) => {
   try {
     const template = spec.templateJson as PrintTemplateData
-    const rendered = await renderHtmlPages(
+    // paperMm/continuous 由 core 在 Task 8 直接返回（连续纸已探针推导并写入 HTML 纸高）
+    const { html, pageCount, paperMm, continuous } = await renderHtmlPages(
       template,
       spec.printData,
       spec.baseUrl,
       browserCodeRenderer,
+      { paperHeightMm: spec.paperHeightMm },
     )
-    return {
-      ok: true,
-      result: {
-        html: rendered.html,
-        pageCount: rendered.pageCount,
-        contentHeightMm: rendered.contentHeightMm,
-        templatePaperMm: getPaperDimensions(template),
-        continuous: isContinuousPaper(template),
-      },
-    }
+    return { ok: true, result: { html, pageCount, paperMm, continuous } }
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : '渲染失败' }
   }
 })
 ```
 
-- [ ] **Step 6: 确认构建（worker 沙箱化 + core 打包）**
+- [ ] **Step 5: 确认构建（worker 沙箱化 + core 打包）**
 
 Run: `npm run test -w @worm-vue3-print/print-client`
-Expected: paper 7 条及既有用例全绿。
+Expected: resolvePaper 7 条及既有用例全绿。
 Run: `npm run build -w @worm-vue3-print/print-client`
 Expected:
 1. `out/preload/worker-preload.js` 与 `out/preload/index.js` 均产出；
 2. worker 入口把 `@worm-vue3-print/core`、`@worm-vue3-print/core/browser` 打包进 renderer 产物（若被 `externalizeDepsPlugin` 外置导致主世界 `import` 失败，在 renderer 配置中覆盖：`build.rollupOptions.external = id => /node_modules\/electron|^electron$/.test(id)` 即只外置 electron，其余 workspace 依赖全部打包——以实际产物验证为准）；
-3. worker.ts 中**不得出现**任何 `from 'electron'`（lint 检查：`grep -n "from 'electron'" src/worker/*.ts` 应无输出）。
+3. worker.ts 中**不得出现**任何 `from 'electron'`（`grep -n "from 'electron'" src/worker/*.ts` 应无输出）；
+4. **沙箱 preload 自包含**：`out/preload/worker-preload.js` 中不得残留 `require('../shared/...')`（render-protocol 的通道常量必须被打包器内联；检查：`grep -c "shared/render-protocol" out/preload/worker-preload.js` 应为 0），只允许 `require('electron')`。
 
-- [ ] **Step 7: 提交**
+- [ ] **Step 6: 提交**
 
 ```bash
-git add packages/print-core clients/print-client package-lock.json
-git commit -m "feat(print-client)：沙箱 worker 接入 core 浏览器管线，连续纸按测量高度推导纸高"
+git add clients/print-client package-lock.json
+git commit -m "feat(print-client)：沙箱 worker 接入 core/browser，按 core paperMm 解析出纸尺寸"
 ```
 
 ---
@@ -3101,11 +3210,14 @@ export class RenderEngine {
   constructor(private readonly pool: RendererPool) {}
 
   async prepare(spec: RenderJobSpec, print: PrintOptions): Promise<PreparedPrint> {
-    const result: RenderJobResult = await this.pool.render(spec)
+    // 连续纸显式高度逃生门：换算为 mm 透传给 worker，core 会用它生成 HTML 纸高（保证 @page 与出纸一致）
+    const overrideH = print.paperSize?.height
+    const jobSpec: RenderJobSpec =
+      overrideH && overrideH > 0 ? { ...spec, paperHeightMm: overrideH / 1000 } : spec
+    const result: RenderJobResult = await this.pool.render(jobSpec)
     const { paper, heightSource } = resolvePaper({
       print,
-      templatePaperMm: result.templatePaperMm,
-      contentHeightMm: result.contentHeightMm,
+      paperMm: result.paperMm,
       continuous: result.continuous,
     })
     return {
@@ -4615,7 +4727,7 @@ Expected: `clients/print-client/dist/mac/WormPrintClient.app` 生成。
 4. 绿色版打包：`npm run pack:dir`，三平台产物目录与「各平台需在本系统构建」说明；
 5. WebSocket 协议：帧格式、三类消息、错误码表、端口发现（17521 起 +1）、`print.submit` payload 字段表（单位微米）；
 6. 安全：默认仅回环；开关开启后 token（连接 URL `?token=`）+ Origin 白名单语义；宿主 SDK `pair(token)`；
-7. 纸长策略：仅对模板「连续纸」（paperSize=CONTINUOUS）生效——显式 height 优先，否则按渲染测量总高（含模板底边距）推导（最小 1 英寸）；普通纸使用模板纸张；真机连续纸精度需现场验证；
+7. 纸长策略：仅对模板「连续纸」（paperSize=CONTINUOUS）生效——显式 height 优先，否则由 core 用浏览器布局探针量内容区最大底边（flow-group/动态表格如实计算）+ footer + 底边距（最小 1 英寸），并统一写入 HTML 纸高与出纸 pageSize；普通纸使用模板纸张；真机连续纸精度需现场验证；
 8. 连续纸设计：设计器页面属性选择「连续纸」，默认纸宽 80mm（可改 58/76 等）、设计高度固定 297mm、强制纵向、底边距即末尾走纸留白（默认 0）；
 9. 配置/日志/任务记录文件位置（mac `~/Library/Application Support/<userData>/`、Win `%APPDATA%\<userData>\`、Linux `~/.config/<userData>/`）；
 10. 平台注意：mac 未签名右键打开；Linux 依赖 CUPS（`libgtk-3-0` 等 electron-builder 提示的系统库按报错安装）；针式打印机优先用驱动纸型 `paperName`；字体需客户机已装；
@@ -4647,7 +4759,7 @@ git commit -m "feat(print-client)：绿色目录打包、全仓构建接线与�
 - [ ] macOS：安全开关开/关两路径（Task 14 Step 5）。
 - [ ] Windows 10/11：绿色目录启动、默认打印机、`getPrintersAsync` 中文打印机名、针式驱动纸型 `paperName`。
 - [ ] Linux（Ubuntu 桌面）：绿色目录启动、CUPS 打印、缺系统库时按 README 安装。
-- [ ] 连续纸 58/80mm：设计器配置「连续纸」（默认 80×297、可改纸宽与底边距），客户端按测量总高（含底边距）推导纸高出纸，检查末尾留白/走纸长度公差（即原 p4 问题，开发后真机验证）；不满足时宿主显式传 `print.paperSize.height` 覆盖，结论补记客户端 README。
+- [ ] 连续纸 58/80mm：设计器配置「连续纸」（默认 80×297、可改纸宽与底边距），客户端按 core 探针推导高度出纸，检查末尾留白/走纸长度公差（即原 p4 问题，开发后真机验证）；不满足时宿主显式传 `print.paperSize.height` 覆盖，结论补记客户端 README。
 - [ ] 脱机/缺纸：返回 `PRINTER_OFFLINE`/`PRINT_FAILED` 且任务记录可查、锁已释放可再次打印。
 
 Win/Linux/连续纸三项若当次无法验证，在 PR 描述中明确列为待验证项，不得声称已通过。
@@ -4655,8 +4767,8 @@ Win/Linux/连续纸三项若当次无法验证，在 PR 描述中明确列为待
 ## Self-Review 记录（计划作者自检，执行者无需操作）
 
 - spec 覆盖：协议三消息 ✓、八类错误码均有产生点 ✓、端口发现（SDK 探测 + 服务端递增）✓、安全开关（默认关/token/Origin/UI/pair）✓、连续纸（core CONTINUOUS 纸型/设计器配置/测量推导/显式覆盖/最小钳制）✓、JSONL 500 条 ✓、分级日志与窗口推送 ✓、托盘/设置/记录/日志/测试打印 ✓、单实例/驻留/自启 ✓、worker 崩溃重建 ✓、worker 沙箱 preload ✓、绿色版三平台 ✓、SDK README ✓。
-- 既有包改动有两处，均安排全量回归：Task 8 给 core/canvas 增加 CONTINUOUS（纯增量联合类型，旧 JSON 不受影响）；Task 9 给 core/browser 增加 `contentHeightMm` 增量字段。
+- 既有包改动有两处，均安排全量回归：Task 8 给 core/canvas 增加 CONTINUOUS（纯增量联合类型，旧 JSON 不受影响）；Task 8 给 core/browser 的 `BrowserRenderResult` 增加 `paperMm/continuous` 字段（连续纸探针推导在 core 内完成，Task 9 只消费）。
 - 连续纸判定只看模板 `paperSize==='CONTINUOUS'`（worker 回传 `continuous` 标志），与宿主是否传 `print.paperSize` 解耦；`resolvePaper` 单一判定点。
-- 底边距不新增字段，复用模板 `margins.bottom`；测量文档 scrollHeight 含 padding-bottom，推导高度自动包含走纸留白。
+- 底边距不新增字段，复用模板 `margins.bottom`，composeContinuousHeight 显式加回该值，即末尾走纸留白。
 - 类型一致性：`PrintOptions.paperSize.width/height` 均为可选（Task 1），Task 11 校验逐字段校验、height 允许 0，Task 9 `resolvePaper` 以 `>0` 判定显式值，三处语义一致。
 - 已知执行期校正点（已在对应任务内写明，不是占位）：tray 图标 API、electron-vite 对 core 的外置处理（worker 主世界必须打包 core）、print 选项以 Electron 实际类型微调、pack 脚本位置。
