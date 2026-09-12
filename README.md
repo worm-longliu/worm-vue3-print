@@ -11,8 +11,10 @@ Vue 3 可视化打印模板设计器 + 模板表达式引擎 + 同构渲染管�
 
 | 包 | 说明 |
 |----|------|
-| `@worm-vue3-print/core` | 模板表达式引擎与同构渲染管线（数据绑定 / HTML 生成 / 分页），纯 TypeScript，无 Vue、无宿主依赖，浏览器与 Node 均可运行 |
+| `@worm-vue3-print/core` | 模板表达式引擎与同构渲染管线（数据绑定 / HTML 生成 / 分页，含连续纸探针推导），纯 TypeScript，无 Vue、无宿主依赖，浏览器与 Node 均可运行 |
 | `@worm-vue3-print/canvas` | Vue 3 可视化设计器画布（原生控件，无 Element Plus；含 `PrintDesigner`、`PrintHtmlPreview` 组件） |
+| `@worm-vue3-print/client` | 浏览器端静默打印 SDK（WebSocket 端口探测 / 重连 / 超时 / 鉴权 / 打印门面），框架无关 |
+| `@worm-vue3-print/print-client` | 跨平台静默打印桌面客户端（Electron，回环 WebSocket + core 同构渲染 + `webContents.print` 静默出纸），位于 `clients/print-client` |
 
 ## 功能特性
 

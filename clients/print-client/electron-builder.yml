@@ -1,0 +1,24 @@
+appId: com.worm-vue3-print.client
+productName: WormPrintClient
+copyright: MIT
+directories:
+  output: dist
+  buildResources: build
+# 绿色目录版：--dir 只产出 unpacked 目录，不产出安装包
+files:
+  - out/**/*
+  - package.json
+# workspace 依赖（@worm-vue3-print/core、@worm-vue3-print/client）与 ws
+# 由 electron-builder 从各自 dist 收集进 asar；pack:client:dir 会先构建它们。
+asar: true
+mac:
+  target:
+    - target: dir
+  category: public.app-category.utilities
+win:
+  target:
+    - target: dir
+linux:
+  target:
+    - target: dir
+  category: Utility
