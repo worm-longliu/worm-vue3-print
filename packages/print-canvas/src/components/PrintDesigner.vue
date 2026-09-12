@@ -277,7 +277,7 @@ function onFitWindow() {
     const dim = getPaperDimensions(templateData.value)
     const MM_TO_PX = 96 / 25.4
     // 目标比例由纸张尺寸与可用视口算出；CanvasArea 的 fitToWindow
-    // 以视口中心为锚点一步到位，平滑动画由纸张 transform 过渡产生
+    // 以视口中心为锚点一步到位，无缩放动画（临时禁用纸张 transform 过渡）
     const target = computeFitScale(
       el.clientWidth - padX,
       el.clientHeight - padY,

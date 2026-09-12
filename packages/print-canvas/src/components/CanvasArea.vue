@@ -383,10 +383,14 @@ function zoomByStep(direction: 1 | -1) {
 }
 
 // ─── 适应窗口:一步到位(调用方已算好目标比例),以视口中心为锚点,
-//    与 Ctrl+滚轮同一管线;平滑动画由纸张 150ms transform 过渡自然产生 ───
+//    与 Ctrl+滚轮同一管线;不做缩放动画:临时禁用纸张 transform 过渡,
+//    待新比例应用到 DOM 后恢复,不影响滚轮/工具栏缩放的 150ms 动画 ───
 function fitToWindow(targetPercent: number) {
   const container = rootRef.value
   if (!container) return
+  const paper = container.querySelector('.hiprint-printPaper') as HTMLElement | null
+  const prevTransition = paper?.style.transition ?? ''
+  if (paper) paper.style.transition = 'none'
   // 适应窗口允许低于交互缩放下限（见 FIT_SCALE_MIN_PERCENT），保证超大纸张整版可见
   applyZoom(
     targetPercent,
@@ -394,6 +398,9 @@ function fitToWindow(targetPercent: number) {
     container.clientHeight / 2,
     FIT_SCALE_MIN_PERCENT,
   )
+  void nextTick(() => {
+    if (paper) paper.style.transition = prevTransition
+  })
 }
 
 function onCanvasMouseDown(e: MouseEvent) {

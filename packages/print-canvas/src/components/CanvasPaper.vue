@@ -515,7 +515,7 @@ defineExpose({ contentRef })
      水平居中统一由外层 .canvas-scroll 的 align-items: center 负责。 */
   display: block;
 }
-/* 纸张缩放平滑过渡(配合鼠标位置缩放中心) */
+/* 纸张缩放平滑过渡(配合鼠标位置缩放中心)；适应窗口时由 JS 临时禁用 */
 .hiprint-printPaper {
   transition: transform 0.15s ease-out;
 }
