@@ -39,16 +39,32 @@ npm run test -w @worm-vue3-print/print-client  # 单元/集成测试（node + ha
 npm run build -w @worm-vue3-print/print-client # electron-vite 三环境构建到 out/
 ```
 
-## 绿色版打包
+## 打包
 
-仅产出**不安装即可运行**的目录（不做安装包/自动更新）：
+### 安装包（macOS 上交叉打包 mac + win）
+
+macOS 上可同时产出**当前系统安装包**与**交叉构建的 Windows 安装包**（`win.nsis` 目标；Linux 安装包只能在 Linux 上构建）：
 
 ```bash
-# 在仓库根目录：先构建 core 与 SDK 的 dist，再 electron-builder --dir
+npm run pack:client        # 在仓库根目录：先构建 core 与 SDK 的 dist，再 electron-builder --mac --win
+```
+
+产物：
+
+- macOS：`clients/print-client/dist/mac-arm64/*.dmg|*.zip`（Apple Silicon）或 `dist/mac/*.dmg|*.zip`（Intel）
+- Windows：`clients/print-client/dist/win-unpacked/` + `*.exe`（NSIS 安装程序，可选择安装目录/创建桌面快捷方式）
+
+> 未配置代码签名与自定义图标，产物为未签名 + Electron 默认图标；分发前请补充 `build/` 资源（`icon.icns`/`icon.ico`）与签名证书。
+
+### 绿色目录版（免安装）
+
+仅产出**不安装即可运行**的目录：
+
+```bash
 npm run pack:client:dir
 ```
 
-产物（electron-builder 限制，三平台只能在各自系统上构建本平台产物）：
+产物（electron-builder 限制，各平台只能在对应系统上构建本平台产物）：
 
 - macOS：`clients/print-client/dist/mac/WormPrintClient.app`
 - Windows：`clients/print-client/dist/win-unpacked/`

@@ -4,20 +4,28 @@ copyright: MIT
 directories:
   output: dist
   buildResources: build
-# 绿色目录版：--dir 只产出 unpacked 目录，不产出安装包
+# 安装包（安装版）与绿色目录版（--dir）共用此配置；
+# 绿色目录版通过 electron-builder --dir 只产出 unpacked 目录，不产出安装包。
 files:
   - out/**/*
   - package.json
 # workspace 依赖（@worm-vue3-print/core、@worm-vue3-print/client）与 ws
-# 由 electron-builder 从各自 dist 收集进 asar；pack:client:dir 会先构建它们。
+# 由 electron-builder 从各自 dist 收集进 asar；打包脚本会先构建它们。
 asar: true
 mac:
   target:
-    - target: dir
+    - target: dmg
+    - target: zip
   category: public.app-category.utilities
 win:
   target:
-    - target: dir
+    - target: nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: WormPrintClient
+# Linux 安装包只能在 Linux 上构建；此处仅保留目录目标，避免误产物
 linux:
   target:
     - target: dir
