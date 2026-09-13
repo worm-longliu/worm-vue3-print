@@ -13,7 +13,8 @@
 
 - `@worm-vue3-print/core`：新增同构水印模块（`render/watermark.ts`）——`generateHtml` 在每页最底层输出 `.watermark-layer`（**显式矢量瓦片**，逐块 `<svg class="watermark-tile">`），设计模板、浏览器预览、服务端 PDF、静默打印四端水印渲染完全一致。
 - `@worm-vue3-print/core`：`WatermarkOptions` 新增 `tileWidth`/`tileHeight`（瓦片尺寸，控制水印密度，默认 260×180）；导出 `WATERMARK_DEFAULTS`、`WATERMARK_DENSITY_PRESETS`、`PX_PER_MM`、`MM_PER_PX`、`isWatermarkVisible`、`resolveWatermarkText`、`formatTimestamp`、`resolveWatermarkLayout`、`renderWatermarkTileSvg`、`renderWatermarkLayerHtml`。
-- `@worm-vue3-print/canvas`：水印绑定字段支持完整路径与表达式（`order.no`、`{order.no}`、`CONCAT/DATE(...)`），取不到值时回退测试值；配置面板新增「自定义表达式」「时间格式」「密度（密/中/疏/自定义）」。
+- `@worm-vue3-print/core`：水印表达式支持系统变量 `{printDate}`（打印日期 YYYY-MM-DD）、`{printTime}`（打印时间 HH:mm:ss）、`{pageIndex}`（当前页码）、`{totalPages}`（总页数），与表达式弹框「变量」一致；`injectSystemVariables` 同步支持 `{printTime}` 替换，并导出 `resolveSystemVariables` 供设计器预览复用（预览与打印取值同源）。
+- `@worm-vue3-print/canvas`：水印配置面板调整为「固定文本 / 字段表达式」两态——字段表达式通过表达式弹框（按钮或双击输入框打开）编辑，弹框内可直接选业务字段与打印日期/时间等变量；移除预设绑定字段下拉与时间戳开关（时间戳改由表达式里的 `{printDate}`/`{printTime}` 表达）；保留密度（密/中/疏/自定义瓦片尺寸）等设置。
 - `@worm-vue3-print/canvas`：`WatermarkConfig`、`CanvasPaper` 水印渲染改用 core 同构模块，三端渲染一致。
 
 ### 修复

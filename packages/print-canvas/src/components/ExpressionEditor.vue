@@ -188,6 +188,7 @@ import type { PrintBusinessField } from '@worm-vue3-print/core/designer'
 import { evaluateTemplate } from '@worm-vue3-print/core/designer'
 import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
 import { groupFields, filterGroups } from '@worm-vue3-print/core/designer'
+import { resolveSystemVariables } from '@worm-vue3-print/core'
 
 const props = defineProps<{
   modelValue: boolean
@@ -338,11 +339,8 @@ const previewResult = computed(() => {
   try {
     const ctx = {
       ...DEFAULT_DEMO_DATA,
-      // 系统变量示例值，与渲染端一致（print-render 在生成 HTML 时替换）
-      pageIndex: 1,
-      totalPages: 1,
-      printDate: new Date().toISOString().split('T')[0],
-      printTime: Date.now(),
+      // 系统变量取值与渲染端同一实现（resolveSystemVariables），保证预览与打印一致
+      ...resolveSystemVariables(),
     }
     const result = evaluateTemplate(localExpression.value, ctx)
     if (result === undefined || result === null) return '（无法计算）'

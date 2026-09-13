@@ -11,6 +11,7 @@
 import type { WatermarkOptions } from '../designer/types.js'
 import { getByPath } from '../utils.js'
 import { evaluateTemplate, safeEval } from './expression-eval.js'
+import { resolveSystemVariables, type SystemVariableContext } from './data-binder.js'
 
 /** 96dpi 下 1mm 对应的 CSS px 数（瓦片尺寸仍以 px 配置，落纸时换算为 mm） */
 export const PX_PER_MM = 96 / 25.4
@@ -66,9 +67,16 @@ export function isWatermarkVisible(wm?: WatermarkOptions | null): boolean {
  * - fixed：取 content；
  * - binding：支持字段路径（order.no）、花括号表达式（{order.no}、CONCAT/DATE(...)），
  *   取不到值时依次回退 testData → [binding]；
- * - timestamp 开启时追加时间（format 指定格式，缺省 YYYY-MM-DD HH:mm）。
+ * - 表达式可直接使用系统变量（{printDate} 打印日期、{printTime} 打印时间、
+ *   {pageIndex} 当前页码、{totalPages} 总页数）——即表达式弹框「变量」里的选项；
+ * - timestamp 开启时追加时间（format 指定格式，缺省 YYYY-MM-DD HH:mm），
+ *   为存量模板保留，配置面板已不再提供该开关（改用 {printDate}/{printTime}）。
  */
-export function resolveWatermarkText(wm: WatermarkOptions | undefined, printData?: Record<string, any> | Record<string, any>[]): string {
+export function resolveWatermarkText(
+  wm: WatermarkOptions | undefined,
+  printData?: Record<string, any> | Record<string, any>[],
+  systemVars?: Partial<SystemVariableContext>,
+): string {
   if (!wm) return ''
   let text = ''
 
@@ -77,12 +85,14 @@ export function resolveWatermarkText(wm: WatermarkOptions | undefined, printData
   } else if (typeof wm.binding === 'string' && wm.binding.trim()) {
     const binding = wm.binding.trim()
     const data = Array.isArray(printData) ? (printData[0] ?? {}) : (printData ?? {})
+    // 系统变量与业务数据合并（业务数据同名时优先，便于宿主覆盖）
+    const ctx: Record<string, any> = { ...resolveSystemVariables(), ...systemVars, ...data }
     let resolved: unknown
     if (binding.includes('{')) {
-      resolved = evaluateTemplate(binding, data)
+      resolved = evaluateTemplate(binding, ctx)
     } else {
       try {
-        resolved = safeEval(binding, data)
+        resolved = safeEval(binding, ctx)
       } catch {
         resolved = undefined
       }
@@ -181,9 +191,10 @@ export function resolveWatermarkLayout(
   wm: WatermarkOptions | undefined,
   printData: Record<string, any> | Record<string, any>[] | undefined,
   paperMm: WatermarkPaper,
+  systemVars?: Partial<SystemVariableContext>,
 ): ResolvedWatermark | null {
   if (!isWatermarkVisible(wm)) return null
-  const text = resolveWatermarkText(wm, printData)
+  const text = resolveWatermarkText(wm, printData, systemVars)
   if (!text) return null
 
   const tile = resolveTileSize(wm)
@@ -249,8 +260,9 @@ export function renderWatermarkLayerHtml(
   wm: WatermarkOptions | undefined,
   printData: Record<string, any> | Record<string, any>[] | undefined,
   paperMm: WatermarkPaper,
+  systemVars?: Partial<SystemVariableContext>,
 ): string {
-  const layout = resolveWatermarkLayout(wm, printData, paperMm)
+  const layout = resolveWatermarkLayout(wm, printData, paperMm, systemVars)
   if (!layout) return ''
   const tiles = layout.tiles.map((t) => renderWatermarkTileSvg(layout, t)).join('\n')
   return `\n<div class="watermark-layer" style="opacity:${layout.opacity}">\n${tiles}\n</div>`

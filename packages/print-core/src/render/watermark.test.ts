@@ -86,6 +86,29 @@ describe('resolveWatermarkText', () => {
     const year = new Date().getFullYear()
     expect(text).toMatch(new RegExp(`^机密 ${year}/\\d{2}/\\d{2}$`))
   })
+
+  it('表达式支持系统变量：打印日期/打印时间（与表达式弹框「变量」一致）', () => {
+    const systemVars = { printDate: '2026-09-13', printTime: '18:30:05', pageIndex: 2, totalPages: 3 }
+    expect(resolveWatermarkText({ mode: 'binding', binding: '{printDate}' }, {}, systemVars)).toBe('2026-09-13')
+    expect(resolveWatermarkText({ mode: 'binding', binding: '{printTime}' }, {}, systemVars)).toBe('18:30:05')
+    expect(
+      resolveWatermarkText({ mode: 'binding', binding: "CONCAT(printDate, ' ', printTime)" }, {}, systemVars),
+    ).toBe('2026-09-13 18:30:05')
+  })
+
+  it('未传系统变量时用当前时间兜底（不出现 [表达式] 兜底文本）', () => {
+    const text = resolveWatermarkText({ mode: 'binding', binding: '{printDate} {printTime}' }, {})
+    expect(text).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+  })
+
+  it('业务数据同名时优先于系统变量（宿主可覆盖）', () => {
+    const text = resolveWatermarkText(
+      { mode: 'binding', binding: '{printDate}' },
+      { printDate: '业务日期' },
+      { printDate: '2026-09-13' },
+    )
+    expect(text).toBe('业务日期')
+  })
 })
 
 describe('formatTimestamp', () => {
@@ -271,6 +294,14 @@ describe('generateHtml 水印集成（四端起同构渲染）', () => {
     const html = generateHtml(tpl, pageLayouts, [{ order: { no: 'SO-100' } }])
     expect(html).toContain('SO-100')
     expect(html).not.toContain('order.no')
+  })
+
+  it('水印表达式可用页码变量：每页取自己的页码', () => {
+    const tpl = makeTemplate()
+    tpl.watermark = { mode: 'binding', binding: '第{pageIndex}页/共{totalPages}页' }
+    const html = generateHtml(tpl, pageLayouts)
+    expect(html).toContain('第1页/共2页')
+    expect(html).toContain('第2页/共2页')
   })
 
   it('测量模式同样输出水印层且不影响 data-measure-id', () => {

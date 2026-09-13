@@ -6,7 +6,7 @@
       <div class="pd-field"><span class="pd-label">水印模式</span>
         <div class="pd-radio-group" role="radiogroup">
           <label class="pd-radio"><input type="radio" v-model="localConfig.mode" value="fixed" @change="onChange"><span>固定文本</span></label>
-          <label class="pd-radio"><input type="radio" v-model="localConfig.mode" value="binding" @change="onChange"><span>绑定字段</span></label>
+          <label class="pd-radio"><input type="radio" v-model="localConfig.mode" value="binding" @change="onChange"><span>字段表达式</span></label>
         </div>
       </div>
 
@@ -17,20 +17,28 @@
         </div>
       </template>
 
-      <!-- 绑定字段模式 -->
+      <!-- 字段表达式模式：表达式经弹框编辑（弹框内可选字段与打印日期/时间等变量） -->
       <template v-else>
-        <div class="pd-field"><span class="pd-label">选择字段</span>
-          <select class="pd-select" :value="fieldKeyValue" style="width: 100%" @change="onFieldSelect">
-            <option value="">（不使用字段）</option>
-            <option v-for="f in fields" :key="f.fieldKey" :value="f.fieldKey">{{ f.fieldLabel }}</option>
-          </select>
-        </div>
-        <div class="pd-field"><span class="pd-label">自定义表达式</span>
-          <input class="pd-input" v-model="bindingInput" placeholder="字段路径 order.no 或 {order.no}、CONCAT(...)" @input="onBindingInput" />
+        <div class="pd-field"><span class="pd-label">字段表达式</span>
+          <input
+            class="pd-input"
+            v-model="bindingInput"
+            placeholder="如 {order.no}、{printDate}、CONCAT('单号：', order.no)"
+            title="双击或点「编辑表达式」打开表达式弹框"
+            @input="onBindingInput"
+            @dblclick="openExpressionEditor"
+          />
+          <button type="button" class="pd-button small" @click="openExpressionEditor">编辑表达式</button>
         </div>
         <div class="pd-field"><span class="pd-label">测试值</span>
-          <input class="pd-input" v-model="localConfig.testData" placeholder="无数据时预览显示的测试值" @input="onChange" />
+          <input class="pd-input" v-model="localConfig.testData" placeholder="表达式的测试值" @input="onChange" />
         </div>
+        <ExpressionEditor
+          v-model="exprEditorVisible"
+          :fields="fields"
+          :expression="bindingInput"
+          @update:expression="onExpressionChange"
+        />
       </template>
 
       <!-- 公共设置 -->
@@ -59,14 +67,6 @@
           <input type="number" class="pd-input" v-model.number="localConfig.tileHeight" :min="minTileHeight" :step="10" @change="onChange" />
         </div>
       </template>
-      <div class="pd-field"><span class="pd-label">显示时间戳</span>
-        <input type="checkbox" class="pd-switch" v-model="localConfig.timestamp" @change="onChange" />
-      </div>
-      <template v-if="localConfig.timestamp">
-        <div class="pd-field"><span class="pd-label">时间格式</span>
-          <input class="pd-input" v-model="localConfig.format" placeholder="YYYY-MM-DD HH:mm" @input="onChange" />
-        </div>
-      </template>
     </form>
   </div>
 </template>
@@ -76,6 +76,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import type { WatermarkOptions, PrintBusinessField } from '@worm-vue3-print/core/designer'
 import { WATERMARK_DENSITY_PRESETS, WATERMARK_DEFAULTS } from '@worm-vue3-print/core'
 import PresetColorPicker from './PresetColorPicker.vue'
+import ExpressionEditor from './ExpressionEditor.vue'
 
 const props = defineProps<{
   modelValue?: WatermarkOptions
@@ -98,14 +99,13 @@ const localConfig = reactive({
   rotate: props.modelValue?.rotate ?? WATERMARK_DEFAULTS.rotate,
   color: props.modelValue?.color || WATERMARK_DEFAULTS.color,
   opacity: props.modelValue?.opacity ?? WATERMARK_DEFAULTS.opacity,
-  timestamp: props.modelValue?.timestamp ?? false,
-  format: props.modelValue?.format || '',
   tileWidth: props.modelValue?.tileWidth ?? WATERMARK_DEFAULTS.tileWidth,
   tileHeight: props.modelValue?.tileHeight ?? WATERMARK_DEFAULTS.tileHeight,
 })
 
-// 自定义表达式输入框（不写入 WatermarkOptions，纯 UI 中间态）
+// 字段表达式输入框（直接写入 WatermarkOptions.binding）
 const bindingInput = ref(props.modelValue?.binding || '')
+const exprEditorVisible = ref(false)
 
 watch(() => props.modelValue, (val) => {
   if (!val) return
@@ -116,8 +116,6 @@ watch(() => props.modelValue, (val) => {
   localConfig.rotate = val.rotate ?? WATERMARK_DEFAULTS.rotate
   localConfig.color = val.color || WATERMARK_DEFAULTS.color
   localConfig.opacity = val.opacity ?? WATERMARK_DEFAULTS.opacity
-  localConfig.timestamp = val.timestamp ?? false
-  localConfig.format = val.format || ''
   localConfig.tileWidth = val.tileWidth ?? WATERMARK_DEFAULTS.tileWidth
   localConfig.tileHeight = val.tileHeight ?? WATERMARK_DEFAULTS.tileHeight
   bindingInput.value = val.binding || ''
@@ -140,24 +138,19 @@ const density = computed({
   },
 })
 
-/** 选择字段时填入字段 key（整除路径），不高亮为未选中 */
-const fieldKeyValue = computed(() => {
-  const b = localConfig.binding
-  for (const f of props.fields ?? []) {
-    if (b === f.fieldKey) return f.fieldKey
-  }
-  return ''
-})
-
-function onFieldSelect(e: Event) {
-  const key = (e.target as HTMLSelectElement).value
-  localConfig.binding = key
-  bindingInput.value = key
+function onBindingInput() {
+  localConfig.binding = bindingInput.value
   onChange()
 }
 
-function onBindingInput() {
-  localConfig.binding = bindingInput.value
+function openExpressionEditor() {
+  exprEditorVisible.value = true
+}
+
+/** 表达式弹框确定：同步输入框与配置 */
+function onExpressionChange(value: string) {
+  bindingInput.value = value
+  localConfig.binding = value
   onChange()
 }
 

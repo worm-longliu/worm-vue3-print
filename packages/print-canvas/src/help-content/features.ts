@@ -125,10 +125,10 @@ export default {
 
 <h2>水印配置</h2>
 <ul>
-  <li>支持固定文本或绑定字段；绑定字段支持完整路径（如 <code>order.no</code>）与表达式（如 <code>{order.no}</code>、<code>CONCAT(...)</code>），取不到值时回退到测试值</li>
+  <li>支持固定文本或字段表达式两种模式</li>
+  <li>字段表达式点击「编辑表达式」（或双击输入框）打开表达式弹框，可直接选择业务字段与系统变量：打印日期 <code>{printDate}</code>、打印时间 <code>{printTime}</code>、当前页码 <code>{pageIndex}</code>、总页数 <code>{totalPages}</code>；表达式取不到值时回退到测试值</li>
   <li>可设置旋转角度（-90°~90°）、颜色与透明度</li>
   <li>支持调节水印密度（密/中/疏/自定义瓦片尺寸），以及设置水印颜色</li>
-  <li>支持显示打印时间戳，可自定义时间格式（如 <code>YYYY-MM-DD HH:mm</code>）</li>
   <li>水印在画布、浏览器预览、服务端 PDF、静默打印四端渲染一致</li>
 </ul>
   `

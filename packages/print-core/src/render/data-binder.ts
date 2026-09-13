@@ -190,8 +190,37 @@ function countRepeatHeader(rows: any[]): number {
   return n
 }
 
-export function injectSystemVariables(html: string): string {
-  const now = new Date()
-  const printDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  return html.replace(/\{printDate\}/g, printDate)
+/** 系统变量上下文（表达式 ctx 与 HTML 占位符替换共用，保证取值一致） */
+export interface SystemVariableContext {
+  /** 打印日期 YYYY-MM-DD */
+  printDate: string
+  /** 打印时间 HH:mm:ss */
+  printTime: string
+  pageIndex: number
+  totalPages: number
+}
+
+const pad2 = (n: number): string => String(n).padStart(2, '0')
+
+/**
+ * 生成系统变量取值；水印表达式求值与最终 HTML 占位符替换共用同一实现，
+ * 避免「设计器预览看到的打印时间」与「实际打印出来的」不一致。
+ */
+export function resolveSystemVariables(
+  now: Date = new Date(),
+  page: { pageIndex?: number; totalPages?: number } = {},
+): SystemVariableContext {
+  return {
+    printDate: `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`,
+    printTime: `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`,
+    pageIndex: page.pageIndex ?? 1,
+    totalPages: page.totalPages ?? 1,
+  }
+}
+
+export function injectSystemVariables(html: string, now: Date = new Date()): string {
+  const { printDate, printTime } = resolveSystemVariables(now)
+  return html
+    .replace(/\{printDate\}/g, printDate)
+    .replace(/\{printTime\}/g, printTime)
 }

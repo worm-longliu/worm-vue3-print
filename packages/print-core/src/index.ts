@@ -44,6 +44,8 @@ export * from './functions/index.js'
 
 // ─── 打印渲染管线（同构：Node 服务端 PDF 与浏览器 HTML 预览共用） ───
 export { bindData, injectSystemVariables } from './render/data-binder.js'
+export { resolveSystemVariables } from './render/data-binder.js'
+export type { SystemVariableContext } from './render/data-binder.js'
 export { generateHtml } from './render/html-generator.js'
 export type { GenerateOptions } from './render/html-generator.js'
 export { buildPageCss, elementPositionStyle, mm } from './render/css-builder.js'

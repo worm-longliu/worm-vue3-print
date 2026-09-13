@@ -187,7 +187,7 @@ function renderPage(
   contentHtml = contentHtml.replace(/\{totalPages\}/g, String(totalPages))
 
   return `<section class="print-page" data-page="${pageNum}">
-  ${renderWatermarkLayerHtml(template.watermark, printData, paperMm)}
+  ${renderWatermarkLayerHtml(template.watermark, printData, paperMm, { pageIndex: pageNum, totalPages })}
   <div class="page-header">${headerHtml}</div>
   ${overlayHtml}
   <div class="content-area">
