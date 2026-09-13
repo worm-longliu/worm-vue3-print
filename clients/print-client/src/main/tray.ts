@@ -1,5 +1,6 @@
-// 系统托盘：显示端口状态、测试打印、设置（Task 13 接入）、退出。
-import { Tray, Menu, nativeImage } from 'electron'
+// 系统托盘：显示端口状态、测试打印、设置、退出。
+import { Tray, Menu } from 'electron'
+import { createTrayIcon } from './tray-icon.js'
 
 export interface TrayDeps {
   getPort: () => number
@@ -8,12 +9,8 @@ export interface TrayDeps {
   quit: () => void
 }
 
-// 1x1 透明图标占位；正式图标资源后续补充（各平台建议 16/32@2x png 或 Template 图）。
-const EMPTY_PNG_DATA_URL =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC'
-
 export function createTray(deps: TrayDeps): Tray {
-  const tray = new Tray(nativeImage.createFromDataURL(EMPTY_PNG_DATA_URL))
+  const tray = new Tray(createTrayIcon())
   tray.setToolTip('worm-vue3-print 静默打印客户端')
 
   tray.setContextMenu(
@@ -31,6 +28,7 @@ export function createTray(deps: TrayDeps): Tray {
       { label: '退出', click: () => deps.quit() },
     ]),
   )
-
+  // macOS 左键单击直接打开设置窗口（并重建菜单以刷新端口显示）
+  tray.on('click', () => deps.showSettings())
   return tray
 }

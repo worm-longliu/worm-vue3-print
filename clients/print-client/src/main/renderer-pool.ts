@@ -74,7 +74,7 @@ export class RendererPool {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: true,
-        preload: join(__dirname, '../preload/worker-preload.js'),
+        preload: join(__dirname, '../preload/worker-preload.cjs'),
       },
     })
     worker.webContents.on('render-process-gone', (_e, details) => {

@@ -77,6 +77,7 @@ export class MainWindowManager {
   show(): void {
     if (this.win) {
       if (this.win.isMinimized()) this.win.restore()
+      if (!this.win.isVisible()) this.win.show()
       this.win.focus()
       return
     }
@@ -87,14 +88,24 @@ export class MainWindowManager {
       minHeight: 520,
       title: 'worm-vue3-print 打印客户端设置',
       webPreferences: {
-        preload: join(__dirname, '../preload/index.js'),
+        preload: join(__dirname, '../preload/index.cjs'),
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: false,
+        // 沙箱 preload 恒按 CJS 加载（规避包内 type:module 下 .js/.cjs 的 ESM 歧义），
+        // 且本 preload 仅使用 electron（ipcRenderer/contextBridge），沙箱完全兼容，也更安全。
+        sandbox: true,
       },
     })
-    this.win.on('closed', () => {
-      this.win = null
+    this.win.webContents.on('did-fail-load', (_e, code, desc) =>
+      console.error('[settings] 页面加载失败', code, desc),
+    )
+    this.win.webContents.on('render-process-gone', (_e, d) =>
+      console.error('[settings] 渲染进程消失', JSON.stringify(d)),
+    )
+    this.win.on('close', e => {
+      // 关闭按钮仅隐藏到托盘，应用继续驻留；真正退出走托盘菜单（最终 app.exit 强退，不经过此处）
+      e.preventDefault()
+      this.win?.hide()
     })
     const url = process.env.ELECTRON_RENDERER_URL
       ? `${process.env.ELECTRON_RENDERER_URL}/renderer/index.html`

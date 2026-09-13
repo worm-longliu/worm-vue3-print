@@ -10,10 +10,11 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
-        // sandbox:true 的 preload 统一输出 CommonJS .js（Electron 沙箱 preload 兼容性最佳）
+        // preload 统一输出 CommonJS .cjs：包为 type:module，.js 会被当 ESM
+        // 导致 require 未定义；.cjs 在 sandbox true/false 下均按 CJS 加载，无歧义。
         output: {
           format: 'cjs',
-          entryFileNames: '[name].js',
+          entryFileNames: '[name].cjs',
         },
         input: {
           index: resolve(__dirname, 'src/preload/index.ts'),

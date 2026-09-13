@@ -99,3 +99,16 @@ td {
 .log .warn {
   color: #d97706;
 }
+.loading {
+  padding: 40px;
+  text-align: center;
+  color: var(--muted, #888);
+}
+.bridge-error {
+  margin: 8px 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fde8e8;
+  border: 1px solid #f0a0a0;
+  color: #9b1c1c;
+}

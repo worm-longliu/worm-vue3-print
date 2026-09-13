@@ -16,22 +16,32 @@ const testMsg = ref('')
 const jobs = ref<JobRecord[]>([])
 const logs = ref<LogEntry[]>([])
 const originsText = ref('')
+const bridgeError = ref('')
 
 onMounted(async () => {
-  const state = await window.wormPrint.getState()
-  config.value = state.config
-  port.value = state.port
-  version.value = state.version
-  originsText.value = state.config.allowedOrigins.join('\n')
-  printers.value = await window.wormPrint.listPrinters()
-  jobs.value = await window.wormPrint.listHistory()
-  window.wormPrint.onLog(e => {
-    logs.value.push(e)
-    if (logs.value.length > 1000) logs.value.shift()
-  })
-  window.wormPrint.onJob(r => {
-    jobs.value.unshift(r)
-  })
+  if (!window.wormPrint) {
+    bridgeError.value =
+      '渲染桥（preload）加载失败，界面无法与主进程通信，请检查客户端构建产物是否完整。'
+    return
+  }
+  try {
+    const state = await window.wormPrint.getState()
+    config.value = state.config
+    port.value = state.port
+    version.value = state.version
+    originsText.value = state.config.allowedOrigins.join('\n')
+    printers.value = await window.wormPrint.listPrinters()
+    jobs.value = await window.wormPrint.listHistory()
+    window.wormPrint.onLog(e => {
+      logs.value.push(e)
+      if (logs.value.length > 1000) logs.value.shift()
+    })
+    window.wormPrint.onJob(r => {
+      jobs.value.unshift(r)
+    })
+  } catch (err) {
+    bridgeError.value = `初始化失败：${(err as Error)?.message ?? String(err)}`
+  }
 })
 
 async function save() {
@@ -65,6 +75,9 @@ function fmtTime(iso: string): string {
 
 <template>
   <div>
+    <div v-if="bridgeError" class="bridge-error">{{ bridgeError }}</div>
+    <div v-else-if="!config" class="loading">正在加载…</div>
+    <template v-else>
     <div class="tabs">
       <button class="tab" :class="{ active: tab === 'settings' }" @click="tab = 'settings'">设置</button>
       <button class="tab" :class="{ active: tab === 'jobs' }" @click="tab = 'jobs'">任务记录</button>
@@ -157,5 +170,6 @@ function fmtTime(iso: string): string {
         </div>
       </div>
     </div>
+    </template>
   </div>
 </template>

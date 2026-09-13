@@ -86,6 +86,8 @@ if (!gotLock) {
       mainWindow.bindPushEvents()
       const showSettings = () => mainWindow?.show()
       app.on('second-instance', () => mainWindow?.show())
+      // macOS 点击 Dock 图标时唤起设置窗口
+      app.on('activate', () => mainWindow?.show())
       createTray({
         getPort: () => server.port,
         testPrint,
@@ -95,6 +97,8 @@ if (!gotLock) {
 
       app.setLoginItemSettings({ openAtLogin: configStore.current.autoStart })
       logger.info('客户端启动完成', { port: actualPort, version: app.getVersion() })
+      // 绿色版启动即打开设置窗口（应用同时驻留托盘，关闭窗口仅隐藏）
+      mainWindow.show()
 
       app.on('before-quit', e => {
         if (quitting) return
