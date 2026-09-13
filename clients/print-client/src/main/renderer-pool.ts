@@ -1,8 +1,10 @@
 // 隐藏窗口管理：常驻 worker 跑 core 渲染；每任务新建打印窗口承载最终 HTML 静默打印。
-import { BrowserWindow, ipcMain, protocol, type IpcMainEvent } from 'electron'
+import { BrowserWindow, ipcMain, type IpcMainEvent } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { pathToFileURL } from 'node:url'
 import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import {
   RENDER_REQUEST_CHANNEL,
   RENDER_RESPONSE_CHANNEL,
@@ -14,10 +16,9 @@ import { ProtocolFailure } from './protocol-error.js'
 import type { Logger } from './logger.js'
 
 const RENDER_TIMEOUT_MS = 30_000
-const SCHEME = 'wormprint'
 
-/** 打印窗口 HTML 内存暂存（wormprint:// 协议读取） */
-const htmlStore = new Map<string, string>()
+/** 打印 HTML 临时目录（标准 file:// 协议加载，打印完删除单文件） */
+const PRINT_HTML_DIR = join(tmpdir(), 'worm-print-client')
 
 interface PendingRender {
   resolve: (r: RenderJobResult) => void
@@ -32,25 +33,12 @@ export class RendererPool {
   private worker: BrowserWindow | null = null
   private readonly pendings = new Map<string, PendingRender>()
   private initialized = false
-  private protocolRegistered = false
 
   constructor(private readonly logger?: Pick<Logger, 'debug' | 'info' | 'warn' | 'error'>) {}
 
-  /** 幂等初始化：注册协议、创建 worker、绑定响应与崩溃重建 */
+  /** 幂等初始化：创建 worker、绑定响应与崩溃重建（打印内容走标准 file://，无需注册自定义协议） */
   async init(): Promise<void> {
     if (this.initialized) return
-
-    if (!this.protocolRegistered) {
-      protocol.registerStringProtocol(SCHEME, request => {
-        const id = request.url.replace(`${SCHEME}://print/job/`, '')
-        const html = htmlStore.get(id)
-        if (!html) {
-          return { statusCode: 404, data: 'job html not found', mimeType: 'text/plain' }
-        }
-        return { data: html, mimeType: 'text/html;charset=utf-8' }
-      })
-      this.protocolRegistered = true
-    }
 
     if (!bridgeBound) {
       ipcMain.on(
@@ -121,16 +109,25 @@ export class RendererPool {
     return this.worker.webContents.getPrintersAsync()
   }
 
-  /** 新建隐藏打印窗口承载最终 HTML；调用方负责打印完成后 win.close() */
+  /**
+   * 新建隐藏打印窗口承载最终 HTML。
+   * 采用标准 file:// 协议：HTML 写入临时目录后用原生 loadFile 加载，
+   * 避免自定义 scheme 在部分环境 loadURL 报 ERR_FAILED；http(s) 图片仍正常加载。
+   * 调用方负责打印完成后 win.close()（关闭时清理临时文件）。
+   */
   async loadPrintHtml(html: string): Promise<BrowserWindow> {
     const id = randomUUID()
-    htmlStore.set(id, html)
+    mkdirSync(PRINT_HTML_DIR, { recursive: true })
+    const filePath = join(PRINT_HTML_DIR, `${id}.html`)
+    writeFileSync(filePath, html, 'utf8')
     const win = new BrowserWindow({
       show: false,
       webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
     })
-    win.on('closed', () => htmlStore.delete(id))
-    await win.loadURL(`${SCHEME}://print/job/${id}`)
+    win.on('closed', () => {
+      rmSync(filePath, { force: true })
+    })
+    await win.loadFile(filePath)
     return win
   }
 

@@ -12,6 +12,10 @@ import { ProtocolFailure } from './protocol-error.js'
 import { parsePrintSubmit, readTemplateName } from './request-validation.js'
 
 const FONTS_READY_TIMEOUT_MS = 5000
+// 静默打印回调兜底超时：真实打印机通常数秒内完成；
+// Print_to_PDF 等虚拟打印机即便 silent 也可能弹保存对话框导致回调永不触发，
+// 不能因此永久占用串行锁。超时按失败处理以释放锁。
+const PRINT_CALLBACK_TIMEOUT_MS = 60_000
 
 export class PrintEngine {
   private readonly gate = new SerialGate()
@@ -122,7 +126,21 @@ export class PrintEngine {
 
   private silentPrint(wc: Electron.WebContents, settings: WebPrintSettings): Promise<void> {
     return new Promise((resolve, reject) => {
+      let settled = false
+      const timer = setTimeout(() => {
+        if (settled) return
+        settled = true
+        reject(
+          new ProtocolFailure(
+            'PRINT_FAILED',
+            `打印超过 ${PRINT_CALLBACK_TIMEOUT_MS / 1000}s 未返回（虚拟打印机可能需要人工交互，或驱动无响应）`,
+          ),
+        )
+      }, PRINT_CALLBACK_TIMEOUT_MS)
       wc.print(settings as Electron.WebContentsPrintOptions, (success, failureReason) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
         if (success) {
           resolve()
           return
