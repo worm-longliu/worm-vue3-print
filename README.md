@@ -7,6 +7,51 @@ Vue 3 可视化打印模板设计器 + 模板表达式引擎 + 同构渲染管�
 可视化拖拽设计打印模板、数据绑定、表达式求值、分页排版，浏览器预览与后端输出保持一致。
 纯 Vue 3 + HTML/CSS/SVG 原生控件实现，不依赖任何 UI 组件库，可以接入任意 Vue 3 项目中。
 
+## 项目目录结构
+
+```
+worm-vue3-print/
+├── packages/                  # 可发布的 npm 包（npm workspaces，发布到 npm）
+│   ├── print-core/            # @worm-vue3-print/core   模板表达式引擎 + 同构渲染管线
+│   ├── print-canvas/          # @worm-vue3-print/canvas Vue 3 可视化设计器画布
+│   └── print-client-sdk/      # @worm-vue3-print/client 浏览器端静默打印 SDK
+├── clients/
+│   └── print-client/          # @worm-vue3-print/print-client Electron 静默打印桌面客户端（private，不发布 npm）
+├── services/
+│   └── print-render/          # @worm-vue3-print/render 服务端 PDF / 截图渲染微服务（private，不发布 npm）
+├── demo/                      # 演示项目：设计器 + 预览 + 静默打印集成的完整示例
+├── docs/                      # 项目文档
+│   ├── 中文/                  #   中文文档（指南 / 接口 / 示例 / 文档总览 / CHANGELOG）
+│   ├── en/                    #   英文文档（CHANGELOG 等）
+│   └── superpowers/           #   设计文档（specs）与实施计划（plans）
+├── skills/                    # opencode 集成技能（worm-vue3-print-integration，含对接指南）
+├── .github/
+│   ├── workflows/             # CI / 自动发布工作流
+│   └── release/               # 发布配置
+├── .opencode/                 # opencode 本地配置与插件
+├── package.json               # npm workspaces 根清单：构建 / 测试 / 打包根命令
+├── AGENTS.md                  # 对本仓库工作的 AI 代理约束（语言、分层边界、协作约定）
+├── CONTRIBUTING.md            # 发布与协作流程
+├── SECURITY.md                # 安全问题报告方式
+├── LICENSE                    # MIT
+└── README.md
+```
+
+各目录功能说明：
+
+| 目录 / 文件 | 功能说明 |
+|---|---|
+| `packages/print-core` | 核心包（`@worm-vue3-print/core`）：表达式引擎（lexer / parser / evaluator）、`template-parser`、数据绑定 / 分页 / HTML 生成（`render`）、设计器内核与浏览器适配（`designer` / `browser`，含连续纸探针与 `browserCodeRenderer`）。纯 TypeScript，无 Vue、无宿主依赖 |
+| `packages/print-canvas` | 设计器画布（`@worm-vue3-print/canvas`）：Vue 3 组件（`components`）、组合式函数（`composables`）、内置帮助内容（`help-content`）、原生控件样式（`styles`）。含 `PrintDesigner`、`PrintHtmlPreview` |
+| `packages/print-client-sdk` | 静默打印 SDK（`@worm-vue3-print/client`）：框架无关的浏览器端 TS，含传输层（`transport`，WS 端口探测/重连/超时）、协议与错误码（`protocol`）、客户端门面（`print-client`） |
+| `clients/print-client` | 静默打印桌面客户端（Electron，private）：主进程 WS 服务 / 打印引擎 / 打印机服务 / 配置与任务记录（`src/main`）、配置窗口 Vue 3 界面（`src/renderer`）、隐藏渲染 worker（`src/worker`）、沙箱 IPC 桥（`src/preload`）、IPC 通道契约（`src/shared`）；含 electron-builder 打包配置与真机冒烟脚本（`scripts/`） |
+| `services/print-render` | 服务端渲染微服务（private）：基于 Playwright 的 PDF / 截图渲染（`pdf-render` / `browser-pool` / `server`），workspace 软链依赖 core，保证浏览器预览与服务端输出一致 |
+| `demo` | 演示项目：设计器接入（`App.vue`）、静默打印集成、渲染客户端封装（`render-client.ts`）、业务字段（`business.ts`）、内置模板 JSON（`template-purchase-receipt.json`） |
+| `docs` | 文档：`中文/`（指南、接口、示例、文档总览、CHANGELOG）、`en/`（英文），`superpowers/` 为设计文档（specs）与实施计划（plans） |
+| `skills` | opencode 集成技能 `worm-vue3-print-integration`：往宿主项目接入 core / canvas / 静默打印的规范与指南（`SKILL.md` + `references/`） |
+| `.github/workflows` | CI（构建 / 测试）与自动发布工作流 |
+| `package.json` | 根清单：workspaces 聚合、构建 / 测试 / 打包根命令（`npm run pack:client` 等） |
+
 ## 包结构
 
 | 包 | 说明 |
