@@ -15,7 +15,11 @@ function isPositiveInt(v: unknown): v is number {
   return typeof v === 'number' && Number.isInteger(v) && v > 0
 }
 
-export function parsePrintSubmit(raw: unknown): { spec: RenderJobSpec; print: PrintOptions } {
+export function parsePrintSubmit(raw: unknown): {
+  spec: RenderJobSpec
+  print: PrintOptions
+  templateName: string
+} {
   if (!isRecord(raw)) invalid('请求体必须是对象')
   if (!isRecord(raw.templateJson)) invalid('templateJson 必须是对象')
 
@@ -91,11 +95,25 @@ export function parsePrintSubmit(raw: unknown): { spec: RenderJobSpec; print: Pr
     if (typeof raw.baseUrl !== 'string') invalid('baseUrl 必须是字符串')
     spec.baseUrl = raw.baseUrl
   }
-  return { spec, print }
+
+  let templateName = ''
+  if (raw.templateName !== undefined) {
+    if (typeof raw.templateName !== 'string') invalid('templateName 必须是字符串')
+    templateName = raw.templateName.trim()
+  }
+  return { spec, print, templateName }
 }
 
-/** 从模板 JSON 中尽力读取模板名（兼容不同字段） */
-export function readTemplateName(templateJson: Record<string, unknown>): string {
+/**
+ * 从模板 JSON 中尽力读取模板名（兼容不同字段）。
+ * 显式传入的模板名称（打印协议 templateName，业务元数据）优先，
+ * 再回退读取渲染 JSON 中的 templateName/name/title。
+ */
+export function readTemplateName(
+  templateJson: Record<string, unknown>,
+  fallbackName = '',
+): string {
+  if (fallbackName.trim().length > 0) return fallbackName
   const v = templateJson.templateName ?? templateJson.name ?? templateJson.title
   return typeof v === 'string' && v.length > 0 ? v : '未命名模板'
 }

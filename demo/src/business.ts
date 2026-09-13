@@ -4,6 +4,9 @@ import type { PrintBusinessField } from '@worm-vue3-print/canvas'
 /** 模板 ID（宿主持久化记录的主键，与设计器核心无关） */
 export const TEMPLATE_ID = '106977040967000141'
 
+/** 模板业务名称（用于打印客户端任务记录展示） */
+export const TEMPLATE_NAME = '采购收货单'
+
 /**
  * 采购收货单业务字段（来自 sys_print_business_field，宿主查询后传入设计器）。
  * fieldKey 为打印数据中的完整路径：

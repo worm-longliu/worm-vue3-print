@@ -49,6 +49,7 @@
     <PrintOutputDialog
       :open="printDialogVisible"
       :base-url="RENDER_BASE_URL"
+      :template-name="TEMPLATE_NAME"
       :get-template-json="() => (designerRef?.getTemplateJson() as unknown as Record<string, unknown>)"
       @close="printDialogVisible = false"
     />
@@ -68,6 +69,7 @@ import PrintOutputDialog from './components/PrintOutputDialog.vue'
 import rawTemplate from './template-purchase-receipt.json'
 import {
   TEMPLATE_ID,
+  TEMPLATE_NAME,
   PURCHASE_RECEIPT_FIELDS,
 } from './business'
 

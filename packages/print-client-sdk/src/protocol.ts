@@ -100,6 +100,8 @@ export interface PrintSubmitRequest {
   printData?: Record<string, unknown>
   /** 相对路径图片资源解析基址 */
   baseUrl?: string
+  /** 模板名称（业务侧元数据，用于客户端任务记录展示，不参与渲染） */
+  templateName?: string
   print: PrintOptions
 }
 

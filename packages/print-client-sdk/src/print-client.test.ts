@@ -88,6 +88,39 @@ describe('PrintClient', () => {
     })
   })
 
+  it('print 传入第 4 参数 templateName 时写入 payload', async () => {
+    const { client } = makeClient()
+    const p = client.connect()
+    FakeWebSocket.instances[0]!.open()
+    await p
+    const ws = FakeWebSocket.instances[0]!
+    await client.print({ paperSize: 'A4' }, { orderNo: 'A001' }, {}, '采购收货单')
+    const payload = lastSubmitPayload(ws) as Record<string, unknown>
+    expect(payload.templateName).toBe('采购收货单')
+  })
+
+  it('print 不传 templateName 时 payload 不带该字段', async () => {
+    const { client } = makeClient()
+    const p = client.connect()
+    FakeWebSocket.instances[0]!.open()
+    await p
+    const ws = FakeWebSocket.instances[0]!
+    await client.print({ paperSize: 'A4' }, { orderNo: 'A001' }, {})
+    const payload = lastSubmitPayload(ws) as Record<string, unknown>
+    expect(payload).not.toHaveProperty('templateName')
+  })
+
+  it('print 传入空白 templateName 时 payload 不带该字段', async () => {
+    const { client } = makeClient()
+    const p = client.connect()
+    FakeWebSocket.instances[0]!.open()
+    await p
+    const ws = FakeWebSocket.instances[0]!
+    await client.print({ paperSize: 'A4' }, { orderNo: 'A001' }, {}, '   ')
+    const payload = lastSubmitPayload(ws) as Record<string, unknown>
+    expect(payload).not.toHaveProperty('templateName')
+  })
+
   it('pair 写入 localStorage，重建客户端时自动带上 token', async () => {
     const { client } = makeClient()
     client.pair('tok-xyz')

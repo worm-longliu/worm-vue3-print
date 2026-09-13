@@ -75,6 +75,7 @@ import {
 const props = defineProps<{
   open: boolean
   baseUrl: string
+  templateName: string
   getTemplateJson: () => string | Record<string, unknown> | undefined
 }>()
 
@@ -231,6 +232,7 @@ async function onClientPrint() {
         baseUrl: props.baseUrl,
         printerName: selectedPrinter.value || undefined,
       },
+      props.templateName,
     )
     showClientMessage(`已提交静默打印，作业 ${res.jobId.slice(0, 8)}`)
   } catch (err) {

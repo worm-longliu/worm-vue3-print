@@ -53,7 +53,7 @@ export class PrintEngine {
   }
 
   private async runJob(raw: unknown): Promise<{ jobId: string }> {
-    const { spec, print } = parsePrintSubmit(raw)
+    const { spec, print, templateName } = parsePrintSubmit(raw)
     const jobId = randomUUID()
     const { printerService, renderEngine, pool, history, logger } = this.deps
 
@@ -64,7 +64,7 @@ export class PrintEngine {
 
     logger.info('开始打印', {
       jobId,
-      template: readTemplateName(spec.templateJson),
+      template: readTemplateName(spec.templateJson, templateName),
       printer: target.name,
       paper: prepared.paper,
       heightSource: prepared.heightSource,
@@ -78,7 +78,7 @@ export class PrintEngine {
       const record: JobRecord = {
         jobId,
         ts: new Date().toISOString(),
-        templateName: readTemplateName(spec.templateJson),
+        templateName: readTemplateName(spec.templateJson, templateName),
         printerName: target.name,
         copies: settings.copies,
         paperMicrometers: prepared.paper,
@@ -95,7 +95,7 @@ export class PrintEngine {
       const record: JobRecord = {
         jobId,
         ts: new Date().toISOString(),
-        templateName: readTemplateName(spec.templateJson),
+        templateName: readTemplateName(spec.templateJson, templateName),
         printerName: target?.name ?? printOptions.printerName ?? '',
         copies: printOptions.copies ?? 1,
         paperMicrometers: prepared?.paper ?? { width: 0, height: 0 },

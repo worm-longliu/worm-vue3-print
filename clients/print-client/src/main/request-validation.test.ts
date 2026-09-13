@@ -40,4 +40,24 @@ describe('parsePrintSubmit', () => {
     const r = parsePrintSubmit({ templateJson: {}, print: { paperSize: { height: 0 } } })
     expect(r.print.paperSize).toEqual({ height: 0 })
   })
+
+  it('templateName 为空白串时 trim 并返回名称', () => {
+    const r = parsePrintSubmit({ templateJson: {}, templateName: '  采购收货单 ' })
+    expect(r.templateName).toBe('采购收货单')
+  })
+
+  it('templateName 缺省/空白时返回空串', () => {
+    expect(parsePrintSubmit({ templateJson: {} }).templateName).toBe('')
+    expect(parsePrintSubmit({ templateJson: {}, templateName: '   ' }).templateName).toBe('')
+  })
+
+  it('templateName 非字符串抛 INVALID_REQUEST', () => {
+    expect(() => parsePrintSubmit({ templateJson: {}, templateName: 123 })).toThrow()
+    try {
+      parsePrintSubmit({ templateJson: {}, templateName: 123 })
+      throw new Error('应抛错')
+    } catch (err) {
+      expect((err as { code?: string }).code).toBe('INVALID_REQUEST')
+    }
+  })
 })

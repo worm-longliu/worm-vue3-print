@@ -60,14 +60,19 @@ export class PrintClient {
    * @param templateJson core 模板 JSON
    * @param printData 业务数据
    * @param options 打印机/纸张/份数等；baseUrl 为相对图片资源基址；timeoutMs 可单独放宽大任务
+   * @param templateName 模板名称，透传给客户端用于任务记录
    */
   print(
     templateJson: Record<string, unknown>,
     printData?: Record<string, unknown>,
     options: PrintOptions & { baseUrl?: string; timeoutMs?: number } = {},
+    templateName?: string,
   ): Promise<PrintSubmitResponsePayload> {
     const { baseUrl, timeoutMs, ...print } = options
     const payload: PrintSubmitRequest = { templateJson, printData, baseUrl, print }
+    if (typeof templateName === 'string' && templateName.trim().length > 0) {
+      payload.templateName = templateName
+    }
     return this.transport.request<PrintSubmitResponsePayload>(
       MESSAGE_TYPES.PRINT_SUBMIT,
       payload,
