@@ -2,9 +2,11 @@
 import { BrowserWindow, ipcMain, app, shell } from 'electron'
 import { pathToFileURL } from 'node:url'
 import { join } from 'node:path'
+import { mkdirSync } from 'node:fs'
 import { SETTINGS_IPC } from '../shared/settings-protocol.js'
 import type { ConfigStore, AppConfig } from './config.js'
 import { generatePairingToken } from './config.js'
+import { applyAutoStart } from './auto-start.js'
 import type { Logger, LogEntry } from './logger.js'
 import type { JobHistoryStore, JobRecord } from './job-history.js'
 import type { PrinterService } from './printer-service.js'
@@ -46,7 +48,7 @@ export class MainWindowManager {
       // 端口变更需重启生效：仍保存，UI 展示提示
       const saved = this.deps.configStore.update(next)
       this.deps.logger.setLevel(saved.logLevel)
-      app.setLoginItemSettings({ openAtLogin: saved.autoStart })
+      applyAutoStart(app, saved.autoStart, this.deps.logger)
       if (restartNeeded) this.deps.logger.info('端口已变更，需重启客户端生效', { port: saved.port })
       else this.deps.logger.info('配置已更新')
       return saved
@@ -68,8 +70,15 @@ export class MainWindowManager {
 
     ipcMain.handle(SETTINGS_IPC.OPEN_PDF_DIR, async () => {
       const dir = this.deps.getPdfDir()
+      // 目录可能还没创建（还没跑过保留 PDF 的打印任务），先确保存在再打开
+      try {
+        mkdirSync(dir, { recursive: true })
+      } catch (e) {
+        throw new Error(`无法创建目录（${dir}）：${(e as Error).message}`)
+      }
       const err = await shell.openPath(dir)
-      if (err) throw new Error(`打开目录失败：${err}`)
+      if (err) throw new Error(`打开目录失败：${err}（路径：${dir}）`)
+      this.deps.logger.info('已打开 PDF 目录', { dir })
       return dir
     })
   }

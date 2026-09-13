@@ -15,6 +15,7 @@ import { checkAccess } from './security.js'
 import { makeMessageHandler } from './protocol-handler.js'
 import { createTray } from './tray.js'
 import { MainWindowManager } from './main-window.js'
+import { applyAutoStart } from './auto-start.js'
 import { TEST_TEMPLATE } from './test-template.js'
 
 let quitting = false
@@ -108,7 +109,7 @@ if (!gotLock) {
         quit: () => app.quit(),
       })
 
-      app.setLoginItemSettings({ openAtLogin: configStore.current.autoStart })
+      applyAutoStart(app, configStore.current.autoStart, logger)
       logger.info('客户端启动完成', { port: actualPort, version: app.getVersion() })
       // 绿色版启动即打开设置窗口（应用同时驻留托盘，关闭窗口仅隐藏）
       mainWindow.show()
