@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@worm-vue3-print/canvas": "file:../packages/print-canvas",
+    "@worm-vue3-print/client": "file:../packages/print-client-sdk",
     "@worm-vue3-print/core": "file:../packages/print-core",
     "dompurify": "^3.4.12",
     "jsbarcode": "^3.12.3",

@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => {
         { find: /^@worm-vue3-print\/core\/designer$/, replacement: fileURLToPath(new URL('../packages/print-core/src/designer/index.ts', import.meta.url)) },
         { find: /^@worm-vue3-print\/core$/, replacement: fileURLToPath(new URL('../packages/print-core/src/index.ts', import.meta.url)) },
         { find: /^@worm-vue3-print\/canvas$/, replacement: fileURLToPath(new URL('../packages/print-canvas/src/index.ts', import.meta.url)) },
+        { find: /^@worm-vue3-print\/client$/, replacement: fileURLToPath(new URL('../packages/print-client-sdk/src/index.ts', import.meta.url)) },
       ],
     },
     server: {
