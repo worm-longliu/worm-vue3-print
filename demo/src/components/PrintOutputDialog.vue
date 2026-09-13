@@ -27,7 +27,7 @@
 
           <section class="print-card">
             <h3 class="card-title">客户端静默打印</h3>
-            <p class="card-desc">连接本机打印客户端（WebSocket 127.0.0.1:17521），将当前模板与 demo 数据静默提交打印。</p>
+            <p class="card-desc">页面内用 core 同构管线完成两遍渲染，将最终 HTML 直送本机打印客户端（WebSocket 127.0.0.1:17521）静默出纸，客户端不再执行模板渲染。</p>
             <div class="card-row">
               <span class="status" :class="clientStatus" title="本机打印客户端（WebSocket 127.0.0.1:17521）">
                 <i class="status-dot"></i>{{ clientStatusText }}
@@ -71,6 +71,7 @@ import {
   requestServerPdf,
   openPdfBlob,
 } from '../render-client'
+import { renderInBrowser } from '../browser-render'
 
 const props = defineProps<{
   open: boolean
@@ -225,16 +226,18 @@ async function onClientPrint() {
   clientMessage.value = ''
   clientMessageKind.value = ''
   try {
-    const res = await client.print(
+    // 浏览器侧两遍渲染（测量/分页/最终 HTML 全部在本页完成）
+    const rendered = await renderInBrowser(
       templateJson,
       DEFAULT_DEMO_DATA as unknown as Record<string, unknown>,
-      {
-        baseUrl: props.baseUrl,
-        printerName: selectedPrinter.value || undefined,
-      },
+      props.baseUrl,
+    )
+    const res = await client.printHtml(
+      rendered,
+      { printerName: selectedPrinter.value || undefined },
       props.templateName,
     )
-    showClientMessage(`已提交静默打印，作业 ${res.jobId.slice(0, 8)}`)
+    showClientMessage(`已提交静默打印，作业 ${res.jobId.slice(0, 8)}（${rendered.pageCount ?? 1} 页）`)
   } catch (err) {
     const code = err instanceof WormPrintError ? `[${err.code}] ` : ''
     const message = err instanceof Error ? err.message : '静默打印失败'

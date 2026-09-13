@@ -4,16 +4,17 @@
 
 ```
 宿主 Web 页面
+   │  @worm-vue3-print/core/browser（renderHtmlPages 两遍渲染 + 连续纸纸长推导）
    │  @worm-vue3-print/client（SDK：端口探测/重连/超时/鉴权）
    ▼  WebSocket（仅绑定 127.0.0.1）
 桌面打印客户端（Electron，clients/print-client）
    ├─ WsServer  握手鉴权 → 协议帧分发
    ├─ PrintEngine（串行锁，并发返回 BUSY）
-   ├─ RenderEngine（IPC 桥 → 隐藏 worker：core/browser 两遍渲染 + 连续纸纸长推导）
-   └─ 打印窗口 webContents.print({ silent: true }) → 系统打印机
+   └─ 打印窗口 printToPDF（纸张微米→英寸、保留背景、零边距）→ 系统命令打印 PDF
 ```
 
-- 渲染与静默打印都在本地客户端完成，断网可打（模板引用的在线图片 URL 除外）。
+- 推荐链路 `print.submitHtml`：渲染在宿主页面内完成，客户端只负责静默出纸；core 升级无需重发客户端。
+- 兼容链路 `print.submit`：客户端内隐藏 worker 跑 core/browser 两遍渲染（存量接入保留）。
 - 客户端默认从 `127.0.0.1:17521` 起监听，端口被占用则 +1；SDK 从同一起点逐端口探测握手。
 
 ## 1. 前置条件
@@ -71,6 +72,31 @@ client.print(
   },
 ): Promise<{ jobId: string }>
 ```
+
+### 推荐：浏览器预渲染后直提交（`printHtml`）
+
+渲染前移到宿主页面，客户端只做出纸（core 升级不必重发客户端）：
+
+```ts
+import { renderHtmlPages, browserCodeRenderer } from '@worm-vue3-print/core/browser'
+import type { PrintTemplateData } from '@worm-vue3-print/core'
+
+const rendered = await renderHtmlPages(
+  templateJson as PrintTemplateData,
+  printData,
+  baseUrl,                  // 相对路径图片基址
+  browserCodeRenderer,
+)
+await client.printHtml(
+  rendered,                 // { html, paperMm, continuous, pageCount }
+  { printerName: printers[0]?.name, copies: 1 /* paperName/color/pageRanges/timeoutMs */ },
+  templateName,
+)
+```
+
+`printHtml` 的 options 仅允许 `printerName/copies/paperName/color/pageRanges/timeoutMs`；
+纸张/方向/边距已固化进 HTML，传 `paperSize/margins/landscape` 会被客户端以 `INVALID_REQUEST` 拒绝；HTML 载荷上限 20MB。
+连续纸高度由浏览器侧探针推导（`rendered.continuous=true` 时 `paperMm.height` 即推导值），无需任何额外参数。
 
 ### 连续纸（热敏/标签）
 

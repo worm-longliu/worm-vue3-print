@@ -69,6 +69,25 @@ npm run build
 2. 图片上传必须由宿主实现 `upload-image`，返回可直接访问的 URL。
 3. 服务端渲染时确认 `baseUrl` 对渲染进程可访问，且图片服务允许被读取。
 
+## 水印在预览/PDF 里正常，但打印到纸上被放大/错位/平铺错乱
+
+1. 现象：设计器画布、浏览器预览、服务端 PDF 文件都正常；只有**打印出纸**后水印异常——被放大约 3 倍、位置偏移、倾斜方向看起来不对、只铺出零星几块、每页一样。
+2. 根因：水印若用 CSS 平铺背景实现（`background-image` + `background-repeat`），Chromium 打印/PDF 后端会把它编译成 **PDF 平铺图案（tiling pattern, PatternType 1）**；PDF 查看器会正确解释图案矩阵，所以文件看起来正常，但打印出纸链路的 RIP（CUPS 过滤器 / 驱动光栅化）按设备空间平铺，忽略图案矩阵——实测放大倍数正是其所在 form 的 CTM 3.125（300dpi ÷ 96px）。
+3. 修复规则：水印必须写成**显式矢量瓦片**——core 的 `resolveWatermarkLayout` 按纸张尺寸算出网格，`renderWatermarkLayerHtml` 逐块输出 `<svg class="watermark-tile">`；禁止改回 `background-repeat` / `background-image:url(data:image/svg+xml,...)` 的平铺背景方案。
+4. 排查口径：直接 `printToPDF` 产物正常、经打印机出纸异常 = 表达方式问题（平铺图案），不是渲染或纸张尺寸问题；换浏览器打印/服务端渲染都救不了，因为三条链路共用同一份 core HTML。
+5. 验证方法（无需真机）：`pdftoppm -r 100` 把出纸产物转 PNG，用自相关量测瓦片周期，应等于设计值（A4 默认密度 68.8mm × 47.6mm），而不是 15mm / 240mm 这类被缩放的值。
+6. 回归拦截：单测断言水印层 HTML **不含** `background-repeat`/`background-image`/`data:image/svg`，并断言瓦片数量与坐标（`packages/print-core/src/render/watermark.test.ts`）。
+
+> 历史坑（该实现已废弃，仅作考古）：早期用内联 SVG data-URL 背景时，`url("data:...")` 的裸双引号会截断 `style="..."` 属性，导致预览/打印水印整体消失；改用显式瓦片后此坑不复存在。
+
+## 静默打印报 BUSY / 日志出现「PDF 生成超过 30s」
+
+1. 现象：宿主提交打印后长时间无响应，重试全部返回 `[BUSY] 客户端正在处理其他打印任务，请稍后重试`；客户端日志随后出现 PDF 生成超时。
+2. 根因（打印客户端 PDF 通道，Electron 40+）：`webContents.printToPDF` 已移除回调重载，只剩 Promise 形式。旧写法 `printToPDF(options, callback)` 的回调永不触发，返回的 Promise 拒绝又无人接收（错误被静默吞掉），任务只能等超时——串行锁在等待期间不释放，期间所有新任务都被 `BUSY` 拒绝。
+3. 第二处根因：`PrintToPDFOptions.pageSize` 的单位是**英寸**（`webContents.print` 的 pageSize 才是微米）。直接把协议里的微米值传进去会得到 210000×297000 英寸的荒诞纸张：Electron 44 直接失败（`Failed to generate PDF: Printing failed`，print compositor 报 `Page reading failed`），Electron 40 则产出 5 万倍尺寸的 PDF。正确写法是 `pageSize = 微米 / 25400`。
+4. 修复要求：① 只走 Promise 形式并 `Promise.race` 超时（客户端的 `src/main/pdf-generator.ts` 已封装）；② 纸张换算为英寸、`margins` 用 `{top,bottom,left,right}`（英寸，零边距）、`printBackground: true`；③ 任务失败/超时必须释放串行锁，`BUSY` 只应在任务真正进行中返回。
+5. 验证方法（无需打印机）：隐藏窗口加载待打印 HTML → `printToPDF` 生成 PDF → `pdfinfo` 看页面尺寸是否为 A4/目标纸张 → `pdftoppm` 转 PNG 后统计水印色（如 `#e60000` 35%）像素占比，应明显大于 0。
+
 ## 预览页数或分页与最终输出不一致
 
 1. 浏览器和浏览器/服务端必须使用同一份模板 JSON、同一份打印数据和同一个 `baseUrl`。

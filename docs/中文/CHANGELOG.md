@@ -4,6 +4,23 @@
 
 ## [Unreleased]
 
+### 新增
+
+- `@worm-vue3-print/client`：新增浏览器预渲染直提交通道——协议消息 `print.submitHtml` 与 SDK 方法 `PrintClient.printHtml(rendered, options, templateName)`。宿主页用 `@worm-vue3-print/core/browser` 的 `renderHtmlPages` 在浏览器内完成两遍渲染，把最终 HTML（含纸张/方向/边距/连续纸高度）直送客户端静默出纸，客户端不再执行模板渲染；旧 `print`（客户端内渲染）链路保留兼容。
+- 打印客户端：`print.submitHtml` 入站校验（HTML 非空、≤20MB、`paperMm` 毫米正数、`continuous`/`pageCount` 类型），纸张/方向/边距覆盖项一律以 `INVALID_REQUEST` 拒绝；打印引擎重构为「准备（渲染或直取 HTML）→ 出纸」双路共用流程。
+- demo：「客户端静默打印」改为浏览器侧渲染后经 `printHtml` 提交（新增 `src/browser-render.ts` 封装）。
+
+- `@worm-vue3-print/core`：新增同构水印模块（`render/watermark.ts`）——`generateHtml` 在每页最底层输出 `.watermark-layer`（**显式矢量瓦片**，逐块 `<svg class="watermark-tile">`），设计模板、浏览器预览、服务端 PDF、静默打印四端水印渲染完全一致。
+- `@worm-vue3-print/core`：`WatermarkOptions` 新增 `tileWidth`/`tileHeight`（瓦片尺寸，控制水印密度，默认 260×180）；导出 `WATERMARK_DEFAULTS`、`WATERMARK_DENSITY_PRESETS`、`PX_PER_MM`、`MM_PER_PX`、`isWatermarkVisible`、`resolveWatermarkText`、`formatTimestamp`、`resolveWatermarkLayout`、`renderWatermarkTileSvg`、`renderWatermarkLayerHtml`。
+- `@worm-vue3-print/canvas`：水印绑定字段支持完整路径与表达式（`order.no`、`{order.no}`、`CONCAT/DATE(...)`），取不到值时回退测试值；配置面板新增「自定义表达式」「时间格式」「密度（密/中/疏/自定义）」。
+- `@worm-vue3-print/canvas`：`WatermarkConfig`、`CanvasPaper` 水印渲染改用 core 同构模块，三端渲染一致。
+
+### 修复
+
+- `@worm-vue3-print/core`：修复水印经**真实打印机出纸**后被放大约 3 倍、位置偏移、平铺错乱的问题。根因是水印原先用 CSS 平铺背景（`background-image` + `background-repeat`）实现，Chromium 会把它编译成 PDF 平铺图案（tiling pattern），PDF 查看器正常但出纸链路的 RIP 忽略图案矩阵（其所在 form 的 CTM 为 3.125 = 300dpi÷96px，实测放大倍数吻合）。现改为显式矢量瓦片：`resolveWatermarkLayout` 按纸张尺寸（含连续纸探针推导的最终纸高）计算瓦片网格，逐块输出内联 `<svg>`，出纸几何回到设计值（A4 默认密度 68.8mm × 47.6mm）。删除 `buildWatermarkSvgDataUrl`，杜绝回归到平铺背景方案。
+- 打印客户端：修复静默打印「PDF 生成超时 → 后续任务全部 BUSY」——`webContents.printToPDF` 已移除回调重载（回调永不触发、Promise 拒绝被静默吞掉），且 `PrintToPDFOptions.pageSize` 单位是**英寸**而非微米（误传微米会得到 210000×297000 英寸纸张，Electron 44 直接生成失败）。改用 Promise + 超时兜底（`src/main/pdf-generator.ts`）、纸张微米→英寸换算、显式零边距与 `printBackground: true`；生成失败/超时统一以 `PRINT_FAILED` 返回并释放串行锁，客户端静默打印产物与服务端 PDF 的水印、纸张尺寸一致。
+- 打印客户端：出纸链路文档同步为「HTML → printToPDF → 系统打印命令」（`clients/print-client/README.md`、`docs/中文/指南/静默打印.md`、静默打印技能参考）。
+
 ### 变更
 
 - 渲染微服务 `worm-vue3-print-render` 并入本 monorepo，落地为私有服务包 `services/print-render`（包名 `@worm-vue3-print/render` 保持不变，不发布 npm）；通过 npm workspace 本地软链依赖 `@worm-vue3-print/core`，不再从 npm registry 安装 core。
