@@ -5,41 +5,8 @@
       <span class="demo-logo">打印模板设计器 Demo</span>
       <span class="demo-badge">模板 ID：{{ TEMPLATE_ID }}</span>
       <span class="demo-badge">业务类型：采购收货单（purchase_receipt）</span>
-      <span class="demo-note">加载真实模板数据 · 浏览器端免保存预览 · 服务端 PDF 打印</span>
-      <span class="demo-server">
-        <span class="server-status" :class="renderStatus" :title="renderStatusTitle">
-          <i class="status-dot"></i>{{ renderStatusText }}
-        </span>
-        <button
-          type="button"
-          class="server-pdf-btn"
-          :disabled="rendering || renderStatus !== 'online'"
-          @click="onServerPdf"
-        >{{ rendering ? '生成中…' : '服务端 PDF' }}</button>
-        <span v-if="renderError" class="server-error">{{ renderError }}</span>
-        <span class="topbar-divider"></span>
-        <span class="server-status" :class="clientStatus" title="本机打印客户端（WebSocket 127.0.0.1:17521）">
-          <i class="status-dot"></i>{{ clientStatusText }}
-        </span>
-        <select
-          v-model="selectedPrinter"
-          class="printer-select"
-          :disabled="clientStatus !== 'online' || clientPrinting"
-          title="选择目标打印机（留空为系统默认）"
-        >
-          <option value="">系统默认打印机</option>
-          <option v-for="p in clientPrinters" :key="p.name" :value="p.name">
-            {{ p.name }}{{ p.isDefault ? '（默认）' : '' }}
-          </option>
-        </select>
-        <button
-          type="button"
-          class="client-print-btn"
-          :disabled="clientPrinting || clientStatus !== 'online'"
-          @click="onClientPrint"
-        >{{ clientPrinting ? '打印中…' : '客户端静默打印' }}</button>
-        <span v-if="clientMessage" class="client-message">{{ clientMessage }}</span>
-      </span>
+      <span class="demo-note">加载真实模板数据 · 浏览器端免保存预览</span>
+      <button type="button" class="demo-print-btn" @click="printDialogVisible = true">打印输出</button>
     </header>
 
     <main class="demo-container">
@@ -77,11 +44,19 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- 打印输出弹窗（服务端 PDF / 客户端静默打印） -->
+    <PrintOutputDialog
+      :open="printDialogVisible"
+      :base-url="RENDER_BASE_URL"
+      :get-template-json="() => (designerRef?.getTemplateJson() as unknown as Record<string, unknown>)"
+      @close="printDialogVisible = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import {
   PrintDesigner,
   PrintHtmlPreview,
@@ -89,21 +64,18 @@ import {
   createDefaultTemplate,
 } from '@worm-vue3-print/canvas'
 import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
-import { PrintClient, WormPrintError } from '@worm-vue3-print/client'
-import type { PrinterInfo } from '@worm-vue3-print/client'
+import PrintOutputDialog from './components/PrintOutputDialog.vue'
 import rawTemplate from './template-purchase-receipt.json'
 import {
   TEMPLATE_ID,
   PURCHASE_RECEIPT_FIELDS,
 } from './business'
-import {
-  checkRenderHealth,
-  requestServerPdf,
-  openPdfBlob,
-} from './render-client'
 
 /** 相对路径图片（/docfiles/...）拼接基址：浏览器预览与服务端渲染保持一致 */
 const RENDER_BASE_URL = 'http://localhost:10103'
+
+/** 打印输出弹窗开关 */
+const printDialogVisible = ref(false)
 
 // 真实模板数据（模板 106977040967000141 的 elements 已存在本地 JSON）
 const templateData = ref<TemplateData>(rawTemplate as TemplateData)
@@ -142,167 +114,6 @@ function onPreview() {
 
 function printPreview() {
   htmlPreviewRef.value?.print()
-}
-
-// ── 服务端 PDF 打印：当前画布 JSON + demo 数据 → render 微服务 → 新标签页打开 PDF ──
-type RenderStatus = 'checking' | 'online' | 'offline'
-const renderStatus = ref<RenderStatus>('checking')
-const rendering = ref(false)
-const renderError = ref('')
-
-const renderStatusText = ref('渲染服务检测中…')
-const renderStatusTitle = ref('探测 render 微服务 /render-api/health')
-
-function setRenderOffline(message = '渲染服务未连接（请启动 services/print-render）') {
-  renderStatus.value = 'offline'
-  renderStatusText.value = '渲染服务离线'
-  renderStatusTitle.value = message
-}
-
-async function refreshRenderStatus() {
-  renderStatus.value = 'checking'
-  renderStatusText.value = '渲染服务检测中…'
-  const health = await checkRenderHealth()
-  if (!health) {
-    setRenderOffline()
-    return
-  }
-  renderStatus.value = 'online'
-  renderStatusText.value = '渲染服务在线'
-  renderStatusTitle.value = `活跃 ${health.activeRenders} / 并发 ${health.maxConcurrent} · 队列 ${health.queueLength}`
-}
-
-let renderErrorTimer: ReturnType<typeof setTimeout> | undefined
-function showRenderError(message: string) {
-  renderError.value = message
-  clearTimeout(renderErrorTimer)
-  renderErrorTimer = setTimeout(() => (renderError.value = ''), 5000)
-}
-
-async function onServerPdf() {
-  if (rendering.value) return
-  const rawJson = designerRef.value?.getTemplateJson?.()
-  if (!rawJson) {
-    showRenderError('未获取到当前画布模板 JSON')
-    return
-  }
-
-  let templateJson: Record<string, unknown>
-  try {
-    templateJson = typeof rawJson === 'string' ? JSON.parse(rawJson) : (rawJson as unknown as Record<string, unknown>)
-  } catch {
-    showRenderError('模板 JSON 解析失败')
-    return
-  }
-
-  rendering.value = true
-  renderError.value = ''
-  try {
-    const pdf = await requestServerPdf(
-      templateJson,
-      DEFAULT_DEMO_DATA as unknown as Record<string, unknown>,
-      RENDER_BASE_URL,
-    )
-    openPdfBlob(pdf, `purchase-receipt-${Date.now()}.pdf`)
-    await refreshRenderStatus()
-  } catch (err) {
-    const message = err instanceof Error ? err.message : '服务端渲染失败'
-    showRenderError(`PDF 生成失败：${message}`)
-    await refreshRenderStatus()
-  } finally {
-    rendering.value = false
-  }
-}
-
-onMounted(() => {
-  void refreshRenderStatus()
-  void connectPrintClient()
-})
-
-// ── 桌面打印客户端静默打印 ──────────────────────────────────────────────
-const client = new PrintClient({ timeoutMs: 20000 })
-type ClientStatus = 'checking' | 'online' | 'offline'
-const clientStatus = ref<ClientStatus>('checking')
-const clientStatusText = ref('检测打印客户端…')
-const clientPrinters = ref<PrinterInfo[]>([])
-const selectedPrinter = ref('')
-const clientPrinting = ref(false)
-const clientMessage = ref('')
-let clientMsgTimer: ReturnType<typeof setTimeout> | undefined
-
-function showClientMessage(message: string) {
-  clientMessage.value = message
-  clearTimeout(clientMsgTimer)
-  clientMsgTimer = setTimeout(() => (clientMessage.value = ''), 5000)
-}
-
-async function connectPrintClient() {
-  clientStatus.value = 'checking'
-  clientStatusText.value = '检测打印客户端…'
-  client.onStatusChange(s => {
-    if (s === 'connected') {
-      clientStatus.value = 'online'
-      clientStatusText.value = '打印客户端在线'
-      void refreshClientPrinters()
-    } else if (s === 'disconnected') {
-      clientStatus.value = 'offline'
-      clientStatusText.value = '打印客户端离线'
-    }
-  })
-  try {
-    await client.connect()
-    clientStatus.value = 'online'
-    clientStatusText.value = '打印客户端在线'
-    await refreshClientPrinters()
-  } catch {
-    clientStatus.value = 'offline'
-    clientStatusText.value = '打印客户端离线'
-  }
-}
-
-async function refreshClientPrinters() {
-  try {
-    clientPrinters.value = await client.listPrinters()
-  } catch {
-    clientPrinters.value = []
-  }
-}
-
-async function onClientPrint() {
-  if (clientPrinting.value) return
-  const rawJson = designerRef.value?.getTemplateJson?.()
-  if (!rawJson) {
-    showClientMessage('未获取到当前画布模板 JSON')
-    return
-  }
-  let templateJson: Record<string, unknown>
-  try {
-    templateJson =
-      typeof rawJson === 'string' ? JSON.parse(rawJson) : (rawJson as unknown as Record<string, unknown>)
-  } catch {
-    showClientMessage('模板 JSON 解析失败')
-    return
-  }
-
-  clientPrinting.value = true
-  clientMessage.value = ''
-  try {
-    const res = await client.print(
-      templateJson,
-      DEFAULT_DEMO_DATA as unknown as Record<string, unknown>,
-      {
-        baseUrl: RENDER_BASE_URL,
-        printerName: selectedPrinter.value || undefined,
-      },
-    )
-    showClientMessage(`已提交静默打印，作业 ${res.jobId.slice(0, 8)}`)
-  } catch (err) {
-    const code = err instanceof WormPrintError ? `[${err.code}] ` : ''
-    const message = err instanceof Error ? err.message : '静默打印失败'
-    showClientMessage(`静默打印失败：${code}${message}`)
-  } finally {
-    clientPrinting.value = false
-  }
 }
 
 /** 加载默认布局：宿主在此实现自己的业务逻辑（如按业务类型拉取默认模板）；demo 返回空白默认模板 */
@@ -372,99 +183,18 @@ body,
   color: #8b909c;
   font-size: 12px;
 }
-.demo-server {
+.demo-print-btn {
   margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.server-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  color: #5a667f;
-}
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #c2c7d0;
-}
-.server-status.online { color: #16a34a; }
-.server-status.online .status-dot { background: #22c55e; }
-.server-status.offline { color: #dc2626; }
-.server-status.offline .status-dot { background: #ef4444; }
-.server-status.checking .status-dot { background: #f59e0b; }
-.server-pdf-btn {
-  padding: 4px 14px;
+  padding: 5px 16px;
   border: 1px solid #165dff;
   border-radius: 6px;
-  background: #165dff;
-  color: #fff;
-  font-size: 12px;
-  cursor: pointer;
-}
-.server-pdf-btn:hover:not(:disabled) {
-  background: #0e4fd8;
-}
-.server-pdf-btn:disabled {
-  border-color: #c2c7d0;
-  background: #c2c7d0;
-  cursor: not-allowed;
-}
-.server-error {
-  font-size: 12px;
-  color: #dc2626;
-  max-width: 320px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.topbar-divider {
-  width: 1px;
-  height: 16px;
-  background: #e9ecf2;
-  margin: 0 2px;
-}
-.printer-select {
-  max-width: 220px;
-  padding: 4px 8px;
-  border: 1px solid #d9dde6;
-  border-radius: 6px;
-  font-size: 12px;
-  color: #2a2e37;
   background: #fff;
-}
-.printer-select:disabled {
-  background: #f4f6fa;
-  color: #9aa1af;
-  cursor: not-allowed;
-}
-.client-print-btn {
-  padding: 4px 14px;
-  border: 1px solid #16a34a;
-  border-radius: 6px;
-  background: #16a34a;
-  color: #fff;
-  font-size: 12px;
+  color: #165dff;
+  font-size: 13px;
   cursor: pointer;
 }
-.client-print-btn:hover:not(:disabled) {
-  background: #15803d;
-}
-.client-print-btn:disabled {
-  border-color: #c2c7d0;
-  background: #c2c7d0;
-  cursor: not-allowed;
-}
-.client-message {
-  font-size: 12px;
-  color: #16a34a;
-  max-width: 260px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.demo-print-btn:hover {
+  background: #eef3ff;
 }
 .demo-container {
   flex: 1;
