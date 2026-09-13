@@ -28,6 +28,8 @@ export interface TemplateData {
   customHeight?: number
   /** 页面（纸张）背景色；未设置时默认白色 */
   pageBackground?: string
+  /** 水印配置（同 design/WatermarkOptions，渲染端读取其颜色/透明度/角度/密度/绑定） */
+  watermark?: import('../designer/types.js').WatermarkOptions
   margins: { top: number; right: number; bottom: number; left: number }
   header: { height: number; elements: TemplateElement[] }
   footer: { height: number; elements: TemplateElement[] }

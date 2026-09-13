@@ -14,11 +14,14 @@ import { getPaperDimensions } from './types.js'
 import { buildPageCss, elementPositionStyle, mm } from './css-builder.js'
 import { injectSystemVariables } from './data-binder.js'
 import { evaluateTemplate } from './expression-eval.js'
+import { renderWatermarkLayerHtml } from './watermark.js'
 import { tableDesignBottom } from './pagination-engine.js'
 
 /** 渲染上下文：贯穿两遍渲染的可选依赖 */
 interface RenderCtx {
   codeRenderer?: CodeRenderer
+  /** 连续纸探针推导出的最终纸高（mm）；水印网格与 @page 必须同源 */
+  pageHeightMm?: number
 }
 
 export interface GenerateOptions {
@@ -45,12 +48,15 @@ export function generateHtml(
   const css = buildPageCss(template, options?.pageHeightMm)
   const isMeasure = options?.isMeasurementPass === true
   const totalPages = isMeasure ? 1 : pageLayouts.length
-  const ctx: RenderCtx = { codeRenderer: options?.codeRenderer }
+  const ctx: RenderCtx = {
+    codeRenderer: options?.codeRenderer,
+    pageHeightMm: options?.pageHeightMm,
+  }
 
   if (isMeasure) {
-    return generateMeasurementHtml(template, css, ctx)
+    return generateMeasurementHtml(template, css, ctx, printData)
   }
-  return generateFinalHtml(template, pageLayouts, css, totalPages, ctx)
+  return generateFinalHtml(template, pageLayouts, css, totalPages, ctx, printData)
 }
 
 // ─── 第一遍：测量模式 ───
@@ -59,6 +65,7 @@ function generateMeasurementHtml(
   template: TemplateData,
   css: string,
   ctx: RenderCtx,
+  printData?: Record<string, any> | Record<string, any>[],
 ): string {
   const paper = getPaperDims(template)
   const contentWidth = paper.width - template.margins.left - template.margins.right
@@ -86,6 +93,7 @@ function generateMeasurementHtml(
 </head>
 <body class="measure-mode">
 <section class="print-page" data-measure-page="0">
+  ${renderWatermarkLayerHtml(template.watermark, printData, getPaperDims(template))}
   <div class="page-header">${headerHtml}</div>
   <div class="first-page-overlay">${overlayHtml}</div>
   <div class="content-area" style="height:auto;overflow:visible;">
@@ -108,10 +116,11 @@ function generateFinalHtml(
   css: string,
   totalPages: number,
   ctx: RenderCtx,
+  printData?: Record<string, any> | Record<string, any>[],
 ): string {
   const pagesHtml = pageLayouts.map(page => {
     const pageNum = page.pageIndex + 1
-    return renderPage(template, page, pageNum, totalPages, ctx)
+    return renderPage(template, page, pageNum, totalPages, ctx, printData)
   }).join('\n')
 
   let html = `<!DOCTYPE html>
@@ -136,8 +145,14 @@ function renderPage(
   pageNum: number,
   totalPages: number,
   ctx: RenderCtx,
+  printData?: Record<string, any> | Record<string, any>[],
 ): string {
   const paper = getPaperDims(template)
+  // 连续纸最终纸高由探针推导（options.pageHeightMm），水印网格须按同一纸高铺满
+  const paperMm = {
+    width: paper.width,
+    height: ctx.pageHeightMm && ctx.pageHeightMm > 0 ? ctx.pageHeightMm : paper.height,
+  }
   const contentWidth = paper.width - template.margins.left - template.margins.right
 
   // 页眉（含页码变量替换）
@@ -172,6 +187,7 @@ function renderPage(
   contentHtml = contentHtml.replace(/\{totalPages\}/g, String(totalPages))
 
   return `<section class="print-page" data-page="${pageNum}">
+  ${renderWatermarkLayerHtml(template.watermark, printData, paperMm)}
   <div class="page-header">${headerHtml}</div>
   ${overlayHtml}
   <div class="content-area">

@@ -275,8 +275,12 @@ export interface WatermarkOptions {
   opacity?: number
   /** 显示时间戳 */
   timestamp?: boolean
-  /** 时间格式 */
+  /** 时间格式（timestamp=true 时使用，token 支持 YYYY/MM/DD/HH/mm/ss） */
   format?: string
+  /** 平铺瓦片宽度（px，控制水印密度：越小越密，默认 260，下限 140） */
+  tileWidth?: number
+  /** 平铺瓦片高度（px，控制水印密度：越小越密，默认 180，下限 100） */
+  tileHeight?: number
 }
 
 /** 运行时元素（设计器中带状态） */

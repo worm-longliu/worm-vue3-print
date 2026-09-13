@@ -134,6 +134,8 @@
             <StepperInput :model-value="overlayHeight" :min="0" :max="200" @update:model-value="onOverlayHeightChange" />
           </div>
         </form>
+
+        <WatermarkConfig :model-value="watermarkModel" :fields="fields" @update:model-value="onWatermarkChange" />
       </div>
       </div>
     </template>
@@ -159,6 +161,8 @@ import ImageContentUpload from './property/ImageContentUpload.vue'
 import TableRowGroup from './property/TableRowGroup.vue'
 import TableCellGroup from './property/TableCellGroup.vue'
 import PresetColorPicker from './PresetColorPicker.vue'
+import WatermarkConfig from './WatermarkConfig.vue'
+import type { WatermarkOptions } from '@worm-vue3-print/core/designer'
 import { getElementBindings, getTableCellBindings } from '@worm-vue3-print/core/designer'
 import type { BindingDescriptor } from '@worm-vue3-print/core/designer'
 
@@ -298,6 +302,13 @@ const overlayHeight = computed(() => props.templateData?.firstPageOverlay.height
 
 const customWidth = computed(() => props.templateData?.customWidth ?? (paperSizeModel.value === 'CONTINUOUS' ? 80 : 210))
 const customHeight = computed(() => props.templateData?.customHeight ?? 297)
+
+/** 水印配置（缺省时给空对象，WatermarkConfig 内部按默认值展示） */
+const watermarkModel = computed<WatermarkOptions>(() => props.templateData?.watermark ?? {})
+
+function onWatermarkChange(value: WatermarkOptions) {
+  emitUpdate({ watermark: value })
+}
 
 function emitUpdate(partial: Partial<TemplateData>) {
   if (!props.templateData) return

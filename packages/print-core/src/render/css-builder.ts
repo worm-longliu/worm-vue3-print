@@ -63,6 +63,24 @@ body { font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, s
   page-break-after: auto;
 }
 
+/* ── 水印层：覆盖整页、位于所有内容之下（显式矢量瓦片，禁止用 CSS 平铺背景：
+       Chromium 会把它编译成 PDF 平铺图案，出纸链路的 RIP 会忽略图案矩阵导致水印放大/错位） ── */
+.watermark-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+/* 单块水印瓦片：位置/尺寸由 core 的瓦片网格给出（mm） */
+.watermark-tile {
+  position: absolute;
+  pointer-events: none;
+}
+
 /* ── 页眉 ── */
 .page-header {
   width: ${mm(contentWidth)};

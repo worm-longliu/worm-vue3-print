@@ -29,12 +29,33 @@
         }"
       />
 
-      <!-- 水印渲染层（在所有元素之下） -->
+      <!-- 水印渲染层（在所有元素之下）：显式矢量瓦片，与打印端共用 core 的瓦片网格 -->
       <div
-        v-if="watermarkVisible"
+        v-if="watermarkLayout"
         class="watermark-layer"
-        :style="watermarkStyle"
-      />
+        :style="{ opacity: String(watermarkLayout.opacity) }"
+      >
+        <svg
+          v-for="(tile, idx) in watermarkLayout.tiles"
+          :key="idx"
+          class="watermark-tile"
+          :width="tile.widthMm + 'mm'"
+          :height="tile.heightMm + 'mm'"
+          :viewBox="`0 0 ${watermarkLayout.tileWidthPx} ${watermarkLayout.tileHeightPx}`"
+          :style="{ left: tile.leftMm + 'mm', top: tile.topMm + 'mm' }"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <text
+            :x="watermarkLayout.tileWidthPx / 2"
+            :y="watermarkLayout.tileHeightPx / 2"
+            :font-size="watermarkLayout.fontSizePx"
+            :fill="watermarkLayout.color"
+            text-anchor="middle"
+            dominant-baseline="middle"
+            :transform="`rotate(${watermarkLayout.rotate},${watermarkLayout.tileWidthPx / 2},${watermarkLayout.tileHeightPx / 2})`"
+          >{{ watermarkLayout.text }}</text>
+        </svg>
+      </div>
 
       <!-- ─── 三段式区域层：上边距→页眉→内容→页脚→下边距 ─── -->
       <!-- 页眉层 -->
@@ -184,6 +205,7 @@ import { computed, ref, onUnmounted } from 'vue'
 import type { RuntimeElement, TemplateData, ElementRect, ElementZone, AlignLine } from '@worm-vue3-print/core/designer'
 import { getPaperDimensions } from '@worm-vue3-print/core/designer'
 import { mmToPx } from '@worm-vue3-print/core/designer'
+import { resolveWatermarkLayout } from '@worm-vue3-print/core'
 import BaseElement from './elements/BaseElement.vue'
 import { useAdsorbManager } from '../composables/useAdsorbManager'
 
@@ -385,72 +407,14 @@ function showSnapIndicator(left: number, top: number) {
   }, 300)
 }
 
-// ─── 水印渲染 ───
-const watermarkVisible = computed(() => {
-  const w = props.templateData.watermark
-  if (!w) return false
-  // 向后兼容：如果没有 mode 字段，使用 content
-  if (!w.mode || w.mode === 'fixed') {
-    return !!w.content && w.content.trim().length > 0
-  }
-  // 绑定字段模式
-  return !!w.binding
-})
-
-const watermarkStyle = computed(() => {
-  const w = props.templateData.watermark || {}
-  const color = w.color || '#cccccc'
-  const opacity = w.opacity ?? 0.15
-  const rotate = w.rotate ?? -30
-  // 获取水印文本
-  let text = getWatermarkText(w)
-  if (w.timestamp) {
-    const now = new Date()
-    const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-    text = text ? `${text} ${ts}` : ts
-  }
-  return {
-    position: 'absolute' as const,
-    top: '0',
-    left: '0',
-    width: '100%',
-    height: '100%',
-    pointerEvents: 'none' as const,
-    zIndex: '0',
-    overflow: 'hidden',
-    opacity: String(opacity),
-    backgroundImage: buildWatermarkSvg(text, color, rotate),
-    backgroundRepeat: 'repeat',
-  }
-})
-
-/** 获取水印文本（支持绑定字段） */
-function getWatermarkText(w: { mode?: 'fixed' | 'binding'; content?: string; binding?: string; testData?: string }): string {
-  // 向后兼容：如果没有 mode 字段，使用 content
-  if (!w.mode || w.mode === 'fixed') {
-    return w.content || ''
-  }
-  // 绑定字段模式
-  if (w.binding) {
-    // 从打印数据中取值
-    const printData = props.printData?.[0]
-    if (printData && printData[w.binding] !== undefined && printData[w.binding] !== null) {
-      return String(printData[w.binding])
-    }
-    // 回退到测试值
-    return w.testData || `[${w.binding}]`
-  }
-  return ''
-}
-
-/** 用内联 SVG 生成水印背景图案 */
-function buildWatermarkSvg(text: string, color: string, rotate: number): string {
-  const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="260" height="180">
-    <text x="130" y="90" font-size="16" fill="${color}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${rotate},130,90)">${escaped}</text>
-  </svg>`
-  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
-}
+// ─── 水印渲染（复用 core 同构逻辑：与预览/打印完全一致） ───
+// 与打印端同源：几何（瓦片网格）由 core 计算，画布只负责渲染；
+// 水印不可见或文本为空时返回 null（core 内部判定），不渲染水印层。
+const watermarkLayout = computed(() => resolveWatermarkLayout(
+  props.templateData.watermark,
+  props.printData,
+  { width: paperWidthMM.value, height: paperHeightMM.value },
+))
 
 // ─── 页眉/页脚高度拖拽 ───
 const zoneResizing = ref<{ zone: 'header' | 'footer'; startY: number; startH: number } | null>(null)
@@ -610,8 +574,19 @@ defineExpose({ contentRef })
   from { transform: translate(-50%, -50%) scale(2); opacity: 0.5; }
   to { transform: translate(-50%, -50%) scale(1); opacity: 0; }
 }
-/* 水印层 */
+/* 水印层：覆盖整页、位于所有元素之下（几何由 core 的瓦片网格给出，mm 定位） */
 .watermark-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.watermark-tile {
+  position: absolute;
   pointer-events: none;
 }
 /* 吸附引导线 */

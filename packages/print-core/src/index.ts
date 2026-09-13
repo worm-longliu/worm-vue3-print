@@ -51,6 +51,20 @@ export { paginate, tableDesignBottom } from './render/pagination-engine.js'
 export { evaluateTemplate, safeEval } from './render/expression-eval.js'
 export { getPaperDimensions, PAPER_DIMENSIONS, isContinuousPaper } from './render/types.js'
 export { composeContinuousHeight, MIN_CONTINUOUS_HEIGHT_MM } from './render/continuous-paper.js'
+export {
+  WATERMARK_DEFAULTS,
+  WATERMARK_DENSITY_PRESETS,
+  PX_PER_MM,
+  MM_PER_PX,
+  isWatermarkVisible,
+  resolveWatermarkText,
+  formatTimestamp,
+  resolveWatermarkLayout,
+  renderWatermarkTileSvg,
+  renderWatermarkLayerHtml,
+} from './render/watermark.js'
+export type { WatermarkPaper, WatermarkTile, ResolvedWatermark } from './render/watermark.js'
+export type { WatermarkOptions } from './designer/types.js'
 export type {
   TemplateData as PrintTemplateData,
   TemplateElement as PrintTemplateElement,
