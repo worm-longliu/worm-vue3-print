@@ -9,6 +9,7 @@ import { RendererPool } from './renderer-pool.js'
 import { RenderEngine } from './render-engine.js'
 import { PrinterService } from './printer-service.js'
 import { PrintEngine } from './print-engine.js'
+import { buildPdfOutputPolicy, type PdfOutputPolicy } from './pdf-output.js'
 import { WsServer } from './ws-server.js'
 import { checkAccess } from './security.js'
 import { makeMessageHandler } from './protocol-handler.js'
@@ -48,7 +49,18 @@ if (!gotLock) {
       await pool.init()
       const printerService = new PrinterService(() => pool.getPrintersAsync())
       const renderEngine = new RenderEngine(pool)
-      const printEngine = new PrintEngine({ printerService, renderEngine, pool, history, logger })
+      // 保留生成的 PDF（排查颜色/方向等问题用）：目录留空则落在 userData/pdf
+      const resolvePdfPolicy = (): PdfOutputPolicy =>
+        buildPdfOutputPolicy(configStore.current, userData)
+      const resolvePdfDir = (): string => resolvePdfPolicy().dir
+      const printEngine = new PrintEngine({
+        printerService,
+        renderEngine,
+        pool,
+        history,
+        logger,
+        pdfOutput: resolvePdfPolicy,
+      })
 
       let actualPort = 0
       const server = new WsServer({
@@ -81,6 +93,7 @@ if (!gotLock) {
         printerService,
         printEngine,
         getPort: () => server.port,
+        getPdfDir: resolvePdfDir,
       })
       mainWindow.registerIpc()
       mainWindow.bindPushEvents()

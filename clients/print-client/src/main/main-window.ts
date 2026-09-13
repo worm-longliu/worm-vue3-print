@@ -1,5 +1,5 @@
 // 配置窗口：注册设置 IPC、推送实时日志与任务事件；单例窗口。
-import { BrowserWindow, ipcMain, app } from 'electron'
+import { BrowserWindow, ipcMain, app, shell } from 'electron'
 import { pathToFileURL } from 'node:url'
 import { join } from 'node:path'
 import { SETTINGS_IPC } from '../shared/settings-protocol.js'
@@ -18,6 +18,8 @@ export interface MainWindowDeps {
   printerService: PrinterService
   printEngine: PrintEngine
   getPort: () => number
+  /** 保留 PDF 的输出目录（排查用） */
+  getPdfDir: () => string
 }
 
 export class MainWindowManager {
@@ -30,6 +32,7 @@ export class MainWindowManager {
       config: this.deps.configStore.current,
       port: this.deps.getPort(),
       version: app.getVersion(),
+      pdfDir: this.deps.getPdfDir(),
     }))
 
     ipcMain.handle(SETTINGS_IPC.SAVE_CONFIG, (_e, patch: Partial<AppConfig>) => {
@@ -62,6 +65,13 @@ export class MainWindowManager {
     ipcMain.handle(SETTINGS_IPC.LIST_HISTORY, () =>
       this.deps.history.list().slice(-200).reverse(),
     )
+
+    ipcMain.handle(SETTINGS_IPC.OPEN_PDF_DIR, async () => {
+      const dir = this.deps.getPdfDir()
+      const err = await shell.openPath(dir)
+      if (err) throw new Error(`打开目录失败：${err}`)
+      return dir
+    })
   }
 
   /** 实时事件推送到已打开的窗口 */

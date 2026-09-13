@@ -6,6 +6,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Added
 
+- Print client: New "keep generated PDFs" troubleshooting switch (config window checkbox; `keepGeneratedPdf` / `pdfOutputDir` in `config.json`, defaulting to `userData/pdf`). Each printed job's generated PDF is kept, the job history shows its absolute path, and the settings page offers an "open folder" button — useful for telling whether a color/orientation problem comes from PDF generation or from the printer/driver.
 - `@worm-vue3-print/client`: Added a browser-prerendered submission channel — protocol message `print.submitHtml` and the SDK method `PrintClient.printHtml(rendered, options, templateName)`. Host pages run the two-pass `renderHtmlPages` from `@worm-vue3-print/core/browser` in the browser and submit the final HTML (paper size/orientation/margins/continuous height baked in) directly for silent printing; the client no longer executes template rendering on this path. The legacy `print` (client-side rendering) channel remains supported.
 - Print client: Inbound validation for `print.submitHtml` (non-empty HTML, ≤20MB, positive `paperMm` in millimeters, typed `continuous`/`pageCount`); paper/orientation/margin overrides are rejected with `INVALID_REQUEST`. The print engine was refactored into a shared "prepare (render or take prerendered HTML) → print" flow.
 - demo: "Client silent print" now renders in the browser and submits via `printHtml` (new wrapper `src/browser-render.ts`).

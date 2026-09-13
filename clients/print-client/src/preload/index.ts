@@ -9,6 +9,7 @@ const api = {
   testPrint: (printerName?: string) =>
     ipcRenderer.invoke(SETTINGS_IPC.TEST_PRINT, printerName),
   listHistory: () => ipcRenderer.invoke(SETTINGS_IPC.LIST_HISTORY),
+  openPdfDir: () => ipcRenderer.invoke(SETTINGS_IPC.OPEN_PDF_DIR),
   onLog: (cb: (entry: unknown) => void) => {
     const listener = (_e: unknown, entry: unknown) => cb(entry)
     ipcRenderer.on(SETTINGS_IPC.LOG_EVENT, listener)

@@ -7,11 +7,12 @@ import type { PrinterInfo } from '@worm-vue3-print/client'
 declare global {
   interface Window {
     wormPrint: {
-      getState: () => Promise<{ config: AppConfig; port: number; version: string }>
+      getState: () => Promise<{ config: AppConfig; port: number; version: string; pdfDir: string }>
       saveConfig: (patch: Partial<AppConfig>) => Promise<AppConfig>
       listPrinters: () => Promise<PrinterInfo[]>
       testPrint: (printerName?: string) => Promise<void>
       listHistory: () => Promise<JobRecord[]>
+      openPdfDir: () => Promise<string>
       onLog: (cb: (entry: LogEntry) => void) => () => void
       onJob: (cb: (record: JobRecord) => void) => () => void
     }

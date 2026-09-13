@@ -5,6 +5,7 @@ export const SETTINGS_IPC = {
   LIST_PRINTERS: 'worm:settings:list-printers',
   TEST_PRINT: 'worm:settings:test-print',
   LIST_HISTORY: 'worm:settings:list-history',
+  OPEN_PDF_DIR: 'worm:settings:open-pdf-dir',
   LOG_EVENT: 'worm:settings:log-event',
   JOB_EVENT: 'worm:settings:job-event',
 } as const

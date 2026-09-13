@@ -45,6 +45,19 @@ describe('parseConfig', () => {
     expect(fallback.autoStart).toBe(false)
     expect(fallback.allowedOrigins).toEqual([])
   })
+
+  it('保留 PDF 配置：默认关闭、目录为空；合法值透传、类型不符回退', () => {
+    expect(DEFAULT_CONFIG.keepGeneratedPdf).toBe(false)
+    expect(DEFAULT_CONFIG.pdfOutputDir).toBe('')
+
+    const on = parseConfig({ keepGeneratedPdf: true, pdfOutputDir: '  /Users/x/PrintPdf  ' })
+    expect(on.keepGeneratedPdf).toBe(true)
+    expect(on.pdfOutputDir).toBe('/Users/x/PrintPdf')
+
+    const bad = parseConfig({ keepGeneratedPdf: 'yes', pdfOutputDir: 12 })
+    expect(bad.keepGeneratedPdf).toBe(false)
+    expect(bad.pdfOutputDir).toBe('')
+  })
 })
 
 describe('generatePairingToken', () => {

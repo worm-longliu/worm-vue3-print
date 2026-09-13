@@ -96,6 +96,12 @@ npm run build
 4. 注意：不要用 `orientation-requested` 纠正方向。实测该选项会让 CUPS 反向旋转（横向页变成纵向 MediaBox，或纵向页被再次旋转）；把 `media` 声明成页面真实尺寸即可，方向由页面本身决定。
 5. 验证方法（无需真机）：`lp -d <队列> -o media=<纸型> out.pdf` 打印后用 `pdfinfo`/`pypdf` 检查 `/Rotate` 是否为 0，`pdftoppm` 转 PNG 确认宽高比（如 A4 横向应为 1169×827）。
 
+## 先分清「生成 PDF 的问题」还是「打印机/驱动的问题」
+
+1. 在客户端配置窗口勾选**保留生成的 PDF**（`config.json`：`keepGeneratedPdf=true`，可选 `pdfOutputDir`，留空为 `userData/pdf`），「任务记录」页会显示每份 PDF 的绝对路径，配置页可一键打开目录。
+2. 用 PDF 阅读器打开保留的 PDF：颜色/方向/分页与浏览器预览一致 → 问题在打印机或驱动（驱动默认单色、队列纸张、RIP 处理等）；PDF 本身就不对 → 问题在渲染或 PDF 生成环节（core HTML、printToPDF 参数）。
+3. 该开关默认关闭（打印完即删，不占磁盘）；开启后文件不会自动清理，排查完记得关闭并清理目录。
+
 ## 预览页数或分页与最终输出不一致
 
 1. 浏览器和浏览器/服务端必须使用同一份模板 JSON、同一份打印数据和同一个 `baseUrl`。

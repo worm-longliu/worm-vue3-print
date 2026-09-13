@@ -129,6 +129,19 @@ npm run pack:client:dir
 
 其中 `config.json`（配置）、`jobs.jsonl`（最近 500 条任务）、`logs/client.log`（分级日志）。
 
+### 排查用：保留生成的 PDF
+
+出纸链路是「HTML → printToPDF → 系统命令打印 PDF」。默认生成的 PDF 落在系统临时目录、
+打印完成（或失败）后即删除；需要在「PDF 生成」与「打印机/驱动」之间定位问题时，可在配置窗口
+勾选**保留生成的 PDF**（`config.json` 的 `keepGeneratedPdf`），并可指定保存目录
+（`pdfOutputDir`，留空为 `userData/pdf`）。
+
+- 保留后每份 PDF 以 `jobId` 命名，任务记录（配置窗口「任务记录」页）会显示其绝对路径；
+  配置项旁提供「打开目录」按钮。
+- 判断口径：用 PDF 阅读器打开保留的 PDF，颜色/方向正确 → 问题在打印机或驱动；PDF 里就不对
+  → 问题在渲染/PDF 生成环节。
+- 开启后文件不会自动清理，请自行定期清理目录。
+
 ## 平台注意
 
 - macOS：未签名应用首次需右键 → 打开；命令行启动可能出现「Unable to set login item」提示，为系统自启权限限制，不影响打印。

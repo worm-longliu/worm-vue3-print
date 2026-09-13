@@ -9,6 +9,7 @@ const tab = ref<'settings' | 'jobs' | 'logs'>('settings')
 const config = ref<AppConfig | null>(null)
 const port = ref(0)
 const version = ref('')
+const pdfDir = ref('')
 const printers = ref<PrinterInfo[]>([])
 const testPrinter = ref('')
 const saveMsg = ref('')
@@ -29,6 +30,7 @@ onMounted(async () => {
     config.value = state.config
     port.value = state.port
     version.value = state.version
+    pdfDir.value = state.pdfDir
     originsText.value = state.config.allowedOrigins.join('\n')
     printers.value = await window.wormPrint.listPrinters()
     jobs.value = await window.wormPrint.listHistory()
@@ -68,6 +70,15 @@ async function doTestPrint() {
   }
 }
 
+async function openPdfDir() {
+  try {
+    pdfDir.value = await window.wormPrint.openPdfDir()
+  } catch (e) {
+    saveMsg.value = `打开目录失败：${(e as Error).message}`
+    setTimeout(() => (saveMsg.value = ''), 4000)
+  }
+}
+
 function fmtTime(iso: string): string {
   return new Date(iso).toLocaleString()
 }
@@ -103,6 +114,24 @@ function fmtTime(iso: string): string {
           <option value="error">error</option>
         </select>
       </div>
+      <div class="row">
+        <label>保留生成的 PDF</label>
+        <input type="checkbox" v-model="config.keepGeneratedPdf" />
+        <span class="muted">排查用：保留每次打印生成的 PDF（关闭时打印完即删）</span>
+      </div>
+      <template v-if="config.keepGeneratedPdf">
+        <div class="row">
+          <label>PDF 保存目录</label>
+          <input
+            type="text"
+            v-model="config.pdfOutputDir"
+            :placeholder="pdfDir"
+            style="min-width: 360px"
+          />
+          <button @click="openPdfDir">打开目录</button>
+          <span class="muted">留空则用 {{ pdfDir }}</span>
+        </div>
+      </template>
       <div class="row">
         <label>安全开关</label>
         <input type="checkbox" v-model="config.securityEnabled" />
@@ -144,7 +173,7 @@ function fmtTime(iso: string): string {
         <thead>
           <tr>
             <th>时间</th><th>模板</th><th>打印机</th><th>份数</th>
-            <th>纸宽×纸高(μm)</th><th>纸高</th><th>结果</th>
+            <th>纸宽×纸高(μm)</th><th>纸高</th><th>结果</th><th>生成的 PDF</th>
           </tr>
         </thead>
         <tbody>
@@ -158,6 +187,7 @@ function fmtTime(iso: string): string {
             <td :class="j.outcome === 'failed' ? 'danger' : ''">
               {{ j.outcome === 'success' ? '成功' : `失败：${j.errorCode ?? ''} ${j.errorMessage ?? ''}` }}
             </td>
+            <td class="muted" style="max-width: 320px; word-break: break-all">{{ j.pdfPath ?? '—' }}</td>
           </tr>
         </tbody>
       </table>

@@ -14,6 +14,8 @@ export interface JobRecord {
   /** 纸高来源：config=任务显式指定，derived=按渲染内容高度推导 */
   paperHeightSource: 'config' | 'derived'
   outcome: JobOutcome
+  /** 保留的生成 PDF 绝对路径（仅 keepGeneratedPdf 开启时写入） */
+  pdfPath?: string
   errorCode?: string
   errorMessage?: string
 }

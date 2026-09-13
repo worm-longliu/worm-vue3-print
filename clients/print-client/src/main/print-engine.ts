@@ -2,8 +2,7 @@
 // 采用 PDF 中间方案：先用 Electron 生成 PDF（复用 Chromium 渲染引擎，与服务端 Playwright 一致），
 // 再调用系统命令打印 PDF，避免 webContents.print() 直接打印时的水印位置偏移和渲染异常。
 import { randomUUID } from 'node:crypto'
-import { join } from 'node:path'
-import { tmpdir } from 'node:os'
+import { dirname } from 'node:path'
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import type { PrintOptions } from '@worm-vue3-print/client'
 import type { Logger } from './logger.js'
@@ -22,12 +21,11 @@ import {
 } from './request-validation.js'
 import { printPdfFile } from './pdf-printer.js'
 import { renderPdf } from './pdf-generator.js'
+import { resolvePdfPath, shouldKeepPdf, type PdfOutputPolicy } from './pdf-output.js'
 
 const FONTS_READY_TIMEOUT_MS = 5000
 // PDF 生成超时：正常模板在 1s 内完成，超过即视为异常并释放串行锁
 const PDF_GENERATION_TIMEOUT_MS = 30_000
-// PDF 临时文件目录
-const PDF_TEMP_DIR = join(tmpdir(), 'worm-print-client-pdf')
 
 interface PreparedJob {
   html: string
@@ -59,6 +57,8 @@ export class PrintEngine {
       pool: RendererPool
       history: JobHistoryStore
       logger: Pick<Logger, 'info' | 'warn' | 'error' | 'debug'>
+      /** 生成 PDF 的落盘策略（每次任务读取，支持运行期改配置）；缺省不保留 */
+      pdfOutput?: () => PdfOutputPolicy
     },
   ) {}
 
@@ -118,6 +118,8 @@ export class PrintEngine {
     const { printerService, pool, history, logger } = this.deps
     const jobId = randomUUID()
     let pdfPath = ''
+    const policy: PdfOutputPolicy = this.deps.pdfOutput?.() ?? { keep: false, dir: '' }
+    const keepPdf = shouldKeepPdf(policy)
 
     const target = await printerService.resolve(
       (input.print as PrintOptions).printerName,
@@ -142,8 +144,8 @@ export class PrintEngine {
 
       // 生成 PDF（Electron printToPDF，复用 Chromium 渲染引擎，与服务端 Playwright 一致）
       const pdfBuffer = await renderPdf(win.webContents, prepared.paper, PDF_GENERATION_TIMEOUT_MS)
-      pdfPath = this.savePdfToTemp(jobId, pdfBuffer)
-      logger.info('PDF 生成完成', { jobId, pdfPath, size: pdfBuffer.length })
+      pdfPath = this.savePdf(jobId, pdfBuffer, policy)
+      logger.info('PDF 生成完成', { jobId, pdfPath, size: pdfBuffer.length, keep: keepPdf })
 
       // 关闭渲染窗口（PDF 已生成，不再需要窗口）
       if (!win.isDestroyed()) win.close()
@@ -170,6 +172,7 @@ export class PrintEngine {
         paperMicrometers: prepared.paper,
         paperHeightSource: prepared.heightSource,
         outcome: 'success',
+        ...(keepPdf ? { pdfPath } : {}),
       }
       history.append(record)
       this.emitSettled(record)
@@ -189,14 +192,15 @@ export class PrintEngine {
         outcome: 'failed',
         errorCode: code,
         errorMessage: message,
+        ...(keepPdf && pdfPath ? { pdfPath } : {}),
       }
       history.append(record)
       this.emitSettled(record)
       throw err instanceof ProtocolFailure ? err : new ProtocolFailure('PRINT_FAILED', message)
     } finally {
       if (!win.isDestroyed()) win.close()
-      // 清理临时 PDF 文件
-      if (pdfPath) {
+      // 清理临时 PDF：仅在不保留时删除
+      if (pdfPath && !keepPdf) {
         try {
           rmSync(pdfPath, { force: true })
           logger.debug('临时 PDF 已清理', { pdfPath })
@@ -207,10 +211,10 @@ export class PrintEngine {
     }
   }
 
-  /** 保存 PDF 到临时目录 */
-  private savePdfToTemp(jobId: string, pdfBuffer: Buffer): string {
-    mkdirSync(PDF_TEMP_DIR, { recursive: true })
-    const pdfPath = join(PDF_TEMP_DIR, `${jobId}.pdf`)
+  /** 保存 PDF：按策略写入临时目录（用完删除）或保留目录（供排查） */
+  private savePdf(jobId: string, pdfBuffer: Buffer, policy: PdfOutputPolicy): string {
+    const pdfPath = resolvePdfPath(jobId, policy)
+    mkdirSync(dirname(pdfPath), { recursive: true })
     writeFileSync(pdfPath, pdfBuffer)
     return pdfPath
   }

@@ -10,6 +10,10 @@ export interface AppConfig {
   port: number
   autoStart: boolean
   logLevel: LogLevel
+  /** 排查用：保留每次打印生成的 PDF（默认关闭，打印完即删） */
+  keepGeneratedPdf: boolean
+  /** 保留 PDF 的目录；留空则用 userData/pdf */
+  pdfOutputDir: string
   /** 安全开关：Origin 白名单 + 配对 token */
   securityEnabled: boolean
   allowedOrigins: string[]
@@ -20,6 +24,8 @@ export const DEFAULT_CONFIG: AppConfig = {
   port: 17521,
   autoStart: false,
   logLevel: 'info',
+  keepGeneratedPdf: false,
+  pdfOutputDir: '',
   securityEnabled: false,
   allowedOrigins: [],
   pairingToken: '',
@@ -63,6 +69,8 @@ export function parseConfig(raw: unknown): AppConfig {
     port,
     autoStart: src.autoStart === true,
     logLevel,
+    keepGeneratedPdf: src.keepGeneratedPdf === true,
+    pdfOutputDir: typeof src.pdfOutputDir === 'string' ? src.pdfOutputDir.trim() : DEFAULT_CONFIG.pdfOutputDir,
     securityEnabled: src.securityEnabled === true,
     allowedOrigins,
     pairingToken:
