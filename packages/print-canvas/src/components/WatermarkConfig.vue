@@ -2,44 +2,27 @@
   <div class="watermark-config">
     <h3 class="pd-divider">水印</h3>
     <form class="pd-form" @submit.prevent>
-      <!-- 模式切换 -->
-      <div class="pd-field"><span class="pd-label">水印模式</span>
-        <div class="pd-radio-group" role="radiogroup">
-          <label class="pd-radio"><input type="radio" v-model="localConfig.mode" value="fixed" @change="onChange"><span>固定文本</span></label>
-          <label class="pd-radio"><input type="radio" v-model="localConfig.mode" value="binding" @change="onChange"><span>字段表达式</span></label>
-        </div>
-      </div>
-
-      <!-- 固定文本模式 -->
-      <template v-if="localConfig.mode !== 'binding'">
-        <div class="pd-field"><span class="pd-label">水印内容</span>
-          <input class="pd-input" v-model="localConfig.content" placeholder="水印文字" @input="onChange" />
-        </div>
-      </template>
-
-      <!-- 字段表达式模式：表达式经弹框编辑（弹框内可选字段与打印日期/时间等变量） -->
-      <template v-else>
-        <div class="pd-field"><span class="pd-label">字段表达式</span>
-          <input
-            class="pd-input"
-            v-model="bindingInput"
-            placeholder="如 {order.no}、{printDate}、CONCAT('单号：', order.no)"
-            title="双击或点「编辑表达式」打开表达式弹框"
-            @input="onBindingInput"
-            @dblclick="openExpressionEditor"
-          />
-          <button type="button" class="pd-button small" @click="openExpressionEditor">编辑表达式</button>
-        </div>
-        <div class="pd-field"><span class="pd-label">测试值</span>
-          <input class="pd-input" v-model="localConfig.testData" placeholder="表达式的测试值" @input="onChange" />
-        </div>
-        <ExpressionEditor
-          v-model="exprEditorVisible"
-          :fields="fields"
-          :expression="bindingInput"
-          @update:expression="onExpressionChange"
+      <!-- 单一表达式输入：纯文本即静态水印，含 {字段}/函数/字段路径即按表达式解析 -->
+      <div class="pd-field"><span class="pd-label">水印表达式</span>
+        <input
+          class="pd-input"
+          v-model="expressionText"
+          placeholder="直接输入文字，或用表达式：{order.no}、{printDate}"
+          title="双击或点「编辑表达式」打开表达式弹框"
+          @input="onTextInput"
+          @dblclick="openExpressionEditor"
         />
-      </template>
+        <button type="button" class="pd-button small" @click="openExpressionEditor">编辑表达式</button>
+      </div>
+      <div v-if="isExpression" class="pd-field"><span class="pd-label">测试值</span>
+        <input class="pd-input" v-model="testData" placeholder="表达式取不到值时预览显示" @input="onChange" />
+      </div>
+      <ExpressionEditor
+        v-model="exprEditorVisible"
+        :fields="fields"
+        :expression="expressionText"
+        @update:expression="onExpressionChange"
+      />
 
       <!-- 公共设置 -->
       <div class="pd-field"><span class="pd-label">旋转角度</span>
@@ -91,11 +74,34 @@ const densityPresets = WATERMARK_DENSITY_PRESETS
 const minTileWidth = WATERMARK_DEFAULTS.minTileWidth
 const minTileHeight = WATERMARK_DEFAULTS.minTileHeight
 
+/**
+ * 判断输入是「表达式」还是「静态文本」：
+ * - 含花括号：{order.no}、{CONCAT(...)}、第{pageIndex}页
+ * - 函数调用：CONCAT('单号：', order.no)
+ * - 字段路径：order.no（与 core binding 模式的路径解析一致）
+ * 其余（含中文标语）按静态水印处理。
+ */
+function isExpressionText(text: string): boolean {
+  const t = text.trim()
+  if (!t) return false
+  if (/[{}]/.test(t)) return true
+  if (/^[A-Za-z_$][\w$]*\s*\(/.test(t)) return true
+  return /^[A-Za-z_$][\w$]*(\.[\w$]+)+$/.test(t)
+}
+
+/** 取模板里的水印文本：binding 模式取 binding，其余取 content */
+function readText(v?: WatermarkOptions): string {
+  if (!v) return ''
+  return v.mode === 'binding' ? (v.binding ?? '') : (v.content ?? '')
+}
+
+const expressionText = ref(readText(props.modelValue))
+const testData = ref(props.modelValue?.testData || '')
+const exprEditorVisible = ref(false)
+// 当前按哪种模式落盘；文本被编辑时按内容重新判定
+const activeMode = ref<'fixed' | 'binding'>(props.modelValue?.mode === 'binding' ? 'binding' : 'fixed')
+
 const localConfig = reactive({
-  mode: props.modelValue?.mode || 'fixed',
-  content: props.modelValue?.content || '',
-  binding: props.modelValue?.binding || '',
-  testData: props.modelValue?.testData || '',
   rotate: props.modelValue?.rotate ?? WATERMARK_DEFAULTS.rotate,
   color: props.modelValue?.color || WATERMARK_DEFAULTS.color,
   opacity: props.modelValue?.opacity ?? WATERMARK_DEFAULTS.opacity,
@@ -103,22 +109,20 @@ const localConfig = reactive({
   tileHeight: props.modelValue?.tileHeight ?? WATERMARK_DEFAULTS.tileHeight,
 })
 
-// 字段表达式输入框（直接写入 WatermarkOptions.binding）
-const bindingInput = ref(props.modelValue?.binding || '')
-const exprEditorVisible = ref(false)
+/** 是否表达式模式（决定是否展示测试值；纯文本水印用不到） */
+const isExpression = computed(() => activeMode.value === 'binding')
 
 watch(() => props.modelValue, (val) => {
   if (!val) return
-  localConfig.mode = val.mode || 'fixed'
-  localConfig.content = val.content || ''
-  localConfig.binding = val.binding || ''
-  localConfig.testData = val.testData || ''
+  expressionText.value = readText(val)
+  // 模板未改动文本时沿用原模式（兼容 binding 存的是无花括号路径的存量模板）
+  activeMode.value = val.mode === 'binding' ? 'binding' : 'fixed'
+  testData.value = val.testData || ''
   localConfig.rotate = val.rotate ?? WATERMARK_DEFAULTS.rotate
   localConfig.color = val.color || WATERMARK_DEFAULTS.color
   localConfig.opacity = val.opacity ?? WATERMARK_DEFAULTS.opacity
   localConfig.tileWidth = val.tileWidth ?? WATERMARK_DEFAULTS.tileWidth
   localConfig.tileHeight = val.tileHeight ?? WATERMARK_DEFAULTS.tileHeight
-  bindingInput.value = val.binding || ''
 }, { deep: true })
 
 const density = computed({
@@ -138,20 +142,23 @@ const density = computed({
   },
 })
 
-function onBindingInput() {
-  localConfig.binding = bindingInput.value
+/** 文本变化（输入框 / 弹框）：按内容重新判定表达式或静态文本 */
+function onTextChanged() {
+  activeMode.value = isExpressionText(expressionText.value) ? 'binding' : 'fixed'
   onChange()
+}
+
+function onTextInput() {
+  onTextChanged()
 }
 
 function openExpressionEditor() {
   exprEditorVisible.value = true
 }
 
-/** 表达式弹框确定：同步输入框与配置 */
 function onExpressionChange(value: string) {
-  bindingInput.value = value
-  localConfig.binding = value
-  onChange()
+  expressionText.value = value
+  onTextChanged()
 }
 
 function onColorChange(value: string) {
@@ -159,8 +166,19 @@ function onColorChange(value: string) {
   onChange()
 }
 
+/** 统一落盘：表达式写 binding，静态文本写 content（core 两种模式都支持） */
 function onChange() {
-  emit('update:modelValue', { ...localConfig })
+  const base = {
+    testData: testData.value,
+    rotate: localConfig.rotate,
+    color: localConfig.color,
+    opacity: localConfig.opacity,
+    tileWidth: localConfig.tileWidth,
+    tileHeight: localConfig.tileHeight,
+  }
+  emit('update:modelValue', activeMode.value === 'binding'
+    ? { ...base, mode: 'binding', binding: expressionText.value, content: '' }
+    : { ...base, mode: 'fixed', content: expressionText.value, binding: '' })
 }
 </script>
 
