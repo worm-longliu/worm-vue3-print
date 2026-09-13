@@ -149,10 +149,15 @@ export class PrintEngine {
       if (!win.isDestroyed()) win.close()
 
       // 调用系统命令打印 PDF
+      // paper 用于向 CUPS 声明纸张：不声明时驱动按默认纸张处理会把横向页旋转成纵向
       await printPdfFile(pdfPath, {
         printerName: target.name,
         copies: settings.copies,
         paperName: typeof settings.pageSize === 'string' ? settings.pageSize : undefined,
+        paper: {
+          width: prepared.paper.width / 1000,
+          height: prepared.paper.height / 1000,
+        },
         logger,
       })
 

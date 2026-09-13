@@ -88,6 +88,14 @@ npm run build
 4. 修复要求：① 只走 Promise 形式并 `Promise.race` 超时（客户端的 `src/main/pdf-generator.ts` 已封装）；② 纸张换算为英寸、`margins` 用 `{top,bottom,left,right}`（英寸，零边距）、`printBackground: true`；③ 任务失败/超时必须释放串行锁，`BUSY` 只应在任务真正进行中返回。
 5. 验证方法（无需打印机）：隐藏窗口加载待打印 HTML → `printToPDF` 生成 PDF → `pdfinfo` 看页面尺寸是否为 A4/目标纸张 → `pdftoppm` 转 PNG 后统计水印色（如 `#e60000` 35%）像素占比，应明显大于 0。
 
+## 出纸方向与浏览器/服务端预览不一致（横向被打成纵向）
+
+1. 现象：模板是横向（或宽幅自定义纸），浏览器预览、服务端 PDF 都正常，但桌面客户端静默出纸后纸张方向不对、内容被旋转。
+2. 根因：出纸命令（`lp`）未声明纸张，CUPS 按队列默认纸张（多为纵向 A4）处理，`pdftopdf` 把横向页面旋转 90°；用 `pdfinfo` 看产物 PDF 会看到 MediaBox 仍是横向但多了 `/Rotate 90`（部分查看器会按 `/Rotate` 显示成纵向）。
+3. 修复规则：出纸时必须显式下发 `-o media=…`，优先级为「宿主指定驱动纸型（`print.paperName`）→ 页面尺寸匹配标准纸型（A3/A4/A5/Letter/Legal）→ `Custom.<宽>x<高>`（单位：点，`mm × 72 / 25.4`）」。客户端已封装在 `src/main/pdf-printer.ts` 的 `resolveMediaOption`（有单测）。
+4. 注意：不要用 `orientation-requested` 纠正方向。实测该选项会让 CUPS 反向旋转（横向页变成纵向 MediaBox，或纵向页被再次旋转）；把 `media` 声明成页面真实尺寸即可，方向由页面本身决定。
+5. 验证方法（无需真机）：`lp -d <队列> -o media=<纸型> out.pdf` 打印后用 `pdfinfo`/`pypdf` 检查 `/Rotate` 是否为 0，`pdftoppm` 转 PNG 确认宽高比（如 A4 横向应为 1169×827）。
+
 ## 预览页数或分页与最终输出不一致
 
 1. 浏览器和浏览器/服务端必须使用同一份模板 JSON、同一份打印数据和同一个 `baseUrl`。
