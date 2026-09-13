@@ -2,24 +2,31 @@
 
 面向「Vue 3 前端 + 任意后端」的完整接入方案。设计器库只提供画布与渲染组件，**所有业务后端（模板存储、字段元数据、业务数据组装、PDF 代理）都由宿主实现**。本指南给出最小集合与可直接套用的骨架，模式提炼自一个真实生产宿主（Spring Boot + Vue 3 + Element Plus + 独立 Node 渲染服务）。
 
-## 1. 整体架构与两条链路
+## 1. 整体架构与三条链路
 
 ```
-                         ┌─────────────── 宿主后端（自建）───────────────┐
-模板管理/设计器页面 ──► 模板 CRUD、设计器初始化(模板+字段树+示例数据)
-业务页面「打印」按钮 ──► 渲染数据端点：取模板 elements + 按单据组装 printData
-                         └───────────┬───────────────────────────┬─────┘
-                                     │ 链路 A                     │ 链路 B
-                  {templateJson,     ▼                            ▼
-                   printData,baseUrl}              代理 POST /render/pdf（注入 X-Render-Key）
-                          │                                                │
-            PrintHtmlPreview（浏览器）                       print-render 微服务
-            同构渲染/分页 → print()                            Playwright 两遍渲染 → PDF
+                    ┌─────────────── 宿主后端（自建）───────────────┐
+模板管理/设计器页面 ─►  模板 CRUD、设计器初始化(模板+字段树+示例数据)
+业务页面「打印」按钮 ─►  渲染数据端点：取模板 elements + 按单据组装 printData
+                    └───────────────┬───────────────────────────┬────┘
+                                    │ {templateJson, printData, │
+                                    │  baseUrl}                  │ 代理 POST /render/pdf（注入 X-Render-Key）
+                                    ▼                            ▼
+                ┌──────────── 浏览器侧渲染 / 出纸 ──────────┐    print-render 微服务
+                │ 链路 A：PrintHtmlPreview → print()        │    （ Playwright 两遍渲染 → PDF ）
+                │ 链路 B：同源代理 → 渲染服务 PDF/截图       │
+                │ 链路 C：@worm-vue3-print/client           │
+                │         → WebSocket 127.0.0.1            │
+                └──────────────┬───────────────────────────┘
+                               ▼
+              桌面打印客户端（Electron，本机运行）
+               core/browser 渲染 → webContents.print 静默出纸
 ```
 
 - 链路 A（浏览器打印）：后端只返回数据包，前端 `PrintHtmlPreview` 渲染并调浏览器打印。零额外基础设施。
 - 链路 B（服务端 PDF）：后端把同一数据包转发给 `print-render` 微服务，拿回 PDF 字节流。用于电子存档、下载、批量。需要部署微服务，见 [服务端渲染](server-render.md)。
-- 两者可并存：预览弹窗里「打印」走 A，「下载 PDF」按需走 B。
+- 链路 C（桌面客户端静默打印）：后端数据包与链路 A 完全一致；前端经 `@worm-vue3-print/client` 直连本机运行客户端，由客户端复用 `core/browser` 渲染并 `webContents.print` 静默出纸（无打印对话框）。适用收银小票、热敏/标签、针式多联、批量无感出纸。见 [静默打印](silent-print.md)。
+- 三者可并存：预览弹窗里「打印」走 A，「下载 PDF」按需走 B，工位出纸按钮走 C。
 
 ## 2. 数据库：模板表（必须自建）
 
@@ -82,6 +89,10 @@
 **链路 B 额外功能（需要服务端 PDF 时）**
 
 - PDF/截图代理：入参与渲染数据功能一致，组装好数据包后转发 `print-render` 微服务并注入 `X-Render-Key`，原样返回 `application/pdf` / `image/png` 字节流；需支持设计器免保存场景（前端直接给 `templateJson`，后端配 demo 数据透传）。对接细节见 [服务端渲染](server-render.md)。
+
+**链路 C 额外功能（需要静默打印时）**
+
+- 后端无额外职责，与链路 A 共用「渲染数据组装」。打印机、份数、纸张等打印配置由宿主前端按模板维护（如 localStorage 缓存），随 `client.print()` 下发；出纸由本机桌面客户端完成，客户端不持久化业务打印配置。
 
 ## 4. 业务字段元数据（fields）的三种来源
 
@@ -235,3 +246,4 @@ async function handlePrint() {
 3. fields 先用前端常量跑通字段树，再接后端（推荐注解反射）。
 4. 做渲染数据组装功能 + 业务打印按钮 + 预览弹窗，用一份真实单据数据跑通链路 A。
 5. 需要电子存档 PDF 时，部署 `print-render` 并在后端加链路 B 的 PDF/截图代理功能与「下载 PDF」按钮。
+6. 需要工位静默出纸时，分发并安装桌面打印客户端，前端接入 `@worm-vue3-print/client` 加「静默打印」按钮走链路 C。

@@ -97,3 +97,15 @@ npm run build
 - **浏览器起不来**：确认 `PLAYWRIGHT_CHROME_PATH`、Linux 已装 Chromium 与 `libnss3 libatk-bridge2.0-0 libx11-xcb1`，容器内使用 `--no-sandbox`（已默认）。
 - **前端跨域/密钥泄露**：浏览器不要直连 3001；dev 用 Vite proxy 注入密钥，生产用宿主后端反代。参见 `demo/vite.config.ts`。
 - 先用 `GET /health` 判断服务与浏览器池状态，再排查业务请求。
+
+## 静默打印客户端相关（链路 C）
+
+- **`CLIENT_NOT_RUNNING`**：SDK 探测不到本机客户端。确认工位电脑已安装并运行客户端、浏览器与客户端同机（客户端仅监听 `127.0.0.1`）；客户端重启期间 SDK 正在指数退避重连，稍后自动恢复。
+- **`UNAUTHORIZED`**：客户端「安全开关」开启后未调用 `client.pair(token)` 配对，或浏览器 Origin 不在白名单。token 在客户端配置窗口查看，不明文进日志。
+- **`PRINTER_NOT_FOUND`**：`printerName` 不在本机枚举列表；先 `client.listPrinters()` 拿真实名称（中文名保持一致）。
+- **`PRINTER_OFFLINE` / `PRINT_FAILED`**：打印机脱机/缺纸/驱动异常，检查打印机状态；任务记录可在客户端配置窗口查看。
+- **`BUSY`**：客户端单任务串行，已有任务在打；宿主侧延时重试或自己排队，客户端不排队。
+- **`RENDER_TIMEOUT`**：两遍渲染超过客户端默认 30s；排查模板图片/字体加载，大任务可调大 `timeoutMs`。
+- **静默出纸结果与浏览器预览分页不一致**：模板字体需在客户端电脑已安装；同一份 `templateJson + printData + baseUrl`、同一 core 版本。
+- **连续纸末尾多走纸/裁切**：驱动对自定义纸高有步进/舍入，客户端探针推导公差不满足时，用 `paperSize.height`（微米）显式覆盖；宽度用 `paperSize.width`。
+- **macOS 首次打不开客户端**：绿色版未签名，首次右键 → 打开。

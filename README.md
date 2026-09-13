@@ -23,6 +23,7 @@ Vue 3 可视化打印模板设计器 + 模板表达式引擎 + 同构渲染管�
 - 数据绑定：`{field.path}` 字段绑定、表达式求值（safelist 安全执行）、格式化函数
 - 智能表格：动态分页、跨页重复表头、序号/小计/汇总、单元格合并
 - 同构渲染：一套渲染逻辑同时产出浏览器预览与最终 HTML，保证结果一致
+- 静默打印：跨平台桌面打印客户端（Electron）+ 浏览器端 SDK，本地 WebSocket 通讯、`webContents.print` 静默出纸，全程无打印对话框、不依赖浏览器插件，支持连续纸纸长自动推导
 - 内置业务模板：采购收货单、批发销售单、出入库单、库存盘点单
 - 毫米（mm）单位精确布局，支持 A4 等纸张规格
 
@@ -42,9 +43,12 @@ npm install @worm-vue3-print/core
 
 # 安装设计器画布（Vue 3 可视化设计器 + 预览组件）
 npm install @worm-vue3-print/canvas
+
+# 安装静默打印浏览器端 SDK（需配合本机运行的桌面打印客户端）
+npm install @worm-vue3-print/client
 ```
 
-> 当前版本：`1.2.2`
+> core / canvas 当前版本：`1.2.2`；静默打印 SDK（`@worm-vue3-print/client`）当前版本：`0.1.0`。
 
 ## 更新
 
@@ -53,15 +57,15 @@ npm install @worm-vue3-print/canvas
 npm outdated
 
 # 更新到最新版本
-npm update @worm-vue3-print/core @worm-vue3-print/canvas
+npm update @worm-vue3-print/core @worm-vue3-print/canvas @worm-vue3-print/client
 
 # 或直接安装最新版
-npm install @worm-vue3-print/core@latest @worm-vue3-print/canvas@latest
+npm install @worm-vue3-print/core@latest @worm-vue3-print/canvas@latest @worm-vue3-print/client@latest
 ```
 
 其他包管理器：
-- yarn: `yarn upgrade @worm-vue3-print/core @worm-vue3-print/canvas`
-- pnpm: `pnpm update @worm-vue3-print/core @worm-vue3-print/canvas`
+- yarn: `yarn upgrade @worm-vue3-print/core @worm-vue3-print/canvas @worm-vue3-print/client`
+- pnpm: `pnpm update @worm-vue3-print/core @worm-vue3-print/canvas @worm-vue3-print/client`
 
 ## 快速使用
 
@@ -147,6 +151,51 @@ function loadDefaultTemplate() {
 - `getTemplateJson()`：通过 `ref` 获取当前画布模板 JSON，用于预览 / 保存 / 截图。
 - `PrintHtmlPreview`：同构预览组件，`template-json` 传画布模板 JSON，`print-data` 传业务数据，
   事件 `rendered` 回调预览页数，`ref.print()` 触发打印。
+
+## 静默打印（桌面客户端）
+
+跨平台（Windows / Linux / macOS）静默打印由两部分组成：
+
+- **桌面打印客户端**（`clients/print-client`，Electron）：部署在业务工位电脑上，在隐藏窗口内复用 `core/browser` 同构渲染模板，
+  再调用 `webContents.print({ silent: true })` 直接出纸——无系统打印对话框、不依赖浏览器插件。
+- **浏览器端 SDK**（`@worm-vue3-print/client`）：浏览器页面通过 WebSocket（默认从 `127.0.0.1:17521` 起端口探测，占用则 +1）
+  连接本机运行的客户端，完成端口探测 / 自动重连 / 打印机枚举 / 静默打印。
+
+### 安装并运行客户端
+
+客户端是 monorepo 内的私有工作区包（不发布 npm），产物为绿色目录或安装包，需在工位电脑安装并运行：
+
+```bash
+# 在仓库根构建并产出安装包（macOS 可同时交叉打包 Windows）
+npm run pack:client
+
+# 绿色目录版（免安装，各平台只能在本平台构建自家产物）
+npm run pack:client:dir
+```
+
+### 宿主侧接入（浏览器端 SDK）
+
+```ts
+import { PrintClient, WormPrintError } from '@worm-vue3-print/client'
+
+const client = new PrintClient()
+client.onStatusChange((s) => console.log('客户端状态：', s)) // 'disconnected' | 'connecting' | 'connected'
+
+await client.connect()                        // 自动探测端口并握手；客户端未运行抛 CLIENT_NOT_RUNNING
+const printers = await client.listPrinters()  // 枚举本机打印机
+
+// 连续纸（CONTINUOUS）模板无需传纸高，客户端按渲染内容自动推导；长度单位均为微米（1mm = 1000μm）
+const { jobId } = await client.print(templateJson, printData, {
+  printerName: printers[0]?.name,
+  copies: 1,
+})
+
+client.pair(token)                            // 安全配对：客户端开启「安全开关」后，用配置窗口展示的 token 配对一次
+```
+
+- 断线自动指数退避重连；失败抛 `WormPrintError`，按 `err.code` 分支处理（`PRINTER_NOT_FOUND`、`BUSY`、`PRINT_FAILED` 等）。
+- SDK 完整接口见 [`packages/print-client-sdk/README.md`](packages/print-client-sdk/README.md)；
+  客户端原理、协议与打包见 [`clients/print-client/README.md`](clients/print-client/README.md)。
 
 ## 渲染服务
 

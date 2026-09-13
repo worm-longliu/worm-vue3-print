@@ -23,6 +23,16 @@ npm install @worm-vue3-print/core@^1.2.2 @worm-vue3-print/canvas@^1.2.2
 - 建议提交锁文件，避免 NPM 侧依赖升级引入构建差异。
 - 已发布的当前版本为 `1.2.2`（canvas 与 core 版本号同步发布；canvas 内部以 `^1.0.0` 声明对 core 的依赖，宿主显式安装同版本 core 即可，锁文件会统一解析）。
 
+### 静默打印浏览器端 SDK
+
+需要无打印对话框的静默出纸时，单独安装 SDK（版本号独立，当前 `0.1.0`），需另配本机运行的桌面打印客户端：
+
+```bash
+npm install @worm-vue3-print/client
+```
+
+接入与客户端部署见 [静默打印](silent-print.md)。
+
 ### 样式导入
 
 ```ts

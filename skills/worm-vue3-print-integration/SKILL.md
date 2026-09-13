@@ -1,7 +1,7 @@
 ---
 name: worm-vue3-print-integration
-description: 用于在 Vue 3 项目中集成 @worm-vue3-print/core 或 @worm-vue3-print/canvas（可视化打印模板设计器）；覆盖 NPM/源码安装、设计器接入、业务字段契约、浏览器打印与服务端 PDF（print-render 微服务）两条链路、宿主最小清单、AI 快速集成提示词与故障排查。
-version: 1.1.0
+description: 用于在 Vue 3 项目中集成 @worm-vue3-print/core 或 @worm-vue3-print/canvas（可视化打印模板设计器）；覆盖 NPM/源码安装、设计器接入、业务字段契约、浏览器打印 / 服务端 PDF（print-render 微服务）/ 桌面客户端静默打印三条链路、宿主最小清单、AI 快速集成提示词与故障排查。
+version: 1.2.0
 ---
 
 # worm-vue3-print 集成支持
@@ -17,30 +17,31 @@ version: 1.1.0
 | 需要未发布修复、调试库源码、修改/回传补丁 | `core`，按需 `canvas` | 源码安装 |
 | 外部宿主要直接消费 monorepo 中的 `.vue/.ts` | 两者按需 | 源码 + Vite 别名 |
 | 服务端 PDF / 截图微服务 | monorepo 内 `services/print-render`（private 服务包，workspace 软链 core，**不发布 npm**） | 按 [服务端渲染](references/server-render.md) 部署 |
+| 工位电脑无打印对话框静默出纸（小票/标签/针式多联/批量） | `@worm-vue3-print/client` + 桌面打印客户端（Electron） | NPM 包（SDK）+ [静默打印](references/silent-print.md) |
 
 生产项目优先 NPM 包；当前已发布版本为 **1.2.2**。只有用户明确要改/调试库源码、消费未发布代码，或项目本身就在本 monorepo 中，才用源码安装。安装细节见 [安装方式](references/installation.md)。
 
 ## 2. 先让用户选打印链路（关键决策）
 
-集成设计器后，「打印」有两条独立链路，可二选一，也可并存：
+集成设计器后，「打印」有三条独立链路，可单选，也可并存：
 
-| | 链路 A：浏览器打印 | 链路 B：服务端 PDF |
-| --- | --- | --- |
-| 渲染位置 | 用户浏览器（`PrintHtmlPreview` 同构渲染 + `window.print`） | 服务端 `print-render` 微服务（Playwright Headless Chromium 两遍渲染） |
-| 额外基础设施 | 无 | 需部署 Node 微服务（Linux 需 Chromium + 中文字体） |
-| 产出 | 调起浏览器打印对话框 | `application/pdf` 字节流（可下载/归档/批量） |
-| 宿主后端职责 | 返回 `{templateJson, printData, baseUrl}` | 额外持有渲染密钥、代理转发 `/render/pdf`、组装业务数据 |
-| 适用 | 交互式打印、快速落地 | 电子存档、无界面批量、脱离浏览器的 PDF 产出 |
+| | 链路 A：浏览器打印 | 链路 B：服务端 PDF | 链路 C：桌面客户端静默打印 |
+| --- | --- | --- | --- |
+| 渲染位置 | 用户浏览器（`PrintHtmlPreview` 同构渲染 + `window.print`） | 服务端 `print-render` 微服务（Playwright Headless Chromium 两遍渲染） | 本机桌面打印客户端（Electron，`core/browser` 同构渲染 + `webContents.print` 静默出纸） |
+| 额外基础设施 | 无 | 需部署 Node 微服务（Linux 需 Chromium + 中文字体） | 工位电脑安装并运行打印客户端（绿色目录/安装包）；客户端仅监听 `127.0.0.1`，浏览器必须与客户端同机 |
+| 产出 | 调起浏览器打印对话框 | `application/pdf` 字节流（可下载/归档/批量） | 物理打印机直接出纸，**无打印对话框** |
+| 宿主后端职责 | 返回 `{templateJson, printData, baseUrl}` | 额外持有渲染密钥、代理转发 `/render/pdf`、组装业务数据 | 返回 `{templateJson, printData, baseUrl}`（与链路 A 相同） |
+| 适用 | 交互式打印、快速落地 | 电子存档、无界面批量、脱离浏览器的 PDF 产出 | 收银小票、热敏/标签、针式多联、批量无感出纸；浏览器无法静默打印的场景 |
 
-真实全栈宿主通常**两者并存**：业务页点打印先走 A 做全屏预览与浏览器打印，预览弹窗里「下载 PDF」按钮按需走 B。链路判定与最小集合见 [全栈宿主集成指南](references/host-integration-guide.md)，微服务对接见 [服务端渲染](references/server-render.md)。
+真实全栈宿主通常**多链路并存**：业务页点打印先走 A 做全屏预览与浏览器打印，预览弹窗里「下载 PDF」按钮按需走 B；而工位出纸（小票/标签）走 C —— `PrintHtmlPreview.print()` 会调起系统打印对话框，需要无对话框出纸时用桌面客户端链路。链路判定与最小集合见 [全栈宿主集成指南](references/host-integration-guide.md)，微服务对接见 [服务端渲染](references/server-render.md)，桌面客户端对接见 [静默打印](references/silent-print.md)。
 
 ## 3. 快速工作流
 
 1. 读取用户项目的构建器、Vue 版本（canvas 要求 `vue@^3.5.0`）、TypeScript 配置和现有上传/文件能力。
 2. 按 [安装方式](references/installation.md) 选择 NPM 或源码方案，先安装并验证可解析。
-3. 与用户确认打印链路（A / B / 并存）。
+3. 与用户确认打印链路（A / B / C / 并存）。
 4. 按 [接入 API](references/integration-api.md) 引入组件与样式，再按 [全栈宿主集成指南](references/host-integration-guide.md) 落地模板管理、设计器页、业务打印入口与后端契约。
-5. 用一条最小链路验证：设计器保存 JSON → 预览渲染 → 浏览器打印；链路 B 再加「模板 JSON + printData → 后端 → render 服务 → PDF」。
+5. 用一条最小链路验证：设计器保存 JSON → 预览渲染 → 浏览器打印；链路 B 再加「模板 JSON + printData → 后端 → render 服务 → PDF」；链路 C 再加「模板 JSON + printData → 本机客户端 → 物理打印机出纸」。
 6. 出现样式、类型、依赖解析、打包或 PDF 问题时，按 [故障排查](references/troubleshooting.md) 定位，不要先改用户业务代码。
 
 ## 4. 宿主最小清单速查
@@ -52,14 +53,16 @@ version: 1.1.0
 2. 设计器页：挂载 `PrintDesigner`，`save` 事件提交模板 JSON，`preview` 事件打开预览。
 3. 新建模板弹窗：元信息表单 + 用 `createDefaultTemplate()` 生成可渲染的初始 elements。
 4. 业务打印入口（按钮组件）：按业务类型选模板 → 向后端取 `{templateJson, printData, baseUrl}` → 打开预览。
-5. 预览弹窗：`PrintHtmlPreview` 全屏预览 + `print()`；链路 B 再加「下载 PDF」。
+5. 预览弹窗：`PrintHtmlPreview` 全屏预览 + `print()`；链路 B 再加「下载 PDF」；链路 C 再加「静默打印」按钮（直连本机客户端 `client.print()`）。
 
 **后端（任意语言/框架）**
 1. 模板表：至少 `id / name / business_type / elements(text) / paper_config / remark / is_default`。
 2. 业务字段元数据来源：返回 `PrintBusinessField[]`（`fieldKey/fieldLabel/fieldType/sortOrder` 契约，见接入 API）；可硬编码、配置表或注解反射生成。
 3. 模板 CRUD + 设计器初始化聚合功能（一次返回模板 + 字段树 + 可选示例数据）。
-4. 渲染数据组装功能：按模板 id + 业务单据 id 组装 `printData`，返回 `{templateJson, printData, baseUrl}`（链路 A）。
+4. 渲染数据组装功能：按模板 id + 业务单据 id 组装 `printData`，返回 `{templateJson, printData, baseUrl}`（链路 A / C 共用）。
 5. 链路 B：代理 `print-render` 的 PDF/截图端点，注入 `X-Render-Key`，组装业务数据后透传。
+
+链路 C 的打印机、份数、纸张等打印配置由宿主前端按模板维护（如 localStorage：模板 ID → 打印选项），随 `client.print()` 下发；客户端不持久化业务打印配置。
 
 完整代码骨架与真实案例拆解见 [全栈宿主集成指南](references/host-integration-guide.md)。
 
@@ -77,7 +80,7 @@ version: 1.1.0
 4. 任一文档不存在或读不懂，先提问，禁止臆测 API。
 
 集成要求：
-- 安装方式：【NPM 包 / 源码别名】；打印链路：【A 浏览器 / B 服务端 PDF / 并存】。
+- 安装方式：【NPM 包 / 源码别名】；打印链路：【A 浏览器 / B 服务端 PDF / C 桌面客户端静默打印 / 并存】。
 - 按技能「宿主最小清单」实现前端 5 个片段与后端契约，复用项目现有的
   请求封装、UI 组件库、上传接口与代码风格，不引入额外 UI 依赖。
 - 业务字段按 PrintBusinessField 契约由【后端接口/本文件常量】提供。
@@ -86,7 +89,7 @@ version: 1.1.0
 验收标准：
 - 类型检查/构建通过；设计器能保存模板 JSON 并再次打开回填。
 - 最小链路跑通：保存 → 预览渲染出含真实业务数据的页面 → 浏览器打印
-  （链路 B：后端代理返回可下载的 application/pdf）。
+  （链路 B：后端代理返回可下载的 application/pdf；链路 C：本机客户端静默出纸）。
 - 不使用文档之外的组件方法/事件（例如不存在 setTemplateMeta、back 事件）。
 ```
 
@@ -100,6 +103,7 @@ version: 1.1.0
 - 模板 JSON 与宿主元信息分离；列表/详情能正确回填 elements。
 - 链路 A 预览与打印用同一份 `templateJson + printData + baseUrl`。
 - 链路 B：密钥只在服务端/代理层，不进前端 bundle；render 服务 `/health` 可达，Linux 已装中文字体。
+- 链路 C：SDK 连接本机客户端成功（`hello` 握手 `onStatusChange` 变为 `connected`）；`listPrinters` 能枚举；`print()` 指定打印机/份数出纸；`busy` 时按 `BUSY` 码在宿主侧重试，不做客户端排队。
 - 表格数据：明细 `fieldType:'list'`、列表达式用完整路径（如 `{goods.name}`）、printData 对应字段为数组。
 
 ## 7. 关键约束
@@ -111,3 +115,6 @@ version: 1.1.0
 - 常用导出：`PrintDesigner`、`PrintHtmlPreview`、`createDefaultTemplate`、`DEFAULT_DEMO_DATA`/`getDemoData`（均来自 `@worm-vue3-print/canvas`；后两者由 `core/designer` 转出）。
 - 模板 JSON 不含名称、业务类型、备注等宿主元信息，元信息由宿主自行持久化。
 - 服务端 PDF/截图由独立微服务 `services/print-render` 承担；`core` 只提供同构渲染管线。接入方业务仓库不要虚构 `/render/pdf` 的实现。
+- 静默打印客户端是 monorepo 内 `clients/print-client`（Electron，private，不发布 npm），浏览器侧 SDK 为独立包 `@worm-vue3-print/client`（当前 `0.1.0`，与 core/canvas 版本号不同步）；协议消息类型与错误码定义在 SDK 包内，客户端经 workspace 依赖复用，两端永不漂移。
+- 客户端仅绑定 `127.0.0.1`、单任务串行：并发任务返回 `BUSY`，由宿主端排队重试，客户端不做离线队列与失败补打。
+- 连续纸（模板 `paperSize: 'CONTINUOUS'`）模板无需传纸高，出纸高度由客户端按渲染内容自动推导；普通纸始终使用模板纸张，`print.paperSize`/`paperName` 仅作覆盖项。
