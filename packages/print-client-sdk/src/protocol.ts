@@ -109,12 +109,44 @@ export interface PrintSubmitResponsePayload {
   jobId: string
 }
 
+/**
+ * 浏览器侧预渲染结果（@worm-vue3-print/core/browser 的 renderHtmlPages 输出子集）。
+ * 业务页在浏览器内完成两遍渲染后，把最终 HTML 直接提交给客户端静默打印，
+ * 客户端不再持有/执行模板渲染内核。
+ */
+export interface RenderedHtmlPages {
+  /** 最终多页 HTML（连续纸纸高已写入 @page/.print-page） */
+  html: string
+  /** 最终纸张尺寸（mm；连续纸为探针推导高度） */
+  paperMm: { width: number; height: number }
+  /** 模板是否连续纸 */
+  continuous?: boolean
+  /** 总页数（客户端任务记录用，可选） */
+  pageCount?: number
+}
+
+/** print.submitHtml 请求 payload：浏览器预渲染 HTML 直提交通道 */
+export interface PrintSubmitHtmlRequest {
+  /** 最终多页 HTML（必须是 core 同构管线产出的完整文档） */
+  html: string
+  /** 最终纸张尺寸（mm） */
+  paperMm: { width: number; height: number }
+  /** 模板是否连续纸（影响纸张覆盖语义，缺省 false） */
+  continuous?: boolean
+  /** 总页数（可选，任务记录展示） */
+  pageCount?: number
+  /** 模板名称（业务侧元数据，用于客户端任务记录展示，不参与渲染） */
+  templateName?: string
+  print: PrintOptions
+}
+
 // ─── 消息 type 常量 ───
 
 export const MESSAGE_TYPES = {
   HELLO: 'hello',
   PRINTERS_LIST: 'printers.list',
   PRINT_SUBMIT: 'print.submit',
+  PRINT_SUBMIT_HTML: 'print.submitHtml',
 } as const
 
 // ─── 编解码 ───

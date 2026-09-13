@@ -5,8 +5,10 @@ import {
   type PrinterInfo,
   type PrintOptions,
   type PrintSubmitRequest,
+  type PrintSubmitHtmlRequest,
   type PrintSubmitResponsePayload,
   type PrintersListResponsePayload,
+  type RenderedHtmlPages,
 } from './protocol.js'
 
 const TOKEN_STORAGE_KEY = 'worm-print-client:token'
@@ -75,6 +77,39 @@ export class PrintClient {
     }
     return this.transport.request<PrintSubmitResponsePayload>(
       MESSAGE_TYPES.PRINT_SUBMIT,
+      payload,
+      timeoutMs,
+    )
+  }
+
+  /**
+   * 提交浏览器侧预渲染结果静默打印（print.submitHtml）。
+   *
+   * 业务页先用 @worm-vue3-print/core/browser 的 renderHtmlPages 在浏览器内完成
+   * 两遍渲染，再调用本方法把最终 HTML 直送客户端；客户端不再执行模板渲染。
+   *
+   * @param rendered renderHtmlPages 返回值（html/paperMm/continuous/pageCount）
+   * @param options 打印机/纸张/份数等；timeoutMs 可单独放宽大任务
+   * @param templateName 模板名称，透传给客户端用于任务记录
+   */
+  printHtml(
+    rendered: RenderedHtmlPages,
+    options: { timeoutMs?: number } & Omit<PrintOptions, 'paperSize' | 'margins' | 'landscape'> = {},
+    templateName?: string,
+  ): Promise<PrintSubmitResponsePayload> {
+    const { timeoutMs, ...print } = options
+    const payload: PrintSubmitHtmlRequest = {
+      html: rendered.html,
+      paperMm: rendered.paperMm,
+      continuous: rendered.continuous,
+      pageCount: rendered.pageCount,
+      print,
+    }
+    if (typeof templateName === 'string' && templateName.trim().length > 0) {
+      payload.templateName = templateName
+    }
+    return this.transport.request<PrintSubmitResponsePayload>(
+      MESSAGE_TYPES.PRINT_SUBMIT_HTML,
       payload,
       timeoutMs,
     )

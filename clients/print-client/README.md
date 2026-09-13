@@ -1,6 +1,6 @@
 # @worm-vue3-print/print-client
 
-worm-vue3-print 跨平台（Windows / Linux / macOS）静默打印桌面客户端。宿主 Web 系统通过浏览器端 SDK（`@worm-vue3-print/client`）连接本机运行的本客户端，复用 `@worm-vue3-print/core` 的同构渲染管线，在隐藏窗口里渲染模板并调用 `webContents.print({ silent: true })` 静默出纸——无浏览器打印对话框、不依赖浏览器插件。
+worm-vue3-print 跨平台（Windows / Linux / macOS）静默打印桌面客户端。宿主 Web 系统通过浏览器端 SDK（`@worm-vue3-print/client`）连接本机运行的本客户端，复用 `@worm-vue3-print/core` 的同构渲染管线，在隐藏窗口里渲染出最终 HTML，再用 Electron `printToPDF` 生成 PDF 并交给系统打印命令静默出纸——无浏览器打印对话框、不依赖浏览器插件。
 
 ## 架构
 
@@ -16,8 +16,11 @@ PrintEngine（串行锁，并发直接 BUSY）
    │     ▼ IPC（沙箱 preload 桥 wormRender）
    │   隐藏渲染 worker（contextIsolation 主世界，打包 core/browser）
    │     两遍渲染：测量 pass → 分页（连续纸探针推导高度）→ 最终 HTML
-   └─ 打印窗口 webContents.print(silent) 出纸 → 任务记录/日志
+   └─ 打印窗口 printToPDF（纸张微米→英寸、保留背景/零边距）→ 系统命令打印 PDF → 任务记录/日志
 ```
+
+> 出纸统一走「HTML → PDF → 系统打印命令」：PDF 由 Chromium 打印管线生成，与服务端 Playwright 产物同源，
+> 纸张尺寸与背景（含水印）表现一致；`webContents.print()` 依赖打印驱动的纸张/可打印区域，已不再使用。
 
 ## 目录结构
 
@@ -73,7 +76,7 @@ npm run pack:client:dir
 ## WebSocket 协议
 
 - 帧：请求 `{ id, type, payload }`；响应 `{ id, ok, payload } | { id, ok:false, error:{ code, message } }`。
-- 消息：`hello`、`printers.list`、`print.submit`。
+- 消息：`hello`、`printers.list`、`print.submit`（客户端内渲染，兼容链路）、`print.submitHtml`（浏览器预渲染 HTML 直提交，推荐链路）。
 - 端口发现：默认从 `127.0.0.1:17521` 起探测，占用则 +1（SDK 与服务端同策略）。
 
 `print.submit` 的 `print` 字段（长度单位均为**微米 μm**，1mm=1000μm）：
@@ -87,6 +90,9 @@ npm run pack:client:dir
 | `landscape` / `color` | boolean | 方向 / 彩色 |
 | `margins` | `{top,bottom,left,right}` | μm；省略则零边距（边距由模板 HTML padding 控制） |
 | `pageRanges` | `[{from,to}]` | 页码范围，从 1 开始 |
+
+`print.submitHtml` 的 payload：`{ html, paperMm: {width,height}（毫米）, continuous?, pageCount?, templateName?, print }`。
+宿主用 `@worm-vue3-print/core/browser` 的 `renderHtmlPages` 在浏览器页内完成两遍渲染后提交，纸张/方向/边距/连续纸高度已固化进 HTML，`print` 字段只允许 `printerName`、`copies`、`paperName`、`color`、`pageRanges`；传 `paperSize`/`margins`/`landscape` 返回 `INVALID_REQUEST`。HTML 载荷上限 20MB。
 
 错误码：`INVALID_REQUEST`、`UNAUTHORIZED`、`PRINTER_NOT_FOUND`、`PRINTER_OFFLINE`、`PRINT_FAILED`、`BUSY`、`RENDER_TIMEOUT`、`INTERNAL`。
 

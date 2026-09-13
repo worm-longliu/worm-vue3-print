@@ -22,6 +22,8 @@ export function makeMessageHandler(deps: MessageHandlerDeps): MessageHandler {
         return { printers: await deps.printerService.list() }
       case MESSAGE_TYPES.PRINT_SUBMIT:
         return deps.printEngine.submit(payload)
+      case MESSAGE_TYPES.PRINT_SUBMIT_HTML:
+        return deps.printEngine.submitHtml(payload)
       default:
         throw new ProtocolFailure('INVALID_REQUEST', `未知消息类型：${type}`)
     }

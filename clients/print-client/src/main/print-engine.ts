@@ -1,21 +1,40 @@
-// 打印引擎：串行执行「校验目标打印机 → 两遍渲染 → 载入打印窗口 → 静默出纸 → 记录」。
+// 打印引擎：串行执行「校验目标打印机 →（渲染 / 直取预渲染 HTML）→ 生成 PDF → 打印 PDF → 记录」。
+// 采用 PDF 中间方案：先用 Electron 生成 PDF（复用 Chromium 渲染引擎，与服务端 Playwright 一致），
+// 再调用系统命令打印 PDF，避免 webContents.print() 直接打印时的水印位置偏移和渲染异常。
 import { randomUUID } from 'node:crypto'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import type { PrintOptions } from '@worm-vue3-print/client'
 import type { Logger } from './logger.js'
 import type { JobHistoryStore, JobRecord } from './job-history.js'
 import type { PrinterService } from './printer-service.js'
-import { buildWebPrintSettings, type WebPrintSettings } from './render-engine.js'
+import { buildWebPrintSettings } from './render-engine.js'
 import type { RenderEngine } from './render-engine.js'
 import type { RendererPool } from './renderer-pool.js'
 import { SerialGate } from './serial-gate.js'
 import { ProtocolFailure } from './protocol-error.js'
-import { parsePrintSubmit, readTemplateName } from './request-validation.js'
+import {
+  parsePrintSubmit,
+  parsePrintSubmitHtml,
+  readTemplateName,
+  type HtmlPrintOptions,
+} from './request-validation.js'
+import { printPdfFile } from './pdf-printer.js'
+import { renderPdf } from './pdf-generator.js'
 
 const FONTS_READY_TIMEOUT_MS = 5000
-// 静默打印回调兜底超时：真实打印机通常数秒内完成；
-// Print_to_PDF 等虚拟打印机即便 silent 也可能弹保存对话框导致回调永不触发，
-// 不能因此永久占用串行锁。超时按失败处理以释放锁。
-const PRINT_CALLBACK_TIMEOUT_MS = 60_000
+// PDF 生成超时：正常模板在 1s 内完成，超过即视为异常并释放串行锁
+const PDF_GENERATION_TIMEOUT_MS = 30_000
+// PDF 临时文件目录
+const PDF_TEMP_DIR = join(tmpdir(), 'worm-print-client-pdf')
+
+interface PreparedJob {
+  html: string
+  paper: { width: number; height: number }
+  heightSource: 'config' | 'derived'
+  pageCount?: number
+}
 
 export class PrintEngine {
   private readonly gate = new SerialGate()
@@ -39,7 +58,7 @@ export class PrintEngine {
       renderEngine: RenderEngine
       pool: RendererPool
       history: JobHistoryStore
-      logger: Pick<Logger, 'info' | 'warn' | 'error'>
+      logger: Pick<Logger, 'info' | 'warn' | 'error' | 'debug'>
     },
   ) {}
 
@@ -47,24 +66,69 @@ export class PrintEngine {
     return this.gate.isBusy
   }
 
-  /** 处理 print.submit 原始 payload；成功在出纸回调后才 resolve */
+  /** 处理 print.submit 原始 payload（客户端内渲染）；成功在出纸回调后才 resolve */
   submit(raw: unknown): Promise<{ jobId: string }> {
-    return this.gate.run(() => this.runJob(raw))
+    return this.gate.run(() => {
+      const { spec, print, templateName } = parsePrintSubmit(raw)
+      const name = readTemplateName(spec.templateJson, templateName)
+      return this.runJob({
+        name,
+        print,
+        prepare: async () => {
+          const prepared = await this.deps.renderEngine.prepare(spec, print)
+          return {
+            html: prepared.html,
+            paper: prepared.paper,
+            heightSource: prepared.heightSource,
+            pageCount: prepared.pageCount,
+          }
+        },
+      })
+    })
   }
 
-  private async runJob(raw: unknown): Promise<{ jobId: string }> {
-    const { spec, print, templateName } = parsePrintSubmit(raw)
-    const jobId = randomUUID()
-    const { printerService, renderEngine, pool, history, logger } = this.deps
+  /** 处理 print.submitHtml 原始 payload（浏览器预渲染 HTML，客户端不再渲染） */
+  submitHtml(raw: unknown): Promise<{ jobId: string }> {
+    return this.gate.run(() => {
+      const job = parsePrintSubmitHtml(raw)
+      const MM_TO_UM = 1000
+      const prepared: PreparedJob = {
+        html: job.html,
+        paper: {
+          width: Math.round(job.paperMm.width * MM_TO_UM),
+          height: Math.round(job.paperMm.height * MM_TO_UM),
+        },
+        // 连续纸高度来自浏览器探针推导，其余为模板纸张，均不可在协议层覆盖
+        heightSource: job.continuous ? 'derived' : 'config',
+        pageCount: job.pageCount,
+      }
+      return this.runJob({
+        name: job.templateName || '未命名模板',
+        print: job.print,
+        prepare: async () => prepared,
+      })
+    })
+  }
 
-    const target = await printerService.resolve(print.printerName)
-    const printOptions: PrintOptions = { ...print, printerName: target.name }
-    const prepared = await renderEngine.prepare(spec, printOptions)
+  private async runJob(input: {
+    name: string
+    print: PrintOptions | HtmlPrintOptions
+    prepare: () => Promise<PreparedJob>
+  }): Promise<{ jobId: string }> {
+    const { printerService, pool, history, logger } = this.deps
+    const jobId = randomUUID()
+    let pdfPath = ''
+
+    const target = await printerService.resolve(
+      (input.print as PrintOptions).printerName,
+    )
+    const printOptions: PrintOptions = { ...input.print, printerName: target.name }
+    const prepared = await input.prepare()
     const settings = buildWebPrintSettings(printOptions, prepared.paper)
 
     logger.info('开始打印', {
       jobId,
-      template: readTemplateName(spec.templateJson, templateName),
+      template: input.name,
       printer: target.name,
       paper: prepared.paper,
       heightSource: prepared.heightSource,
@@ -73,12 +137,29 @@ export class PrintEngine {
 
     const win = await pool.loadPrintHtml(prepared.html)
     try {
+      // 等待字体和图片就绪
       await this.waitReady(win.webContents)
-      await this.silentPrint(win.webContents, settings)
+
+      // 生成 PDF（Electron printToPDF，复用 Chromium 渲染引擎，与服务端 Playwright 一致）
+      const pdfBuffer = await renderPdf(win.webContents, prepared.paper, PDF_GENERATION_TIMEOUT_MS)
+      pdfPath = this.savePdfToTemp(jobId, pdfBuffer)
+      logger.info('PDF 生成完成', { jobId, pdfPath, size: pdfBuffer.length })
+
+      // 关闭渲染窗口（PDF 已生成，不再需要窗口）
+      if (!win.isDestroyed()) win.close()
+
+      // 调用系统命令打印 PDF
+      await printPdfFile(pdfPath, {
+        printerName: target.name,
+        copies: settings.copies,
+        paperName: typeof settings.pageSize === 'string' ? settings.pageSize : undefined,
+        logger,
+      })
+
       const record: JobRecord = {
         jobId,
         ts: new Date().toISOString(),
-        templateName: readTemplateName(spec.templateJson, templateName),
+        templateName: input.name,
         printerName: target.name,
         copies: settings.copies,
         paperMicrometers: prepared.paper,
@@ -95,7 +176,7 @@ export class PrintEngine {
       const record: JobRecord = {
         jobId,
         ts: new Date().toISOString(),
-        templateName: readTemplateName(spec.templateJson, templateName),
+        templateName: input.name,
         printerName: target?.name ?? printOptions.printerName ?? '',
         copies: printOptions.copies ?? 1,
         paperMicrometers: prepared?.paper ?? { width: 0, height: 0 },
@@ -109,12 +190,29 @@ export class PrintEngine {
       throw err instanceof ProtocolFailure ? err : new ProtocolFailure('PRINT_FAILED', message)
     } finally {
       if (!win.isDestroyed()) win.close()
+      // 清理临时 PDF 文件
+      if (pdfPath) {
+        try {
+          rmSync(pdfPath, { force: true })
+          logger.debug('临时 PDF 已清理', { pdfPath })
+        } catch {
+          // 忽略清理失败
+        }
+      }
     }
   }
 
+  /** 保存 PDF 到临时目录 */
+  private savePdfToTemp(jobId: string, pdfBuffer: Buffer): string {
+    mkdirSync(PDF_TEMP_DIR, { recursive: true })
+    const pdfPath = join(PDF_TEMP_DIR, `${jobId}.pdf`)
+    writeFileSync(pdfPath, pdfBuffer)
+    return pdfPath
+  }
+
   /** 等待字体与图片就绪（带兜底超时，不阻塞打印） */
-  private async waitReady(wc: Electron.WebContents): Promise<void> {
-    await Promise.race([
+  private waitReady(wc: Electron.WebContents): Promise<void> {
+    return Promise.race([
       wc.executeJavaScript(
         `Promise.all([document.fonts ? document.fonts.ready : true,`
           + ` Promise.all(Array.from(document.images).filter(i => !i.complete)`
@@ -122,36 +220,5 @@ export class PrintEngine {
       ),
       new Promise<void>(r => setTimeout(r, FONTS_READY_TIMEOUT_MS)),
     ])
-  }
-
-  private silentPrint(wc: Electron.WebContents, settings: WebPrintSettings): Promise<void> {
-    return new Promise((resolve, reject) => {
-      let settled = false
-      const timer = setTimeout(() => {
-        if (settled) return
-        settled = true
-        reject(
-          new ProtocolFailure(
-            'PRINT_FAILED',
-            `打印超过 ${PRINT_CALLBACK_TIMEOUT_MS / 1000}s 未返回（虚拟打印机可能需要人工交互，或驱动无响应）`,
-          ),
-        )
-      }, PRINT_CALLBACK_TIMEOUT_MS)
-      wc.print(settings as Electron.WebContentsPrintOptions, (success, failureReason) => {
-        if (settled) return
-        settled = true
-        clearTimeout(timer)
-        if (success) {
-          resolve()
-          return
-        }
-        const reason = String(failureReason ?? '').toLowerCase()
-        const code =
-          reason.includes('offline') || reason.includes('unavailable') || reason.includes('not available')
-            ? 'PRINTER_OFFLINE'
-            : 'PRINT_FAILED'
-        reject(new ProtocolFailure(code, `打印失败：${failureReason || '未知原因'}`))
-      })
-    })
   }
 }

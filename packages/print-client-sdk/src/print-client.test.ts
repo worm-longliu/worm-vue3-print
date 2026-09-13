@@ -32,6 +32,8 @@ class FakeWebSocket {
         this.emit({ id: frame.id, ok: true, payload: { printers: [{ name: 'PDF', isDefault: true, status: 'idle' }] } })
       } else if (frame.type === MESSAGE_TYPES.PRINT_SUBMIT) {
         this.emit({ id: frame.id, ok: true, payload: { jobId: 'job-1' } })
+      } else if (frame.type === MESSAGE_TYPES.PRINT_SUBMIT_HTML) {
+        this.emit({ id: frame.id, ok: true, payload: { jobId: 'job-html-1' } })
       }
     })
   }
@@ -119,6 +121,49 @@ describe('PrintClient', () => {
     await client.print({ paperSize: 'A4' }, { orderNo: 'A001' }, {}, '   ')
     const payload = lastSubmitPayload(ws) as Record<string, unknown>
     expect(payload).not.toHaveProperty('templateName')
+  })
+
+  it('printHtml 组装 print.submitHtml payload 并返回 jobId', async () => {
+    const { client } = makeClient()
+    const p = client.connect()
+    FakeWebSocket.instances[0]!.open()
+    await p
+    const ws = FakeWebSocket.instances[0]!
+    const result = await client.printHtml(
+      {
+        html: '<html><body>x</body></html>',
+        paperMm: { width: 80, height: 120.5 },
+        continuous: false,
+        pageCount: 2,
+      },
+      { printerName: '热敏-80', copies: 1 },
+      '采购收货单',
+    )
+    expect(result.jobId).toBe('job-html-1')
+    const frame = ws.sent.map(s => JSON.parse(s)).find(f => f.type === MESSAGE_TYPES.PRINT_SUBMIT_HTML)
+    expect(frame.payload).toMatchObject({
+      html: '<html><body>x</body></html>',
+      paperMm: { width: 80, height: 120.5 },
+      continuous: false,
+      pageCount: 2,
+      templateName: '采购收货单',
+      print: { printerName: '热敏-80', copies: 1 },
+    })
+    // 纸张覆盖项不得进入 print（已固化在 HTML 中）
+    expect(frame.payload.print).not.toHaveProperty('paperSize')
+    expect(frame.payload.print).not.toHaveProperty('margins')
+  })
+
+  it('printHtml 缺省 templateName 时 payload 不带该字段', async () => {
+    const { client } = makeClient()
+    const p = client.connect()
+    FakeWebSocket.instances[0]!.open()
+    await p
+    const ws = FakeWebSocket.instances[0]!
+    await client.printHtml({ html: '<html></html>', paperMm: { width: 80, height: 297 } })
+    const frame = ws.sent.map(s => JSON.parse(s)).find(f => f.type === MESSAGE_TYPES.PRINT_SUBMIT_HTML)
+    expect(frame.payload).not.toHaveProperty('templateName')
+    expect(frame.payload.continuous).toBeUndefined()
   })
 
   it('pair 写入 localStorage，重建客户端时自动带上 token', async () => {

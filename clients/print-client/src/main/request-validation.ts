@@ -1,7 +1,26 @@
-// print.submit payload 校验：边界在进入打印引擎前收敛，错误一律 INVALID_REQUEST。
+// print.submit / print.submitHtml payload 校验：边界在进入打印引擎前收敛，错误一律 INVALID_REQUEST。
 import type { PrintOptions } from '@worm-vue3-print/client'
 import { ProtocolFailure } from './protocol-error.js'
 import type { RenderJobSpec } from '../shared/render-protocol.js'
+
+/** print.submitHtml 允许携带的打印参数子集（纸张/方向/边距已固化在预渲染 HTML 中） */
+export type HtmlPrintOptions = Pick<
+  PrintOptions,
+  'printerName' | 'copies' | 'paperName' | 'color' | 'pageRanges'
+>
+
+/** print.submitHtml 校验后的任务结构 */
+export interface HtmlPrintJob {
+  html: string
+  paperMm: { width: number; height: number }
+  continuous: boolean
+  pageCount?: number
+  print: HtmlPrintOptions
+  templateName: string
+}
+
+/** HTML 载荷上限（20MB）：正常模板图片走 URL 不内联，超限视为非法请求 */
+export const MAX_HTML_BYTES = 20 * 1024 * 1024
 
 function invalid(message: string): never {
   throw new ProtocolFailure('INVALID_REQUEST', message)
@@ -15,17 +34,16 @@ function isPositiveInt(v: unknown): v is number {
   return typeof v === 'number' && Number.isInteger(v) && v > 0
 }
 
-export function parsePrintSubmit(raw: unknown): {
-  spec: RenderJobSpec
-  print: PrintOptions
-  templateName: string
-} {
-  if (!isRecord(raw)) invalid('请求体必须是对象')
-  if (!isRecord(raw.templateJson)) invalid('templateJson 必须是对象')
+function isPositiveFinite(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v) && v > 0
+}
 
-  const printRaw = raw.print === undefined ? {} : raw.print
-  if (!isRecord(printRaw)) invalid('print 必须是对象')
-
+/** 解析 print 对象的通用字段（两种提交通道共用） */
+function parsePrintOptions(raw: unknown, { allowPaperOverrides }: {
+  allowPaperOverrides: boolean
+}): PrintOptions {
+  if (!isRecord(raw)) invalid('print 必须是对象')
+  const printRaw = raw
   const print: PrintOptions = {}
   if (printRaw.printerName !== undefined) {
     if (typeof printRaw.printerName !== 'string') invalid('print.printerName 必须是字符串')
@@ -40,6 +58,7 @@ export function parsePrintSubmit(raw: unknown): {
     print.paperName = printRaw.paperName
   }
   if (printRaw.landscape !== undefined) {
+    if (!allowPaperOverrides) invalid('预渲染 HTML 已固化方向，print.landscape 不允许覆盖')
     if (typeof printRaw.landscape !== 'boolean') invalid('print.landscape 必须是布尔值')
     print.landscape = printRaw.landscape
   }
@@ -48,6 +67,7 @@ export function parsePrintSubmit(raw: unknown): {
     print.color = printRaw.color
   }
   if (printRaw.paperSize !== undefined) {
+    if (!allowPaperOverrides) invalid('预渲染 HTML 已固化纸张，print.paperSize 不允许覆盖')
     if (!isRecord(printRaw.paperSize)) invalid('print.paperSize 必须是对象')
     const width = printRaw.paperSize.width
     if (width !== undefined && !isPositiveInt(width)) {
@@ -60,6 +80,7 @@ export function parsePrintSubmit(raw: unknown): {
     print.paperSize = { width: width as number | undefined, height: height as number | undefined }
   }
   if (printRaw.margins !== undefined) {
+    if (!allowPaperOverrides) invalid('预渲染 HTML 已固化边距，print.margins 不允许覆盖')
     const m = printRaw.margins
     if (!isRecord(m)) invalid('print.margins 必须是对象')
     for (const k of ['top', 'bottom', 'left', 'right'] as const) {
@@ -83,6 +104,20 @@ export function parsePrintSubmit(raw: unknown): {
       return { from: r.from as number, to: r.to as number }
     })
   }
+  return print
+}
+
+export function parsePrintSubmit(raw: unknown): {
+  spec: RenderJobSpec
+  print: PrintOptions
+  templateName: string
+} {
+  if (!isRecord(raw)) invalid('请求体必须是对象')
+  if (!isRecord(raw.templateJson)) invalid('templateJson 必须是对象')
+
+  const printRaw = raw.print === undefined ? {} : raw.print
+  if (!isRecord(printRaw)) invalid('print 必须是对象')
+  const print = parsePrintOptions(printRaw, { allowPaperOverrides: true })
 
   const spec: RenderJobSpec = { templateJson: raw.templateJson }
   if (raw.printData !== undefined) {
@@ -96,12 +131,57 @@ export function parsePrintSubmit(raw: unknown): {
     spec.baseUrl = raw.baseUrl
   }
 
-  let templateName = ''
-  if (raw.templateName !== undefined) {
-    if (typeof raw.templateName !== 'string') invalid('templateName 必须是字符串')
-    templateName = raw.templateName.trim()
+  return { spec, print, templateName: parseTemplateName(raw.templateName) }
+}
+
+/** 校验 print.submitHtml：浏览器预渲染 HTML 直提交通道 */
+export function parsePrintSubmitHtml(raw: unknown): HtmlPrintJob {
+  if (!isRecord(raw)) invalid('请求体必须是对象')
+
+  if (typeof raw.html !== 'string' || raw.html.trim().length === 0) {
+    invalid('html 必须是非空字符串')
   }
-  return { spec, print, templateName }
+  const byteLength = Buffer.byteLength(raw.html, 'utf8')
+  if (byteLength > MAX_HTML_BYTES) {
+    invalid(`html 载荷超过 ${MAX_HTML_BYTES} 字节上限`)
+  }
+
+  if (!isRecord(raw.paperMm)) invalid('paperMm 必须是对象')
+  if (!isPositiveFinite(raw.paperMm.width) || !isPositiveFinite(raw.paperMm.height)) {
+    invalid('paperMm.width/height 必须是正数（毫米）')
+  }
+
+  const printRaw = raw.print === undefined ? {} : raw.print
+  if (!isRecord(printRaw)) invalid('print 必须是对象')
+  // 纸张/方向/边距已由浏览器侧 core 固化进最终 HTML，禁止协议层覆盖
+  const print = parsePrintOptions(printRaw, { allowPaperOverrides: false })
+
+  let continuous = false
+  if (raw.continuous !== undefined) {
+    if (typeof raw.continuous !== 'boolean') invalid('continuous 必须是布尔值')
+    continuous = raw.continuous
+  }
+
+  let pageCount: number | undefined
+  if (raw.pageCount !== undefined) {
+    if (!isPositiveInt(raw.pageCount)) invalid('pageCount 必须是正整数')
+    pageCount = raw.pageCount
+  }
+
+  return {
+    html: raw.html,
+    paperMm: { width: raw.paperMm.width, height: raw.paperMm.height },
+    continuous,
+    pageCount,
+    print,
+    templateName: parseTemplateName(raw.templateName),
+  }
+}
+
+function parseTemplateName(v: unknown): string {
+  if (v === undefined) return ''
+  if (typeof v !== 'string') invalid('templateName 必须是字符串')
+  return v.trim()
 }
 
 /**

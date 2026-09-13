@@ -12,6 +12,7 @@ function makeDeps() {
     } as any,
     printEngine: {
       submit: async () => ({ jobId: 'j-1' }),
+      submitHtml: async () => ({ jobId: 'jh-1' }),
     } as any,
   })
 }
@@ -34,6 +35,11 @@ describe('makeMessageHandler', () => {
   it('print.submit 原样转交打印引擎', async () => {
     const h = makeDeps()
     await expect(h(MESSAGE_TYPES.PRINT_SUBMIT, { templateJson: {} })).resolves.toEqual({ jobId: 'j-1' })
+  })
+
+  it('print.submitHtml 原样转交打印引擎', async () => {
+    const h = makeDeps()
+    await expect(h(MESSAGE_TYPES.PRINT_SUBMIT_HTML, { html: '<html></html>' })).resolves.toEqual({ jobId: 'jh-1' })
   })
 
   it('未知 type 返回 INVALID_REQUEST', async () => {

@@ -17,19 +17,63 @@ worm-vue3-print 静默打印桌面客户端的浏览器端 SDK。宿主 Web 系�
 npm i @worm-vue3-print/client
 ```
 
-## 最小示例
+## 推荐用法：浏览器预渲染后直提交（`printHtml`）
+
+先在浏览器页面内用 core 同构管线完成两遍渲染，再把最终 HTML 直送客户端。客户端不持有渲染内核，core 升级只需更新业务页面：
+
+```bash
+npm i @worm-vue3-print/core
+```
 
 ```ts
-import { PrintClient, WormPrintError } from '@worm-vue3-print/client'
+import { PrintClient } from '@worm-vue3-print/client'
+import { renderHtmlPages, browserCodeRenderer } from '@worm-vue3-print/core/browser'
+import type { PrintTemplateData } from '@worm-vue3-print/core'
 
 const client = new PrintClient()
-client.onStatusChange(s => console.log('客户端状态：', s))
-
-// 自动探测端口并握手；客户端未启动时抛 CLIENT_NOT_RUNNING
-await client.connect()
-
+await client.connect()                         // 自动探测端口并握手
 const printers = await client.listPrinters()
 
+const rendered = await renderHtmlPages(
+  templateJson as PrintTemplateData,
+  { orderNo: 'A001' },
+  baseUrl,                 // 相对路径图片基址
+  browserCodeRenderer,
+)
+
+// 连续纸高度已由浏览器探针推导并固化，无需传 paperSize
+const { jobId } = await client.printHtml(
+  rendered,                // { html, paperMm, continuous, pageCount }
+  { printerName: printers[0]?.name, copies: 1 },
+  templateName,            // 可选：任务记录展示名
+)
+```
+
+`printHtml` 签名：
+
+```ts
+client.printHtml(
+  rendered: { html: string; paperMm: { width: number; height: number };
+              continuous?: boolean; pageCount?: number },
+  options?: {
+    printerName?: string   // 缺省走系统默认打印机
+    copies?: number
+    paperName?: string     // 驱动纸型名（针式打印机优先）
+    color?: boolean
+    pageRanges?: Array<{ from: number; to: number }>
+    timeoutMs?: number
+  },
+  templateName?: string,
+): Promise<{ jobId: string }>
+```
+
+纸张尺寸/方向/边距/连续纸高度已固化在渲染产物中，`paperSize`、`margins`、`landscape` 不允许覆盖（客户端返回 `INVALID_REQUEST`）。
+
+## 兼容用法：客户端内渲染（`print`）
+
+存量接入可继续把模板 JSON 与数据发给客户端，由客户端内部渲染：
+
+```ts
 // 模板 paperSize 已设为 CONTINUOUS（customWidth 80mm）：无需传 paperSize，
 // 客户端按渲染内容自动推导纸高
 await client.print(templateJson, { orderNo: 'A001' }, {
