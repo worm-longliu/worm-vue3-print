@@ -153,7 +153,7 @@ export type ExecutorMethod = 'waitReady' | 'readMeasurements' | 'readContentBott
 - `renderPdf(job, runtime)` → 阶段 1–7，返回 `{ pdf, prepared }`；
 - `renderScreenshot(job, runtime)` → 阶段 1–2 + 测量模式 HTML + 截图（不分页，保持现有语义）。
 
-`PrintJob` 携带 `paperOverride`（宿主纸张覆盖逃生门）、`paperHeightMm`（连续纸显式纸高）；纸张解析、µm↔mm、`heightSource` 判定全部在 `print/paper.ts`，客户端现有 `resolvePaper` 逻辑随之删除。测量容器尺寸由 `paperViewportPx(paperMm)` 统一给出，三端使用同一尺寸，消除现状中「iframe 纸宽 vs Playwright 1280×720」的差异。
+`PrintJob` 携带 `paperOverride`（宿主纸张覆盖逃生门）、`paperHeightMm`（连续纸显式纸高）；纸张解析、µm↔mm、`heightSource` 判定全部在 `print/paper.ts`，客户端现有 `resolvePaper` 逻辑随之删除。`paperHeightMm` 与协议覆盖高度在连续纸下都视为「显式给定」→ `heightSource = 'config'`；非连续纸不使用 `paperHeightMm`（避免 HTML 纸高与输出纸张不一致）。测量容器尺寸由 `paperViewportPx(paperMm)` 统一给出，三端使用同一尺寸，消除现状中「iframe 纸宽 vs Playwright 1280×720」的差异。
 
 ## 8. 错误与超时
 

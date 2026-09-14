@@ -1,4 +1,5 @@
 import type { CodeRenderOptions } from '../render/types.js'
+import type { CodeRenderer, PageLayout, PrintTemplateData } from '../render/types.js'
 
 /** 物理尺寸（毫米）；三端与协议的公共纸尺寸表示 */
 export interface PaperMm {
@@ -51,4 +52,36 @@ export interface CodeSpec {
   value: string
   cellType: 'barcode' | 'qrcode'
   opts: CodeRenderOptions
+}
+
+export interface PrintJob {
+  /** 模板 JSON（设计器 TemplateData 结构兼容） */
+  templateJson: PrintTemplateData
+  printData?: Record<string, any>
+  /** 相对路径图片基址 */
+  baseUrl?: string
+  /** 宿主纸张覆盖（mm）；0 或负数视为未提供 */
+  paperOverride?: { width?: number; height?: number }
+  /** 连续纸显式纸高逃生门（mm） */
+  paperHeightMm?: number
+  /** 单任务总预算（ms），缺省 30000 */
+  timeoutMs?: number
+  /** 就绪等待（ms），缺省 5000 */
+  readinessMs?: number
+  /** 调用方提供的码值渲染器（浏览器端覆盖语义）；提供时跳过多趟收集 */
+  codeRenderer?: CodeRenderer
+}
+
+export interface PreparedDocument {
+  html: string
+  pageCount: number
+  paperMm: PaperMm
+  continuous: boolean
+  heightSource: HeightSource
+  pageLayouts: PageLayout[]
+}
+
+export interface RenderPdfResult {
+  pdf: Uint8Array
+  prepared: PreparedDocument
 }
