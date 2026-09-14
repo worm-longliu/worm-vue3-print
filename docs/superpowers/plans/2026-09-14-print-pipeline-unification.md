@@ -194,6 +194,19 @@ describe('withTimeout', () => {
   it('按时完成时透传结果并清理定时器', async () => {
     await expect(withTimeout(Promise.resolve('ok'), 50, 'INTERNAL', 'x')).resolves.toBe('ok')
   })
+
+  it('超时后原任务再次失败不会产生未处理拒绝（否则 Node 22 会因默认策略终止进程）', async () => {
+    const late = new Promise<never>((_resolve, reject) => {
+      setTimeout(() => reject(new Error('迟到失败')), 20)
+    })
+    const rejections: unknown[] = []
+    const onRejection = (reason: unknown): void => { rejections.push(reason) }
+    process.on('unhandledRejection', onRejection)
+    await expect(withTimeout(late, 5, 'RENDER_TIMEOUT', '超时')).rejects.toMatchObject({ code: 'RENDER_TIMEOUT' })
+    await new Promise(resolve => setTimeout(resolve, 40))
+    process.off('unhandledRejection', onRejection)
+    expect(rejections).toEqual([])
+  })
 })
 ```
 
@@ -257,7 +270,7 @@ export async function withTimeout<T>(
 - [ ] **Step 8: 运行测试确认通过并提交**
 
 Run: `npm run test -w @worm-vue3-print/core -- src/print/__tests__/units.spec.ts src/print/__tests__/errors.spec.ts`
-Expected: PASS（6 个用例）
+Expected: PASS（7 个用例）
 
 ```bash
 git add packages/print-core/src/print/units.ts packages/print-core/src/print/errors.ts packages/print-core/src/print/__tests__
@@ -2188,13 +2201,18 @@ export default defineConfig([
 ])
 ```
 
+> 注意 tsup 对 `iife` 格式固定追加 `.global.js` 后缀（`node_modules/tsup/dist/chunk-TWFEYLU4.js:200`），
+> 因此产物文件名是 `dist/dom-executor.iife.global.js`，下文 exports 与加载器都按此名书写。
+> 实测（esbuild 同配置打包 jsbarcode + qrcode）产物约 219.5KB 未压缩、min 后约 0.12MB，
+> 浏览器构建中 `QRCode.create` 存在，与现有浏览器路径一致。
+
 ```json
 // packages/print-core/package.json（exports 追加两项，files 保持 ["dist"]）
 "exports": {
   ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "require": "./dist/index.cjs" },
   "./designer": { "types": "./dist/designer/index.d.ts", "import": "./dist/designer/index.js", "require": "./dist/designer/index.cjs" },
   "./browser": { "types": "./dist/browser/index.d.ts", "import": "./dist/browser/index.js", "require": "./dist/browser/index.cjs" },
-  "./browser/dom-executor.iife": "./dist/dom-executor.iife.js",
+  "./browser/dom-executor.iife": "./dist/dom-executor.iife.global.js",
   "./node": { "types": "./dist/node/index.d.ts", "import": "./dist/node/index.js", "require": "./dist/node/index.cjs" }
 }
 ```
@@ -2203,13 +2221,13 @@ export default defineConfig([
 // packages/print-core/src/node/index.ts
 // Node 宿主专用出口（服务端、Electron 主进程）；浏览器端不得 import 本文件。
 import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
+import { fileURLToPath } from 'node:url'
 import type { ExecutorBundle } from '../print/driver.js'
 
 /** 读取 core 自带的 DOM 执行器 IIFE 产物；宿主把它注入页面后即可调用 __wormDom */
 export function loadExecutorBundle(): ExecutorBundle {
-  const require_ = createRequire(import.meta.url)
-  const file = require_.resolve('@worm-vue3-print/core/browser/dom-executor.iife')
+  // 与 dist/node/index.{js,cjs} 同级目录定位产物：不依赖包自引用解析，ESM/CJS 都成立
+  const file = fileURLToPath(new URL('../dom-executor.iife.global.js', import.meta.url))
   return { source: readFileSync(file, 'utf8'), version: '1' }
 }
 ```
@@ -2217,7 +2235,11 @@ export function loadExecutorBundle(): ExecutorBundle {
 - [ ] **Step 4: 运行测试确认通过并提交**
 
 Run: `npm run build -w @worm-vue3-print/core && npm run test -w @worm-vue3-print/core -- src/node/__tests__/executor-bundle.spec.ts`
-Expected: PASS（2 个用例），且 `ls packages/print-core/dist/dom-executor.iife.js` 存在
+Expected: PASS（2 个用例），且 `ls packages/print-core/dist/dom-executor.iife.global.js` 存在
+
+> 若 `shims: true` 未能为 CJS 产物提供 `import.meta.url`，改用
+> `new URL('../dom-executor.iife.global.js', require('node:url').pathToFileURL(__filename))` 的等价写法；
+> 两种写法都必须先跑 Step 4 验证 CJS 产物（`dist/node/index.cjs`）能加载到产物文件。
 
 ```bash
 git add packages/print-core/tsup.config.ts packages/print-core/package.json packages/print-core/src/node
@@ -2495,14 +2517,98 @@ git commit -m "test(render)：新增服务端连续纸与出图规格集成测�
 
 **Files:**
 - Create: `clients/print-client/src/main/driver-electron.ts`
-- Create: `clients/print-client/src/main/print-settings.ts`（由 `render-engine.ts` 搬移 `buildWebPrintSettings`）
+- Create: `clients/print-client/src/main/print-host.ts`（常驻隐藏窗口，供打印机枚举使用）
+- Create: `clients/print-client/src/main/print-settings.ts`（由 `render-engine.ts` 搬移 `buildWebPrintSettings` 并瘦身）
+- Modify: `clients/print-client/src/main/index.ts`（装配改为 print-host + core 运行时）
+- Modify: `clients/print-client/src/main/request-validation.ts`（去掉对已删 `render-protocol.ts` 的依赖）
 - Modify: `clients/print-client/src/main/print-engine.ts`
 - Delete: `clients/print-client/src/main/render-engine.ts`、`src/main/paper.ts`、`src/main/renderer-pool.ts`、`src/preload/worker-preload.ts`、`src/shared/render-protocol.ts`、`src/worker/*`
 - Modify: `clients/print-client/electron.vite.config.ts`
 
 **Interfaces:**
 - Consumes: Task 11 的 `loadExecutorBundle()`、Task 6 的 `createDomHostRuntime`、Task 7 的 `renderPdf`、Task 3 的 `buildPdfTargetSpec`/`toElectronPrintToPdfOptions`
-- Produces: `createElectronDriverFactory()`；`print-engine` 的 `submit`/`submitHtml` 对外行为不变
+- Produces: `createElectronDriverFactory()`、`getPrintHostWindow()`、`buildPrintJobSettings(print, paperMm)`；`print-engine` 的 `submit`/`submitHtml` 对外行为不变
+
+- [ ] **Step 0: 修复装配链上的两处断裂（评审发现）**
+
+`src/main/index.ts:51` 现在是 `new PrinterService(() => pool.getPrintersAsync())`，直接依赖将被删除的 `RendererPool`；
+而 `src/main/request-validation.ts:4` 从将被删除的 `src/shared/render-protocol.ts` 引入 `RenderJobSpec`。两处都必须先补齐，否则删文件即编译失败、`printers.list` 直接失效。
+
+```ts
+// clients/print-client/src/main/print-host.ts
+// 打印机枚举专用常驻隐藏窗口：不承载模板 HTML，只提供一个 webContents。
+import { BrowserWindow } from 'electron'
+
+let host: BrowserWindow | null = null
+
+export function getPrintHostWindow(): BrowserWindow {
+  if (host && !host.isDestroyed()) return host
+  host = new BrowserWindow({
+    show: false,
+    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
+  })
+  void host.loadURL('about:blank')
+  return host
+}
+
+export function destroyPrintHostWindow(): void {
+  if (host && !host.isDestroyed()) host.destroy()
+  host = null
+}
+```
+
+```ts
+// clients/print-client/src/main/index.ts
+import { getPrintHostWindow, destroyPrintHostWindow } from './print-host.js'
+import { PrinterService } from './printer-service.js'
+import { createPrintRuntime } from './print-engine.js'
+
+const printerService = new PrinterService(() => getPrintHostWindow().webContents.getPrintersAsync())
+const printEngine = new PrintEngine({
+  printerService,
+  runtime: createPrintRuntime(),
+  history,
+  logger,
+  pdfOutput: () => buildPdfOutputPolicy(configStore.current),
+})
+app.on('before-quit', () => destroyPrintHostWindow())
+```
+
+```ts
+// clients/print-client/src/main/request-validation.ts（把被删的 IPC 契约类型落到本文件）
+/** print.submit 校验后的模板渲染任务（原 shared/render-protocol.ts 的 RenderJobSpec） */
+export interface PrintSubmitSpec {
+  templateJson: Record<string, unknown>
+  printData?: Record<string, unknown>
+  baseUrl?: string
+  /** 连续纸显式纸高逃生门（mm） */
+  paperHeightMm?: number
+}
+```
+
+> `request-validation.ts` 其余逻辑（含 `parsePrintSubmit` 返回的字段名）保持不变；`request-validation.test.ts` 断言字段名未变，无需改动。
+
+- [ ] **Step 0.5: 打印设置瘦身（评审发现：多数字段在 PDF 链路中从未被消费）**
+
+现状只有 `settings.copies` 与 `settings.pageSize`（当字符串时用作驱动纸型名）被 `printPdfFile` 使用，
+`silent`/`printBackground`/`margins`/`landscape`/`color`/`pageRanges`/`deviceName` 都不生效（属于 `webContents.print` 时代的遗留，其中 `color`/`pageRanges` 是既有缺口，本次不顺手实现）。
+
+```ts
+// clients/print-client/src/main/print-settings.ts（由 render-engine.ts 搬移并瘦身）
+import type { PrintOptions } from '@worm-vue3-print/client'
+
+export interface PrintJobSettings {
+  copies: number
+  /** 驱动纸型名（针式打印机的预置纸型），用于向打印系统声明纸张 */
+  paperName?: string
+}
+
+/** 只保留出纸链路真正消费的字段；纸张几何由 core 的 pdf-spec 决定 */
+export function buildPrintJobSettings(print: PrintOptions): PrintJobSettings {
+  const copies = print.copies && print.copies > 0 ? Math.trunc(print.copies) : 1
+  return print.paperName ? { copies, paperName: print.paperName } : { copies }
+}
+```
 
 - [ ] **Step 1: 实现 Electron driver**
 
@@ -2622,6 +2728,7 @@ const paperMicrometers = {
   width: millimetersToMicrometers(prepared.paperMm.width),
   height: millimetersToMicrometers(prepared.paperMm.height),
 }
+const settings = buildPrintJobSettings(printOptions)
 
 // ── submitHtml：浏览器预渲染 HTML 直提交，不跑管线，只复用出图规格与超时 ──
 const pdfSpec = buildPdfTargetSpec({ width: job.paperMm.width, height: job.paperMm.height })
@@ -2629,9 +2736,15 @@ const pdf = await runtime.withSession(
   { timeoutMs: PDF_GENERATION_TIMEOUT_MS },
   session => session.toPdf(job.html, pdfSpec, paperViewportPx(job.paperMm)),
 )
+
+/** 供 index.ts 装配：core 运行时 + Electron driver + 执行器产物 */
+export function createPrintRuntime(): PrintRuntime {
+  return createDomHostRuntime(createElectronDriverFactory(), loadExecutorBundle())
+}
 ```
 
-> `buildWebPrintSettings` 原样搬到 `print-settings.ts`（份数、驱动纸型名、页范围仍属客户端）。
+> `buildPrintJobSettings` 替换原来的 `buildWebPrintSettings`（见 Step 0.5）：只保留 `copies` 与驱动纸型名，
+> 出纸命令按 `settings.paperName` 声明纸张；`PDF_GENERATION_TIMEOUT_MS` 继续作为整任务预算（测量 + 探针 + 出图）。
 
 - [ ] **Step 3: 删除旧实现并清理构建配置**
 
@@ -2699,9 +2812,28 @@ git rm clients/print-client/src/main/paper.test.ts clients/print-client/src/main
 ```
 
 ```ts
-// clients/print-client/src/main/print-settings.test.ts（只改 import，断言保持原样）
+// clients/print-client/src/main/print-settings.test.ts
+// 原 render-engine.test.ts 的 4 条 buildWebPrintSettings 断言中，只有份数与纸型名在 PDF 链路里被消费，
+// 其余（silent/printBackground/margins/landscape/color/pageRanges）随函数瘦身删除，不再保留断言。
 import { describe, it, expect } from 'vitest'
-import { buildWebPrintSettings } from './print-settings.js'
+import { buildPrintJobSettings } from './print-settings.js'
+
+describe('buildPrintJobSettings', () => {
+  it('份数缺省为 1，非法值归一为 1', () => {
+    expect(buildPrintJobSettings({})).toEqual({ copies: 1 })
+    expect(buildPrintJobSettings({ copies: 0 })).toEqual({ copies: 1 })
+    expect(buildPrintJobSettings({ copies: -2 })).toEqual({ copies: 1 })
+  })
+
+  it('份数取整', () => {
+    expect(buildPrintJobSettings({ copies: 2.7 })).toEqual({ copies: 2 })
+  })
+
+  it('保留驱动纸型名（针式打印机预置纸型）', () => {
+    expect(buildPrintJobSettings({ copies: 1, paperName: 'Custom.80x297' }))
+      .toEqual({ copies: 1, paperName: 'Custom.80x297' })
+  })
+})
 ```
 
 - [ ] **Step 2: 运行客户端测试并确认无残留引用**
@@ -2709,8 +2841,8 @@ import { buildWebPrintSettings } from './print-settings.js'
 Run: `npm run test -w @worm-vue3-print/print-client`
 Expected: PASS
 
-Run: `rg -n "pdf-generator|render-engine|paper\.js|renderer-pool|render-protocol|worker-preload" clients/print-client/src clients/print-client/electron.vite.config.ts`
-Expected: 无输出
+Run: `rg -n "pdf-generator|render-engine|paper\.js|renderer-pool|render-protocol|worker-preload|buildWebPrintSettings" clients/print-client/src clients/print-client/electron.vite.config.ts`
+Expected: 无输出（`render-engine.ts` 被删、`buildWebPrintSettings` 已由 `buildPrintJobSettings` 取代）
 
 - [ ] **Step 3: 打包冒烟（验证 asar 内 core 可解析）**
 
@@ -2756,9 +2888,10 @@ const ALLOW = [
 ]
 const FORBIDDEN = [
   { pattern: /\boffsetHeight\b|\bgetBoundingClientRect\b/, why: 'DOM 测量必须走 core 的 DOM 执行器' },
-  { pattern: /\bcomposeContinuousHeight\b/, why: '连续纸纸高推导必须在 core' },
+  { pattern: /\bcomposeContinuousHeight\b|\bMIN_CONTINUOUS_HEIGHT_MM\b/, why: '连续纸纸高推导必须在 core' },
   { pattern: /from ['"](jsbarcode|qrcode|bwip-js)['"]/, why: '码制渲染必须走 core 执行器' },
-  { pattern: /pageSize:\s*\{\s*$/, why: '出图参数必须来自 core 的 pdf-spec' },
+  { pattern: /\bprintBackground\s*:|\bpreferCSSPageSize\s*:/, why: '出图参数必须来自 core 的 pdf-spec（driver 只透传）' },
+  { pattern: /\bprintToPDF\s*\(|\bpage\.pdf\s*\(/, why: '出图调用只允许出现在 driver 内' },
 ]
 
 const walk = dir => readdirSync(dir).flatMap(name => {
@@ -2770,7 +2903,9 @@ const violations = []
 for (const target of TARGETS) {
   for (const file of walk(target)) {
     if (!/\.(ts|mjs|js)$/.test(file)) continue
-    if (ALLOW.some(rule => rule.test(file))) continue
+    // Windows 下 join 产生反斜杠，白名单正则按 POSIX 分隔符匹配
+    const normalized = file.replace(/\\/g, '/')
+    if (ALLOW.some(rule => rule.test(normalized))) continue
     const lines = readFileSync(file, 'utf8').split('\n')
     for (const rule of FORBIDDEN) {
       const index = lines.findIndex(text => rule.pattern.test(text))
@@ -2785,6 +2920,10 @@ if (violations.length > 0) {
 }
 console.log('打印架构守卫通过：三端未出现重复的测量/纸高/出图/码制实现')
 ```
+
+> 规则与白名单的边界：`printToPDF(`/`page.pdf(` 只允许出现在 `driver-electron.ts` 与 `driver-playwright.ts`（白名单内），
+> 但它们内部只允许把 core 的 spec 透传给宿主 API，不允许出现 `printBackground:`/`preferCSSPageSize:` 字面量——
+> 这两条没有白名单例外，正是「出图参数只能来自 core」的机器化约束。
 
 - [ ] **Step 2: 接入脚本与 CI**
 
@@ -2840,6 +2979,9 @@ git commit -m "chore：新增三端打印架构守卫门禁"
    改为「三端测量共用 core 的 DOM 执行器」
 7. docs/中文/指南/静默打印.md:173 → 保留字体提示，补一条：三端字体不同仍会让条码固有宽度不同
    （jsbarcode 的 SVG 宽度取 ceil(max(textWidth, barcodeWidth))）
+8. docs/中文/指南/静默打印.md 与 packages/print-client-sdk/README.md → 登记既有缺口（本次不实现）：
+   协议接受 `color` 与 `pageRanges`，但出纸链路（PDF → lp/SumatraPDF）从未应用这两个参数；
+   本次抽离只保留真正被消费的 `copies` 与驱动纸型名，不再让它们看起来生效
 ```
 
 - [ ] **Step 2: 记录两处行为变更**
