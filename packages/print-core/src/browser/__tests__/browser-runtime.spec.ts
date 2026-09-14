@@ -1,8 +1,14 @@
 // @vitest-environment happy-dom
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import { createBrowserPrintRuntime } from '../browser-runtime.js'
 import { renderHtmlPages } from '../browser-pagination.js'
 import type { CodeRenderer, TemplateData } from '../../render/types.js'
+
+beforeAll(() => {
+  // happy-dom 不实现 canvas 2d 上下文；jsbarcode 需要它测量文字宽度
+  const proto = HTMLCanvasElement.prototype as any
+  proto.getContext = () => ({ font: '', measureText: (text: string) => ({ width: String(text).length * 8 }) })
+})
 
 const template = {
   paperSize: 'A4',
@@ -28,6 +34,22 @@ describe('renderHtmlPages', () => {
     const result = await renderHtmlPages(template, {})
     expect(result.html).toContain('data-page="1"')
     expect(result.pageLayouts.length).toBe(result.pageCount)
+  })
+
+  it('条形码元素的码值由 iframe driver 渲染为 SVG，而不是文本降级', async () => {
+    const codeTemplate = {
+      ...template,
+      elements: [
+        {
+          id: 'c',
+          type: 'barcode',
+          options: { left: 0, top: 0, width: 50, height: 15, formatter: '123456789012', barcodeType: 'CODE128' },
+        },
+      ],
+    } as unknown as TemplateData
+    const result = await renderHtmlPages(codeTemplate, {})
+    expect(result.html).toContain('data:image/svg+xml')
+    expect(result.html).not.toContain('<span>123456789012</span>')
   })
 })
 

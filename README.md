@@ -4,7 +4,7 @@
 
 Vue 3 可视化打印模板设计器 + 模板表达式引擎 + 同构渲染管线的开源 monorepo（npm workspaces）。
 
-可视化拖拽设计打印模板、数据绑定、表达式求值、分页排版，浏览器预览与后端输出保持一致。
+可视化拖拽设计打印模板、数据绑定、表达式求值、分页排版；三端共用同一套渲染与分页算法（逻辑同源，像素级一致还需字体与 Chromium 内核同源）。
 纯 Vue 3 + HTML/CSS/SVG 原生控件实现，不依赖任何 UI 组件库，可以接入任意 Vue 3 项目中。
 
 ## 项目目录结构
@@ -45,7 +45,7 @@ worm-vue3-print/
 | `packages/print-canvas` | 设计器画布（`@worm-vue3-print/canvas`）：Vue 3 组件（`components`）、组合式函数（`composables`）、内置帮助内容（`help-content`）、原生控件样式（`styles`）。含 `PrintDesigner`、`PrintHtmlPreview` |
 | `packages/print-client-sdk` | 静默打印 SDK（`@worm-vue3-print/client`）：框架无关的浏览器端 TS，含传输层（`transport`，WS 端口探测/重连/超时）、协议与错误码（`protocol`）、客户端门面（`print-client`） |
 | `clients/print-client` | 静默打印桌面客户端（Electron，private）：主进程 WS 服务 / 打印引擎 / 打印机服务 / 配置与任务记录（`src/main`）、配置窗口 Vue 3 界面（`src/renderer`）、隐藏渲染 worker（`src/worker`）、沙箱 IPC 桥（`src/preload`）、IPC 通道契约（`src/shared`）；含 electron-builder 打包配置与真机冒烟脚本（`scripts/`） |
-| `services/print-render` | 服务端渲染微服务（private）：基于 Playwright 的 PDF / 截图渲染（`pdf-render` / `browser-pool` / `server`），workspace 软链依赖 core，保证浏览器预览与服务端输出一致 |
+| `services/print-render` | 服务端渲染微服务（private）：基于 Playwright 的 PDF / 截图渲染（`driver-playwright` / `pdf-render` / `browser-pool` / `server`），workspace 软链依赖 core，与浏览器预览、桌面客户端共用同一份打印管线 |
 | `demo` | 演示项目：设计器接入（`App.vue`）、静默打印集成、渲染客户端封装（`render-client.ts`）、业务字段（`business.ts`）、内置模板 JSON（`template-purchase-receipt.json`） |
 | `docs` | 文档：`中文/`（指南、接口、示例、文档总览、CHANGELOG）、`en/`（英文），`superpowers/` 为设计文档（specs）与实施计划（plans） |
 | `skills` | opencode 集成技能 `worm-vue3-print-integration`：往宿主项目接入 core / canvas / 静默打印的规范与指南（`SKILL.md` + `references/`） |
@@ -67,7 +67,7 @@ worm-vue3-print/
 - 元素丰富：文本、长文本、数据表格、条形码、二维码、图片、线条、形状、HTML、页码、水印
 - 数据绑定：`{field.path}` 字段绑定、表达式求值（safelist 安全执行）、格式化函数
 - 智能表格：动态分页、跨页重复表头、序号/小计/汇总、单元格合并
-- 同构渲染：一套渲染逻辑同时产出浏览器预览与最终 HTML，保证结果一致
+- 同构渲染：一套渲染逻辑同时产出浏览器预览、服务端 PDF 与桌面客户端出图（逻辑同源）
 - 静默打印：跨平台桌面打印客户端（Electron）+ 浏览器端 SDK，本地 WebSocket 通讯、`webContents.print` 静默出纸，全程无打印对话框、不依赖浏览器插件，支持连续纸纸长自动推导
 - 内置业务模板：采购收货单、批发销售单、出入库单、库存盘点单
 - 毫米（mm）单位精确布局，支持 A4 等纸张规格
@@ -246,7 +246,7 @@ client.pair(token)                            // 安全配对：客户端开启�
 
 服务端渲染位于本仓库 monorepo 的 `services/print-render`（私有服务包，不发布 npm）：
 基于 Playwright 提供服务端 PDF / 截图渲染微服务（`/render/pdf`、`/render/screenshot`），
-通过 workspace 本地软链依赖 `core` 渲染管线，保证浏览器预览与服务端输出结果一致。
+通过 workspace 本地软链依赖 `core` 渲染管线，与浏览器预览、桌面客户端共用同一份实现；测量、连续纸探针、码制渲染与出图由 core 的 DOM 执行器在页面上下文执行。
 
 ```bash
 # 本地开发（首次需 npx playwright install chromium，macOS 可直接使用系统 Chrome）

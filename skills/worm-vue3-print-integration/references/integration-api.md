@@ -170,7 +170,7 @@ import { bindData, paginate, generateHtml } from '@worm-vue3-print/core'
 const bound = bindData(templateJson, printData, baseUrl)
 
 // measuredElements 是 Map<string, MeasuredElement>；
-// 浏览器端可直接使用 canvas 的 renderHtmlPages，服务端测量由 render 服务实现。
+// 浏览器端可直接使用 canvas 的 renderHtmlPages；三端测量共用 core 的 DOM 执行器（服务端经 Playwright driver 执行）。
 const measuredElements: Map<string, MeasuredElement> = await measureElements(bound)
 const pageLayouts = paginate(bound, measuredElements)
 const html = generateHtml(bound, pageLayouts, printData, { codeRenderer })

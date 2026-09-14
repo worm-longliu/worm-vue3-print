@@ -3,6 +3,20 @@ import type { PdfTargetSpec, RawMeasurement, ScreenshotTargetSpec, ViewportPx } 
 /** 执行器可被宿主调用的方法名（与 browser/dom-executor.ts 一一对应） */
 export type ExecutorMethod = 'waitReady' | 'readMeasurements' | 'readContentBottom' | 'renderCodes'
 
+/** 执行器方法的宿主目标种类：window（waitReady）/ document（读 DOM）/ none（纯计算，无首参） */
+export type ExecutorTargetKind = 'window' | 'document' | 'none'
+
+/**
+ * 各执行器方法的宿主目标注入方式：宿主据此决定是否补首参。
+ * 三端 driver 均按本表装配参数，不得各自假设「非 waitReady 一律传 document」。
+ */
+export const EXECUTOR_TARGETS: Record<ExecutorMethod, ExecutorTargetKind> = {
+  waitReady: 'window',
+  readMeasurements: 'document',
+  readContentBottom: 'document',
+  renderCodes: 'none',
+}
+
 /** core 自带的 DOM 执行器产物；宿主负责把它送进页面 */
 export interface ExecutorBundle {
   source: string

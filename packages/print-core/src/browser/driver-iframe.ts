@@ -1,4 +1,5 @@
 import { domExecutor } from './dom-executor.js'
+import { EXECUTOR_TARGETS } from '../print/driver.js'
 import type { DriverFactory, ExecutorBundle, ExecutorMethod, PageDriver } from '../print/driver.js'
 import type { ViewportPx } from '../print/types.js'
 
@@ -30,11 +31,12 @@ export function createIframeDriverFactory(): DriverFactory {
           // 进程内直调 domExecutor，无需注入
         },
         async evaluate<T>(method: ExecutorMethod, args?: unknown[]): Promise<T> {
-          if (method === 'waitReady') {
-            return domExecutor.waitReady(iframe.contentWindow as Window, ...(args as [number])) as T
-          }
-          const fn = domExecutor[method] as (target: Document, ...rest: unknown[]) => unknown
-          return fn(doc, ...(args ?? [])) as T
+          const fn = domExecutor[method] as (...fnArgs: unknown[]) => unknown
+          const payload = args ?? []
+          const target = EXECUTOR_TARGETS[method]
+          if (target === 'window') return fn(iframe.contentWindow as Window, ...payload) as T
+          if (target === 'document') return fn(doc, ...payload) as T
+          return fn(...payload) as T
         },
         async close(): Promise<void> {
           iframe.remove()

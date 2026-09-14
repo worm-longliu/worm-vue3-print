@@ -10,7 +10,7 @@
 
 ## 渲染流程
 
-两遍渲染（见 `src/pdf-render.ts`）：
+两遍渲染由 `@worm-vue3-print/core` 的打印管线统一实现（`src/pdf-render.ts` 只做宿主装配，`src/driver-playwright.ts` 提供页面能力）：
 
 1. 数据绑定：`@worm-vue3-print/core` 的 `bindData` 将 `printData` 变量/表达式替换进模板；
 2. 第一遍测量：`generateHtml` 生成测量 HTML，`page.setContent()` 加载后测量各元素实际高度（mm）；
@@ -117,4 +117,4 @@ docker run -p 3001:3001 \
 - `src/server.ts` — Express 服务入口（HTTP 适配层：鉴权、超时、端点）
 - `src/pdf-render.ts` — 两遍渲染主流程与公共 API（`renderPdf` / `renderScreenshot`）
 - `src/browser-pool.ts` — Playwright 浏览器池（并发、复用、优雅关闭）
-- `src/barcode-renderer.ts` — 服务端条码/二维码生成（bwip-js，注入 core CodeRenderer）
+- `src/driver-playwright.ts` — Playwright driver（借页、视口、注入 core 执行器、`page.pdf`/`page.screenshot`）

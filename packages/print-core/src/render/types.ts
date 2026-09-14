@@ -143,7 +143,8 @@ export interface CodeRenderOptions {
 
 /**
  * 码值 → SVG 字符串渲染器。
- * 服务端由 print-render 用 bwip-js 实现；浏览器由 print-canvas 用 jsbarcode/qrcode 实现。
+ * 三端统一由 core 的 DOM 执行器实现（jsbarcode/qrcode 算法只有一份）：
+ * 浏览器进程内直调，服务端与桌面客户端注入 IIFE 产物后在页面上下文执行。
  * 码值非法时抛出异常，由调用方降级为文本占位。
  */
 export interface CodeRenderer {

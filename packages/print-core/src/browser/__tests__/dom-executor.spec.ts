@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeAll } from 'vitest'
-import { readMeasurements, readContentBottom, renderCodes } from '../dom-executor.js'
+import { domExecutor, readMeasurements, readContentBottom, renderCodes } from '../dom-executor.js'
 import { codeSpecKey } from '../../print/codes.js'
+import { EXECUTOR_TARGETS } from '../../print/driver.js'
 
 beforeAll(() => {
   // happy-dom 不实现 canvas 2d 上下文；jsbarcode 需要它测量文字宽度
@@ -83,5 +84,13 @@ describe('renderCodes', () => {
   it('码值渲染失败时跳过该键，交由 core 降级为文本占位', () => {
     const key = codeSpecKey('', 'barcode', {})
     expect(renderCodes([{ key, value: '', cellType: 'barcode', opts: {} }])).toEqual({})
+  })
+})
+
+describe('宿主目标约定', () => {
+  it('约定表覆盖全部执行器方法，renderCodes 不接收宿主目标', () => {
+    const methods = Object.keys(domExecutor).filter(key => key !== 'version').sort()
+    expect(Object.keys(EXECUTOR_TARGETS).sort()).toEqual(methods)
+    expect(EXECUTOR_TARGETS.renderCodes).toBe('none')
   })
 })

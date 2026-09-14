@@ -22,7 +22,17 @@ print-core/
 ```
 
 `core` 无 Vue、无宿主依赖，可在 Node 服务端（`@worm-vue3-print/render`）与浏览器端（`@worm-vue3-print/canvas`）共用，
-保证「浏览器预览」与「服务端 PDF」结果一致。
+保证「浏览器预览」「服务端 PDF」「桌面客户端出图」共用同一套算法（逻辑同源；像素级一致还需三端字体与 Chromium 内核同源）。
+
+### 打印管线（`print/`，纯 TS）
+
+- 入口：`prepareDocument(job, runtime)`、`renderPdf(job, runtime)`、`renderScreenshot(job, runtime)`；
+- 规格：`buildPdfTargetSpec`、`toElectronPrintToPdfOptions`（英寸）、`toPlaywrightPdfOptions`（mm）、`buildScreenshotTargetSpec`；
+- 纸张：`resolvePaperMm`（宿主覆盖逃生门）、`paperViewportPx`（测量容器 mm→px）、`escapeHeightMm`（连续纸纸高逃生门）；
+- 契约：`PageDriver`（宿主只实现 open/setContent/injectExecutor/evaluate 与可选 pdf/screenshot）+
+  `createDomHostRuntime(driverFactory, bundle)`（共享的载入→注入→就绪→执行→释放时序、超时预算与错误归一化）；
+- DOM 能力：`@worm-vue3-print/core/browser` 导出执行器与 iframe driver；`@worm-vue3-print/core/node` 的
+  `loadExecutorBundle()` 供 Node 宿主读取 `dist/dom-executor.iife.global.js` 注入页面。
 
 ### 子路径导出
 

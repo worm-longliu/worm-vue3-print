@@ -85,7 +85,7 @@ npm run build
 1. 现象：宿主提交打印后长时间无响应，重试全部返回 `[BUSY] 客户端正在处理其他打印任务，请稍后重试`；客户端日志随后出现 PDF 生成超时。
 2. 根因（打印客户端 PDF 通道，Electron 40+）：`webContents.printToPDF` 已移除回调重载，只剩 Promise 形式。旧写法 `printToPDF(options, callback)` 的回调永不触发，返回的 Promise 拒绝又无人接收（错误被静默吞掉），任务只能等超时——串行锁在等待期间不释放，期间所有新任务都被 `BUSY` 拒绝。
 3. 第二处根因：`PrintToPDFOptions.pageSize` 的单位是**英寸**（`webContents.print` 的 pageSize 才是微米）。直接把协议里的微米值传进去会得到 210000×297000 英寸的荒诞纸张：Electron 44 直接失败（`Failed to generate PDF: Printing failed`，print compositor 报 `Page reading failed`），Electron 40 则产出 5 万倍尺寸的 PDF。正确写法是 `pageSize = 微米 / 25400`。
-4. 修复要求：① 只走 Promise 形式并 `Promise.race` 超时（客户端的 `src/main/pdf-generator.ts` 已封装）；② 纸张换算为英寸、`margins` 用 `{top,bottom,left,right}`（英寸，零边距）、`printBackground: true`；③ 任务失败/超时必须释放串行锁，`BUSY` 只应在任务真正进行中返回。
+4. 修复要求：① 只走 Promise 形式并 `Promise.race` 超时（core `print/errors.ts` 的 `withTimeout` 与 `print/pdf-spec.ts` 已封装）；② 纸张换算为英寸、`margins` 用 `{top,bottom,left,right}`（英寸，零边距）、`printBackground: true`、`preferCSSPageSize: false` 由 core 统一给出，宿主只做透传；③ 任务失败/超时必须释放串行锁，`BUSY` 只应在任务真正进行中返回。
 5. 验证方法（无需打印机）：隐藏窗口加载待打印 HTML → `printToPDF` 生成 PDF → `pdfinfo` 看页面尺寸是否为 A4/目标纸张 → `pdftoppm` 转 PNG 后统计水印色（如 `#e60000` 35%）像素占比，应明显大于 0。
 
 ## 出纸方向与浏览器/服务端预览不一致（横向被打成纵向）

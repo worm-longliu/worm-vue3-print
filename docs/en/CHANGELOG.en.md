@@ -4,6 +4,17 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
+- `@worm-vue3-print/core`: added the print pipeline module (driver contract + shared DOM host runtime + three drivers).
+  Browser preview, render service and desktop client now share one implementation of measurement, pagination,
+  continuous-paper probe, code rendering and PDF target spec; added the IIFE executor artifact and the
+  `@worm-vue3-print/core/node` entry (`loadExecutorBundle`).
+- `@worm-vue3-print/render`: **behavior change** ① continuous-paper height is now derived from content
+  (previously a fixed `80×297mm`); ② barcode/QR rendering switches from `bwip-js` to `jsbarcode`/`qrcode`
+  (matching browser preview); ③ readiness waits on `domcontentloaded` + 5s instead of `networkidle`.
+- `print-client`: **behavior change** measurement readiness wait is 5s now; the renderer worker and IPC bridge
+  were removed in favor of the core pipeline plus an Electron driver (protocol and printing behavior unchanged).
+- Known gap (not implemented here): the protocol accepts `color` and `pageRanges`, but the PDF→system-print path never applied them.
+
 ### Added
 
 - Print client: New "keep generated PDFs" troubleshooting switch (config window checkbox; `keepGeneratedPdf` / `pdfOutputDir` in `config.json`, defaulting to `userData/pdf`). Each printed job's generated PDF is kept, the job history shows its absolute path, and the settings page offers an "open folder" button — useful for telling whether a color/orientation problem comes from PDF generation or from the printer/driver.
