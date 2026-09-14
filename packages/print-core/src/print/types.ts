@@ -34,3 +34,11 @@ export interface ScreenshotTargetSpec {
   fullPage: boolean
   omitBackground: boolean
 }
+
+/** 宿主回传的原始测量值（CSS px，不做任何业务换算） */
+export interface RawMeasurement {
+  id: string
+  heightPx: number
+  /** 表格行高（px），仅表格元素有值 */
+  rowHeightsPx?: number[]
+}
