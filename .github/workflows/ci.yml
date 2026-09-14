@@ -20,6 +20,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      - run: npm run lint:print-architecture
 
   render:
     runs-on: ubuntu-latest
@@ -45,4 +46,7 @@ jobs:
         timeout-minutes: 5
       - name: 明细分页集成测试
         run: npm run test -w @worm-vue3-print/render -- src/subtotal.integration.test.ts
+        timeout-minutes: 5
+      - name: 码值渲染集成测试
+        run: npm run test -w @worm-vue3-print/render -- src/codes.integration.test.ts
         timeout-minutes: 5

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { toElectronPrintToPdfOptions } from '@worm-vue3-print/core'
+import { EXECUTOR_TARGETS, toElectronPrintToPdfOptions } from '@worm-vue3-print/core'
 import type {
   DriverFactory,
   ExecutorBundle,
@@ -54,14 +54,17 @@ export function createElectronDriverFactory(): DriverFactory {
           injected = true
         },
         async evaluate<T>(method: ExecutorMethod, args: unknown[] = []): Promise<T> {
-          const isWaitReady = method === 'waitReady'
+          const target = EXECUTOR_TARGETS[method]
+          const callArgs = target === 'none'
+            ? '...payload'
+            : `${target === 'window' ? 'window' : 'document'}, ...payload`
           const code = `(() => {
             const dom = globalThis.__wormDom
             if (!dom) throw new Error('DOM 执行器未注入')
             const fn = dom[${JSON.stringify(method)}]
             if (typeof fn !== 'function') throw new Error('执行器缺少方法：' + ${JSON.stringify(method)})
             const payload = ${JSON.stringify(args)}
-            return ${isWaitReady ? 'fn(window, ...payload)' : 'fn(document, ...payload)'}
+            return fn(${callArgs})
           })()`
           return win.webContents.executeJavaScript(code, true) as Promise<T>
         },

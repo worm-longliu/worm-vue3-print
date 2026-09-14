@@ -13,6 +13,7 @@
   "scripts": {
     "build": "npm run build -w @worm-vue3-print/core && npm run build -w @worm-vue3-print/client && npm run build -w @worm-vue3-print/render && npm run build -w @worm-vue3-print/canvas && npm run build -w @worm-vue3-print/print-client",
     "test": "npm run test -w @worm-vue3-print/core && npm run test -w @worm-vue3-print/canvas && npm run test -w @worm-vue3-print/client && npm run test -w @worm-vue3-print/print-client",
+    "lint:print-architecture": "node scripts/check-print-architecture.mjs",
     "pack:client:dir": "npm run build -w @worm-vue3-print/core && npm run build -w @worm-vue3-print/client && npm run pack:dir -w @worm-vue3-print/print-client",
     "pack:client": "npm run build -w @worm-vue3-print/core && npm run build -w @worm-vue3-print/client && npm run build -w @worm-vue3-print/print-client && npm -w @worm-vue3-print/print-client exec electron-builder --mac --win",
     "publish:local": "npm run build && npm -w @worm-vue3-print/core exec yalc push && npm -w @worm-vue3-print/canvas exec yalc push",
