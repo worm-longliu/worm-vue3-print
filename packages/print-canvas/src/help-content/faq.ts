@@ -24,8 +24,8 @@ export default {
 <ul>
   <li><code>fields</code>：字段定义数组，用于字段树显示</li>
   <li><code>initialTemplate</code>：初始模板数据</li>
-  <li><code>loadDefaultTemplate</code>：加载默认模板的回调函数</li>
 </ul>
+<p>模板加载 / 重置（如「加载默认布局」）由宿主实现：把新的模板数据赋给 <code>initialTemplate</code> 即可重载画布。</p>
 
 <h2>如何使用表达式绑定字段？</h2>
 <ol>

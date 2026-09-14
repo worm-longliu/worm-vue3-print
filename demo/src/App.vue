@@ -6,6 +6,7 @@
       <span class="demo-badge">模板 ID：{{ TEMPLATE_ID }}</span>
       <span class="demo-badge">业务类型：采购收货单（purchase_receipt）</span>
       <span class="demo-note">加载真实模板数据 · 浏览器端免保存预览</span>
+      <button type="button" class="demo-print-btn" @click="onLoadDefaultLayout">加载默认布局</button>
       <button type="button" class="demo-print-btn" @click="printDialogVisible = true">打印输出</button>
     </header>
 
@@ -15,7 +16,6 @@
         :initial-template="templateData"
         :fields="fields"
         :is-edit="true"
-        :load-default-template="loadDefaultTemplate"
         :show-help="true" 
         @preview="onPreview"
         @save="onSave"
@@ -118,9 +118,14 @@ function printPreview() {
   htmlPreviewRef.value?.print()
 }
 
-/** 加载默认布局：宿主在此实现自己的业务逻辑（如按业务类型拉取默认模板）；demo 返回空白默认模板 */
-function loadDefaultTemplate() {
-  return createDefaultTemplate()
+/**
+ * 加载默认布局：宿主自实现的业务能力——demo 用 `createDefaultTemplate()` 造一份空白默认模板。
+ * 真实宿主可在此按业务类型拉取服务端默认模板；用新对象回写 `initialTemplate` 引用，
+ * 设计器监听到变化后重载画布并记录一次历史（撤销可回退）。
+ */
+function onLoadDefaultLayout() {
+  if (!confirm('将覆盖当前画布内容，是否继续？')) return
+  templateData.value = createDefaultTemplate()
 }
 </script>
 

@@ -142,11 +142,13 @@ import '@worm-vue3-print/canvas/native-controls.css'
     :initial-template="templateData"
     :fields="fields"
     :is-edit="true"
-    :load-default-template="loadDefaultTemplate"
     :show-help="true"
     @preview="onPreview"
     @save="onSave"
   />
+
+  <!-- 「加载默认布局」等业务入口由宿主自渲染，不在设计器工具栏内 -->
+  <button type="button" @click="onLoadDefaultLayout">加载默认布局</button>
 
   <!-- 浏览器端免保存预览：直接使用当前画布 JSON + 业务数据 -->
   <Teleport to="body">
@@ -179,9 +181,13 @@ function onSave(json: string) {
   // 宿主持久化模板 JSON
 }
 
-/** 加载默认布局：宿主在此实现自己的业务逻辑（如按业务类型拉取默认模板） */
-function loadDefaultTemplate() {
-  return createDefaultTemplate()
+/**
+ * 加载默认布局：宿主自实现的业务逻辑。示例用 createDefaultTemplate() 造空白默认模板，
+ * 真实宿主可在此按业务类型拉取服务端默认模板；用新对象回写 templateData 引用即可重载画布
+ */
+function onLoadDefaultLayout() {
+  if (!confirm('将覆盖当前画布内容，是否继续？')) return
+  templateData.value = createDefaultTemplate()
 }
 </script>
 ```
@@ -190,10 +196,11 @@ function loadDefaultTemplate() {
 
 - `initial-template`：初始模板 `TemplateData`；`fields`：业务字段 `PrintBusinessField[]`；
   `is-edit`：是否编辑态。
-- `load-default-template`：可选。「加载默认布局」回调（支持异步），未注入时工具栏不展示该按钮。
 - `show-help`：帮助入口开关，默认开启，传 `false` 可关闭帮助按钮与帮助弹框。
 - `@preview` / `@save`：预览与保存事件，宿主持有 `getTemplateJson()`/`getTemplateJson` 之外的业务逻辑自理。
 - `getTemplateJson()`：通过 `ref` 获取当前画布模板 JSON，用于预览 / 保存 / 截图。
+- 模板加载 / 重置（如「加载默认布局」）属于宿主业务：把新的 `TemplateData` 赋给
+  `initial-template` 即可重载画布并记录一次历史（撤销可回退），设计器工具栏不内置该入口。
 - `PrintHtmlPreview`：同构预览组件，`template-json` 传画布模板 JSON，`print-data` 传业务数据，
   事件 `rendered` 回调预览页数，`ref.print()` 触发打印。
 

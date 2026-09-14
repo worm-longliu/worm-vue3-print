@@ -200,7 +200,7 @@ onMounted(async () => {
 注意：
 - 设计器页父容器必须有确定高度（`PrintDesigner` 内部 `height:100%`），否则画布塌陷。
 - **不要**调用 `setTemplateMeta`——该方法不存在。元信息用宿主页面自己的标签/弹窗展示与编辑。
-- 图片上传、服务端截图、默认布局按钮是可选能力，需要时才注入 `upload-image` / `request-screenshot` / `load-default-template`；不注入时对应功能隐藏，基础设计/保存/预览不受影响。
+- 图片上传、服务端截图是可选能力，需要时才注入 `upload-image` / `request-screenshot`；不注入时对应功能隐藏，基础设计/保存/预览不受影响。默认布局等业务入口由宿主自己渲染，赋值 `initial-template` 即可重载画布。
 
 ### 5.3 业务打印按钮（选模板 → 取数 → 预览）
 

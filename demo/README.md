@@ -6,8 +6,8 @@
 
 - 加载真实模板数据：模板 `106977040967000141`（采购收货单，A5 横向），其 `elements`
   已导出到 `src/template-purchase-receipt.json`
-- 集成 `PrintDesigner`：初始模板 / 业务字段注入，`loadDefaultTemplate` 默认布局回调，
-  以及 `back / preview / save` 三个事件的宿主实现
+- 集成 `PrintDesigner`：初始模板 / 业务字段注入，以及 `preview / save` 事件的宿主实现；
+  「加载默认布局」按钮由宿主自渲染（顶栏按钮回写 `initial-template`，设计器不内置该入口）
 - 浏览器端免保存预览：`preview` 时把当前画布 JSON + `DEFAULT_DEMO_DATA`
   交给 `PrintHtmlPreview` 同构渲染、分页并支持打印（无需后端 PDF 服务）
 - 服务端 PDF 打印：顶栏「服务端 PDF」按钮把当前画布 JSON + `DEFAULT_DEMO_DATA`

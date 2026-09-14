@@ -34,6 +34,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - Added a `services/*` workspace layer; `npm run build` now also builds render, while the root `npm test` still covers core/canvas only. Browser-based render integration tests run in a dedicated CI job.
 - Added a root `.npmrc` so Playwright browsers are not downloaded during dependency installation; install Chromium on demand via `npx playwright install chromium` locally/in CI (the Docker image uses the Chromium bundled in the base image). The Docker build context is now the repository root (`docker build -f services/print-render/Dockerfile .`).
 - demo (`demo/`): Added server-side PDF printing. The top bar shows render-service health, and the "Server PDF" button calls the render microservice through the Vite dev proxy (`/render-api/*`, with `X-Render-Key` injected at the proxy layer), sending the current canvas JSON plus demo data for two-pass server rendering and opening the PDF in a new tab.
+- `@worm-vue3-print/canvas`: **breaking change** removed the built-in "Load default layout" toolbar button and the `load-default-template` prop — loading/resetting a template is host business. The host renders its own entry point and assigns a new `TemplateData` to `initial-template` to reload the canvas (the designer watches the reference and records one history entry, so undo works). Hosts that still pass `load-default-template` will have it ignored and must migrate to the above.
 
 ### Fixed
 

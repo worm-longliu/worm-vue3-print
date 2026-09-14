@@ -74,7 +74,6 @@
       <button class="tb-btn" :class="{ warn: overlayVisible }" @click="$emit('toggle-overlay')">叠层对比</button>
     </div>
     <div class="tb-group">
-      <button v-if="showLoadDefault" class="btn-secondary" @click="$emit('load-default')">加载默认布局</button>
       <button class="btn-secondary" @click="$emit('preview')">预览</button>
       <button class="btn-primary" @click="$emit('save')">保存</button>
     </div>
@@ -98,8 +97,6 @@ withDefaults(defineProps<{
   showTableGhostBorder?: boolean
   selectedElementHasGroup?: boolean
   overlayVisible?: boolean
-  /** 是否展示「加载默认布局」按钮（宿主注入 loadDefaultTemplate 时由 PrintDesigner 开启） */
-  showLoadDefault?: boolean
   /** 是否展示帮助入口（工具栏帮助按钮）；默认开启，传 false 关闭 */
   showHelp?: boolean
 }>(), {
@@ -110,7 +107,6 @@ withDefaults(defineProps<{
 defineEmits<{
   preview: []
   save: []
-  'load-default': []
   undo: []
   redo: []
   align: [mode: string]

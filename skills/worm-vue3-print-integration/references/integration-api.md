@@ -10,7 +10,6 @@
       :initial-template="template"
       :fields="fields"
       :is-edit="true"
-      :load-default-template="loadDefaultTemplate"
       :upload-image="uploadImage"
       :request-screenshot="requestScreenshot"
       @save="onSave"
@@ -60,10 +59,6 @@ function onPreview() {
   previewVisible.value = Boolean(previewTemplate.value)
 }
 
-function loadDefaultTemplate() {
-  return createDefaultTemplate()
-}
-
 async function uploadImage(file: File) {
   const body = new FormData()
   body.append('file', file)
@@ -97,7 +92,6 @@ Props：
 - `is-edit?: boolean`
 - `request-screenshot?: (request: ScreenshotRequest) => Promise<Blob>`
 - `upload-image?: (file: File) => Promise<string>`
-- `load-default-template?: () => TemplateData | Promise<TemplateData | null | undefined> | null | undefined`
 - `show-help?: boolean`（默认 `true`，传 `false` 关闭帮助入口）
 
 事件：
@@ -110,6 +104,10 @@ Props：
 - `getTemplateJson(): TemplateData`
 
 不要假设存在 `back` 事件；返回上一页等导航属于宿主业务层。组件**只 expose 了 `getTemplateJson`**，不存在 `setTemplateMeta` 等方法——模板名称、业务类型、备注等元信息由宿主自行维护并随保存接口提交，不要试图写进设计器实例。
+
+模板加载 / 重置（如「加载默认布局」）同样属于宿主业务：设计器工具栏不内置该按钮，宿主在自己的
+页面 chrome 上渲染入口，把新的 `TemplateData` 赋给 `initial-template` 即可重载画布（设计器按
+引用变化监听并记录一次历史，撤销可回退；注意必须赋新对象/新引用）。
 
 ### `PrintHtmlPreview`
 

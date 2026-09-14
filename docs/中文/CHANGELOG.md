@@ -40,6 +40,7 @@
 - 根工作区新增 `services/*` 分层；`npm run build` 同时构建 render，根 `npm test` 仍只覆盖 core/canvas，render 的浏览器集成测试由 CI 独立 job 执行。
 - 新增根 `.npmrc`：Playwright 浏览器不随依赖安装自动下载，本地/CI 按需执行 `npx playwright install chromium`，Docker 镜像使用基础镜像内置 Chromium；Docker 构建上下文改为仓库根（`docker build -f services/print-render/Dockerfile .`）。
 - demo（`demo/`）新增服务端 PDF 打印：顶栏显示渲染服务在线状态，「服务端 PDF」按钮经 Vite dev 代理（`/render-api/*`，代理层注入 `X-Render-Key`）调用 render 微服务，取当前画布 JSON + 示例数据两遍渲染出 PDF 并新标签页打开。
+- `@worm-vue3-print/canvas`：**破坏性变更** 删除设计器内置的「加载默认布局」按钮与 `load-default-template` prop——模板加载/重置属于宿主业务。宿主在自有页面区域渲染入口，把新的 `TemplateData` 赋给 `initial-template` 即可重载画布（设计器按引用变化监听并记录一次历史，撤销可回退）。原注入 `load-default-template` 的宿主该 prop 会被忽略，需改为上述写法。
 
 ## [1.2.2] - 2026-09-11
 

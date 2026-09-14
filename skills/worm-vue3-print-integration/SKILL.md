@@ -98,7 +98,7 @@ version: 1.2.0
 ## 6. 验收要点（委托或集成完成后逐项核对）
 
 - 安装方式与样式导入匹配：NPM/`file:` 用 `@worm-vue3-print/canvas/style.css`，源码别名才用 `native-controls.css`。
-- `PrintDesigner` 只使用真实契约：props `initial-template/fields/is-edit/request-screenshot/upload-image/load-default-template`，事件仅 `save/preview`，实例方法仅 `getTemplateJson()`。
+- `PrintDesigner` 只使用真实契约：props `initial-template/fields/is-edit/request-screenshot/upload-image`，事件仅 `save/preview`，实例方法仅 `getTemplateJson()`。
 - 没有调用不存在的 `setTemplateMeta`、监听不存在的 `back` 事件。
 - 模板 JSON 与宿主元信息分离；列表/详情能正确回填 elements。
 - 链路 A 预览与打印用同一份 `templateJson + printData + baseUrl`。

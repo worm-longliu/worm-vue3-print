@@ -12,12 +12,10 @@
       :show-table-ghost-border="showTableGhostBorder"
       :selected-element-has-group="selectedElement?.options.groupId ? true : false"
       :overlay-visible="overlayVisible"
-      :show-load-default="!!loadDefaultTemplate"
       :show-help="showHelp !== false"
       v-model:scale="scale"
       @preview="$emit('preview')"
       @save="handleSave"
-      @load-default="handleLoadDefault"
       @undo="onUndo"
       @redo="onRedo"
       @align="(mode: string) => onAlign(mode as AlignMode)"
@@ -161,8 +159,6 @@ const props = defineProps<{
   requestScreenshot?: RequestScreenshotFn
   /** 图片上传适配器：未注入时图片上传不可用 */
   uploadImage?: UploadImageFn
-  /** 加载默认布局回调（宿主实现业务逻辑；未注入时工具栏不展示该按钮），返回 null/undefined 视为无默认布局 */
-  loadDefaultTemplate?: () => TemplateData | Promise<TemplateData | null | undefined> | null | undefined
   /** 是否展示帮助入口（帮助按钮与帮助弹框）；默认开启，传 false 关闭 */
   showHelp?: boolean
 }>()
@@ -449,22 +445,6 @@ watch(() => props.initialElements, (els) => {
 watch(() => props.fields, (f) => { fields.value = f || [] })
 
 defineExpose({ getTemplateJson })
-
-async function handleLoadDefault() {
-  if (!props.loadDefaultTemplate) return
-  if (!confirm('将覆盖当前画布内容，是否继续？')) return
-  try {
-    const tpl = await props.loadDefaultTemplate()
-    if (!tpl) {
-      alert('未获取到默认布局')
-      return
-    }
-    loadTemplate(tpl)
-    alert('默认布局已加载')
-  } catch {
-    alert('加载默认布局失败')
-  }
-}
 
 function handleSave() {
   emit('save', JSON.stringify(getTemplateJson()))
