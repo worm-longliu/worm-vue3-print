@@ -44,10 +44,19 @@ function renderQrSvg(value: string, opts: CodeRenderOptions): string {
   return `<svg xmlns="${SVG_NS}" viewBox="0 0 ${dim} ${dim}" width="${dim}" height="${dim}" shape-rendering="crispEdges">${rects}</svg>`
 }
 
+/** 码值 → SVG：浏览器渲染器与 DOM 执行器共用同一算法 */
+export function renderCodeSvg(
+  value: string,
+  cellType: 'barcode' | 'qrcode',
+  opts: CodeRenderOptions = {},
+): string {
+  if (!value) throw new Error('empty barcode value')
+  return cellType === 'qrcode' ? renderQrSvg(value, opts) : renderBarcodeSvg(value, opts)
+}
+
 /** 浏览器条码/二维码渲染器；码值非法或为空时抛错，由渲染管线降级文本占位 */
 export const browserCodeRenderer: CodeRenderer = {
   render(value: string, cellType: 'barcode' | 'qrcode', opts: CodeRenderOptions = {}): string {
-    if (!value) throw new Error('empty barcode value')
-    return cellType === 'qrcode' ? renderQrSvg(value, opts) : renderBarcodeSvg(value, opts)
+    return renderCodeSvg(value, cellType, opts)
   },
 }
