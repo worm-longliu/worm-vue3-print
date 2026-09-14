@@ -4,6 +4,16 @@
 
 ## [Unreleased]
 
+- `@worm-vue3-print/core`：新增打印管线模块（driver 契约 + 共享 DOM 宿主 runtime + 三端 driver），
+  浏览器、服务端、桌面客户端统一使用同一份测量、分页、连续纸推导、码制渲染与出图规格；
+  新增 IIFE 执行器产物与 `@worm-vue3-print/core/node` 出口（`loadExecutorBundle`）。
+- `@worm-vue3-print/render`：**行为变更** ① 连续纸模板按内容推导纸高（此前固定 `80×297mm`）；
+  ② 条码/二维码渲染基线由 `bwip-js` 切换为 `jsbarcode`/`qrcode`（与浏览器预览一致）；
+  ③ 就绪等待由 `networkidle` 改为 `domcontentloaded` + 5s 就绪等待；服务端不再依赖 `bwip-js`。
+- `print-client`：**行为变更** 测量就绪等待由 3s 调整为 5s；渲染 worker 与 IPC 桥删除，
+  改由主进程装配 core 管线与 Electron driver（`print.submit` / `print.submitHtml` 协议与出纸行为不变）。
+- 已知缺口（本次未实现）：协议接受 `color` 与 `pageRanges`，但 PDF→系统打印链路从未应用这两个参数。
+
 ### 新增
 
 - 打印客户端：新增「保留生成的 PDF」排查开关（配置窗口勾选，`config.json` 的 `keepGeneratedPdf` / `pdfOutputDir`，留空默认 `userData/pdf`）——保留每次打印生成的 PDF，任务记录显示其绝对路径并提供「打开目录」，用于判断问题出在 PDF 生成还是打印机/驱动。

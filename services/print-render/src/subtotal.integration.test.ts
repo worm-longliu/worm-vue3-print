@@ -48,5 +48,5 @@ describe('小计行端到端渲染', () => {
     expect(buf).toBeInstanceOf(Buffer)
     expect(buf.length).toBeGreaterThan(1000)
     expect(buf.subarray(0, 5).toString()).toBe('%PDF-')
-  })
+  }, 30000)
 })

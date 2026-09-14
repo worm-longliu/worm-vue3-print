@@ -13,8 +13,8 @@ WsServer（回环服务：握手鉴权 → 协议帧分发）
 PrintEngine（串行锁，并发直接 BUSY）
    ├─ PrinterService   枚举/解析目标打印机
    ├─ RenderEngine     下发渲染任务 + 纸长推导/覆盖
-   │     ▼ IPC（沙箱 preload 桥 wormRender）
-   │   隐藏渲染 worker（contextIsolation 主世界，打包 core/browser）
+   │     ▼ 装配 core 运行时 + Electron driver
+   │   隐藏窗口承载模板 HTML（沙箱 WebPreferences，注入 core DOM 执行器）
    │     两遍渲染：测量 pass → 分页（连续纸探针推导高度）→ 最终 HTML
    └─ 打印窗口 printToPDF（纸张微米→英寸、保留背景/零边距）→ 系统命令打印 PDF → 任务记录/日志
 ```
@@ -29,10 +29,10 @@ PrintEngine（串行锁，并发直接 BUSY）
 | 路径 | 说明 |
 | --- | --- |
 | `src/main/` | 主进程：WS 服务、安全、打印/渲染引擎、打印机、配置、日志、任务记录、托盘、装配 |
-| `src/preload/` | 配置窗口 preload（`index.ts`，`wormPrint` 桥）与渲染 worker 专用沙箱 preload（`worker-preload.ts`，`wormRender` 桥） |
+| `src/preload/` | 配置窗口 preload（`index.ts`，`wormPrint` 桥） |
 | `src/renderer/` | 配置窗口 Vue 3 界面（设置 / 任务记录 / 日志） |
-| `src/worker/` | 隐藏渲染 worker 页面，运行 `core/browser` 两遍渲染 |
-| `src/shared/` | main ↔ preload/worker 的 IPC 通道常量与类型契约 |
+| `src/main/driver-electron.ts` | Electron driver：隐藏窗口载入模板 HTML、注入 core 执行器、`printToPDF` |
+| `src/main/print-host.ts` | 打印机枚举专用常驻隐藏窗口 |
 | `scripts/smoke.mjs` | 真机冒烟脚本（hello → 枚举 → 测试页） |
 
 ## 开发

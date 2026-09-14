@@ -1,5 +1,5 @@
 import type { Page } from 'playwright'
-import { toPlaywrightPdfOptions } from '@worm-vue3-print/core'
+import { EXECUTOR_TARGETS, toPlaywrightPdfOptions } from '@worm-vue3-print/core'
 import type {
   DriverFactory,
   ExecutorBundle,
@@ -34,14 +34,15 @@ class PlaywrightDriver implements PageDriver {
 
   async evaluate<T>(method: ExecutorMethod, args: unknown[] = []): Promise<T> {
     return this.page.evaluate(
-      ({ name, payload }) => {
+      ({ name, payload, target }) => {
         const dom = (globalThis as Record<string, any>).__wormDom
         if (!dom) throw new Error('DOM 执行器未注入')
         const fn = dom[name]
         if (typeof fn !== 'function') throw new Error(`执行器缺少方法：${name}`)
-        return name === 'waitReady' ? fn(window, ...payload) : fn(document, ...payload)
+        if (target === 'none') return fn(...payload)
+        return fn(target === 'window' ? window : document, ...payload)
       },
-      { name: method, payload: args },
+      { name: method, payload: args, target: EXECUTOR_TARGETS[method] },
     ) as Promise<T>
   }
 

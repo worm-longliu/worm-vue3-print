@@ -6,7 +6,7 @@
 修改 core 无需发版即可在本服务生效。
 宿主（如管理后台 `web`）的后端 `PrintRenderClient` 调用本服务的 `POST /render/pdf` 与
 `POST /render/screenshot`，传入 `templateJson`（模板 JSON）与 `printData`（打印数据），
-由服务端**纯 Node 侧**完成渲染。
+模板绑定、分页与 HTML 生成在 Node 侧完成；测量、连续纸探针、码制渲染与出图由 `@worm-vue3-print/core` 的 DOM 执行器在页面上下文执行（与浏览器预览、桌面客户端共用同一份管线）。
 
 ## 渲染流程
 
