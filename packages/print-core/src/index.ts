@@ -80,3 +80,6 @@ export type {
   CodeRenderer,
   CodeRenderOptions,
 } from './render/types.js'
+
+// 打印管线（纯 TS，Node 与浏览器都可加载；DOM 相关执行器在 ./browser 与 ./node 子路径）
+export * from './print/index.js'
