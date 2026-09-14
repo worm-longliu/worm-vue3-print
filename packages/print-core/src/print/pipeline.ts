@@ -8,7 +8,7 @@ import { escapeHeightMm, paperViewportPx, resolvePaperMm } from './paper.js'
 import { buildPdfTargetSpec, buildScreenshotTargetSpec } from './pdf-spec.js'
 import { normalizeMeasurements } from './measure.js'
 import { pxToMm } from './units.js'
-import type { CodeRenderer, PageLayout, PrintTemplateData } from '../render/types.js'
+import type { CodeRenderer, PageLayout, TemplateData } from '../render/types.js'
 import type { PrintRuntime, PrintSession } from './ports.js'
 import type { PreparedDocument, PrintJob, RenderPdfResult } from './types.js'
 
@@ -89,7 +89,7 @@ async function prepareWithSession(job: PrintJob, session: PrintSession): Promise
 }
 
 interface BuildHtmlInput {
-  bound: PrintTemplateData
+  bound: TemplateData
   job: PrintJob
   session: PrintSession
   pageLayouts: PageLayout[]

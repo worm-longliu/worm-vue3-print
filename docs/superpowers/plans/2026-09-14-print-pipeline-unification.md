@@ -1427,11 +1427,11 @@ Expected: FAIL，报 `Failed to resolve import "../pipeline.js"`
 
 ```ts
 // packages/print-core/src/print/types.ts（追加）
-import type { PageLayout, PrintTemplateData } from '../render/types.js'
+import type { PageLayout, TemplateData } from '../render/types.js'
 
 export interface PrintJob {
   /** 模板 JSON（设计器 TemplateData 结构兼容） */
-  templateJson: PrintTemplateData
+  templateJson: TemplateData
   printData?: Record<string, any>
   /** 相对路径图片基址 */
   baseUrl?: string

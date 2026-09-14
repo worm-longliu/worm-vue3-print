@@ -1,5 +1,5 @@
 import type { CodeRenderOptions } from '../render/types.js'
-import type { CodeRenderer, PageLayout, PrintTemplateData } from '../render/types.js'
+import type { CodeRenderer, PageLayout, TemplateData } from '../render/types.js'
 
 /** 物理尺寸（毫米）；三端与协议的公共纸尺寸表示 */
 export interface PaperMm {
@@ -56,7 +56,7 @@ export interface CodeSpec {
 
 export interface PrintJob {
   /** 模板 JSON（设计器 TemplateData 结构兼容） */
-  templateJson: PrintTemplateData
+  templateJson: TemplateData
   printData?: Record<string, any>
   /** 相对路径图片基址 */
   baseUrl?: string
