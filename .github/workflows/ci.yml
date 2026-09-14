@@ -37,8 +37,9 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: 构建 core 与 render
         run: npm run build -w @worm-vue3-print/core && npm run build -w @worm-vue3-print/render
-      - name: 条码渲染单元测试（无需浏览器）
-        run: npm run test -w @worm-vue3-print/render -- src/barcode-renderer.test.ts
+      - name: 连续纸与出图规格集成测试
+        run: npm run test -w @worm-vue3-print/render -- src/continuous.integration.test.ts
+        timeout-minutes: 5
       - name: 截图集成测试
         run: npm run test -w @worm-vue3-print/render -- src/screenshot.test.ts
         timeout-minutes: 5

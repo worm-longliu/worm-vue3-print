@@ -157,6 +157,10 @@ export interface RenderRequest {
   printData?: Record<string, any>
   /** 服务端对外访问 base URL，用于把 /docfiles/... 等相对路径图片拼接为完整地址 */
   baseUrl?: string
+  /** 宿主纸张覆盖（mm）：宽/高沿用 print.paperSize 语义，0 或负数视为未提供 */
+  paperOverride?: { width?: number; height?: number }
+  /** 连续纸显式纸高（mm）逃生门 */
+  paperHeightMm?: number
 }
 
 export interface RenderError {
