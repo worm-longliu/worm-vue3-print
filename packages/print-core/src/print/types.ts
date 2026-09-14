@@ -1,3 +1,5 @@
+import type { CodeRenderOptions } from '../render/types.js'
+
 /** 物理尺寸（毫米）；三端与协议的公共纸尺寸表示 */
 export interface PaperMm {
   width: number
@@ -41,4 +43,12 @@ export interface RawMeasurement {
   heightPx: number
   /** 表格行高（px），仅表格元素有值 */
   rowHeightsPx?: number[]
+}
+
+/** 一次码值渲染请求；key 为稳定键，用于跨进程映射 */
+export interface CodeSpec {
+  key: string
+  value: string
+  cellType: 'barcode' | 'qrcode'
+  opts: CodeRenderOptions
 }
