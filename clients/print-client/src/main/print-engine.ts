@@ -1,37 +1,57 @@
-// 打印引擎：串行执行「校验目标打印机 →（渲染 / 直取预渲染 HTML）→ 生成 PDF → 打印 PDF → 记录」。
-// 采用 PDF 中间方案：先用 Electron 生成 PDF（复用 Chromium 渲染引擎，与服务端 Playwright 一致），
-// 再调用系统命令打印 PDF，避免 webContents.print() 直接打印时的水印位置偏移和渲染异常。
+// 打印引擎：串行执行「校验目标打印机 →（core 管线渲染 / 直取预渲染 HTML）→ 生成 PDF → 打印 PDF → 记录」。
+// 渲染与出图规格全部来自 core；本文件只做宿主装配、串行控制、落盘与系统打印。
 import { randomUUID } from 'node:crypto'
 import { dirname } from 'node:path'
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  buildPdfTargetSpec,
+  createDomHostRuntime,
+  micrometersToMillimeters,
+  millimetersToMicrometers,
+  paperViewportPx,
+  renderPdf,
+} from '@worm-vue3-print/core'
+import { loadExecutorBundle } from '@worm-vue3-print/core/node'
+import type { PrintJob, PrintRuntime, PrintTemplateData } from '@worm-vue3-print/core'
 import type { PrintOptions } from '@worm-vue3-print/client'
 import type { Logger } from './logger.js'
 import type { JobHistoryStore, JobRecord } from './job-history.js'
 import type { PrinterService } from './printer-service.js'
-import { buildWebPrintSettings } from './render-engine.js'
-import type { RenderEngine } from './render-engine.js'
-import type { RendererPool } from './renderer-pool.js'
 import { SerialGate } from './serial-gate.js'
 import { ProtocolFailure } from './protocol-error.js'
+import { buildPrintJobSettings } from './print-settings.js'
+import { createElectronDriverFactory } from './driver-electron.js'
 import {
   parsePrintSubmit,
   parsePrintSubmitHtml,
   readTemplateName,
+  type HtmlPrintJob,
   type HtmlPrintOptions,
+  type PrintSubmitSpec,
 } from './request-validation.js'
 import { printPdfFile } from './pdf-printer.js'
-import { renderPdf } from './pdf-generator.js'
 import { resolvePdfPath, shouldKeepPdf, type PdfOutputPolicy } from './pdf-output.js'
 
-const FONTS_READY_TIMEOUT_MS = 5000
-// PDF 生成超时：正常模板在 1s 内完成，超过即视为异常并释放串行锁
+/** PDF 生成预算：正常模板在 2s 内完成，超过即视为异常并释放串行锁 */
 const PDF_GENERATION_TIMEOUT_MS = 30_000
 
-interface PreparedJob {
-  html: string
-  paper: { width: number; height: number }
+interface ProducedPdf {
+  pdf: Uint8Array
+  paperMm: { width: number; height: number }
   heightSource: 'config' | 'derived'
   pageCount?: number
+}
+
+/** core 运行时：Electron driver + core 的 DOM 执行器产物 */
+export function createPrintRuntime(): PrintRuntime {
+  return createDomHostRuntime(createElectronDriverFactory(), loadExecutorBundle())
+}
+
+/** 协议里的 print.paperSize 单位是微米；core 的覆盖逃生门用毫米 */
+function toPaperOverride(paperSize?: { width?: number; height?: number }): PrintJob['paperOverride'] {
+  const width = paperSize?.width && paperSize.width > 0 ? micrometersToMillimeters(paperSize.width) : undefined
+  const height = paperSize?.height && paperSize.height > 0 ? micrometersToMillimeters(paperSize.height) : undefined
+  return width || height ? { width, height } : undefined
 }
 
 export class PrintEngine {
@@ -53,8 +73,7 @@ export class PrintEngine {
   constructor(
     private readonly deps: {
       printerService: PrinterService
-      renderEngine: RenderEngine
-      pool: RendererPool
+      runtime: PrintRuntime
       history: JobHistoryStore
       logger: Pick<Logger, 'info' | 'warn' | 'error' | 'debug'>
       /** 生成 PDF 的落盘策略（每次任务读取，支持运行期改配置）；缺省不保留 */
@@ -66,23 +85,14 @@ export class PrintEngine {
     return this.gate.isBusy
   }
 
-  /** 处理 print.submit 原始 payload（客户端内渲染）；成功在出纸回调后才 resolve */
+  /** 处理 print.submit 原始 payload（客户端内渲染）；成功在出纸后 resolve */
   submit(raw: unknown): Promise<{ jobId: string }> {
     return this.gate.run(() => {
       const { spec, print, templateName } = parsePrintSubmit(raw)
-      const name = readTemplateName(spec.templateJson, templateName)
       return this.runJob({
-        name,
+        name: readTemplateName(spec.templateJson, templateName),
         print,
-        prepare: async () => {
-          const prepared = await this.deps.renderEngine.prepare(spec, print)
-          return {
-            html: prepared.html,
-            paper: prepared.paper,
-            heightSource: prepared.heightSource,
-            pageCount: prepared.pageCount,
-          }
-        },
+        produce: () => this.produceFromTemplate(spec, print as PrintOptions),
       })
     })
   }
@@ -91,75 +101,88 @@ export class PrintEngine {
   submitHtml(raw: unknown): Promise<{ jobId: string }> {
     return this.gate.run(() => {
       const job = parsePrintSubmitHtml(raw)
-      const MM_TO_UM = 1000
-      const prepared: PreparedJob = {
-        html: job.html,
-        paper: {
-          width: Math.round(job.paperMm.width * MM_TO_UM),
-          height: Math.round(job.paperMm.height * MM_TO_UM),
-        },
-        // 连续纸高度来自浏览器探针推导，其余为模板纸张，均不可在协议层覆盖
-        heightSource: job.continuous ? 'derived' : 'config',
-        pageCount: job.pageCount,
-      }
       return this.runJob({
         name: job.templateName || '未命名模板',
         print: job.print,
-        prepare: async () => prepared,
+        produce: () => this.produceFromHtml(job),
       })
     })
+  }
+
+  /** 模板渲染 + 出图：一个 driver 会话内完成测量、分页、连续纸探针与 PDF */
+  private async produceFromTemplate(spec: PrintSubmitSpec, print: PrintOptions): Promise<ProducedPdf> {
+    const job: PrintJob = {
+      templateJson: spec.templateJson as unknown as PrintTemplateData,
+      printData: spec.printData,
+      baseUrl: spec.baseUrl,
+      paperHeightMm: spec.paperHeightMm,
+      paperOverride: toPaperOverride(print.paperSize),
+      timeoutMs: PDF_GENERATION_TIMEOUT_MS,
+    }
+    const { pdf, prepared } = await renderPdf(job, this.deps.runtime)
+    return {
+      pdf,
+      paperMm: prepared.paperMm,
+      heightSource: prepared.heightSource,
+      pageCount: prepared.pageCount,
+    }
+  }
+
+  /** 预渲染 HTML 直提交：不跑管线，只复用 core 的出图规格与超时封装 */
+  private async produceFromHtml(job: HtmlPrintJob): Promise<ProducedPdf> {
+    const spec = buildPdfTargetSpec(job.paperMm)
+    const pdf = await this.deps.runtime.withSession(
+      { timeoutMs: PDF_GENERATION_TIMEOUT_MS },
+      session => session.toPdf(job.html, spec, paperViewportPx(job.paperMm)),
+    )
+    return {
+      pdf,
+      paperMm: job.paperMm,
+      heightSource: job.continuous ? 'derived' : 'config',
+      pageCount: job.pageCount,
+    }
   }
 
   private async runJob(input: {
     name: string
     print: PrintOptions | HtmlPrintOptions
-    prepare: () => Promise<PreparedJob>
+    produce: () => Promise<ProducedPdf>
   }): Promise<{ jobId: string }> {
-    const { printerService, pool, history, logger } = this.deps
+    const { printerService, history, logger } = this.deps
     const jobId = randomUUID()
-    let pdfPath = ''
     const policy: PdfOutputPolicy = this.deps.pdfOutput?.() ?? { keep: false, dir: '' }
     const keepPdf = shouldKeepPdf(policy)
+    let pdfPath = ''
+    let paperMicrometers = { width: 0, height: 0 }
 
-    const target = await printerService.resolve(
-      (input.print as PrintOptions).printerName,
-    )
+    const target = await printerService.resolve((input.print as PrintOptions).printerName)
     const printOptions: PrintOptions = { ...input.print, printerName: target.name }
-    const prepared = await input.prepare()
-    const settings = buildWebPrintSettings(printOptions, prepared.paper)
+    const settings = buildPrintJobSettings(printOptions)
 
-    logger.info('开始打印', {
-      jobId,
-      template: input.name,
-      printer: target.name,
-      paper: prepared.paper,
-      heightSource: prepared.heightSource,
-      pages: prepared.pageCount,
-    })
-
-    const win = await pool.loadPrintHtml(prepared.html)
     try {
-      // 等待字体和图片就绪
-      await this.waitReady(win.webContents)
+      logger.info('开始打印', { jobId, template: input.name, printer: target.name })
+      const produced = await input.produce()
+      paperMicrometers = {
+        width: millimetersToMicrometers(produced.paperMm.width),
+        height: millimetersToMicrometers(produced.paperMm.height),
+      }
+      pdfPath = this.savePdf(jobId, Buffer.from(produced.pdf), policy)
+      logger.info('PDF 生成完成', {
+        jobId,
+        pdfPath,
+        size: produced.pdf.length,
+        keep: keepPdf,
+        paper: produced.paperMm,
+        heightSource: produced.heightSource,
+        pages: produced.pageCount,
+      })
 
-      // 生成 PDF（Electron printToPDF，复用 Chromium 渲染引擎，与服务端 Playwright 一致）
-      const pdfBuffer = await renderPdf(win.webContents, prepared.paper, PDF_GENERATION_TIMEOUT_MS)
-      pdfPath = this.savePdf(jobId, pdfBuffer, policy)
-      logger.info('PDF 生成完成', { jobId, pdfPath, size: pdfBuffer.length, keep: keepPdf })
-
-      // 关闭渲染窗口（PDF 已生成，不再需要窗口）
-      if (!win.isDestroyed()) win.close()
-
-      // 调用系统命令打印 PDF
-      // paper 用于向 CUPS 声明纸张：不声明时驱动按默认纸张处理会把横向页旋转成纵向
+      // 出纸：显式声明纸张，避免驱动按队列默认纸张把横向页旋转成纵向
       await printPdfFile(pdfPath, {
         printerName: target.name,
         copies: settings.copies,
-        paperName: typeof settings.pageSize === 'string' ? settings.pageSize : undefined,
-        paper: {
-          width: prepared.paper.width / 1000,
-          height: prepared.paper.height / 1000,
-        },
+        paperName: settings.paperName,
+        paper: produced.paperMm,
         logger,
       })
 
@@ -169,8 +192,8 @@ export class PrintEngine {
         templateName: input.name,
         printerName: target.name,
         copies: settings.copies,
-        paperMicrometers: prepared.paper,
-        paperHeightSource: prepared.heightSource,
+        paperMicrometers,
+        paperHeightSource: produced.heightSource,
         outcome: 'success',
         ...(keepPdf ? { pdfPath } : {}),
       }
@@ -186,9 +209,9 @@ export class PrintEngine {
         ts: new Date().toISOString(),
         templateName: input.name,
         printerName: target?.name ?? printOptions.printerName ?? '',
-        copies: printOptions.copies ?? 1,
-        paperMicrometers: prepared?.paper ?? { width: 0, height: 0 },
-        paperHeightSource: prepared?.heightSource ?? 'config',
+        copies: settings.copies,
+        paperMicrometers,
+        paperHeightSource: 'config',
         outcome: 'failed',
         errorCode: code,
         errorMessage: message,
@@ -198,8 +221,6 @@ export class PrintEngine {
       this.emitSettled(record)
       throw err instanceof ProtocolFailure ? err : new ProtocolFailure('PRINT_FAILED', message)
     } finally {
-      if (!win.isDestroyed()) win.close()
-      // 清理临时 PDF：仅在不保留时删除
       if (pdfPath && !keepPdf) {
         try {
           rmSync(pdfPath, { force: true })
@@ -217,17 +238,5 @@ export class PrintEngine {
     mkdirSync(dirname(pdfPath), { recursive: true })
     writeFileSync(pdfPath, pdfBuffer)
     return pdfPath
-  }
-
-  /** 等待字体与图片就绪（带兜底超时，不阻塞打印） */
-  private waitReady(wc: Electron.WebContents): Promise<void> {
-    return Promise.race([
-      wc.executeJavaScript(
-        `Promise.all([document.fonts ? document.fonts.ready : true,`
-          + ` Promise.all(Array.from(document.images).filter(i => !i.complete)`
-          + `   .map(i => new Promise(r => { i.addEventListener('load', r, { once: true }); i.addEventListener('error', r, { once: true }); })))])`,
-      ),
-      new Promise<void>(r => setTimeout(r, FONTS_READY_TIMEOUT_MS)),
-    ])
   }
 }

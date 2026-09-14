@@ -29,16 +29,16 @@ function createEngine(policy: { keep: boolean; dir: string }) {
     printerService: {
       resolve: async (name?: string) => ({ name: name ?? '测试打印机', isDefault: true }),
     } as any,
-    renderEngine: {} as any,
-    pool: {
-      loadPrintHtml: async () => ({
-        webContents: {
-          printToPDF: async () => Buffer.from('%PDF-1.4 fake'),
-          executeJavaScript: async () => true,
-        },
-        isDestroyed: () => false,
-        close: () => {},
-      }),
+    // core 运行时桩：只验证打印引擎的落盘/记录/出纸编排，渲染细节由 core 单测覆盖
+    runtime: {
+      withSession: async (_budget: unknown, fn: (session: unknown) => Promise<unknown>) =>
+        fn({
+          toPdf: async () => new Uint8Array(Buffer.from('%PDF-1.4 fake')),
+          renderCodes: async () => new Map(),
+          measure: async () => [],
+          probeContentBottom: async () => 0,
+          toScreenshot: async () => new Uint8Array(),
+        }),
     } as any,
     history,
     logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },

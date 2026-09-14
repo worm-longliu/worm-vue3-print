@@ -1,7 +1,15 @@
 // print.submit / print.submitHtml payload 校验：边界在进入打印引擎前收敛，错误一律 INVALID_REQUEST。
 import type { PrintOptions } from '@worm-vue3-print/client'
 import { ProtocolFailure } from './protocol-error.js'
-import type { RenderJobSpec } from '../shared/render-protocol.js'
+
+/** print.submit 校验后的模板渲染任务（原 shared/render-protocol.ts 的 RenderJobSpec） */
+export interface PrintSubmitSpec {
+  templateJson: Record<string, unknown>
+  printData?: Record<string, unknown>
+  baseUrl?: string
+  /** 连续纸显式纸高逃生门（mm） */
+  paperHeightMm?: number
+}
 
 /** print.submitHtml 允许携带的打印参数子集（纸张/方向/边距已固化在预渲染 HTML 中） */
 export type HtmlPrintOptions = Pick<
@@ -108,7 +116,7 @@ function parsePrintOptions(raw: unknown, { allowPaperOverrides }: {
 }
 
 export function parsePrintSubmit(raw: unknown): {
-  spec: RenderJobSpec
+  spec: PrintSubmitSpec
   print: PrintOptions
   templateName: string
 } {
@@ -119,7 +127,7 @@ export function parsePrintSubmit(raw: unknown): {
   if (!isRecord(printRaw)) invalid('print 必须是对象')
   const print = parsePrintOptions(printRaw, { allowPaperOverrides: true })
 
-  const spec: RenderJobSpec = { templateJson: raw.templateJson }
+  const spec: PrintSubmitSpec = { templateJson: raw.templateJson }
   if (raw.printData !== undefined) {
     if (!isRecord(raw.printData) && !Array.isArray(raw.printData)) {
       invalid('printData 必须是对象或数组')

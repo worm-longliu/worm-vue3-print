@@ -18,7 +18,6 @@ export default defineConfig({
         },
         input: {
           index: resolve(__dirname, 'src/preload/index.ts'),
-          'worker-preload': resolve(__dirname, 'src/preload/worker-preload.ts'),
         },
       },
     },
@@ -28,11 +27,8 @@ export default defineConfig({
     root: 'src',
     build: {
       rollupOptions: {
-        // worker 主世界需把 core 等 workspace 依赖打包进产物（preload 才允许外置 electron）
-        external: id => id === 'electron' || /node_modules\/electron\//.test(id),
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),
-          worker: resolve(__dirname, 'src/worker/index.html'),
         },
       },
     },

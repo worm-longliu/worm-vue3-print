@@ -5,10 +5,9 @@ import { APP_ID } from '@worm-vue3-print/client'
 import { ConfigStore, generatePairingToken } from './config.js'
 import { Logger } from './logger.js'
 import { JobHistoryStore } from './job-history.js'
-import { RendererPool } from './renderer-pool.js'
-import { RenderEngine } from './render-engine.js'
+import { getPrintHostWindow, destroyPrintHostWindow } from './print-host.js'
 import { PrinterService } from './printer-service.js'
-import { PrintEngine } from './print-engine.js'
+import { PrintEngine, createPrintRuntime } from './print-engine.js'
 import { buildPdfOutputPolicy, type PdfOutputPolicy } from './pdf-output.js'
 import { WsServer } from './ws-server.js'
 import { checkAccess } from './security.js'
@@ -46,18 +45,15 @@ if (!gotLock) {
       })
 
       const history = new JobHistoryStore(join(userData, 'jobs.jsonl'), 500)
-      const pool = new RendererPool(logger)
-      await pool.init()
-      const printerService = new PrinterService(() => pool.getPrintersAsync())
-      const renderEngine = new RenderEngine(pool)
+      // 打印机枚举走常驻隐藏窗口（托盘应用可能没有其它窗口存活）
+      const printerService = new PrinterService(() => getPrintHostWindow().webContents.getPrintersAsync())
       // 保留生成的 PDF（排查颜色/方向等问题用）：目录留空则落在 userData/pdf
       const resolvePdfPolicy = (): PdfOutputPolicy =>
         buildPdfOutputPolicy(configStore.current, userData)
       const resolvePdfDir = (): string => resolvePdfPolicy().dir
       const printEngine = new PrintEngine({
         printerService,
-        renderEngine,
-        pool,
+        runtime: createPrintRuntime(),
         history,
         logger,
         pdfOutput: resolvePdfPolicy,
@@ -120,7 +116,7 @@ if (!gotLock) {
         quitting = true
         void (async () => {
           await server.stop().catch(() => {})
-          await pool.dispose().catch(() => {})
+          destroyPrintHostWindow()
           app.exit(0)
         })()
       })
