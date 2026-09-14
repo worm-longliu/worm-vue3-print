@@ -331,8 +331,8 @@ describe('resolvePaperMm', () => {
 })
 
 describe('paperViewportPx', () => {
-  it('按同一常量换算，A4 纵向为 794×1122', () => {
-    expect(paperViewportPx({ width: 210, height: 297 })).toEqual({ width: 794, height: 1122 })
+  it('按同一常量换算，A4 纵向为 794×1123（297 × 3.7795275591 = 1122.52 四舍五入）', () => {
+    expect(paperViewportPx({ width: 210, height: 297 })).toEqual({ width: 794, height: 1123 })
   })
 })
 
