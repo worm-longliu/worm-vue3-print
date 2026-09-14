@@ -91,6 +91,8 @@
 
 ```ts
 export interface PageDriver {
+  /** 是否需要注入 core 执行器产物；浏览器 iframe driver 进程内直调，置 false */
+  requiresExecutor?: boolean
   open(viewport: ViewportPx): Promise<void>
   setContent(html: string): Promise<void>
   injectExecutor(bundle: ExecutorBundle): Promise<void>   // 幂等

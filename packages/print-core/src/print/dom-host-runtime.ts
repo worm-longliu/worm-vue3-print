@@ -31,6 +31,10 @@ export function createDomHostRuntime(factory: DriverFactory, bundle?: ExecutorBu
       let injected = false
       const ensureExecutor = async (): Promise<void> => {
         if (injected) return
+        if (driver.requiresExecutor === false) {
+          injected = true
+          return
+        }
         if (!bundle) throw new PrintFailure('INTERNAL', '缺少 core DOM 执行器产物')
         await driver.injectExecutor(bundle)
         injected = true

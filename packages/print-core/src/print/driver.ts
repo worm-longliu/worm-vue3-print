@@ -14,6 +14,11 @@ export interface ExecutorBundle {
  * 工厂返回时该槽位必须已存在一个空白文档（open 只负责调整视口）。
  */
 export interface PageDriver {
+  /**
+   * 是否需要注入 core 的 DOM 执行器产物；缺省 true。
+   * 浏览器 iframe driver 在进程内直调执行器，置 false 即可不传 bundle。
+   */
+  requiresExecutor?: boolean
   open(viewport: ViewportPx): Promise<void>
   setContent(html: string): Promise<void>
   /** 同一文档内幂等；文档重建后必须重新注入 */

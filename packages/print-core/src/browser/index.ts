@@ -5,3 +5,13 @@
 export { renderHtmlPages } from './browser-pagination.js'
 export type { BrowserRenderResult, BrowserRenderOptions } from './browser-pagination.js'
 export { browserCodeRenderer } from './browser-code-renderer.js'
+export { createBrowserPrintRuntime } from './browser-runtime.js'
+export { createIframeDriverFactory } from './driver-iframe.js'
+export {
+  domExecutor,
+  EXECUTOR_VERSION,
+  waitReady,
+  readMeasurements,
+  readContentBottom,
+  renderCodes,
+} from './dom-executor.js'
