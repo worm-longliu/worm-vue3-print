@@ -423,7 +423,7 @@ export function paperViewportPx(paper: PaperMm): ViewportPx {
 - [ ] **Step 4: 运行测试确认通过并提交**
 
 Run: `npm run test -w @worm-vue3-print/core -- src/print/__tests__/paper.spec.ts`
-Expected: PASS（11 个用例）
+Expected: PASS（10 个用例：resolvePaperMm 7 + paperViewportPx 1 + escapeHeightMm 2）
 
 ```bash
 git add packages/print-core/src/print/types.ts packages/print-core/src/print/paper.ts packages/print-core/src/print/__tests__/paper.spec.ts
