@@ -12,3 +12,25 @@ export interface ViewportPx {
 
 /** 纸高来源：config = 模板/宿主给定，derived = 连续纸探针推导 */
 export type HeightSource = 'config' | 'derived'
+
+export interface MarginsMm {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
+/** 出图目标规格：与宿主无关，宿主负责翻译成自己的选项 */
+export interface PdfTargetSpec {
+  paperMm: PaperMm
+  marginsMm: MarginsMm
+  printBackground: boolean
+  scale: number
+  preferCSSPageSize: boolean
+}
+
+export interface ScreenshotTargetSpec {
+  type: 'png'
+  fullPage: boolean
+  omitBackground: boolean
+}
