@@ -43,6 +43,7 @@
 - 浏览器预览与客户端的条码、水印视觉保持不变（这正是统一到 `jsbarcode`/`qrcode` 的意义所在）；
 - core 根入口在 Node 下可直接 `import`，不在模块加载期触碰 DOM；
 - core 保持框架无关，不引入 Vue/React 依赖。
+- core 生成的打印 HTML 保持 mm 绝对定位，`html-generator`/`css-builder` 不得引入 `vw`/`vh` 等视口单位（客户端测量不设视口的前提）。
 
 ## 4. 关键决策
 
@@ -53,7 +54,7 @@
 | 桌面客户端是否内嵌 Playwright | 不内嵌 | 需自带 Chromium（每平台约 +170MB）并处理 asar 解包、签名公证、Linux 系统依赖；Playwright 不提供静默打印；其 `setContent`/`evaluate`/`pdf` 能力与 Electron 原生（`loadFile`/`executeJavaScript`/`webContents.printToPDF`）完全重合。Playwright 仅作为跨端一致性测试的参照实现 |
 | 适配器分层 | driver 契约 + 共享 DOM 宿主 runtime + 三端 driver | 让「载入→注入→等就绪→执行→释放」的时序、超时、错误分类、码值预渲染只写一次，三端差异压缩为几十行机械代码 |
 | 截图 | 纳入 core 管线 | 与 PDF 仅差最后一步输出，共用测量、分页、码制与规格推导 |
-| 客户端 DOM 宿主 | 主进程隐藏窗口（常驻复用）内建**显式 mm 尺寸 iframe** 作为文档槽位，模板 HTML 经 `doc.write` 注入；删除 worker 渲染进程与 IPC 桥 | 隐藏窗口尺寸不可用作视口：A4 高 1123px 超过常见 1080 屏高，`setContentSize` 在部分平台会被钳制，测量结果随之失真；iframe 的 CSS 尺寸不受窗口钳制，且是仓库已实测的做法（`browser-pagination.ts`）。窗口 `webPreferences` 与现有打印窗口一致（`sandbox: true`、`contextIsolation: true`、`nodeIntegration: false`），安全面不高于现状 |
+| 客户端 DOM 宿主 | 主进程常驻隐藏窗口，**模板 HTML 作为该窗口的顶层文档**（临时文件 `loadFile`），执行器用 `webContents.executeJavaScript` 注入；删除 worker 渲染进程与 IPC 桥 | 客户端 driver 与服务端 driver 形状一致（载入文档 → 注入 → evaluate → 出图），不需要宿主页与 iframe。窗口尺寸不参与测量：core 生成的 CSS 是 mm 绝对定位（`css-builder.ts`），盒宽由 mm 决定，测量与视口无关；该约束写入不变量并由守卫测试保护。窗口 `webPreferences` 与现有打印窗口一致（`sandbox: true`、`contextIsolation: true`、`nodeIntegration: false`），安全面不高于现状（该窗口形状已长期承载模板 HTML） |
 | 会话粒度 | 每任务一个 driver 会话（服务端每请求借一页） | `BrowserPool.acquire()` 每次新建页、`release()` 关闭页（`browser-pool.ts:146-176`），按阶段各借一次会让单请求建页 3–5 次并反复注入执行器；`acquire()` 注释本身即声明「请求级绑定」 |
 | 码值处理 | 「收集→渲染→再生成」两趟，禁止静态扫描模板 | 静态枚举会与渲染器取值漂移：表格动态行展开、`{pageIndex}`/`{totalPages}`（测量趟用占位 0）、`{printDate}` 等系统变量都会让枚举集与实际取值不一致 |
 | 外部 `CodeRenderer` | 保留 `renderHtmlPages` 第 4 参数的覆盖语义 | 画布预览与 demo 均显式传入 `browserCodeRenderer`（`PrintHtmlPreview.vue:59`、`demo/src/browser-render.ts:18`），改为内部自建会让调用方运行时产物与预期不符，且类型不报错 |
@@ -119,7 +120,7 @@ export type ExecutorMethod = 'waitReady' | 'readMeasurements' | 'readContentBott
 | 端 | `open`/`setContent` | `injectExecutor` | `pdf`/`screenshot` |
 | --- | --- | --- | --- |
 | 服务端 `driver-playwright.ts` | 会话开始借页、结束还页（每请求一页）+ `setViewportSize(viewport)` + `setContent`（`waitUntil: 'domcontentloaded'`） | `addScriptTag(dom-executor.iife)`，同一文档幂等 | `page.pdf`/`page.screenshot`，规格来自 core |
-| 客户端 `driver-electron.ts` | 常驻隐藏窗口 + 宿主页内显式 mm→px 尺寸 iframe，模板 HTML 经 `doc.write` 载入 | 在 iframe 上下文注入同一份执行器产物 | 主进程临时文件 `loadFile` + `printToPDF`；截图不提供 |
+| 客户端 `driver-electron.ts` | 常驻隐藏窗口；模板 HTML 写入临时文件后 `loadFile` 为顶层文档；`open(viewport)` 在 Electron 下为 no-op（测量不依赖视口） | `webContents.executeJavaScript(bundle.source)`，同一文档内幂等 | 同一窗口 `printToPDF`（文档已载入且已就绪）；截图不提供 |
 | 浏览器 `driver-iframe.ts` | 离屏 iframe + `doc.write` | 进程内直调执行器（ESM 形态） | 不提供 |
 
 客户端改用主进程隐藏窗口后，现有 worker 渲染进程、`worker-preload` 桥、`render-protocol` 契约与 electron-vite 的 worker 入口一并删除；打印机枚举改由既有隐藏/配置窗口的 `webContents.getPrintersAsync()` 承担，`getPrintersAsync` 对任意 `webContents` 可用。
@@ -179,7 +180,7 @@ export type ExecutorMethod = 'waitReady' | 'readMeasurements' | 'readContentBott
 2. core/browser 收敛：`dom-executor.ts`、`driver-iframe.ts`、`browser-runtime.ts`，`browser-pagination.ts` 改薄包装，`browser-code-renderer.ts` 改参数化；
 3. core 增加 IIFE 构建产物与导出；
 4. 服务端切换：新增 `driver-playwright.ts`；`pdf-render.ts` **保留 `renderPdf` / `renderScreenshot` 同名同签名导出**（`server.ts` 与既有集成测试直接 import，签名一变全断），内部改调 core 管线；删除 `barcode-renderer.ts` 与 `bwip-js` 依赖并更新 lock；Express、浏览器池、鉴权保持不动，外层请求超时与 core 预算同源；同步修改 `.github/workflows/ci.yml` 的 render job（删除 `src/barcode-renderer.test.ts` 步骤，改为 core 码制用例 + 新增连续纸与 PDF 规格用例）；
-5. 客户端切换：新增 `driver-electron.ts`（常驻隐藏窗口 + 显式 mm 尺寸 iframe），main 侧调 core 管线；删除 `paper.ts`、`pdf-generator.ts` 的参数构造、`render-engine.ts` 的编排，以及 worker 渲染进程、`worker-preload`、`render-protocol`、`src/worker/*` 与对应构建入口；`print.submitHtml` 链路保留但改为复用 core 的出图规格推导与超时封装，`buildWebPrintSettings` 中剩余的份数/纸型取值保留；WebSocket 协议、串行锁、任务历史、出纸命令、托盘、`request-validation` 不动；打包冒烟需验证 `require('@worm-vue3-print/core')` 在 asar 内可解析（main 构建为 `externalizeDepsPlugin()`，core 由 electron-builder 从 dist 收集）；
+5. 客户端切换：新增 `driver-electron.ts`（常驻隐藏窗口 + 模板 HTML 作为顶层文档），main 侧调 core 管线；删除 `paper.ts`、`pdf-generator.ts` 的参数构造、`render-engine.ts` 的编排，以及 worker 渲染进程、`worker-preload`、`render-protocol`、`src/worker/*` 与对应构建入口；`print.submitHtml` 链路保留但改为复用 core 的出图规格推导与超时封装，`buildWebPrintSettings` 中剩余的份数/纸型取值保留；WebSocket 协议、串行锁、任务历史、出纸命令、托盘、`request-validation` 不动；打包冒烟需验证 `require('@worm-vue3-print/core')` 在 asar 内可解析（main 构建为 `externalizeDepsPlugin()`，core 由 electron-builder 从 dist 收集）；
 6. 文档口径同步（逐处）：`services/print-render/README.md:9`「由服务端纯 Node 侧完成渲染」需改写；根 `README.md:7,48,70,249` 与 `packages/print-core/README.md:25` 的「一致」表述加限定（档位一：算法同源，字体与内核仍需同源才达像素级一致）；`clients/print-client/README.md:16-17,32-35,97` 的 worker/IPC 架构描述与目录表；`skills/worm-vue3-print-integration/references/` 下 `silent-print.md:7,17`、`troubleshooting.md:88`、`integration-api.md:173`；`docs/中文/指南/静默打印.md:173`；中英文 CHANGELOG 记录两处行为变更；
 7. 发布：core 走 minor（只新增导出），canvas 跟版；服务端与客户端不发 npm。
 
@@ -220,7 +221,7 @@ export type ExecutorMethod = 'waitReady' | 'readMeasurements' | 'readContentBott
 | 客户端删除 worker 引起的安全面变化 | 隐藏窗口沿用现有打印窗口的 `webPreferences`；删除后由安全测试与冒烟脚本复核；回退点为该端的切换提交 |
 | 条码几何仍受字体影响（档位一下的残留差异） | `jsbarcode` 的 SVG 宽度为 `ceil(max(textWidth, barcodeWidth))`（`node_modules/jsbarcode/bin/renderers/shared.js:45`），文字宽度取决于字体，故三端字体不同时条码固有宽度与 `object-fit: contain` 下的视觉尺寸仍会不同；此项列入「已知残留差异」，只有档位二（字体同源）能消除 |
 | 码值两趟带来的额外开销 | 无码模板走快路径（不多生成 HTML）；含码模板最坏多两次字符串生成与一次页面往返，在集成测试中记录耗时 |
-| 隐藏窗口尺寸钳制 | 已通过「显式 mm 尺寸 iframe」规避，客户端 driver 不得改用窗口尺寸充当视口 |
+| 客户端测量对视口的隐式依赖 | core 生成的 HTML 必须保持 mm 绝对定位，`html-generator`/`css-builder` 禁止引入 `vw`/`vh` 等视口单位；由守卫测试保护 |
 
 ## 12. 附录：本次勘察的实测证据
 
