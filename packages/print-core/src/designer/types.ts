@@ -50,6 +50,8 @@ export interface TemplateData {
   watermark?: WatermarkOptions
   /** 手动参考线（设计态辅助，序列化保留，渲染端忽略） */
   guides?: AlignLine[]
+  /** 设计背景（定位底图）：仅设计画布显示，用于套打对位；预览与打印管线一律忽略 */
+  designBackground?: DesignBackground
 }
 
 /** 模板元素引用（用于 TemplateData 各区域） */
@@ -72,6 +74,14 @@ export type VerticalAlign = 'top' | 'middle' | 'bottom'
 
 /** 缩放手柄方向 */
 export type ResizePoint = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
+
+/** 设计背景（定位底图）：仅设计画布显示，预览/PDF/打印/截图均不输出 */
+export interface DesignBackground {
+  /** 宿主上传接口返回的完整图片路径，可直接用于 <img src> */
+  src: string
+  /** 旋转角度，仅允许 90° 步进；非法值读取时按 0 处理 */
+  rotation: 0 | 90 | 180 | 270
+}
 
 /** 引导线 */
 export interface AlignLine {
@@ -333,3 +343,10 @@ export type RequestScreenshotFn = (req: ScreenshotRequest) => Promise<Blob>
 
 /** 图片上传适配器：宿主上传文件并返回可访问的图片 URL */
 export type UploadImageFn = (file: File) => Promise<string>
+
+/**
+ * 设计背景图上传适配器（由宿主实现注入）。
+ * 入参为用户选择的图片文件；返回值必须是可直接 <img src> 访问的完整图片路径。
+ * 与 UploadImageFn 语义独立：不配合 baseUrl，不要求相对路径。
+ */
+export type UploadDesignBackgroundFn = (file: File) => Promise<string>

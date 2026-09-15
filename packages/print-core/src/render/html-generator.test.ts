@@ -454,6 +454,21 @@ describe('页面背景色渲染', () => {
   })
 })
 
+// ─── 设计背景隔离：仅设计画布可见，渲染 HTML 必须完全不感知 ───
+
+describe('设计背景不进入渲染管线', () => {
+  it('模板带 designBackground 时，生成的 HTML/CSS 不包含其图片路径与节点', () => {
+    const t = makeTemplate({}) as unknown as TemplateData & {
+      designBackground?: { src: string; rotation: number }
+    }
+    t.designBackground = { src: 'https://host.example.com/scan-form.png', rotation: 90 }
+    const html = generateHtml(t, singlePage)
+    expect(html).not.toContain('scan-form.png')
+    expect(html).not.toContain('designBackground')
+    expect(html).not.toContain('design-background')
+  })
+})
+
 // ─── 文本元素字符间距渲染（设计稿可见、打印稿必须同样可见）───
 
 describe('文本元素 letterSpacing 渲染', () => {
