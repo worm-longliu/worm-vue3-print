@@ -147,13 +147,13 @@ import type { TemplateData, RuntimeElement, PrintBusinessField } from '@worm-vue
 import { PrintDesigner, PrintHtmlPreview, renderHtmlPages, browserCodeRenderer } from '@worm-vue3-print/canvas'
 import type {
   TemplateData, RuntimeElement, PrintBusinessField,
-  ScreenshotRequest, RequestScreenshotFn, UploadImageFn,
+  ScreenshotRequest, RequestScreenshotFn, UploadImageFn, UploadDesignBackgroundFn,
 } from '@worm-vue3-print/canvas'
 import '@worm-vue3-print/canvas/native-controls.css'
 ```
 
 另导出：`createDefaultTemplate()`、`toRuntimePool()`、`getDemoData()`、`DEFAULT_DEMO_DATA`、
-`DesignerStateOptions` 类型、注入键 `UPLOAD_IMAGE_KEY`。（`renderHtmlPages`/`browserCodeRenderer`
+`DesignerStateOptions` 类型、注入键 `UPLOAD_IMAGE_KEY`、`UPLOAD_DESIGN_BACKGROUND_KEY`。（`renderHtmlPages`/`browserCodeRenderer`
 为 core/browser 的转出。）
 
 ### `<PrintDesigner>`
@@ -168,6 +168,7 @@ Props：
 | `isEdit` | `boolean` | 编辑态 |
 | `requestScreenshot` | `RequestScreenshotFn` | 叠层对比截图适配器 |
 | `uploadImage` | `UploadImageFn` | 图片上传适配器 |
+| `uploadDesignBackground` | `UploadDesignBackgroundFn` | 设计背景上传适配器，返回完整图片路径；背景仅设计画布显示，预览/打印不输出 |
 | `showHelp` | `boolean` | 帮助入口开关，默认 true |
 
 事件：`@save(json: string)`（序列化为字符串）、`@preview()`。

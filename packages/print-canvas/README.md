@@ -89,6 +89,7 @@ function onLoadDefaultLayout() {
   `initial-template` 即可重载画布并记录一次历史（撤销可回退）；设计器工具栏不内置该入口。
 - `requestScreenshot({ templateJson, printData }) => Promise<Blob>`：叠层对比截图。
 - `uploadImage(file) => Promise<string>`：图片元素上传，返回可访问 URL。
+- `uploadDesignBackground(file) => Promise<string>`：设计背景（定位底图）上传，返回完整图片路径；背景仅设计画布显示，不进入预览与打印。
 - `@preview` / `@save`：预览与保存事件，具体业务（字段查询、持久化、截图适配）由宿主实现。
 
 > 模板名称、业务类型、备注等元信息不属于设计器核心：模板 JSON 不含元信息，宿主在自己的
