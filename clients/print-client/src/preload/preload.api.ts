@@ -12,7 +12,10 @@ declare global {
       listPrinters: () => Promise<PrinterInfo[]>
       testPrint: (printerName?: string) => Promise<void>
       listHistory: () => Promise<JobRecord[]>
-      openPdfDir: () => Promise<string>
+      openPdfDir: (dir?: string) => Promise<string>
+      pickPdfDir: () => Promise<string>
+      /** 在文件管理器中定位（选中）该 PDF 文件 */
+      openPdfFile: (path: string) => Promise<void>
       onLog: (cb: (entry: LogEntry) => void) => () => void
       onJob: (cb: (record: JobRecord) => void) => () => void
     }

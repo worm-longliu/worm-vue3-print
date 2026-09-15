@@ -1,8 +1,8 @@
 // 配置窗口：注册设置 IPC、推送实时日志与任务事件；单例窗口。
-import { BrowserWindow, ipcMain, app, shell } from 'electron'
+import { BrowserWindow, ipcMain, app, shell, dialog } from 'electron'
 import { pathToFileURL } from 'node:url'
 import { join } from 'node:path'
-import { mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, statSync } from 'node:fs'
 import { SETTINGS_IPC } from '../shared/settings-protocol.js'
 import type { ConfigStore, AppConfig } from './config.js'
 import { generatePairingToken } from './config.js'
@@ -68,18 +68,41 @@ export class MainWindowManager {
       this.deps.history.list().slice(-200).reverse(),
     )
 
-    ipcMain.handle(SETTINGS_IPC.OPEN_PDF_DIR, async () => {
-      const dir = this.deps.getPdfDir()
+    ipcMain.handle(SETTINGS_IPC.OPEN_PDF_DIR, async (_e, dir?: string) => {
+      // 未传或传入非法值时回退到当前实际生效的输出目录
+      const target = typeof dir === 'string' && dir.trim() ? dir.trim() : this.deps.getPdfDir()
       // 目录可能还没创建（还没跑过保留 PDF 的打印任务），先确保存在再打开
       try {
-        mkdirSync(dir, { recursive: true })
+        mkdirSync(target, { recursive: true })
       } catch (e) {
-        throw new Error(`无法创建目录（${dir}）：${(e as Error).message}`)
+        throw new Error(`无法创建目录（${target}）：${(e as Error).message}`)
       }
-      const err = await shell.openPath(dir)
-      if (err) throw new Error(`打开目录失败：${err}（路径：${dir}）`)
-      this.deps.logger.info('已打开 PDF 目录', { dir })
-      return dir
+      const err = await shell.openPath(target)
+      if (err) throw new Error(`打开目录失败：${err}（路径：${target}）`)
+      this.deps.logger.info('已打开 PDF 目录', { dir: target })
+      return target
+    })
+
+    ipcMain.handle(SETTINGS_IPC.PICK_PDF_DIR, async () => {
+      const options = {
+        title: '选择 PDF 保存目录',
+        defaultPath: this.deps.getPdfDir(),
+        properties: ['openDirectory', 'createDirectory'] as const,
+      }
+      const result = this.win
+        ? await dialog.showOpenDialog(this.win, options)
+        : await dialog.showOpenDialog(options)
+      return result.canceled || result.filePaths.length === 0 ? '' : result.filePaths[0]
+    })
+
+    ipcMain.handle(SETTINGS_IPC.OPEN_PDF_FILE, async (_e, path?: unknown) => {
+      const file = typeof path === 'string' ? path.trim() : ''
+      if (!file) throw new Error('缺少 PDF 文件路径')
+      if (!existsSync(file) || !statSync(file).isFile()) {
+        throw new Error('PDF 文件已不存在，可能已随打印任务自动清理')
+      }
+      shell.showItemInFolder(file)
+      this.deps.logger.info('已在目录中定位 PDF', { path: file })
     })
   }
 

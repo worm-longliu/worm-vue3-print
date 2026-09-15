@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import type { AppConfig } from '../main/config.js'
 import type { PrinterInfo } from '@worm-vue3-print/client'
 import type { JobRecord } from '../main/job-history.js'
@@ -18,6 +18,9 @@ const jobs = ref<JobRecord[]>([])
 const logs = ref<LogEntry[]>([])
 const originsText = ref('')
 const bridgeError = ref('')
+const pdfActionError = ref<Record<string, string>>({})
+/** 路径条实际展示的目录：自定义目录优先，未设置时回退默认目录 */
+const effectivePdfDir = computed(() => config.value?.pdfOutputDir?.trim() || pdfDir.value)
 
 onMounted(async () => {
   if (!window.wormPrint) {
@@ -72,10 +75,36 @@ async function doTestPrint() {
 
 async function openPdfDir() {
   try {
-    pdfDir.value = await window.wormPrint.openPdfDir()
+    pdfDir.value = await window.wormPrint.openPdfDir(config.value?.pdfOutputDir || undefined)
   } catch (e) {
     saveMsg.value = `打开目录失败：${(e as Error).message}`
     setTimeout(() => (saveMsg.value = ''), 4000)
+  }
+}
+
+async function pickPdfDir() {
+  if (!config.value) return
+  try {
+    const dir = await window.wormPrint.pickPdfDir()
+    if (dir) config.value.pdfOutputDir = dir
+  } catch (e) {
+    saveMsg.value = `选择目录失败：${(e as Error).message}`
+    setTimeout(() => (saveMsg.value = ''), 4000)
+  }
+}
+
+async function openJobPdf(job: JobRecord) {
+  if (!job.pdfPath) return
+  try {
+    await window.wormPrint.openPdfFile(job.pdfPath)
+    const next = { ...pdfActionError.value }
+    delete next[job.jobId]
+    pdfActionError.value = next
+  } catch (e) {
+    pdfActionError.value = {
+      ...pdfActionError.value,
+      [job.jobId]: (e as Error).message,
+    }
   }
 }
 
@@ -120,16 +149,35 @@ function fmtTime(iso: string): string {
         <span class="muted">排查用：保留每次打印生成的 PDF（关闭时打印完即删）</span>
       </div>
       <template v-if="config.keepGeneratedPdf">
-        <div class="row">
+        <div class="row row-stack">
           <label>PDF 保存目录</label>
-          <input
-            type="text"
-            v-model="config.pdfOutputDir"
-            :placeholder="pdfDir"
-            style="min-width: 360px"
-          />
-          <button @click="openPdfDir">打开目录</button>
-          <span class="muted">留空则用 {{ pdfDir }}</span>
+          <div class="field-stack">
+            <div class="path-bar">
+              <svg class="path-icon" width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path
+                  d="M1.5 4.5A1.5 1.5 0 0 1 3 3h2.8l1.3 1.6H13A1.5 1.5 0 0 1 14.5 6v5.5A1.5 1.5 0 0 1 13 13H3a1.5 1.5 0 0 1-1.5-1.5v-7Z"
+                  stroke="currentColor"
+                  stroke-width="1.2"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span class="path-text" :title="effectivePdfDir">{{ effectivePdfDir }}</span>
+              <button type="button" class="path-btn" @click="pickPdfDir">更改…</button>
+              <span class="path-divider" aria-hidden="true"></span>
+              <button type="button" class="path-btn" @click="openPdfDir">打开</button>
+            </div>
+            <div class="field-hint">
+              <span class="muted">留空使用默认目录；更改后点击「保存设置」生效</span>
+              <button
+                v-if="config.pdfOutputDir"
+                type="button"
+                class="link-btn"
+                @click="config.pdfOutputDir = ''"
+              >
+                恢复默认
+              </button>
+            </div>
+          </div>
         </div>
       </template>
       <div class="row">
@@ -169,25 +217,62 @@ function fmtTime(iso: string): string {
     </div>
 
     <div v-else-if="tab === 'jobs'">
-      <table>
+      <table class="jobs-table">
+        <colgroup>
+          <col style="width: 138px" />
+          <col />
+          <col />
+          <col style="width: 44px" />
+          <col style="width: 116px" />
+          <col style="width: 74px" />
+          <col />
+          <col style="width: 64px" />
+        </colgroup>
         <thead>
           <tr>
-            <th>时间</th><th>模板</th><th>打印机</th><th>份数</th>
-            <th>纸宽×纸高(μm)</th><th>纸高</th><th>结果</th><th>生成的 PDF</th>
+            <th>时间</th><th>模板</th><th>打印机</th><th class="num">份数</th>
+            <th class="num">宽×高(μm)</th>
+            <th class="num" title="纸高来源：配置=任务显式指定，推导=按渲染内容高度推导">纸高来源</th>
+            <th>结果</th><th>PDF</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="j in jobs" :key="j.jobId">
-            <td>{{ fmtTime(j.ts) }}</td>
-            <td>{{ j.templateName }}</td>
-            <td>{{ j.printerName }}</td>
-            <td>{{ j.copies }}</td>
-            <td>{{ j.paperMicrometers.width }}×{{ j.paperMicrometers.height }}</td>
-            <td>{{ j.paperHeightSource === 'derived' ? '推导' : '配置' }}</td>
-            <td :class="j.outcome === 'failed' ? 'danger' : ''">
+            <td class="time-cell">{{ fmtTime(j.ts) }}</td>
+            <td :title="j.templateName">{{ j.templateName }}</td>
+            <td :title="j.printerName">{{ j.printerName }}</td>
+            <td class="num">{{ j.copies }}</td>
+            <td class="num" :title="`${j.paperMicrometers.width}×${j.paperMicrometers.height} μm`">
+              {{ j.paperMicrometers.width }}×{{ j.paperMicrometers.height }}
+            </td>
+            <td class="num">{{ j.paperHeightSource === 'derived' ? '推导' : '配置' }}</td>
+            <td
+              class="result-cell"
+              :class="{ danger: j.outcome === 'failed' }"
+              :title="j.outcome === 'success' ? '成功' : `失败：${j.errorCode ?? ''} ${j.errorMessage ?? ''}`"
+            >
               {{ j.outcome === 'success' ? '成功' : `失败：${j.errorCode ?? ''} ${j.errorMessage ?? ''}` }}
             </td>
-            <td class="muted" style="max-width: 320px; word-break: break-all">{{ j.pdfPath ?? '—' }}</td>
+            <td>
+              <template v-if="j.pdfPath">
+                <button
+                  type="button"
+                  class="link-btn"
+                  title="在文件管理器中显示该文件"
+                  @click="openJobPdf(j)"
+                >
+                  打开
+                </button>
+                <div
+                  v-if="pdfActionError[j.jobId]"
+                  class="cell-error"
+                  :title="pdfActionError[j.jobId]"
+                >
+                  {{ pdfActionError[j.jobId] }}
+                </div>
+              </template>
+              <span v-else class="muted">—</span>
+            </td>
           </tr>
         </tbody>
       </table>

@@ -112,3 +112,114 @@ td {
   border: 1px solid #f0a0a0;
   color: #9b1c1c;
 }
+
+/* PDF 保存目录：文件管理器地址栏式路径条 */
+.row-stack {
+  align-items: flex-start;
+}
+.field-stack {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.path-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 3px 4px 3px 10px;
+  border: 1px solid var(--divider, #ccc);
+  border-radius: 6px;
+  background: rgba(127, 127, 127, 0.08);
+}
+.path-icon {
+  flex: none;
+  margin-right: 4px;
+  color: var(--muted, #888);
+}
+.path-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.path-divider {
+  flex: none;
+  width: 1px;
+  align-self: stretch;
+  margin: 3px 2px;
+  background: var(--divider, #ccc);
+}
+.path-bar button.path-btn {
+  flex: none;
+  padding: 3px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  font-size: 12px;
+}
+.path-bar button.path-btn:hover {
+  background: rgba(127, 127, 127, 0.16);
+}
+.path-bar button.path-btn:focus-visible,
+.link-btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 0;
+}
+.field-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 轻量文字操作按钮（任务记录、恢复默认） */
+.link-btn {
+  padding: 2px 6px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: #2563eb;
+  font-size: 12px;
+  cursor: pointer;
+}
+.link-btn:hover {
+  background: rgba(37, 99, 235, 0.1);
+  text-decoration: underline;
+}
+.cell-error {
+  margin-top: 2px;
+  max-width: 100%;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #dc2626;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 任务记录：定宽表格，所有单元格单行省略，避免换行撑乱列分布 */
+.jobs-table {
+  table-layout: fixed;
+  font-variant-numeric: tabular-nums;
+}
+.jobs-table th,
+.jobs-table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jobs-table .num {
+  text-align: center;
+}
+.jobs-table .time-cell {
+  font-variant-numeric: tabular-nums;
+}
+/* PDF 列的操作按钮与错误提示不参与省略，但整体仍受单元格裁切 */
+.jobs-table td:last-child {
+  overflow: visible;
+}
