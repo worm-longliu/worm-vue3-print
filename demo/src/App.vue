@@ -16,7 +16,9 @@
         :initial-template="templateData"
         :fields="fields"
         :is-edit="true"
-        :show-help="true" 
+        :show-help="true"
+        :upload-image="uploadDemoImage"
+        :upload-design-background="uploadDemoImage"
         @preview="onPreview"
         @save="onSave"
       />
@@ -84,6 +86,19 @@ const templateData = ref<TemplateData>(rawTemplate as TemplateData)
 const fields = ref<PrintBusinessField[]>(PURCHASE_RECEIPT_FIELDS)
 
 const designerRef = ref<InstanceType<typeof PrintDesigner> | null>(null)
+
+/**
+ * demo 没有宿主后端，使用 Data URL 模拟“宿主上传后返回完整图片路径”。
+ * 真实项目在这里调用业务上传接口，并 resolve 服务端返回的完整可访问图片地址。
+ */
+function uploadDemoImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(new Error('图片读取失败'))
+    reader.readAsDataURL(file)
+  })
+}
 
 /**
  * 保存：宿主在此将 JSON 持久化。
