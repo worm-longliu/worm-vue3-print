@@ -7,6 +7,19 @@
       class="hiprint-printPaper"
       :style="paperStyle"
     >
+      <!-- 设计背景（定位底图）：仅设计画布显示，位于纸张最底层，不参与打印管线 -->
+      <div
+        v-if="designMode && designBackground?.src && !backgroundLoadFailed"
+        class="design-background"
+        :style="designBackgroundStyle"
+      >
+        <img
+          :src="designBackground.src"
+          draggable="false"
+          alt=""
+          @error="onBackgroundError"
+        >
+      </div>
       <div
         class="hiprint-printPaper-content"
         ref="contentRef"
@@ -201,7 +214,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onUnmounted } from 'vue'
+import { computed, ref, watch, onUnmounted } from 'vue'
 import type { RuntimeElement, TemplateData, ElementRect, ElementZone, AlignLine } from '@worm-vue3-print/core/designer'
 import { getPaperDimensions } from '@worm-vue3-print/core/designer'
 import { mmToPx } from '@worm-vue3-print/core/designer'
@@ -244,6 +257,36 @@ const paperWidthMM = computed(() => {
 const paperHeightMM = computed(() => {
   return getPaperDimensions(props.templateData).height
 })
+
+// ─── 设计背景（仅设计画布显示，旋转为 90° 步进；90/270 交换宽高后居中再绕纸心旋转）───
+const designBackground = computed(() => props.templateData.designBackground)
+const backgroundLoadFailed = ref(false)
+watch(() => designBackground.value?.src, () => { backgroundLoadFailed.value = false })
+
+const normalizedBackgroundRotation = computed<0 | 90 | 180 | 270>(() => {
+  const r = designBackground.value?.rotation
+  return r === 90 || r === 180 || r === 270 ? r : 0
+})
+
+const designBackgroundStyle = computed(() => {
+  const rotation = normalizedBackgroundRotation.value
+  const swapped = rotation === 90 || rotation === 270
+  const layerW = swapped ? paperHeightMM.value : paperWidthMM.value
+  const layerH = swapped ? paperWidthMM.value : paperHeightMM.value
+  const style: Record<string, string> = {
+    width: layerW + 'mm',
+    height: layerH + 'mm',
+    left: (paperWidthMM.value - layerW) / 2 + 'mm',
+    top: (paperHeightMM.value - layerH) / 2 + 'mm',
+  }
+  if (rotation !== 0) style.transform = `rotate(${rotation}deg)`
+  return style
+})
+
+function onBackgroundError() {
+  backgroundLoadFailed.value = true
+  console.warn('[print-designer] 设计背景图加载失败：', designBackground.value?.src)
+}
 
 /** 参考线交互热区：换算到缩放前坐标，保证任意缩放比例下屏幕热区恒定 */
 const guideHitPx = computed(() => `${8 / (props.scale || 1)}px`)
@@ -548,6 +591,22 @@ defineExpose({ contentRef })
   border-radius: 3px;
   white-space: nowrap;
   pointer-events: none;
+}
+/* 设计背景：铺满纸张最底层，不拦截任何指针事件 */
+.design-background {
+  position: absolute;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.design-background img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 .grid-bg {
   position: absolute;
