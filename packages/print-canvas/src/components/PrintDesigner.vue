@@ -129,7 +129,7 @@
 <script setup lang="ts">
 import '../styles/native-controls.css'
 import { ref, watch, provide, computed, onMounted, onUnmounted } from 'vue'
-import type { RuntimeElement, PrintBusinessField, TemplateData, TableCell, RequestScreenshotFn, UploadImageFn } from '@worm-vue3-print/core/designer'
+import type { RuntimeElement, PrintBusinessField, TemplateData, TableCell, RequestScreenshotFn, UploadImageFn, UploadDesignBackgroundFn } from '@worm-vue3-print/core/designer'
 import { useDesignerState } from '../composables/useDesignerState'
 import { useGuides } from '../composables/useGuides'
 import { TABLE_EDIT_KEY } from '../composables/useTableSelection'
@@ -139,7 +139,7 @@ import { getPaperDimensions } from '@worm-vue3-print/core/designer'
 import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
 import { findMainCell } from '@worm-vue3-print/core/designer'
 import { computeFitScale, FIT_SCALE_MIN_PERCENT } from '@worm-vue3-print/core/designer'
-import { UPLOAD_IMAGE_KEY } from '../composables/useHostAdapter'
+import { UPLOAD_IMAGE_KEY, UPLOAD_DESIGN_BACKGROUND_KEY } from '../composables/useHostAdapter'
 import type { AlignMode } from '@worm-vue3-print/core/designer'
 import DesignerToolbar from './DesignerToolbar.vue'
 import LeftPanel from './LeftPanel.vue'
@@ -159,6 +159,8 @@ const props = defineProps<{
   requestScreenshot?: RequestScreenshotFn
   /** 图片上传适配器：未注入时图片上传不可用 */
   uploadImage?: UploadImageFn
+  /** 设计背景图上传适配器：未注入时背景上传入口禁用；返回值须为完整图片路径 */
+  uploadDesignBackground?: UploadDesignBackgroundFn
   /** 是否展示帮助入口（帮助按钮与帮助弹框）；默认开启，传 false 关闭 */
   showHelp?: boolean
 }>()
@@ -216,6 +218,7 @@ provide(SELECTED_IDS_KEY, selectedIds)
 provide(PREVIEW_IDS_KEY, previewIds)
 
 provide(UPLOAD_IMAGE_KEY, computed(() => props.uploadImage))
+provide(UPLOAD_DESIGN_BACKGROUND_KEY, computed(() => props.uploadDesignBackground))
 watch(selectedElement, el => {
   if (!el || el.printElementType.type !== 'table') setTableSelection(null)
 })
