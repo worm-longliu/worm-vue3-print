@@ -106,6 +106,11 @@
             </div>
           </div>
 
+          <DesignBackgroundConfig
+            :model-value="designBackgroundModel"
+            @update:model-value="onDesignBackgroundChange"
+          />
+
           <h3 class="pd-divider">页边距 (mm)</h3>
           <p v-if="paperSizeModel === 'CONTINUOUS'" class="pd-hint">底部边距即连续纸走纸留白</p>
           <div class="margin-grid">
@@ -162,6 +167,7 @@ import TableRowGroup from './property/TableRowGroup.vue'
 import TableCellGroup from './property/TableCellGroup.vue'
 import PresetColorPicker from './PresetColorPicker.vue'
 import WatermarkConfig from './WatermarkConfig.vue'
+import DesignBackgroundConfig from './property/DesignBackgroundConfig.vue'
 import type { WatermarkOptions } from '@worm-vue3-print/core/designer'
 import { getElementBindings, getTableCellBindings } from '@worm-vue3-print/core/designer'
 import type { BindingDescriptor } from '@worm-vue3-print/core/designer'
@@ -302,6 +308,19 @@ const overlayHeight = computed(() => props.templateData?.firstPageOverlay.height
 
 const customWidth = computed(() => props.templateData?.customWidth ?? (paperSizeModel.value === 'CONTINUOUS' ? 80 : 210))
 const customHeight = computed(() => props.templateData?.customHeight ?? 297)
+
+const designBackgroundModel = computed(() => props.templateData?.designBackground)
+
+function onDesignBackgroundChange(value: TemplateData['designBackground'] | undefined) {
+  if (!props.templateData) return
+  if (!value) {
+    const rest = { ...props.templateData }
+    delete rest.designBackground
+    emit('update:templateData', rest)
+    return
+  }
+  emitUpdate({ designBackground: value })
+}
 
 /** 水印配置（缺省时给空对象，WatermarkConfig 内部按默认值展示） */
 const watermarkModel = computed<WatermarkOptions>(() => props.templateData?.watermark ?? {})
