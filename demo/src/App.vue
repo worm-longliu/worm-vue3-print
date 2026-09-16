@@ -81,8 +81,8 @@ const RENDER_BASE_URL = 'http://localhost:10103'
 /** 打印输出弹窗开关 */
 const printDialogVisible = ref(false)
 
-// 真实模板数据（模板 106977040967000141 的 elements 已存在本地 JSON）
-const templateData = ref<TemplateData>(rawTemplate as TemplateData)
+// 页面默认空白；真实模板数据（模板 106977040967000141 的 elements 已存在本地 JSON）在点击「加载默认布局」时载入
+const templateData = ref<TemplateData>(createDefaultTemplate())
 const fields = ref<PrintBusinessField[]>(PURCHASE_RECEIPT_FIELDS)
 
 const designerRef = ref<InstanceType<typeof PrintDesigner> | null>(null)
@@ -134,13 +134,13 @@ function printPreview() {
 }
 
 /**
- * 加载默认布局：宿主自实现的业务能力——demo 用 `createDefaultTemplate()` 造一份空白默认模板。
+ * 加载默认布局：宿主自实现的业务能力——demo 载入本地的采购收货单真实模板数据。
  * 真实宿主可在此按业务类型拉取服务端默认模板；用新对象回写 `initialTemplate` 引用，
  * 设计器监听到变化后重载画布并记录一次历史（撤销可回退）。
  */
 function onLoadDefaultLayout() {
   if (!confirm('将覆盖当前画布内容，是否继续？')) return
-  templateData.value = createDefaultTemplate()
+  templateData.value = rawTemplate as TemplateData
 }
 </script>
 
