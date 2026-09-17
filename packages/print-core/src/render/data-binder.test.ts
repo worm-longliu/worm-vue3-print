@@ -145,32 +145,7 @@ describe('bindData 点分路径', () => {
   })
 })
 
-describe('printData 数组兼容', () => {
-  it('printData 为单元素数组时取首个对象为根数据', () => {
-    const tpl = {
-      paperSize: 'A4', orientation: 'portrait',
-      margins: { top: 10, right: 10, bottom: 10, left: 10 },
-      header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
-      elements: [{
-        id: 't1', type: 'table',
-        options: { left: 10, top: 10, width: 100, height: 30, tableMode: 'dynamic',
-          tableColWidths: [50, 50],
-          fields: [{ dataSource: 'goods' }],
-          tableRows: [
-            { id: 'h', type: 'header', height: 8, cells: [{ formatter: 'A' }, { formatter: 'B' }] },
-            { id: 'd', type: 'data', height: 8, cells: [{ formatter: '{name}' }, { formatter: '{qty}' }] },
-          ] },
-      }],
-    }
-    const printData = [{ supplier: { name: 'X' }, goods: [{ name: 'A1', qty: 2 }, { name: 'A2', qty: 3 }] }]
-    const bound = bindData(tpl as any, printData as any)
-    const rows = (bound.elements![0].options as any)._renderRows
-    expect(rows).toHaveLength(3) // header + 2 data
-    expect(rows[1].cells[0].content).toBe('A1')
-    expect(rows[2].cells[1].content).toBe('3')
-  })
-
+describe('printData 列表数据绑定', () => {
   it('data 行 formatter 带列表前缀 {goods.name} 时按当前行取值', () => {
     const tpl = {
       paperSize: 'A4', orientation: 'portrait',

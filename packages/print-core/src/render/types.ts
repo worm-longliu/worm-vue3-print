@@ -1,6 +1,9 @@
 // print-core/src/render/types.ts
 // 打印渲染管线类型定义（同构：Node 服务端与浏览器预览共用）
 
+// type-only：仅借用批量数据联合类型，编译后擦除，无运行时模块依赖
+import type { PrintDataInput } from '../print/normalize-print-data.js'
+
 // ─── 纸张 ───
 
 export type PaperSize = 'A4' | 'A3' | 'A5' | 'Letter' | 'Legal' | 'CUSTOM' | 'CONTINUOUS'
@@ -155,7 +158,8 @@ export interface CodeRenderer {
 
 export interface RenderRequest {
   templateJson: TemplateData
-  printData?: Record<string, any>
+  /** 业务数据：对象=单份；非空对象数组=批量（数组长度即份数，上限 500） */
+  printData?: PrintDataInput
   /** 服务端对外访问 base URL，用于把 /docfiles/... 等相对路径图片拼接为完整地址 */
   baseUrl?: string
   /** 宿主纸张覆盖（mm）：宽/高沿用 print.paperSize 语义，0 或负数视为未提供 */

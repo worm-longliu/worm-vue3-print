@@ -10,11 +10,11 @@ import { evaluateTemplate } from './expression-eval.js'
  */
 export function bindData(
   template: TemplateData,
-  printData?: Record<string, any> | Record<string, any>[],
+  printData?: Record<string, any>,
   baseUrl?: string,
 ): TemplateData {
-  const raw = printData ?? {}
-  const data = Array.isArray(raw) ? (raw[0] ?? {}) : raw
+  // 数组在 pipeline 入口（normalizePrintData）已拆分为逐份单对象，不会到达这里
+  const data = printData ?? {}
   // JSON 深拷贝：模板为可持久化的纯 JSON 结构；同时兼容浏览器侧 Vue reactive Proxy
   // （structuredClone 对 Proxy 抛 DataCloneError）。
   const bound = JSON.parse(JSON.stringify(template)) as TemplateData

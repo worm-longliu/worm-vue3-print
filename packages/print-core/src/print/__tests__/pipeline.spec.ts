@@ -92,6 +92,82 @@ describe('prepareDocument', () => {
   })
 })
 
+describe('批量 printData（数组）', () => {
+  it('对象入参 copies=1 且无 copyPaperMm', async () => {
+    const { runtime } = runtimeOf({ measurements: [{ id: 'a', heightPx: 38 }] })
+    const result = await prepareDocument({ templateJson: template(), printData: { x: 1 } }, runtime)
+    expect(result.copies).toBe(1)
+    expect(result.copyPaperMm).toBeUndefined()
+  })
+
+  it('2 条数组：合并为一个文档，copies=2，pageCount 为各份之和', async () => {
+    const { runtime } = runtimeOf({ measurements: [{ id: 'a', heightPx: 38 }] })
+    const result = await prepareDocument(
+      { templateJson: template(), printData: [{ x: 1 }, { x: 2 }] },
+      runtime,
+    )
+    expect(result.copies).toBe(2)
+    expect(result.copyPaperMm).toHaveLength(2)
+    expect(result.pageCount).toBe(2)
+    expect((result.html.match(/<section class="print-copy">/g) ?? []).length).toBe(2)
+    expect(result.html).toContain('.print-copy:not(:last-child)')
+  })
+
+  it('空数组抛中文错误', async () => {
+    const { runtime } = runtimeOf()
+    await expect(
+      prepareDocument({ templateJson: template(), printData: [] }, runtime),
+    ).rejects.toThrow('批量打印数据必须是非空对象数组')
+  })
+
+  it('数组含非对象项报告项序号', async () => {
+    const { runtime } = runtimeOf()
+    await expect(
+      prepareDocument(
+        { templateJson: template(), printData: [{}, null] as unknown as Record<string, unknown>[] },
+        runtime,
+      ),
+    ).rejects.toThrow('批量打印数据第 2 项必须是对象')
+  })
+
+  it('连续纸 2 份：输出命名页与两份纸高', async () => {
+    const { runtime } = runtimeOf({
+      measurements: [{ id: 'a', heightPx: 38 }],
+      contentBottomPx: 76,
+    })
+    const result = await prepareDocument(
+      { templateJson: template({ paperSize: 'CONTINUOUS', customWidth: 80 }), printData: [{}, {}] },
+      runtime,
+    )
+    expect(result.copies).toBe(2)
+    expect(result.html).toContain('print-copy print-copy-0')
+    expect(result.html).toContain('@page copy1')
+    expect(result.copyPaperMm?.[0].height).toBe(result.copyPaperMm?.[1].height)
+  })
+
+  it('某一份失败时错误带份序（第 2 份）', async () => {
+    const { fake, runtime } = runtimeOf({ measurements: [{ id: 'a', heightPx: 38 }] })
+    // fake-driver 无一次性钩子：包装 driver，让第二次测量（第 2 份）抛错
+    const originalCreate = fake.factory.createDriver.bind(fake.factory)
+    let measureCalls = 0
+    fake.factory.createDriver = async () => {
+      const driver = await originalCreate()
+      const originalEvaluate = driver.evaluate.bind(driver)
+      driver.evaluate = (method, args) => {
+        if (method === 'readMeasurements') {
+          measureCalls += 1
+          if (measureCalls === 2) throw new Error('模拟测量失败')
+        }
+        return originalEvaluate(method, args)
+      }
+      return driver
+    }
+    await expect(
+      prepareDocument({ templateJson: template(), printData: [{}, {}] }, runtime),
+    ).rejects.toThrow(/第 2 份渲染失败：(?:测量失败：)?模拟测量失败/)
+  })
+})
+
 describe('renderPdf', () => {
   it('同一会话内完成出图，返回 PDF 字节与 prepared', async () => {
     const { fake, runtime } = runtimeOf({

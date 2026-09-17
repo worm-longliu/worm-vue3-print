@@ -1,5 +1,6 @@
 import type { CodeRenderOptions } from '../render/types.js'
 import type { CodeRenderer, PageLayout, TemplateData } from '../render/types.js'
+import type { PrintDataInput } from './normalize-print-data.js'
 
 /** 物理尺寸（毫米）；三端与协议的公共纸尺寸表示 */
 export interface PaperMm {
@@ -57,7 +58,8 @@ export interface CodeSpec {
 export interface PrintJob {
   /** 模板 JSON（设计器 TemplateData 结构兼容） */
   templateJson: TemplateData
-  printData?: Record<string, any>
+  /** 业务数据：对象=单份；非空对象数组=按数组长度批量合并为一个作业 */
+  printData?: PrintDataInput
   /** 相对路径图片基址 */
   baseUrl?: string
   /** 宿主纸张覆盖（mm）；0 或负数视为未提供 */
@@ -79,6 +81,10 @@ export interface PreparedDocument {
   continuous: boolean
   heightSource: HeightSource
   pageLayouts: PageLayout[]
+  /** 份数：单对象=1，数组=数组长度 */
+  copies: number
+  /** 批量时每份的物理纸张尺寸（连续纸各份高度不同）；单份无此字段 */
+  copyPaperMm?: PaperMm[]
 }
 
 export interface RenderPdfResult {

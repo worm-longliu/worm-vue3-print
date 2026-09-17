@@ -11,6 +11,16 @@ import { pxToMm } from './units.js'
 import type { CodeRenderer, PageLayout, TemplateData } from '../render/types.js'
 import type { PrintRuntime, PrintSession } from './ports.js'
 import type { PreparedDocument, PrintJob, RenderPdfResult } from './types.js'
+import { normalizePrintData } from './normalize-print-data.js'
+import { composeBatchHtml } from './batch-compose.js'
+import type { BatchCopyInput } from './batch-compose.js'
+
+/** 单份准备的内部结构：对外文档 + 批量合并所需的中间件 */
+interface SinglePrepared extends PreparedDocument {
+  bound: TemplateData
+  codeRenderer?: CodeRenderer
+  derivedHeightMm?: number
+}
 
 /** 阶段 1–6：绑定 → 码值收集/渲染 → 测量 → 分页 → 连续纸 → 最终 HTML */
 export async function prepareDocument(job: PrintJob, runtime: PrintRuntime): Promise<PreparedDocument> {
@@ -27,12 +37,14 @@ export async function renderPdf(job: PrintJob, runtime: PrintRuntime): Promise<R
   })
 }
 
-/** 截图：不分页，用测量模式 HTML 单页完整渲染 */
+/** 截图：不分页，用测量模式 HTML 单页完整渲染；数组数据仅渲染首条 */
 export async function renderScreenshot(job: PrintJob, runtime: PrintRuntime): Promise<Uint8Array> {
   return runtime.withSession(job, async (session) => {
-    const bound = bindData(job.templateJson, job.printData, job.baseUrl)
+    const normalized = normalizePrintData(job.printData)
+    const data = normalized.mode === 'batch' ? normalized.dataList[0] : normalized.data
+    const bound = bindData(job.templateJson, data, job.baseUrl)
     const built = await buildHtmlWithCodes({
-      bound, job, session, pageLayouts: [], isMeasurementPass: true,
+      bound, job, session, data, pageLayouts: [], isMeasurementPass: true,
     })
     const viewport = paperViewportPx(getPaperDimensions(bound))
     return session.toScreenshot(built.html, buildScreenshotTargetSpec(), viewport)
@@ -40,7 +52,65 @@ export async function renderScreenshot(job: PrintJob, runtime: PrintRuntime): Pr
 }
 
 async function prepareWithSession(job: PrintJob, session: PrintSession): Promise<PreparedDocument> {
-  const bound = bindData(job.templateJson, job.printData, job.baseUrl)
+  const normalized = normalizePrintData(job.printData)
+  if (normalized.mode === 'single') {
+    return toPreparedDocument(await prepareSingleWithSession(job, session, normalized.data))
+  }
+
+  // 批量：同一 session 内串行渲染各份（避免并发测量竞态），再合并为一个文档
+  const copies: BatchCopyInput[] = []
+  for (let i = 0; i < normalized.dataList.length; i++) {
+    try {
+      const single = await prepareSingleWithSession(job, session, normalized.dataList[i])
+      copies.push({
+        bound: single.bound,
+        pageLayouts: single.pageLayouts,
+        data: normalized.dataList[i],
+        codeRenderer: single.codeRenderer,
+        derivedHeightMm: single.derivedHeightMm,
+        paperMm: single.paperMm,
+        heightSource: single.heightSource,
+      })
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err)
+      throw new Error(`第 ${i + 1} 份渲染失败：${reason}`)
+    }
+  }
+  const merged = composeBatchHtml(copies)
+  return {
+    html: merged.html,
+    pageCount: merged.pageCount,
+    paperMm: copies[0].paperMm,
+    continuous: copies[0].bound.paperSize === 'CONTINUOUS',
+    // 同模板同参数各份来源必然一致；不能用 derivedHeightMm 是否存在判断——
+    // 连续纸逃生门时该字段有值但来源是 config
+    heightSource: copies[0].heightSource,
+    // 各份 pageIndex 均从 0 开始，批量拼接后该字段仅作调试用途
+    pageLayouts: copies.flatMap(c => c.pageLayouts),
+    copies: copies.length,
+    copyPaperMm: merged.copyPaperMm,
+  }
+}
+
+/** 批量内部结构 → 对外 PreparedDocument（剥离中间件，补 copies=1） */
+function toPreparedDocument(s: SinglePrepared): PreparedDocument {
+  return {
+    html: s.html,
+    pageCount: s.pageCount,
+    paperMm: s.paperMm,
+    continuous: s.continuous,
+    heightSource: s.heightSource,
+    pageLayouts: s.pageLayouts,
+    copies: 1,
+  }
+}
+
+async function prepareSingleWithSession(
+  job: PrintJob,
+  session: PrintSession,
+  data: Record<string, any>,
+): Promise<SinglePrepared> {
+  const bound = bindData(job.templateJson, data, job.baseUrl)
   const continuous = isContinuousPaper(bound)
   const designPaper = getPaperDimensions(bound)
   const viewport = paperViewportPx(designPaper)
@@ -48,14 +118,14 @@ async function prepareWithSession(job: PrintJob, session: PrintSession): Promise
 
   // 测量 HTML：先收集码值 → 渲染 → 用真实渲染器再生成
   const measurement = await buildHtmlWithCodes({
-    bound, job, session, pageLayouts: [], isMeasurementPass: true,
+    bound, job, session, data, pageLayouts: [], isMeasurementPass: true,
   })
   const measurements = await session.measure(measurement.html, viewport)
   const pageLayouts = paginate(bound, normalizeMeasurements(measurements, bound))
 
   // 最终 HTML：补齐测量趟看不到的码值（页眉/页脚/首页叠加中的真实页码）
   const finalBuild = await buildHtmlWithCodes({
-    bound, job, session, pageLayouts, isMeasurementPass: false, baseMap: measurement.map,
+    bound, job, session, data, pageLayouts, isMeasurementPass: false, baseMap: measurement.map,
   })
   let html = finalBuild.html
 
@@ -67,7 +137,7 @@ async function prepareWithSession(job: PrintJob, session: PrintSession): Promise
       const bottomPx = await session.probeContentBottom(html, viewport)
       derivedHeightMm = composeContinuousHeight(bound, pxToMm(bottomPx))
     }
-    html = generateHtml(bound, pageLayouts, job.printData, {
+    html = generateHtml(bound, pageLayouts, data, {
       codeRenderer: finalBuild.codeRenderer,
       pageHeightMm: derivedHeightMm,
     })
@@ -85,13 +155,26 @@ async function prepareWithSession(job: PrintJob, session: PrintSession): Promise
     override: overrideForPaper,
   })
 
-  return { html, pageCount: pageLayouts.length, paperMm, continuous, heightSource, pageLayouts }
+  return {
+    html,
+    pageCount: pageLayouts.length,
+    paperMm,
+    continuous,
+    heightSource,
+    pageLayouts,
+    copies: 1,
+    bound,
+    codeRenderer: finalBuild.codeRenderer,
+    derivedHeightMm,
+  }
 }
 
 interface BuildHtmlInput {
   bound: TemplateData
   job: PrintJob
   session: PrintSession
+  /** 本份业务数据（单对象；数组已在入口拆分） */
+  data: Record<string, any>
   pageLayouts: PageLayout[]
   isMeasurementPass: boolean
   baseMap?: Map<string, string>
@@ -107,14 +190,14 @@ async function buildHtmlWithCodes(
 ): Promise<{ html: string; codeRenderer?: CodeRenderer; map: Map<string, string> }> {
   const baseMap = input.baseMap ?? new Map<string, string>()
   if (input.job.codeRenderer) {
-    const html = generateHtml(input.bound, input.pageLayouts, input.job.printData, {
+    const html = generateHtml(input.bound, input.pageLayouts, input.data, {
       isMeasurementPass: input.isMeasurementPass,
       codeRenderer: input.job.codeRenderer,
     })
     return { html, codeRenderer: input.job.codeRenderer, map: baseMap }
   }
   const collector = createCollectingCodeRenderer(baseMap)
-  const draft = generateHtml(input.bound, input.pageLayouts, input.job.printData, {
+  const draft = generateHtml(input.bound, input.pageLayouts, input.data, {
     isMeasurementPass: input.isMeasurementPass,
     codeRenderer: collector.renderer,
   })
@@ -123,7 +206,7 @@ async function buildHtmlWithCodes(
   const map = mergeCodeMaps(baseMap, rendered)
   const codeRenderer = map.size > 0 ? createMapCodeRenderer(map) : undefined
   if (extra.length === 0) return { html: draft, codeRenderer, map }
-  const html = generateHtml(input.bound, input.pageLayouts, input.job.printData, {
+  const html = generateHtml(input.bound, input.pageLayouts, input.data, {
     isMeasurementPass: input.isMeasurementPass,
     codeRenderer,
   })
