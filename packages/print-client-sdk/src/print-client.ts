@@ -66,7 +66,7 @@ export class PrintClient {
    */
   print(
     templateJson: Record<string, unknown>,
-    printData?: Record<string, unknown>,
+    printData?: Record<string, unknown> | Array<Record<string, unknown>>,
     options: PrintOptions & { baseUrl?: string; timeoutMs?: number } = {},
     templateName?: string,
   ): Promise<PrintSubmitResponsePayload> {

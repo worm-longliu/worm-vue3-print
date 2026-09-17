@@ -97,7 +97,8 @@ export interface PrintOptions {
 /** print.submit 请求 payload；templateJson 结构由 core 定义，这里保持松散耦合 */
 export interface PrintSubmitRequest {
   templateJson: Record<string, unknown>
-  printData?: Record<string, unknown>
+  /** 业务数据：对象=单份；非空对象数组=批量（最多 500 份，合并为一个作业） */
+  printData?: Record<string, unknown> | Array<Record<string, unknown>>
   /** 相对路径图片资源解析基址 */
   baseUrl?: string
   /** 模板名称（业务侧元数据，用于客户端任务记录展示，不参与渲染） */

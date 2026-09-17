@@ -1,11 +1,13 @@
 // print.submit / print.submitHtml payload 校验：边界在进入打印引擎前收敛，错误一律 INVALID_REQUEST。
 import type { PrintOptions } from '@worm-vue3-print/client'
+import { MAX_BATCH_COPIES } from '@worm-vue3-print/core'
 import { ProtocolFailure } from './protocol-error.js'
 
 /** print.submit 校验后的模板渲染任务（原 shared/render-protocol.ts 的 RenderJobSpec） */
 export interface PrintSubmitSpec {
   templateJson: Record<string, unknown>
-  printData?: Record<string, unknown>
+  /** 对象=单份；非空对象数组=批量（上限 MAX_BATCH_COPIES，合并为一个作业） */
+  printData?: Record<string, unknown> | Array<Record<string, unknown>>
   baseUrl?: string
   /** 连续纸显式纸高逃生门（mm） */
   paperHeightMm?: number
@@ -40,6 +42,26 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 
 function isPositiveInt(v: unknown): v is number {
   return typeof v === 'number' && Number.isInteger(v) && v > 0
+}
+
+/** 校验 printData：对象放行；数组检查非空、上限与每项类型（与 core normalizePrintData 文案一致） */
+function parsePrintData(
+  value: unknown,
+): Record<string, unknown> | Array<Record<string, unknown>> {
+  if (Array.isArray(value)) {
+    if (value.length === 0) invalid('批量打印数据必须是非空对象数组')
+    if (value.length > MAX_BATCH_COPIES) {
+      invalid(`批量打印最多支持 ${MAX_BATCH_COPIES} 份，当前 ${value.length} 份`)
+    }
+    for (let i = 0; i < value.length; i++) {
+      if (!isRecord(value[i]) || Array.isArray(value[i])) {
+        invalid(`批量打印数据第 ${i + 1} 项必须是对象`)
+      }
+    }
+    return value as Array<Record<string, unknown>>
+  }
+  if (!isRecord(value)) invalid('printData 必须是对象或数组')
+  return value
 }
 
 function isPositiveFinite(v: unknown): v is number {
@@ -129,10 +151,7 @@ export function parsePrintSubmit(raw: unknown): {
 
   const spec: PrintSubmitSpec = { templateJson: raw.templateJson }
   if (raw.printData !== undefined) {
-    if (!isRecord(raw.printData) && !Array.isArray(raw.printData)) {
-      invalid('printData 必须是对象或数组')
-    }
-    spec.printData = raw.printData as Record<string, unknown>
+    spec.printData = parsePrintData(raw.printData)
   }
   if (raw.baseUrl !== undefined) {
     if (typeof raw.baseUrl !== 'string') invalid('baseUrl 必须是字符串')

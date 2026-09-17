@@ -60,6 +60,37 @@ describe('parsePrintSubmit', () => {
       expect((err as { code?: string }).code).toBe('INVALID_REQUEST')
     }
   })
+
+  it('printData 数组合法时透传', () => {
+    const r = parsePrintSubmit({
+      templateJson: {},
+      printData: [{ a: 1 }, { a: 2 }],
+      print: {},
+    })
+    expect(Array.isArray(r.spec.printData)).toBe(true)
+    expect(r.spec.printData).toHaveLength(2)
+  })
+
+  it('printData 空数组拒绝', () => {
+    expect(() => parsePrintSubmit({ templateJson: {}, printData: [], print: {} }))
+      .toThrow('批量打印数据必须是非空对象数组')
+  })
+
+  it('printData 超过 500 份拒绝并报告份数', () => {
+    const list = Array.from({ length: 501 }, () => ({}))
+    expect(() => parsePrintSubmit({ templateJson: {}, printData: list, print: {} }))
+      .toThrow('批量打印最多支持 500 份，当前 501 份')
+  })
+
+  it('printData 数组含非对象项拒绝并报告项序号', () => {
+    expect(() => parsePrintSubmit({ templateJson: {}, printData: [{}, 1], print: {} }))
+      .toThrow('批量打印数据第 2 项必须是对象')
+  })
+
+  it('printData 数组含嵌套数组项拒绝', () => {
+    expect(() => parsePrintSubmit({ templateJson: {}, printData: [{}, []], print: {} }))
+      .toThrow('批量打印数据第 2 项必须是对象')
+  })
 })
 
 describe('parsePrintSubmitHtml', () => {
