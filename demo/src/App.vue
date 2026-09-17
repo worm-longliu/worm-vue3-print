@@ -30,18 +30,43 @@
         <div class="preview-panel">
           <div class="preview-head">
             <span class="preview-title">打印预览</span>
-            <span class="preview-subtitle" v-if="previewPages > 0">共 {{ previewPages }} 页</span>
+            <div class="preview-modes">
+              <button
+                type="button"
+                class="mode-btn"
+                :class="{ active: previewMode === 'single' }"
+                @click="previewMode = 'single'"
+              >单份预览</button>
+              <button
+                type="button"
+                class="mode-btn"
+                :class="{ active: previewMode === 'batch' }"
+                @click="previewMode = 'batch'"
+              >批量预览（{{ BATCH_SIZE }} 份模拟数据）</button>
+            </div>
+            <span class="preview-subtitle" v-if="previewPages > 0">
+              {{ previewMode === 'batch' ? `共 ${BATCH_SIZE} 份 · ` : '' }}{{ previewPages }} 页
+            </span>
             <div class="preview-actions">
               <button type="button" class="preview-btn" @click="printPreview">打印</button>
               <button type="button" class="preview-btn ghost" @click="previewVisible = false">关闭</button>
             </div>
           </div>
           <PrintHtmlPreview
+            v-if="previewMode === 'single'"
             ref="htmlPreviewRef"
             :template-json="previewTemplateJson"
             :print-data="DEFAULT_DEMO_DATA"
             :base-url="RENDER_BASE_URL"
             @rendered="(n: number) => previewPages = n"
+          />
+          <BatchPrintPreview
+            v-else
+            ref="batchPreviewRef"
+            :template-json="previewTemplateJson"
+            :print-data-list="batchDataList"
+            :base-url="RENDER_BASE_URL"
+            @rendered="onBatchRendered"
           />
         </div>
       </div>
@@ -68,12 +93,14 @@ import {
 } from '@worm-vue3-print/canvas'
 import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
 import PrintOutputDialog from './components/PrintOutputDialog.vue'
+import BatchPrintPreview from './components/BatchPrintPreview.vue'
 import rawTemplate from './template-purchase-receipt.json'
 import {
   TEMPLATE_ID,
   TEMPLATE_NAME,
   PURCHASE_RECEIPT_FIELDS,
 } from './business'
+import { BATCH_SIZE, deriveBatchData } from './batch-data'
 
 /** 相对路径图片（/docfiles/...）拼接基址：浏览器预览与服务端渲染保持一致 */
 const RENDER_BASE_URL = 'http://localhost:10103'
@@ -121,16 +148,31 @@ const previewPages = ref(0)
 const previewTemplateJson = ref<Record<string, any> | null>(null)
 const htmlPreviewRef = ref<InstanceType<typeof PrintHtmlPreview> | null>(null)
 
+/** 预览模式：单份 / 批量（3 份派生模拟数据） */
+const previewMode = ref<'single' | 'batch'>('single')
+const batchPreviewRef = ref<InstanceType<typeof BatchPrintPreview> | null>(null)
+/** 批量数据由原型一次性派生（派生函数内部深拷贝，不污染 DEFAULT_DEMO_DATA） */
+const batchDataList = deriveBatchData(DEFAULT_DEMO_DATA as unknown as Record<string, any>)
+
+function onBatchRendered(pageCount: number) {
+  previewPages.value = pageCount
+}
+
 function onPreview() {
   const json = designerRef.value?.getTemplateJson?.()
   if (!json) return
   previewTemplateJson.value = json as unknown as Record<string, any>
   previewPages.value = 0
+  previewMode.value = 'single'
   previewVisible.value = true
 }
 
 function printPreview() {
-  htmlPreviewRef.value?.print()
+  if (previewMode.value === 'batch') {
+    batchPreviewRef.value?.print()
+  } else {
+    htmlPreviewRef.value?.print()
+  }
 }
 
 /**
@@ -259,6 +301,27 @@ body,
 .preview-subtitle {
   font-size: 12px;
   color: #8b909c;
+}
+.preview-modes {
+  display: inline-flex;
+  border: 1px solid #d9dde6;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.mode-btn {
+  padding: 4px 12px;
+  border: none;
+  background: #fff;
+  color: #5a667f;
+  font-size: 12px;
+  cursor: pointer;
+}
+.mode-btn + .mode-btn {
+  border-left: 1px solid #d9dde6;
+}
+.mode-btn.active {
+  background: #165dff;
+  color: #fff;
 }
 .preview-actions {
   margin-left: auto;
