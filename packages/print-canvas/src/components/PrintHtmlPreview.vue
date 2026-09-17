@@ -34,8 +34,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  /** 渲染完成，回传总页数 */
-  rendered: [pageCount: number]
+  /** 渲染完成，回传总页数与份数（对象数据=1，数组=数组长度） */
+  rendered: [pageCount: number, copies: number]
   /** 渲染失败 */
   error: [message: string]
 }>()
@@ -56,7 +56,7 @@ async function rerender() {
   rendering.value = true
   errorMsg.value = ''
   try {
-    const { html, pageCount } = await renderHtmlPages(
+    const { html, pageCount, copies } = await renderHtmlPages(
       props.templateJson as PrintTemplateData,
       props.printData,
       props.baseUrl,
@@ -69,7 +69,7 @@ async function rerender() {
       doc.write(html)
       doc.close()
     }
-    emit('rendered', pageCount)
+    emit('rendered', pageCount, copies)
   } catch (e) {
     if (seq !== renderSeq) return
     errorMsg.value = e instanceof Error ? e.message : '未知错误'

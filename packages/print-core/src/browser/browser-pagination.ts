@@ -14,6 +14,10 @@ export interface BrowserRenderResult {
   paperMm: { width: number; height: number }
   /** 模板是否连续纸 */
   continuous: boolean
+  /** 份数（对象数据=1；数组=数组长度） */
+  copies: number
+  /** 批量时每份纸张尺寸（连续纸各份高度可能不同） */
+  copyPaperMm?: { width: number; height: number }[]
 }
 
 export interface BrowserRenderOptions {
@@ -39,7 +43,7 @@ export async function renderHtmlPages(
   const prepared = await prepareDocument(
     {
       templateJson: template,
-      printData: printData as Record<string, any> | undefined,
+      printData,
       baseUrl,
       paperHeightMm: options?.paperHeightMm,
       codeRenderer,
@@ -52,5 +56,7 @@ export async function renderHtmlPages(
     pageLayouts: prepared.pageLayouts,
     paperMm: prepared.paperMm,
     continuous: prepared.continuous,
+    copies: prepared.copies,
+    copyPaperMm: prepared.copyPaperMm,
   }
 }
