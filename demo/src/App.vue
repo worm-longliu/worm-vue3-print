@@ -7,6 +7,7 @@
       <span class="demo-badge">业务类型：采购收货单（purchase_receipt）</span>
       <span class="demo-note">加载真实模板数据 · 浏览器端免保存预览</span>
       <button type="button" class="demo-print-btn" @click="onLoadDefaultLayout">加载默认布局</button>
+      <button type="button" class="demo-print-btn" @click="openBatchPreview">批量预览（{{ BATCH_SIZE }} 份）</button>
       <button type="button" class="demo-print-btn" @click="printDialogVisible = true">打印输出</button>
     </header>
 
@@ -24,29 +25,13 @@
       />
     </main>
 
-    <!-- 浏览器端免保存预览弹层 -->
+    <!-- 设计器预览：由设计器自带「预览」触发，仅演示控件原生单份预览，不承载批量能力 -->
     <Teleport to="body">
       <div v-if="previewVisible" class="preview-mask" @click.self="previewVisible = false">
         <div class="preview-panel">
           <div class="preview-head">
             <span class="preview-title">打印预览</span>
-            <div class="preview-modes">
-              <button
-                type="button"
-                class="mode-btn"
-                :class="{ active: previewMode === 'single' }"
-                @click="previewMode = 'single'"
-              >单份预览</button>
-              <button
-                type="button"
-                class="mode-btn"
-                :class="{ active: previewMode === 'batch' }"
-                @click="previewMode = 'batch'"
-              >批量预览（{{ BATCH_SIZE }} 份模拟数据）</button>
-            </div>
-            <span class="preview-subtitle" v-if="previewPages > 0">
-              {{ previewCopies > 1 ? `共 ${previewCopies} 份 · ` : '' }}{{ previewPages }} 页
-            </span>
+            <span class="preview-subtitle" v-if="previewPages > 0">{{ previewPages }} 页</span>
             <div class="preview-actions">
               <button type="button" class="preview-btn" @click="printPreview">打印</button>
               <button type="button" class="preview-btn ghost" @click="previewVisible = false">关闭</button>
@@ -55,9 +40,33 @@
           <PrintHtmlPreview
             ref="htmlPreviewRef"
             :template-json="previewTemplateJson"
-            :print-data="previewPrintData"
+            :print-data="DEFAULT_DEMO_DATA"
             :base-url="RENDER_BASE_URL"
-            @rendered="onPreviewRendered"
+            @rendered="(n: number) => (previewPages = n)"
+          />
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- 批量预览：demo 宿主的独立入口（顶部工具栏），向同一个打印控件直传数组，由 core 自动识别份数 -->
+    <Teleport to="body">
+      <div v-if="batchPreviewVisible" class="preview-mask" @click.self="batchPreviewVisible = false">
+        <div class="preview-panel">
+          <div class="preview-head">
+            <span class="preview-title">批量打印预览</span>
+            <span class="preview-subtitle">同模板 · {{ BATCH_SIZE }} 份不同数据</span>
+            <span class="preview-subtitle" v-if="batchPages > 0">共 {{ batchCopies }} 份 · {{ batchPages }} 页</span>
+            <div class="preview-actions">
+              <button type="button" class="preview-btn" @click="printBatchPreview">一次打印 {{ BATCH_SIZE }} 份</button>
+              <button type="button" class="preview-btn ghost" @click="batchPreviewVisible = false">关闭</button>
+            </div>
+          </div>
+          <PrintHtmlPreview
+            ref="batchHtmlPreviewRef"
+            :template-json="previewTemplateJson"
+            :print-data="batchDataList"
+            :base-url="RENDER_BASE_URL"
+            @rendered="onBatchRendered"
           />
         </div>
       </div>
@@ -75,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import {
   PrintDesigner,
   PrintHtmlPreview,
@@ -138,22 +147,17 @@ const previewPages = ref(0)
 const previewTemplateJson = ref<Record<string, any> | null>(null)
 const htmlPreviewRef = ref<InstanceType<typeof PrintHtmlPreview> | null>(null)
 
-/** 预览模式：单份 / 批量（3 份派生模拟数据） */
-const previewMode = ref<'single' | 'batch'>('single')
 /** 批量数据由原型一次性派生（派生函数内部深拷贝，不污染 DEFAULT_DEMO_DATA） */
 const batchDataList = deriveBatchData(DEFAULT_DEMO_DATA as unknown as Record<string, any>)
-/** 单份传对象、批量传数组——由 core 自动识别份数并合并为一个作业 */
-const previewPrintData = computed(() =>
-  previewMode.value === 'batch'
-    ? batchDataList
-    : (DEFAULT_DEMO_DATA as unknown as Record<string, any>),
-)
-/** 最近一次渲染回传的份数（对象=1，数组=数组长度） */
-const previewCopies = ref(1)
+/** 批量预览弹层（demo 宿主自有入口，与设计器原生预览互不干扰） */
+const batchPreviewVisible = ref(false)
+const batchPages = ref(0)
+const batchCopies = ref(BATCH_SIZE)
+const batchHtmlPreviewRef = ref<InstanceType<typeof PrintHtmlPreview> | null>(null)
 
-function onPreviewRendered(pageCount: number, copies: number) {
-  previewPages.value = pageCount
-  previewCopies.value = copies
+function onBatchRendered(pageCount: number, copies: number) {
+  batchPages.value = pageCount
+  batchCopies.value = copies
 }
 
 function onPreview() {
@@ -161,13 +165,25 @@ function onPreview() {
   if (!json) return
   previewTemplateJson.value = json as unknown as Record<string, any>
   previewPages.value = 0
-  previewCopies.value = 1
-  previewMode.value = 'single'
   previewVisible.value = true
+}
+
+/** 顶部工具栏入口：取当前画布 JSON，数组直传打印控件，由 core 识别份数并合并为一个作业 */
+function openBatchPreview() {
+  const json = designerRef.value?.getTemplateJson?.()
+  if (!json) return
+  previewTemplateJson.value = json as unknown as Record<string, any>
+  batchPages.value = 0
+  batchCopies.value = BATCH_SIZE
+  batchPreviewVisible.value = true
 }
 
 function printPreview() {
   htmlPreviewRef.value?.print()
+}
+
+function printBatchPreview() {
+  batchHtmlPreviewRef.value?.print()
 }
 
 /**
@@ -296,27 +312,6 @@ body,
 .preview-subtitle {
   font-size: 12px;
   color: #8b909c;
-}
-.preview-modes {
-  display: inline-flex;
-  border: 1px solid #d9dde6;
-  border-radius: 6px;
-  overflow: hidden;
-}
-.mode-btn {
-  padding: 4px 12px;
-  border: none;
-  background: #fff;
-  color: #5a667f;
-  font-size: 12px;
-  cursor: pointer;
-}
-.mode-btn + .mode-btn {
-  border-left: 1px solid #d9dde6;
-}
-.mode-btn.active {
-  background: #165dff;
-  color: #fff;
 }
 .preview-actions {
   margin-left: auto;
