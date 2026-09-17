@@ -150,6 +150,46 @@ body { font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, s
 `.trim()
 }
 
+/** 份间强制分页：覆盖每份最后一个 .print-page 的 page-break-after:auto */
+const COPY_BREAK_CSS =
+  '.print-copy:not(:last-child){break-after:page;page-break-after:always;}'
+
+/**
+ * 批量（多份）文档 CSS。
+ * - 固定纸：各份 @page 相同，共用 buildPageCss，仅追加份间分页；
+ * - 连续纸：每份纸高独立推导，用命名页 @page copyN + 作用域 .print-copy-N
+ *   使一个文档内各份输出不同物理页高（Chromium preferCSSPageSize 支持）。
+ */
+export function buildBatchPageCss(
+  template: TemplateData,
+  copies: Array<{ heightMm?: number }>,
+): string {
+  if (template.paperSize !== 'CONTINUOUS') {
+    return `${buildPageCss(template)}\n${COPY_BREAK_CSS}`
+  }
+
+  const { bottom: mb } = template.margins
+  const footerH = template.footer?.height ?? 0
+  const width = getPaperDimensions(template).width
+  // base 用首份推导纸高生成匿名 @page 与全局 .print-page 几何，作为兜底默认
+  const base = buildPageCss(template, copies[0]?.heightMm)
+  const scoped = copies
+    .map((copy, i) => {
+      const h = copy.heightMm
+      const rules = [
+        `@page copy${i} { size: ${mm(width)} ${h ? mm(h) : 'auto'}; margin: 0; }`,
+        `.print-copy-${i} { page: copy${i}; }`,
+      ]
+      if (h) {
+        rules.push(`.print-copy-${i} .print-page { min-height: ${mm(h)}; }`)
+        rules.push(`.print-copy-${i} .page-footer { top: ${mm(h - mb - footerH)}; }`)
+      }
+      return rules.join('\n')
+    })
+    .join('\n')
+  return `${base}\n${scoped}\n${COPY_BREAK_CSS}`
+}
+
 /**
  * 生成内联样式：元素绝对定位（mm 单位）。
  * 可选 z-index：与设计器「层级」一致，未设置（undefined）时不输出（层叠回退 DOM 顺序）。

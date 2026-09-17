@@ -18,7 +18,7 @@ import { renderWatermarkLayerHtml } from './watermark.js'
 import { tableDesignBottom } from './pagination-engine.js'
 
 /** 渲染上下文：贯穿两遍渲染的可选依赖 */
-interface RenderCtx {
+export interface RenderCtx {
   codeRenderer?: CodeRenderer
   /** 连续纸探针推导出的最终纸高（mm）；水印网格与 @page 必须同源 */
   pageHeightMm?: number
@@ -110,33 +110,50 @@ function generateMeasurementHtml(
 
 // ─── 第二遍：最终渲染 ───
 
-function generateFinalHtml(
+/** 第二遍最终渲染：仅生成 body 内的 .print-page 序列（含系统变量注入），不含文档外壳 */
+export function renderFinalPages(
   template: TemplateData,
   pageLayouts: PageLayout[],
-  css: string,
-  totalPages: number,
+  printData: Record<string, any>,
   ctx: RenderCtx,
-  printData?: Record<string, any> | Record<string, any>[],
 ): string {
+  const totalPages = pageLayouts.length
   const pagesHtml = pageLayouts.map(page => {
     const pageNum = page.pageIndex + 1
     return renderPage(template, page, pageNum, totalPages, ctx, printData)
   }).join('\n')
+  return injectSystemVariables(pagesHtml)
+}
 
-  let html = `<!DOCTYPE html>
+/** 套上完整 HTML 文档外壳（含系统变量注入） */
+export function wrapHtmlDocument(css: string, bodyInnerHtml: string, bodyClass?: string): string {
+  const html = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <style>${css}</style>
 </head>
-<body${template.paperSize === 'CONTINUOUS' ? ' class="continuous"' : ''}>
-${pagesHtml}
+<body${bodyClass ? ` class="${bodyClass}"` : ''}>
+${bodyInnerHtml}
 </body>
 </html>`
+  return injectSystemVariables(html)
+}
 
-  // 注入系统变量（{printDate} 等）
-  html = injectSystemVariables(html)
-  return html
+function generateFinalHtml(
+  template: TemplateData,
+  pageLayouts: PageLayout[],
+  css: string,
+  _totalPages: number,
+  ctx: RenderCtx,
+  printData?: Record<string, any> | Record<string, any>[],
+): string {
+  const bodyInner = renderFinalPages(template, pageLayouts, printData ?? {}, ctx)
+  return wrapHtmlDocument(
+    css,
+    bodyInner,
+    template.paperSize === 'CONTINUOUS' ? 'continuous' : undefined,
+  )
 }
 
 function renderPage(

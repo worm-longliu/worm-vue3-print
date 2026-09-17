@@ -1,6 +1,6 @@
 // print-core/src/render/html-generator.test.ts
 import { describe, it, expect } from 'vitest'
-import { generateHtml } from './html-generator.js'
+import { generateHtml, renderFinalPages, wrapHtmlDocument } from './html-generator.js'
 import type { TemplateData, PageLayout, CodeRenderer, CodeRenderOptions } from './types.js'
 
 /** 测试用 CodeRenderer：返回可识别 SVG；EAN13 非数字码值抛错模拟非法码 */
@@ -716,5 +716,37 @@ describe('renderTableSlice 小计/汇总行', () => {
     ]))
     expect(html).toContain('合计：')
     expect(html).toContain('签字')
+  })
+})
+
+describe('批量文档拆分函数', () => {
+  const tpl = {
+    paperSize: 'A4', orientation: 'portrait',
+    margins: { top: 0, right: 0, bottom: 0, left: 0 },
+    header: { height: 0, elements: [] },
+    footer: { height: 0, elements: [] },
+    firstPageOverlay: { height: 0, elements: [] },
+    elements: [],
+  } as unknown as TemplateData
+
+  it('renderFinalPages 只产出 .print-page 序列', () => {
+    const html = renderFinalPages(
+      tpl,
+      [{ pageIndex: 0, sections: [] }, { pageIndex: 1, sections: [] }],
+      {},
+      {},
+    )
+    expect(html).not.toContain('<!DOCTYPE')
+    expect(html).not.toContain('<head>')
+    expect(html).toContain('data-page="1"')
+    expect(html).toContain('data-page="2"')
+  })
+
+  it('wrapHtmlDocument 包外壳并支持 body class', () => {
+    const html = wrapHtmlDocument('/*c*/', '<section class="print-page"></section>', 'continuous')
+    expect(html).toContain('<!DOCTYPE html>')
+    expect(html).toContain('<style>/*c*/</style>')
+    expect(html).toContain('<body class="continuous">')
+    expect(html).toContain('<section class="print-page"></section>')
   })
 })
