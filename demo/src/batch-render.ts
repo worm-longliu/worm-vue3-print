@@ -40,14 +40,17 @@ export async function renderBatchInBrowser(
     }
   }
 
-  // 同模板多次渲染的 head（@page/样式）一致，以首份为骨架
+  // 同模板多次渲染的 head（@page/样式）一致，以首份为骨架。
+  // 注意首份文档即骨架本身：必须先取出各份 body 内容，再清空骨架填充，
+  // 否则 skeleton.body.innerHTML = '' 会把第一份一起清掉。
   const docs = pages.map(p => new DOMParser().parseFromString(p.html, 'text/html'))
+  const bodyContents = docs.map(doc => doc.body.innerHTML)
   const skeleton = docs[0]
   skeleton.body.innerHTML = ''
-  for (const doc of docs) {
+  for (const content of bodyContents) {
     const section = skeleton.createElement('section')
     section.className = 'print-copy'
-    section.innerHTML = doc.body.innerHTML
+    section.innerHTML = content
     skeleton.body.appendChild(section)
   }
   skeleton.head.insertAdjacentHTML('beforeend', COPY_BREAK_STYLE)
