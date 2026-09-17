@@ -45,7 +45,7 @@
               >批量预览（{{ BATCH_SIZE }} 份模拟数据）</button>
             </div>
             <span class="preview-subtitle" v-if="previewPages > 0">
-              {{ previewMode === 'batch' ? `共 ${BATCH_SIZE} 份 · ` : '' }}{{ previewPages }} 页
+              {{ previewCopies > 1 ? `共 ${previewCopies} 份 · ` : '' }}{{ previewPages }} 页
             </span>
             <div class="preview-actions">
               <button type="button" class="preview-btn" @click="printPreview">打印</button>
@@ -53,20 +53,11 @@
             </div>
           </div>
           <PrintHtmlPreview
-            v-if="previewMode === 'single'"
             ref="htmlPreviewRef"
             :template-json="previewTemplateJson"
-            :print-data="DEFAULT_DEMO_DATA"
+            :print-data="previewPrintData"
             :base-url="RENDER_BASE_URL"
-            @rendered="(n: number) => previewPages = n"
-          />
-          <BatchPrintPreview
-            v-else
-            ref="batchPreviewRef"
-            :template-json="previewTemplateJson"
-            :print-data-list="batchDataList"
-            :base-url="RENDER_BASE_URL"
-            @rendered="onBatchRendered"
+            @rendered="onPreviewRendered"
           />
         </div>
       </div>
@@ -84,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import {
   PrintDesigner,
   PrintHtmlPreview,
@@ -93,7 +84,6 @@ import {
 } from '@worm-vue3-print/canvas'
 import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
 import PrintOutputDialog from './components/PrintOutputDialog.vue'
-import BatchPrintPreview from './components/BatchPrintPreview.vue'
 import rawTemplate from './template-purchase-receipt.json'
 import {
   TEMPLATE_ID,
@@ -150,12 +140,20 @@ const htmlPreviewRef = ref<InstanceType<typeof PrintHtmlPreview> | null>(null)
 
 /** 预览模式：单份 / 批量（3 份派生模拟数据） */
 const previewMode = ref<'single' | 'batch'>('single')
-const batchPreviewRef = ref<InstanceType<typeof BatchPrintPreview> | null>(null)
 /** 批量数据由原型一次性派生（派生函数内部深拷贝，不污染 DEFAULT_DEMO_DATA） */
 const batchDataList = deriveBatchData(DEFAULT_DEMO_DATA as unknown as Record<string, any>)
+/** 单份传对象、批量传数组——由 core 自动识别份数并合并为一个作业 */
+const previewPrintData = computed(() =>
+  previewMode.value === 'batch'
+    ? batchDataList
+    : (DEFAULT_DEMO_DATA as unknown as Record<string, any>),
+)
+/** 最近一次渲染回传的份数（对象=1，数组=数组长度） */
+const previewCopies = ref(1)
 
-function onBatchRendered(pageCount: number) {
+function onPreviewRendered(pageCount: number, copies: number) {
   previewPages.value = pageCount
+  previewCopies.value = copies
 }
 
 function onPreview() {
@@ -163,16 +161,13 @@ function onPreview() {
   if (!json) return
   previewTemplateJson.value = json as unknown as Record<string, any>
   previewPages.value = 0
+  previewCopies.value = 1
   previewMode.value = 'single'
   previewVisible.value = true
 }
 
 function printPreview() {
-  if (previewMode.value === 'batch') {
-    batchPreviewRef.value?.print()
-  } else {
-    htmlPreviewRef.value?.print()
-  }
+  htmlPreviewRef.value?.print()
 }
 
 /**
