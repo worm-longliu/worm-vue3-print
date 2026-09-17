@@ -29,6 +29,7 @@
 
 - 鉴权：`/render/*` 需携带请求头 `X-Render-Key`，与环境变量 `RENDER_API_KEY` 一致（默认 `dev-render-key`）。
 - 请求体：`{ templateJson, printData, baseUrl }`。`templateJson` 必含 `paperSize`、`orientation`、`margins`；`baseUrl` 用于把相对路径图片（如 `/docfiles/...`）拼成可访问的绝对地址。
+- `printData`：业务数据，传对象渲染单份；传非空对象数组时按数组长度批量渲染，各份数据不同、份间自动分页，合并为同一个 PDF（最多 500 份）。空数组、超过上限或数组项不是对象时返回 `400 INVALID_REQUEST`。`/render/screenshot` 传数组时仅渲染第一条数据。
 - 限制：请求体上限 10MB，单请求 30s 超时。
 
 ## 本地开发

@@ -4,7 +4,24 @@
 import express from 'express'
 import { renderPdf, renderScreenshot } from './pdf-render.js'
 import { BrowserPool } from './browser-pool.js'
+import { MAX_BATCH_COPIES } from '@worm-vue3-print/core'
 import type { RenderRequest, PrintTemplateData as TemplateData } from '@worm-vue3-print/core'
+
+/** 校验 printData：对象放行；数组检查非空、上限与每项类型。返回错误信息或 null（与 core 文案一致） */
+function validatePrintData(printData: unknown): string | null {
+  if (printData === undefined || !Array.isArray(printData)) return null
+  if (printData.length === 0) return '批量打印数据必须是非空对象数组'
+  if (printData.length > MAX_BATCH_COPIES) {
+    return `批量打印最多支持 ${MAX_BATCH_COPIES} 份，当前 ${printData.length} 份`
+  }
+  for (let i = 0; i < printData.length; i++) {
+    const item = printData[i]
+    if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+      return `批量打印数据第 ${i + 1} 项必须是对象`
+    }
+  }
+  return null
+}
 
 const app = express()
 app.use(express.json({ limit: '10mb' }))
@@ -54,6 +71,12 @@ app.post('/render/pdf', authMiddleware, async (req, res) => {
     return
   }
 
+  const printDataError = validatePrintData(body.printData)
+  if (printDataError) {
+    res.status(400).json({ code: 'INVALID_REQUEST', message: printDataError })
+    return
+  }
+
   // 请求级超时保护
   let timedOut = false
   const timer = setTimeout(() => {
@@ -84,6 +107,13 @@ app.post('/render/screenshot', authMiddleware, async (req, res) => {
 
   if (!body.templateJson) {
     res.status(400).json({ code: 'INVALID_REQUEST', message: 'templateJson is required' })
+    return
+  }
+
+  // 截图数组仅渲染首条，但非法数组（空/超限/含非对象项）仍在入口拒绝
+  const printDataError = validatePrintData(body.printData)
+  if (printDataError) {
+    res.status(400).json({ code: 'INVALID_REQUEST', message: printDataError })
     return
   }
 
