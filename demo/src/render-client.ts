@@ -26,13 +26,13 @@ export async function checkRenderHealth(signal?: AbortSignal): Promise<RenderHea
 /**
  * 请求服务端渲染 PDF。
  * @param templateJson 当前画布模板 JSON（对象）
- * @param printData 打印业务数据
+ * @param printData 打印业务数据；传非空对象数组时服务端按数组长度批量渲染，份间分页并合并为一个 PDF（最多 500 份）
  * @param baseUrl 相对路径图片（如 /docfiles/...）拼接用的宿主基址
  * @returns PDF Blob
  */
 export async function requestServerPdf(
   templateJson: Record<string, unknown>,
-  printData: Record<string, unknown>,
+  printData: Record<string, unknown> | Array<Record<string, unknown>>,
   baseUrl: string,
 ): Promise<Blob> {
   const res = await fetch(`${RENDER_API_PREFIX}/render/pdf`, {

@@ -63,7 +63,6 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/canvas'
 import { PrintClient, WormPrintError } from '@worm-vue3-print/client'
 import type { PrinterInfo } from '@worm-vue3-print/client'
 import {
@@ -77,6 +76,8 @@ const props = defineProps<{
   open: boolean
   baseUrl: string
   templateName: string
+  /** 当前打印数据：对象=单份；数组=批量（由宿主顶部开关切换，三端共用） */
+  printData: Record<string, unknown> | Array<Record<string, unknown>>
   getTemplateJson: () => string | Record<string, unknown> | undefined
 }>()
 
@@ -134,11 +135,7 @@ async function onServerPdf() {
   rendering.value = true
   renderError.value = ''
   try {
-    const pdf = await requestServerPdf(
-      templateJson,
-      DEFAULT_DEMO_DATA as unknown as Record<string, unknown>,
-      props.baseUrl,
-    )
+    const pdf = await requestServerPdf(templateJson, props.printData, props.baseUrl)
     openPdfBlob(pdf, `purchase-receipt-${Date.now()}.pdf`)
     await refreshRenderStatus()
   } catch (err) {
@@ -226,12 +223,9 @@ async function onClientPrint() {
   clientMessage.value = ''
   clientMessageKind.value = ''
   try {
-    // 浏览器侧两遍渲染（测量/分页/最终 HTML 全部在本页完成）
-    const rendered = await renderInBrowser(
-      templateJson,
-      DEFAULT_DEMO_DATA as unknown as Record<string, unknown>,
-      props.baseUrl,
-    )
+    // 浏览器侧两遍渲染（测量/分页/最终 HTML 全部在本页完成）；
+    // printData 为数组时由 core 在浏览器侧合并多份为单个 HTML，再直送客户端静默打印
+    const rendered = await renderInBrowser(templateJson, props.printData, props.baseUrl)
     const res = await client.printHtml(
       rendered,
       { printerName: selectedPrinter.value || undefined },

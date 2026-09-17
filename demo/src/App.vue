@@ -7,7 +7,10 @@
       <span class="demo-badge">业务类型：采购收货单（purchase_receipt）</span>
       <span class="demo-note">加载真实模板数据 · 浏览器端免保存预览</span>
       <button type="button" class="demo-print-btn" @click="onLoadDefaultLayout">加载默认布局</button>
-      <button type="button" class="demo-print-btn" @click="openBatchPreview">批量预览（{{ BATCH_SIZE }} 份）</button>
+      <label class="demo-batch-switch" :class="{ on: batchEnabled }" title="开启后浏览器预览/打印、客户端静默打印、服务端 PDF 均传入 3 份数据数组，由打印插件合并为一个作业">
+        <input v-model="batchEnabled" type="checkbox" />
+        <span>批量打印（{{ BATCH_SIZE }} 份）</span>
+      </label>
       <button type="button" class="demo-print-btn" @click="printDialogVisible = true">打印输出</button>
     </header>
 
@@ -40,7 +43,7 @@
           <PrintHtmlPreview
             ref="htmlPreviewRef"
             :template-json="previewTemplateJson"
-            :print-data="DEFAULT_DEMO_DATA"
+            :print-data="activePrintData"
             :base-url="RENDER_BASE_URL"
             @rendered="(n: number) => (previewPages = n)"
           />
@@ -48,35 +51,12 @@
       </div>
     </Teleport>
 
-    <!-- 批量预览：demo 宿主的独立入口（顶部工具栏），向同一个打印控件直传数组，由 core 自动识别份数 -->
-    <Teleport to="body">
-      <div v-if="batchPreviewVisible" class="preview-mask" @click.self="batchPreviewVisible = false">
-        <div class="preview-panel">
-          <div class="preview-head">
-            <span class="preview-title">批量打印预览</span>
-            <span class="preview-subtitle">同模板 · {{ BATCH_SIZE }} 份不同数据</span>
-            <span class="preview-subtitle" v-if="batchPages > 0">共 {{ batchCopies }} 份 · {{ batchPages }} 页</span>
-            <div class="preview-actions">
-              <button type="button" class="preview-btn" @click="printBatchPreview">一次打印 {{ BATCH_SIZE }} 份</button>
-              <button type="button" class="preview-btn ghost" @click="batchPreviewVisible = false">关闭</button>
-            </div>
-          </div>
-          <PrintHtmlPreview
-            ref="batchHtmlPreviewRef"
-            :template-json="previewTemplateJson"
-            :print-data="batchDataList"
-            :base-url="RENDER_BASE_URL"
-            @rendered="onBatchRendered"
-          />
-        </div>
-      </div>
-    </Teleport>
-
-    <!-- 打印输出弹窗（服务端 PDF / 客户端静默打印） -->
+    <!-- 打印输出弹窗（服务端 PDF / 客户端静默打印）：printData 随批量开关在对象/数组间切换 -->
     <PrintOutputDialog
       :open="printDialogVisible"
       :base-url="RENDER_BASE_URL"
       :template-name="TEMPLATE_NAME"
+      :print-data="activePrintData"
       :get-template-json="() => (designerRef?.getTemplateJson() as unknown as Record<string, unknown>)"
       @close="printDialogVisible = false"
     />
@@ -84,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import {
   PrintDesigner,
   PrintHtmlPreview,
@@ -147,18 +127,16 @@ const previewPages = ref(0)
 const previewTemplateJson = ref<Record<string, any> | null>(null)
 const htmlPreviewRef = ref<InstanceType<typeof PrintHtmlPreview> | null>(null)
 
+/** 批量打印开关：开启后三条打印链路统一传数组（默认 BATCH_SIZE 份），关闭则传单对象 */
+const batchEnabled = ref(false)
 /** 批量数据由原型一次性派生（派生函数内部深拷贝，不污染 DEFAULT_DEMO_DATA） */
 const batchDataList = deriveBatchData(DEFAULT_DEMO_DATA as unknown as Record<string, any>)
-/** 批量预览弹层（demo 宿主自有入口，与设计器原生预览互不干扰） */
-const batchPreviewVisible = ref(false)
-const batchPages = ref(0)
-const batchCopies = ref(BATCH_SIZE)
-const batchHtmlPreviewRef = ref<InstanceType<typeof PrintHtmlPreview> | null>(null)
-
-function onBatchRendered(pageCount: number, copies: number) {
-  batchPages.value = pageCount
-  batchCopies.value = copies
-}
+/** 当前生效的打印数据：对象=单份，数组=批量，浏览器/客户端/服务端三端共用同一数据源 */
+const activePrintData = computed<Record<string, any> | Record<string, any>[]>(() =>
+  batchEnabled.value
+    ? batchDataList
+    : (DEFAULT_DEMO_DATA as unknown as Record<string, any>),
+)
 
 function onPreview() {
   const json = designerRef.value?.getTemplateJson?.()
@@ -168,22 +146,8 @@ function onPreview() {
   previewVisible.value = true
 }
 
-/** 顶部工具栏入口：取当前画布 JSON，数组直传打印控件，由 core 识别份数并合并为一个作业 */
-function openBatchPreview() {
-  const json = designerRef.value?.getTemplateJson?.()
-  if (!json) return
-  previewTemplateJson.value = json as unknown as Record<string, any>
-  batchPages.value = 0
-  batchCopies.value = BATCH_SIZE
-  batchPreviewVisible.value = true
-}
-
 function printPreview() {
   htmlPreviewRef.value?.print()
-}
-
-function printBatchPreview() {
-  batchHtmlPreviewRef.value?.print()
 }
 
 /**
@@ -270,6 +234,30 @@ body,
 }
 .demo-print-btn:hover {
   background: #eef3ff;
+}
+.demo-batch-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border: 1px solid #d9dde6;
+  border-radius: 6px;
+  background: #fff;
+  color: #5a667f;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+.demo-batch-switch input {
+  margin: 0;
+  cursor: pointer;
+  accent-color: #165dff;
+}
+.demo-batch-switch.on {
+  border-color: #165dff;
+  background: #eef3ff;
+  color: #165dff;
+  font-weight: 600;
 }
 .demo-container {
   flex: 1;
