@@ -26,7 +26,7 @@
         :show-help="true"
         :upload-image="uploadDemoImage"
         :upload-design-background="uploadDemoImage"
-        :preset-fonts="PRESET_FONTS"
+        :fonts="DESIGNER_FONTS"
         :load-fonts="loadFonts"
         :client-fonts="clientFonts"
         @preview="onPreview"
@@ -79,6 +79,7 @@ import {
   createDefaultTemplate,
 } from '@worm-vue3-print/canvas'
 import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+import type { PrintFontDeclaration } from '@worm-vue3-print/core'
 import PrintOutputDialog from './components/PrintOutputDialog.vue'
 import type { ServerFontReport } from './render-client'
 import { loadFonts } from './font-query'
@@ -100,8 +101,38 @@ const printDialogVisible = ref(false)
 const templateData = ref<TemplateData>(createDefaultTemplate())
 const fields = ref<PrintBusinessField[]>(PURCHASE_RECEIPT_FIELDS)
 
-/** 预设字体：宿主业务常用字体，设计器下拉中置顶，不依赖任何出图端上报 */
-const PRESET_FONTS = ['黑体', '微软雅黑', '华文仿宋', '娃娃体-简']
+/**
+ * 模板字体声明（宿主配置）：保存时同步写入模板 JSON，服务端与客户端按模板出图。
+ * url 以 '/' 开头 → 各端按自己的 baseUrl 解析：浏览器取当前站点（dev 为 9303 端口），
+ * render 服务取请求里的 baseUrl（本机联调填 http://host.docker.internal:9303）。
+ *
+ * 这里用的是三款公开字体（OFL-1.1），字型与宋体/黑体差异极大，一眼就能看出webfont 有没有真正生效：
+ * 马善政毛笔楷书 / 站酷快乐体 / 站酷庆科黄油体。文件用 node scripts/fetch-test-fonts.mjs 下载，
+ * 换字体只改这份数组（family 与文件名对应），不动库代码。
+ */
+const DESIGNER_FONTS: PrintFontDeclaration[] = [
+  {
+    family: 'Ma Shan Zheng',
+    label: '马善政毛笔楷书',
+    files: [
+      { weight: 400, url: '/fonts/MaShanZheng-Regular.ttf' },
+    ],
+  },
+  {
+    family: 'ZCOOL KuaiLe',
+    label: '站酷快乐体',
+    files: [
+      { weight: 400, url: '/fonts/ZCOOLKuaiLe-Regular.ttf' },
+    ],
+  },
+  {
+    family: 'ZCOOL QingKe HuangYou',
+    label: '站酷庆科黄油体',
+    files: [
+      { weight: 400, url: '/fonts/ZCOOLQingKeHuangYou-Regular.ttf' },
+    ],
+  },
+]
 
 /** 本机（桌面客户端所在机器）字体清单：由打印弹窗连接成功后回填，掉线时撤回 */
 const clientFonts = ref<ServerFontReport | undefined>(undefined)

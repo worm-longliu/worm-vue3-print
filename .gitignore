@@ -4,3 +4,10 @@ out/
 
 # macOS 目录元数据
 .DS_Store
+
+# demo 联调用的字体二进制：来源见 demo/public/fonts/README.md（OFL 可再分发，但体积大且各人自取）
+demo/public/fonts/*.ttf
+demo/public/fonts/*.otf
+demo/public/fonts/*.woff
+demo/public/fonts/*.woff2
+demo/public/fonts/*.ttc
