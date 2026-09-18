@@ -679,6 +679,9 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 > 整条声明丢失）。故 core 新增 `escapeInlineStyleValue`，内联样式的字体栈引号统一转义为 `&quot;`；
 > HTML 解析后仍是 `"SimSun", "Microsoft YaHei", ...`，与计划语义一致。`<style>` 块内 body 的兜底栈保持双引号原样，
 > css-builder 输出逐字未变。html-generator 的测试断言相应改为转义形式，并新增一条「不得输出未转义裸引号」的守卫用例。
+>
+> 另：`makeFontService` 的 `platform` 改为可注入（默认 `process.platform`）。计划中的 render 字体用例按 Linux 容器编写，
+> 而开发机为 macOS，不注入平台则 `fc-list` 分支在本地永远走不到、缓存用例也必然失败。
 
 ---
 

@@ -4,6 +4,7 @@
 import express from 'express'
 import { renderPdf, renderScreenshot } from './pdf-render.js'
 import { BrowserPool } from './browser-pool.js'
+import { makeFontService } from './font-service.js'
 import { MAX_BATCH_COPIES } from '@worm-vue3-print/core'
 import type { RenderRequest, PrintTemplateData as TemplateData } from '@worm-vue3-print/core'
 
@@ -49,6 +50,19 @@ app.get('/health', (_req, res) => {
     maxConcurrent: pool.concurrencyLimit,
     queueLength: pool.queueLength,
   })
+})
+
+// ─── 系统字体清单端点 ───
+
+const fontService = makeFontService()
+
+app.get('/fonts', authMiddleware, async (_req, res) => {
+  try {
+    res.json(await fontService.list())
+  } catch (error) {
+    console.error('Font enumeration failed:', error)
+    res.status(500).json({ code: 'INTERNAL', message: 'Font enumeration failed' })
+  }
 })
 
 // ─── PDF 渲染端点 ───
