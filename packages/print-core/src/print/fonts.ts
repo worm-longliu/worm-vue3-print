@@ -15,7 +15,10 @@ export const UNAVAILABLE: FontSourceReport = { available: false, fonts: [] }
 
 export interface FontCandidate {
   family: string
-  /** 只含真实上报成功且包含该字体的端 */
+  /**
+   * 只含真实上报成功且包含该字体的端。
+   * 空数组表示「宿主预设字体」——未经任一出图端确认，不代表该字体真的可用。
+   */
   sources: FontSource[]
 }
 
@@ -76,11 +79,11 @@ function compareFamily(a: string, b: string): number {
 }
 
 /**
- * 规范化一个端上报的原始字体名列表：
+ * 规范化字体名列表并保持输入顺序：
  * 去空白、丢空值与非法类型、去重（大小写不敏感，保留首次出现写法）、
- * 剔除 '.' 开头的系统隐藏字体、按族名稳定升序。
+ * 剔除 '.' 开头的系统隐藏字体。
  */
-export function normalizeFontList(raw: readonly string[]): string[] {
+function normalizeFontNames(raw: readonly string[]): string[] {
   const seen = new Set<string>()
   const out: string[] = []
   for (const item of raw ?? []) {
@@ -93,18 +96,40 @@ export function normalizeFontList(raw: readonly string[]): string[] {
     seen.add(key)
     out.push(name)
   }
-  return out.sort(compareFamily)
+  return out
 }
 
 /**
- * 合并两端上报。仅 available=true 的端贡献来源标注；
- * 排序为「来源数降序 → 族名升序」，使两端都可用的字体排在最前（最安全的选择最先出现）。
+ * 规范化一个端上报的原始字体名列表：在 {@link normalizeFontNames} 的基础上按族名稳定升序
+ * （上报顺序无意义，升序才能让同一份清单在不同机器上产出相同目录）。
+ */
+export function normalizeFontList(raw: readonly string[]): string[] {
+  return normalizeFontNames(raw).sort(compareFamily)
+}
+
+/**
+ * 合并预设字体与两端上报。
+ *
+ * - `preset` 由宿主声明，按传入顺序**置顶**（顺序即优先级，故不做排序），`sources` 为空——
+ *   预设只影响可选性与展示顺序，不代表该字体真的能出图。
+ * - 远端清单里的同名字体只补 `sources`，不新增行、不移动位置，族名写法保留先入者（预设优先）。
+ * - 远端独有字体排在预设之后，排序为「来源数降序 → 族名升序」，
+ *   使两端都可用的字体排在最前（最安全的选择最先出现）。
  */
 export function mergeFontSources(input: {
+  /** 宿主预设的常用字体族名；不传时行为与仅合并两端上报完全一致 */
+  preset?: readonly string[]
   server: FontSourceReport
   client: FontSourceReport
 }): FontCatalog {
   const byKey = new Map<string, FontCandidate>()
+  const pinned: FontCandidate[] = []
+
+  for (const family of normalizeFontNames(input.preset ?? [])) {
+    const candidate: FontCandidate = { family, sources: [] }
+    pinned.push(candidate)
+    byKey.set(compareKey(family), candidate)
+  }
 
   const ingest = (report: FontSourceReport | undefined, source: FontSource): void => {
     if (!report?.available) return
@@ -122,10 +147,13 @@ export function mergeFontSources(input: {
   ingest(input.server, 'server')
   ingest(input.client, 'client')
 
+  const pinnedKeys = new Set(pinned.map(c => compareKey(c.family)))
+  const rest = [...byKey.values()]
+    .filter(candidate => !pinnedKeys.has(compareKey(candidate.family)))
+    .sort((a, b) => b.sources.length - a.sources.length || compareFamily(a.family, b.family))
+
   return {
-    fonts: [...byKey.values()].sort(
-      (a, b) => b.sources.length - a.sources.length || compareFamily(a.family, b.family),
-    ),
+    fonts: [...pinned, ...rest],
     available: {
       server: input.server?.available === true,
       client: input.client?.available === true,

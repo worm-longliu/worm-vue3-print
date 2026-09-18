@@ -52,6 +52,51 @@ describe('mergeFontSources', () => {
     expect(cat.fonts).toEqual([])
     expect(cat.available).toEqual({ server: false, client: false })
   })
+
+  it('预设字体按数组顺序置顶，远端独有字体仍按端数降序 + 族名排序', () => {
+    const cat = mergeFontSources({
+      preset: ['SimSun', 'Microsoft YaHei'],
+      server: { available: true, fonts: ['KaiTi', 'Arial'] },
+      client: { available: true, fonts: ['KaiTi'] },
+    })
+    expect(cat.fonts.map(f => [f.family, f.sources])).toEqual([
+      ['SimSun', []],
+      ['Microsoft YaHei', []],
+      ['KaiTi', ['server', 'client']],
+      ['Arial', ['server']],
+    ])
+  })
+
+  it('预设与远端同名时合并为一行：保持预设位置与写法，补上真实来源', () => {
+    const cat = mergeFontSources({
+      preset: ['SimSun'],
+      server: { available: true, fonts: ['simsun', 'Arial'] },
+      client: { available: true, fonts: ['SimSun'] },
+    })
+    expect(cat.fonts).toEqual([
+      { family: 'SimSun', sources: ['server', 'client'] },
+      { family: 'Arial', sources: ['server'] },
+    ])
+  })
+
+  it('预设名单去空白、丢空值、大小写不敏感去重并剔除隐藏字体', () => {
+    const cat = mergeFontSources({
+      preset: [' SimSun ', '', 'simsun', '.Apple Color Emoji UI', 'KaiTi'],
+      server: UNAVAILABLE,
+      client: UNAVAILABLE,
+    })
+    expect(cat.fonts.map(f => f.family)).toEqual(['SimSun', 'KaiTi'])
+  })
+
+  it('不传 preset 与传空数组的输出一致', () => {
+    const reports = {
+      server: { available: true, fonts: ['Noto Sans CJK SC', 'SimSun'] },
+      client: { available: true, fonts: ['SimSun', 'KaiTi'] },
+    }
+    expect(mergeFontSources({ ...reports }).fonts).toEqual(
+      mergeFontSources({ ...reports, preset: [] }).fonts,
+    )
+  })
 })
 
 describe('toFontFamilyStack', () => {
@@ -102,6 +147,17 @@ describe('findMissingFonts', () => {
     const catalog = mergeFontSources({ server: UNAVAILABLE, client: UNAVAILABLE })
     expect(findMissingFonts(template, catalog, 'server')).toEqual([])
     expect(findMissingFonts(template, catalog, 'client')).toEqual([])
+  })
+
+  it('预设字体不抑制缺失判定：清单已取到且确无该字体时照常上报', () => {
+    const catalog = mergeFontSources({
+      preset: ['KaiTi'],
+      server: { available: true, fonts: ['SimSun'] },
+      client: UNAVAILABLE,
+    })
+    expect(findMissingFonts(template, catalog, 'server')).toEqual([
+      { family: 'KaiTi', targets: ['txt-1', 'tbl-1#r1c0'] },
+    ])
   })
 
   it('大小写差异不算缺失', () => {
