@@ -30,6 +30,8 @@ class FakeWebSocket {
         this.emit({ id: frame.id, ok: true, payload: { app: 'worm-print-client', version: '0.1.0', port: 17521 } })
       } else if (frame.type === MESSAGE_TYPES.PRINTERS_LIST) {
         this.emit({ id: frame.id, ok: true, payload: { printers: [{ name: 'PDF', isDefault: true, status: 'idle' }] } })
+      } else if (frame.type === MESSAGE_TYPES.FONTS_LIST) {
+        this.emit({ id: frame.id, ok: true, payload: { available: true, fonts: ['KaiTi', 'SimSun'] } })
       } else if (frame.type === MESSAGE_TYPES.PRINT_SUBMIT) {
         this.emit({ id: frame.id, ok: true, payload: { jobId: 'job-1' } })
       } else if (frame.type === MESSAGE_TYPES.PRINT_SUBMIT_HTML) {
@@ -68,6 +70,17 @@ describe('PrintClient', () => {
     await p
     const printers = await client.listPrinters()
     expect(printers).toEqual([{ name: 'PDF', isDefault: true, status: 'idle' }])
+  })
+
+  it('connect 后 listFonts 返回本机字体清单', async () => {
+    const { client } = makeClient()
+    const p = client.connect()
+    FakeWebSocket.instances[0]!.open()
+    await p
+    await expect(client.listFonts()).resolves.toEqual({
+      available: true,
+      fonts: ['KaiTi', 'SimSun'],
+    })
   })
 
   it('print 组装 print.submit payload 并返回 jobId', async () => {

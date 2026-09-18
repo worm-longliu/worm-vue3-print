@@ -12,6 +12,7 @@ import { buildPdfOutputPolicy, type PdfOutputPolicy } from './pdf-output.js'
 import { WsServer } from './ws-server.js'
 import { checkAccess } from './security.js'
 import { makeMessageHandler } from './protocol-handler.js'
+import { makeFontService } from './font-service.js'
 import { createTray } from './tray.js'
 import { MainWindowManager } from './main-window.js'
 import { applyAutoStart } from './auto-start.js'
@@ -51,6 +52,7 @@ if (!gotLock) {
       const resolvePdfPolicy = (): PdfOutputPolicy =>
         buildPdfOutputPolicy(configStore.current, userData)
       const resolvePdfDir = (): string => resolvePdfPolicy().dir
+      const fontService = makeFontService()
       const printEngine = new PrintEngine({
         printerService,
         runtime: createPrintRuntime(),
@@ -67,6 +69,7 @@ if (!gotLock) {
           version: app.getVersion(),
           getPort: () => actualPort,
           printerService,
+          fontService,
           printEngine,
         }),
         checkAccess: input => checkAccess(input, configStore.current),

@@ -8,6 +8,7 @@ import {
   type PrintSubmitHtmlRequest,
   type PrintSubmitResponsePayload,
   type PrintersListResponsePayload,
+  type FontsListResponsePayload,
   type RenderedHtmlPages,
 } from './protocol.js'
 
@@ -55,6 +56,14 @@ export class PrintClient {
       {},
     )
     return res.printers
+  }
+
+  /**
+   * 枚举客户端所在机器的系统字体名。
+   * available=false 时 fonts 为空，调用方应视为「未上报」而非「无此字体」。
+   */
+  listFonts(): Promise<FontsListResponsePayload> {
+    return this.transport.request<FontsListResponsePayload>(MESSAGE_TYPES.FONTS_LIST, {})
   }
 
   /**

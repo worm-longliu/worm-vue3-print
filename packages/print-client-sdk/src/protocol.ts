@@ -69,6 +69,16 @@ export interface PrintersListResponsePayload {
   printers: PrinterInfo[]
 }
 
+/**
+ * fonts.list 响应 payload。
+ * available=false 表示「客户端无法给出清单」（枚举失败/平台不支持），
+ * 与「这台机器一个字体都没有」是两回事，宿主不得据此判定字体缺失。
+ */
+export interface FontsListResponsePayload {
+  available: boolean
+  fonts: string[]
+}
+
 /** 打印参数；长度单位均为微米（1mm = 1000μm） */
 export interface PrintOptions {
   /** 缺省走系统默认打印机 */
@@ -146,6 +156,7 @@ export interface PrintSubmitHtmlRequest {
 export const MESSAGE_TYPES = {
   HELLO: 'hello',
   PRINTERS_LIST: 'printers.list',
+  FONTS_LIST: 'fonts.list',
   PRINT_SUBMIT: 'print.submit',
   PRINT_SUBMIT_HTML: 'print.submitHtml',
 } as const
