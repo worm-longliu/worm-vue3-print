@@ -25,7 +25,8 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
   still shown, marked "(unknown)", and never silently cleared.
 - `@worm-vue3-print/canvas`: `PrintDesigner` accepts two new optional props, `serverFonts` and
   `clientFonts` (`{ available: boolean; fonts: string[] }`), supplied by the host. When omitted,
-  the picker falls back to free-text entry. **Host contract**: `available: false` means "this
+  the picker still renders but has no options and shows a "font list unavailable" hint (it does
+  not fall back to a built-in hardcoded font list). **Host contract**: `available: false` means "this
   end could not produce a list" and must NOT be read as "the font is missing".
 - `@worm-vue3-print/client`: Added protocol message `fonts.list` and SDK method
   `PrintClient.listFonts()`, returning the system font list of the machine running the

@@ -15,7 +15,7 @@
 - 已知缺口（本次未实现）：协议接受 `color` 与 `pageRanges`，但 PDF→系统打印链路从未应用这两个参数。
 - `@worm-vue3-print/core`：**行为变更** 表格单元格此前已存有 `fontFamily` 的模板，渲染时该字段被静默丢弃（`data-binder` 的字段映射表未收录）；本次修复后单元格字体会真正生效，**同一份旧模板的呈现会发生变化**。同时修复 `font-family` 输出未加引号、未带兜底栈的问题（含空格的族名如 `Microsoft YaHei` 此前不生效）。
 - `@worm-vue3-print/canvas`：文本元素与表格单元格属性面板新增「字体」下拉，列出服务端与本机两端可用字体的并集并标注可用范围（「仅服务端」/「仅本机」）；清单之外的字体名照常展示并标注「（未知）」，不做静默清除。
-- `@worm-vue3-print/canvas`：新增 `PrintDesigner` 的 `serverFonts` / `clientFonts` 两个可选 prop（`{ available: boolean; fonts: string[] }`），由宿主注入两端字体清单；不传则下拉退化为自由输入，功能不缺失。（**宿主契约**：`available: false` 表示「该端未能给出清单」，**不得**据此判定字体缺失。）
+- `@worm-vue3-print/canvas`：新增 `PrintDesigner` 的 `serverFonts` / `clientFonts` 两个可选 prop（`{ available: boolean; fonts: string[] }`），由宿主注入两端字体清单；不注入时下拉仍可用，但选项为空并提示「字体清单不可用」（不会回退到内建的硬编码字体列表）。（**宿主契约**：`available: false` 表示「该端未能给出清单」，**不得**据此判定字体缺失。）
 - `@worm-vue3-print/client`：新增协议消息 `fonts.list` 与 SDK 方法 `PrintClient.listFonts()`，返回桌面客户端所在机器的系统字体清单。
 - `@worm-vue3-print/render`：新增 `GET /fonts` 上报容器内系统字体清单；`/render/pdf`、`/render/screenshot` 在存在缺失字体时返回响应头 `X-Font-Warnings`（值为 `encodeURIComponent` 后的 `Array<{ code: 'FONT_MISSING'; family: string; targets: string[] }>`），无缺失时不返回该头。
 - 打印客户端：`print.submit` 在任务开始时校验模板字体在本机是否可用，缺失时记 `warn` 日志（**不阻断打印**，Chromium 自行回退）。
