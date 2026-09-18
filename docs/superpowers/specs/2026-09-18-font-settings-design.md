@@ -220,7 +220,7 @@ export function findMissingFonts(
 ## 10. 已知限制
 
 1. **不做跨语言字体别名归一**。「宋体」与「SimSun」是同一字体的两个名字：中文系统上 GDI+ 可能报「宋体」，而容器 `fc-list` 报「SimSun」，并集里会各出现一条。**刻意不合并**——别名合并只能合并显示，却会让来源标注失真（服务端实际并没有 SimSun），比重复更糟。`normalizeFontList` 只做大小写与空白的规范化。
-2. **由此产生的假阳性**：模板存 `SimSun`、工位机报「宋体」时会误报缺失。因为策略是「校验不阻断」，假阳性只制造提示噪音，不产生打印事故——这正是选择不阻断的额外价值。
+2. **由此产生的假阳性**：模板存 `SimSun`、工位机报「宋体」时会误报缺失。因为策略是「校验不阻断」，假阳性只制造提示噪音，不产生打印事故——这正是选择不阻断的额外价值。**实施期已实测到一例**：中文 macOS 上 `system_profiler` 报 `苹方-简`，而 CSS 值与全局兜底栈用的是 `PingFang SC`，两者在同一台机器上互不匹配。
 3. **客户端清单只代表当前浏览器所在机器**。SDK 连接 `127.0.0.1`，因此清单代表运行该浏览器的工位机。部署形态为「工位机打开宿主页面」时语义完全正确；若「设计机设计、多台工位机打印」，清单对工位机没有预测力。这是部署/管理策略问题，代码不解决，但必须写入文档，且 UI 必须区分「客户端未连接」（本机字体未知）与「已连接且确实没装」两种状态。
 4. **字体同源的部署前提不变**：容器需安装模板所用字体，工位机需在客户端系统安装。`docs/中文/指南/三端渲染一致性方案.md:158-159` 的既有要求继续有效。
 
@@ -257,6 +257,8 @@ export function findMissingFonts(
 | 容器内 `fc-list` 可用 | 直读 `Dockerfile:13-14` | 显式安装 `fonts-noto-cjk` 与 `fontconfig` |
 | macOS 字体枚举正确取法 | `system_profiler -json SPFontsDataType` | 顶层 `_name` 是文件名；族名须取 `typefaces[].family`；278 文件条目 → 283 去重族名 |
 | 隐藏字体确实存在 | 同上 | 大量 `.` 开头族名（`.Al Bayan PUA`、`.Apple Color Emoji UI` 等），印证 `normalizeFontList` 剔除规则必要 |
+| **内联 `font-family` 的引号必须转义（实施期实证）** | 把 `style="font-family:"SimSun", Arial"` 交给 happy-dom 解析 | 属性在第二个 `"` 处提前闭合，`fontFamily` 解析为**空串**，整条声明丢失；转义为 `&quot;` 后恢复正常。故内联样式经 `escapeInlineStyleValue` 输出 |
+| **macOS 中文环境的族名形态（实施期实证）** | 真实执行 `readSystemFonts('darwin', system_profiler SPFontsDataType -json)` | `available=true`、243 条族名、无 `.ttf` 后缀假名；但族名是**中文本地化名**（`苹方-简`/`苹方-港`），**不含** CSS 名 `PingFang SC` —— 见第 10 节假阳性的具体实例 |
 
 ### 13.2 未验证假设（实现期必须验证，不得当作既定事实）
 
@@ -267,3 +269,9 @@ export function findMissingFonts(
 ### 13.3 本轮已知的验证缺口
 
 文本元素 `fontFamily` 的输出形态**未做成端到端实证**——探针构造有误（用了 `content` 而非 `formatter`，元素未被渲染出来），该结论改由源码直读得出（第 4 节第 4 项）。若实现时发现 `textStyle()` 之外还有影响文本元素字体的路径，须回头修正本节与第 4 节。
+
+实施轮次新增的验证缺口（计划 Task 6 Step 9 / Task 9 Step 4）：
+
+- **容器内 `fc-list` 的实际输出格式仍未实证**：本机无 Docker（`which docker` 无结果），`parseFcListOutput` 的多族名行为只有固定样本单测覆盖。需在有 Docker 的环境执行 `docker build -f services/print-render/Dockerfile . && docker run --rm <镜像> fc-list --format='%{family}\n' | grep -i 'noto sans cjk'`，确认 TTC 是否按逗号列出 `Noto Sans CJK SC`。
+- **Windows GDI+ 族名形态未实证**：需真实中文 Windows 工位机验证「宋体」/「SimSun」只出现其一的情形。
+- **demo 的手工联调未执行**：字体下拉的可用范围标注、掉线撤回、render 服务关闭时的 3s 超时表现，均需按计划 Task 9 Step 4 在浏览器中人工确认（本轮的自动化验证止于 `demo` 的 `vue-tsc` 类型检查）。
