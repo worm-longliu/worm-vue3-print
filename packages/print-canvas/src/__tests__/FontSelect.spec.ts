@@ -78,19 +78,18 @@ describe('FontSelect 展示与标注', () => {
     expect(w.text()).not.toContain('（未知）')
   })
 
-  it('客户端未连接时提示本机字体未知', () => {
+  it('客户端未连接时提示去连接客户端', () => {
     const w = mountSelect(catalogOf([['Noto Sans CJK SC', ['server']]], { server: true, client: false }))
-    expect(w.text()).toContain('桌面客户端未连接，本机字体未知')
+    expect(w.text()).toContain('桌面客户端未连接，请连接桌面客户端后重新查询')
   })
 
-  it('服务端不可达时给出对应提示', () => {
+  it('服务端不可达时提示去连接服务端', () => {
     const w = mountSelect(catalogOf([['KaiTi', ['client']]], { server: false, client: true }))
-    expect(w.text()).toContain('服务端字体清单不可用')
+    expect(w.text()).toContain('服务端未连接，请连接服务端后重新查询')
   })
 
   it('两端都正常时不显示任何提示', () => {
     const w = mountSelect(catalogOf([['SimSun', ['server', 'client']]]))
-    expect(w.text()).not.toContain('不可用')
     expect(w.text()).not.toContain('未连接')
   })
 })
@@ -138,7 +137,8 @@ describe('FontSelect 模糊搜索', () => {
   it('清单不可用时退化为纯文本录入', async () => {
     const w = mountSelect(catalogOf([], { server: false, client: false }))
     const input = await type(w, 'FZSongKeBenXiuKai')
-    expect(w.text()).toContain('字体清单不可用')
+    expect(w.text()).toContain('服务端未连接，请连接服务端后重新查询')
+    expect(w.text()).toContain('桌面客户端未连接，请连接桌面客户端后重新查询')
     await input.trigger('keydown', { key: 'Enter' })
     expect(w.emitted('update:model-value')?.[0]).toEqual(['FZSongKeBenXiuKai'])
   })

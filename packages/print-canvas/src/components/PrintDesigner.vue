@@ -142,9 +142,15 @@ import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
 import { findMainCell } from '@worm-vue3-print/core/designer'
 import { computeFitScale, FIT_SCALE_MIN_PERCENT } from '@worm-vue3-print/core/designer'
 import { findMissingFonts } from '@worm-vue3-print/core'
-import { UPLOAD_IMAGE_KEY, UPLOAD_DESIGN_BACKGROUND_KEY, FONT_CATALOG_KEY } from '../composables/useHostAdapter'
+import {
+  UPLOAD_IMAGE_KEY,
+  UPLOAD_DESIGN_BACKGROUND_KEY,
+  FONT_CATALOG_KEY,
+  FONT_QUERY_KEY,
+} from '../composables/useHostAdapter'
 import { useFontCatalog } from '../composables/useFontCatalog'
 import type { FontIssueSummary } from '../composables/useFontCatalog'
+import { useFontQuery, type LoadFontsFn } from '../composables/useFontQuery'
 import type { AlignMode } from '@worm-vue3-print/core/designer'
 import DesignerToolbar from './DesignerToolbar.vue'
 import LeftPanel from './LeftPanel.vue'
@@ -172,6 +178,10 @@ const props = defineProps<{
   serverFonts?: FontSourceReport
   /** 桌面客户端（静默打印端）字体清单；未注入时该端字体不可用 */
   clientFonts?: FontSourceReport
+  /** 宿主预设的常用字体族名，按数组顺序置顶展示；不参与出图端可用性判定 */
+  presetFonts?: readonly string[]
+  /** 手动字体查询适配器：用户点击「查询字体」时调用；不传则不渲染查询按钮 */
+  loadFonts?: LoadFontsFn
 }>()
 
 const emit = defineEmits<{
@@ -229,9 +239,17 @@ provide(PREVIEW_IDS_KEY, previewIds)
 provide(UPLOAD_IMAGE_KEY, computed(() => props.uploadImage))
 provide(UPLOAD_DESIGN_BACKGROUND_KEY, computed(() => props.uploadDesignBackground))
 
+// 手动查询结果只作为 props 的回退：宿主显式注入的清单即权威，避免两处结果互相覆盖
+const { handle: fontQuery, fetched: fetchedFonts } = useFontQuery(
+  () => props.loadFonts,
+  () => props.serverFonts !== undefined || props.clientFonts !== undefined,
+)
+provide(FONT_QUERY_KEY, fontQuery)
+
 const { catalog: fontCatalog } = useFontCatalog(
-  computed(() => props.serverFonts),
-  computed(() => props.clientFonts),
+  computed(() => props.serverFonts ?? fetchedFonts.value?.server),
+  computed(() => props.clientFonts ?? fetchedFonts.value?.client),
+  computed(() => props.presetFonts),
 )
 provide(FONT_CATALOG_KEY, fontCatalog)
 

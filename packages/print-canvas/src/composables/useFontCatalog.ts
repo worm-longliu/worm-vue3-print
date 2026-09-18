@@ -19,13 +19,16 @@ export const EMPTY_FONT_CATALOG: ComputedRef<FontCatalog> = computed(() =>
 /**
  * 由 PrintDesigner 调用：把两个 props 合并为响应式字体目录。
  * 参数接受 ref / computed / getter 任意形态。
+ * `presetFonts` 由宿主声明，按数组顺序置顶（不经出图端确认，`sources` 为空）。
  */
 export function useFontCatalog(
   serverFonts: MaybeRefOrGetter<FontSourceReport | undefined>,
   clientFonts: MaybeRefOrGetter<FontSourceReport | undefined>,
+  presetFonts?: MaybeRefOrGetter<readonly string[] | undefined>,
 ): { catalog: ComputedRef<FontCatalog> } {
   const catalog = computed<FontCatalog>(() =>
     mergeFontSources({
+      preset: toValue(presetFonts) ?? [],
       server: toValue(serverFonts) ?? UNAVAILABLE,
       client: toValue(clientFonts) ?? UNAVAILABLE,
     }),
@@ -50,6 +53,8 @@ export function findFontCandidate(
 
 /** 下拉选项文案：两端都可用不加标注，单端可用标注范围，避免设计者误以为处处可打 */
 export function fontOptionLabel(candidate: FontCandidate): string {
+  // sources 为空 = 宿主预设字体，未经任一出图端确认，不能让它看起来像「两端都能用」
+  if (candidate.sources.length === 0) return `${candidate.family}（预设）`
   if (candidate.sources.length !== 1) return candidate.family
   if (candidate.sources[0] === 'server') return `${candidate.family}（仅服务端）`
   if (candidate.sources[0] === 'client') return `${candidate.family}（仅本机）`

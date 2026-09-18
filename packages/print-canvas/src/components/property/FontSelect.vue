@@ -1,25 +1,36 @@
 <template>
   <div class="font-select">
-    <input
-      v-model="text"
-      class="pd-input font-select-input"
-      type="text"
-      role="combobox"
-      aria-autocomplete="list"
-      autocomplete="off"
-      :placeholder="placeholder"
-      :aria-expanded="open"
-      :aria-controls="listId"
-      :aria-activedescendant="activeRowId"
-      @focus="onOpen"
-      @click="onClick"
-      @input="onInput"
-      @keydown.down.prevent="move(1)"
-      @keydown.up.prevent="move(-1)"
-      @keydown.enter.prevent="onEnter"
-      @keydown.esc.prevent="onCancel"
-      @blur="onCancel"
-    />
+    <div class="font-select-row">
+      <input
+        v-model="text"
+        class="pd-input font-select-input"
+        type="text"
+        role="combobox"
+        aria-autocomplete="list"
+        autocomplete="off"
+        :placeholder="placeholder"
+        :aria-expanded="open"
+        :aria-controls="listId"
+        :aria-activedescendant="activeRowId"
+        @focus="onOpen"
+        @click="onClick"
+        @input="onInput"
+        @keydown.down.prevent="move(1)"
+        @keydown.up.prevent="move(-1)"
+        @keydown.enter.prevent="onEnter"
+        @keydown.esc.prevent="onCancel"
+        @blur="onCancel"
+      />
+      <!-- mousedown.prevent 保住输入框焦点：点按钮不该收起列表或回填输入内容 -->
+      <button
+        v-if="fontQuery.canQuery"
+        type="button"
+        class="pd-button small font-select-query"
+        :disabled="fontQuery.status === 'loading'"
+        @mousedown.prevent
+        @click="fontQuery.run()"
+      >{{ fontQuery.status === 'loading' ? '查询中…' : '查询字体' }}</button>
+    </div>
     <ul v-if="open" :id="listId" ref="listRef" class="font-select-list" role="listbox">
       <li
         v-for="(row, index) in rows"
@@ -33,18 +44,20 @@
       >{{ row.label }}</li>
     </ul>
     <div v-if="missingHint" class="font-select-hint warn">{{ missingHint }}</div>
-    <div v-if="hint" class="font-select-hint">{{ hint }}</div>
+    <div v-for="(text, index) in hints" :key="index" class="font-select-hint">{{ text }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, useId, watch } from 'vue'
+import { computed, inject, nextTick, ref, useId, watch } from 'vue'
 import {
   filterFontCandidates,
   findFontCandidate,
   fontOptionLabel,
   useInjectedFontCatalog,
 } from '../../composables/useFontCatalog'
+import { FONT_QUERY_KEY } from '../../composables/useHostAdapter'
+import { DEFAULT_FONT_QUERY } from '../../composables/useFontQuery'
 
 const props = withDefaults(defineProps<{
   /** 当前族名；undefined 表示未设置，走全局兜底字体栈 */
@@ -58,6 +71,8 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ 'update:model-value': [value: string | undefined] }>()
 
 const catalog = useInjectedFontCatalog()
+/** 未注入时退化为「不可查询、已确认」：提示只看两端可用性，与接入手动查询前一致 */
+const fontQuery = inject(FONT_QUERY_KEY, DEFAULT_FONT_QUERY)
 
 /** 每实例独立的列表 id，供 combobox 的 aria 关联使用 */
 const listId = `font-select-list-${useId()}`
@@ -198,13 +213,24 @@ function onCancel(): void {
 
 watch(() => props.modelValue, value => { text.value = value ?? '' })
 
-/** 仅在清单异常时给出提示；两端均正常时不占位 */
-const hint = computed(() => {
+/**
+ * 查询状态与两端可用性共同决定提示，最多两条（服务端 / 客户端各一条）：
+ * 没查过不报「未连接」（只是还没查），查过才引导用户去连接。
+ */
+const hints = computed<string[]>(() => {
+  const { status, error, hasReport } = fontQuery.value
+  if (status === 'loading') return ['正在查询服务端与本机字体清单…']
+  if (status === 'failed') {
+    return [`字体查询失败：${error ?? '未知原因'}，请检查服务端与桌面客户端连接后重试`]
+  }
+  if (status === 'idle' && !hasReport) {
+    return ['尚未获取服务端与本机字体清单，点击「查询字体」获取']
+  }
   const { server, client } = catalog.value.available
-  if (!server && !client) return '字体清单不可用'
-  if (!client) return '桌面客户端未连接，本机字体未知'
-  if (!server) return '服务端字体清单不可用'
-  return ''
+  const out: string[] = []
+  if (!server) out.push('服务端未连接，请连接服务端后重新查询')
+  if (!client) out.push('桌面客户端未连接，请连接桌面客户端后重新查询')
+  return out
 })
 
 /**
@@ -225,8 +251,19 @@ const missingHint = computed(() => {
 </script>
 
 <style scoped>
+.font-select-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
 .font-select-input {
+  flex: 1 1 auto;
+  min-width: 0;
   width: 100%;
+}
+.font-select-query {
+  flex: none;
+  white-space: nowrap;
 }
 .font-select-list {
   margin-top: 4px;

@@ -20,4 +20,7 @@ export type { DesignerStateOptions } from './composables/useDesignerState'
 export { DEFAULT_DEMO_DATA, getDemoData } from '@worm-vue3-print/core/designer'
 
 // 宿主能力注入键（高级自定义可选；常规接入仅需给 PrintDesigner 传 props）
-export { UPLOAD_IMAGE_KEY, UPLOAD_DESIGN_BACKGROUND_KEY } from './composables/useHostAdapter'
+export { UPLOAD_IMAGE_KEY, UPLOAD_DESIGN_BACKGROUND_KEY, FONT_QUERY_KEY } from './composables/useHostAdapter'
+
+// 字体查询适配器契约（PrintDesigner 的 loadFonts prop）
+export type { LoadFontsFn, FontQueryResult, FontQueryStatus } from './composables/useFontQuery'
