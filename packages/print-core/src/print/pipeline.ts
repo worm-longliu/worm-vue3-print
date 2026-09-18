@@ -42,7 +42,7 @@ export async function renderScreenshot(job: PrintJob, runtime: PrintRuntime): Pr
   return runtime.withSession(job, async (session) => {
     const normalized = normalizePrintData(job.printData)
     const data = normalized.mode === 'batch' ? normalized.dataList[0] : normalized.data
-    const bound = bindData(job.templateJson, data, job.baseUrl)
+    const bound = bindData(job.templateJson, data, job.baseUrl, job.fontBaseUrl)
     const built = await buildHtmlWithCodes({
       bound, job, session, data, pageLayouts: [], isMeasurementPass: true,
     })
@@ -110,7 +110,7 @@ async function prepareSingleWithSession(
   session: PrintSession,
   data: Record<string, any>,
 ): Promise<SinglePrepared> {
-  const bound = bindData(job.templateJson, data, job.baseUrl)
+  const bound = bindData(job.templateJson, data, job.baseUrl, job.fontBaseUrl)
   const continuous = isContinuousPaper(bound)
   const designPaper = getPaperDimensions(bound)
   const viewport = paperViewportPx(designPaper)

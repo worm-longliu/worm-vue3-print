@@ -7,11 +7,17 @@ import { evaluateTemplate } from './expression-eval.js'
 /**
  * 将模板中元素的 formatter 表达式求值为实际值。
  * 返回新的模板对象（深拷贝），不修改原始模板。
+ *
+ * @param baseUrl 相对路径**图片**基址（如 `/n/...`）
+ * @param fontBaseUrl 相对路径**字体**基址；缺省回落到 `baseUrl`（图片与字体同域时无需单独配置），
+ *   显式传空串表示不拼接——相对字体 URL 交由文档自身 origin 解析（浏览器端语义）。
+ *   字体与图片不在同一域（图片走业务 OSS、字体走前端站点/CDN）时必须显式指定。
  */
 export function bindData(
   template: TemplateData,
   printData?: Record<string, any>,
   baseUrl?: string,
+  fontBaseUrl?: string,
 ): TemplateData {
   // 数组在 pipeline 入口（normalizePrintData）已拆分为逐份单对象，不会到达这里
   const data = printData ?? {}
@@ -30,15 +36,17 @@ export function bindData(
   }
   bound.elements = bound.elements.map(el => bindElement(el, data, baseUrl))
 
-  // 模板声明的字体：相对 URL 需按渲染端 baseUrl 解析（与图片 src 同一套规则），
-  // 这样同一份模板在浏览器/服务端/客户端都能取到同一字体文件
-  if (baseUrl && bound.fonts?.length) {
-    const prefix = baseUrl.replace(/\/+$/, '')
+  // 模板声明的字体：相对 URL 按字体基址解析（缺省回落图片基址），
+  // 字体与图片的托管位置天然可能不同，不能硬绑在同一个 baseUrl 上
+  const fontBase = fontBaseUrl ?? baseUrl
+  if (fontBase && bound.fonts?.length) {
+    const prefix = fontBase.replace(/\/+$/, '')
     bound.fonts = bound.fonts.map(font => ({
       ...font,
       files: (font.files ?? []).map(file => ({
         ...file,
-        url: file.url?.startsWith('/') ? prefix + file.url : file.url,
+        // 绝对 URL（含协议相对 //）原样使用
+        url: file.url?.startsWith('/') && !file.url.startsWith('//') ? prefix + file.url : file.url,
       })),
     }))
   }

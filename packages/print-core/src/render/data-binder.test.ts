@@ -301,6 +301,35 @@ describe('bindData 图片 src', () => {
     const bound = bindData(t)
     expect(bound.fonts![0]!.files[0]!.url).toBe('/fonts/noto-400.woff2')
   })
+
+  it('fontBaseUrl 与图片 baseUrl 解耦：图片按图片基址、字体按字体基址', () => {
+    const t = {
+      ...makeImageTemplate('/docfiles/a.png'),
+      fonts: [{ family: 'Noto Sans SC', files: [{ url: '/fonts/noto-400.woff2' }] }],
+    }
+    const bound = bindData(t, undefined, 'http://oss.example.com', 'https://cdn.example.com/fonts-base')
+    expect(bound.elements[0]!.options.src).toBe('http://oss.example.com/docfiles/a.png')
+    expect(bound.fonts![0]!.files[0]!.url).toBe('https://cdn.example.com/fonts-base/fonts/noto-400.woff2')
+  })
+
+  it('fontBaseUrl 传空串时不拼接（浏览器按文档 origin 解析）', () => {
+    const t = {
+      ...makeImageTemplate('/docfiles/a.png'),
+      fonts: [{ family: 'Noto Sans SC', files: [{ url: '/fonts/noto-400.woff2' }] }],
+    }
+    const bound = bindData(t, undefined, 'http://oss.example.com', '')
+    expect(bound.elements[0]!.options.src).toBe('http://oss.example.com/docfiles/a.png')
+    expect(bound.fonts![0]!.files[0]!.url).toBe('/fonts/noto-400.woff2')
+  })
+
+  it('协议相对字体 url（//）不拼接基址', () => {
+    const t = {
+      ...makeImageTemplate('/docfiles/a.png'),
+      fonts: [{ family: 'Noto Sans SC', files: [{ url: '//cdn.example.com/x.woff2' }] }],
+    }
+    const bound = bindData(t, undefined, 'http://oss.example.com')
+    expect(bound.fonts![0]!.files[0]!.url).toBe('//cdn.example.com/x.woff2')
+  })
 })
 
 describe('bindTableData 小计行 subtotal', () => {

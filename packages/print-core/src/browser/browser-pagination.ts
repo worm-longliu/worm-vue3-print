@@ -23,6 +23,12 @@ export interface BrowserRenderResult {
 export interface BrowserRenderOptions {
   /** 连续纸显式纸高覆盖（mm）；仅对 CONTINUOUS 生效 */
   paperHeightMm?: number
+  /**
+   * 相对路径字体基址。缺省空串 = 不拼接，由文档自身 origin 解析——
+   * 与设计器画布注入 @font-face 的语义一致（画布能加载的字体，预览/浏览器打印也能加载）。
+   * 传值则拼在该基址上，供字体与页面不同源的宿主使用。
+   */
+  fontBaseUrl?: string
 }
 
 /**
@@ -45,6 +51,7 @@ export async function renderHtmlPages(
       templateJson: template,
       printData,
       baseUrl,
+      fontBaseUrl: options?.fontBaseUrl ?? '',
       paperHeightMm: options?.paperHeightMm,
       codeRenderer,
     },

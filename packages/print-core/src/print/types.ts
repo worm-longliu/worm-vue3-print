@@ -62,6 +62,11 @@ export interface PrintJob {
   printData?: PrintDataInput
   /** 相对路径图片基址 */
   baseUrl?: string
+  /**
+   * 相对路径字体基址；缺省回落 `baseUrl`，传空串表示不拼接（浏览器端按文档 origin 解析）。
+   * 出图端必须能访问解析后的字体地址，否则声明字体会静默回退到系统字体。
+   */
+  fontBaseUrl?: string
   /** 宿主纸张覆盖（mm）；0 或负数视为未提供 */
   paperOverride?: { width?: number; height?: number }
   /** 连续纸显式纸高逃生门（mm） */
