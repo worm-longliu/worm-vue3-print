@@ -31,6 +31,9 @@ function toJob(request: RenderRequest): PrintJob {
     templateJson: request.templateJson,
     printData: request.printData,
     baseUrl: request.baseUrl,
+    // 字体基址：请求优先，其次容器环境变量 FONT_BASE_URL（容器里 localhost 指向容器自身，
+    // 模板里的相对字体地址通常需要宿主用环境变量指到可达的静态站/CDN）
+    fontBaseUrl: request.fontBaseUrl ?? (process.env.FONT_BASE_URL || undefined),
     paperOverride: request.paperOverride,
     paperHeightMm: request.paperHeightMm,
     timeoutMs: REQUEST_BUDGET_MS - BUDGET_MARGIN_MS,

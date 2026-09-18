@@ -28,7 +28,8 @@
 | `POST` | `/render/screenshot` | 渲染并返回 `image/png`（设计器叠层对比用，不分页） |
 
 - 鉴权：`/render/*` 需携带请求头 `X-Render-Key`，与环境变量 `RENDER_API_KEY` 一致（默认 `dev-render-key`）。
-- 请求体：`{ templateJson, printData, baseUrl }`。`templateJson` 必含 `paperSize`、`orientation`、`margins`；`baseUrl` 用于把相对路径图片（如 `/docfiles/...`）拼成可访问的绝对地址。
+- 请求体：`{ templateJson, printData, baseUrl, fontBaseUrl }`。`templateJson` 必含 `paperSize`、`orientation`、`margins`；`baseUrl` 用于把相对路径图片（如 `/docfiles/...`）拼成可访问的绝对地址；`fontBaseUrl` 用于相对路径字体（模板 `fonts[].files[].url`），缺省回落 `baseUrl`，容器部署常用环境变量 `FONT_BASE_URL` 统一指定（容器内 `localhost` 指向容器自身，模板里的相对字体地址必须指向容器可达的静态站/CDN）。
+- **字体文件必须允许跨源加载**：容器加载模板 HTML 时的 origin 为 `null`，字体站点/CDN 需返回 `Access-Control-Allow-Origin`（如 `*`），否则字体静默回退系统字体、出图与设计稿不一致。
 - `printData`：业务数据，传对象渲染单份；传非空对象数组时按数组长度批量渲染，各份数据不同、份间自动分页，合并为同一个 PDF（最多 500 份）。空数组、超过上限或数组项不是对象时返回 `400 INVALID_REQUEST`。`/render/screenshot` 传数组时仅渲染第一条数据。
 - 限制：请求体上限 10MB，单请求 30s 超时。
 

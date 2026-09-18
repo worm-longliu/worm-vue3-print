@@ -31,6 +31,12 @@ const props = defineProps<{
   printData?: Record<string, any> | Record<string, any>[]
   /** 图片相对路径拼接前缀（与服务端 baseUrl 同源） */
   baseUrl?: string
+  /**
+   * 相对路径字体基址。缺省不拼接：预览 iframe 与设计器同源，
+   * 相对字体 URL 由页面 origin 解析，与画布注入 @font-face 的行为一致。
+   * 字体与页面不同源时（如字体放 CDN）传绝对基址。
+   */
+  fontBaseUrl?: string
 }>()
 
 const emit = defineEmits<{
@@ -61,6 +67,7 @@ async function rerender() {
       props.printData,
       props.baseUrl,
       browserCodeRenderer,
+      { fontBaseUrl: props.fontBaseUrl },
     )
     if (seq !== renderSeq) return
     const doc = iframeRef.value?.contentWindow?.document
@@ -88,7 +95,7 @@ function print() {
 }
 
 watch(
-  () => [props.templateJson, props.printData, props.baseUrl],
+  () => [props.templateJson, props.printData, props.baseUrl, props.fontBaseUrl],
   () => void rerender(),
   { immediate: true, deep: true },
 )
