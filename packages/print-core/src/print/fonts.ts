@@ -31,9 +31,13 @@ export interface MissingFont {
   targets: string[]
 }
 
-/** 结构性最小接口：同时兼容 render 侧与 designer 侧两个 TemplateData，避免跨模块类型耦合 */
+/**
+ * 结构性最小接口：同时兼容 render 侧与 designer 侧两个 TemplateData，避免跨模块类型耦合。
+ * `id` 必须可选——render 侧 `TemplateData` 为 `id: string`，designer 侧 `PrintElementData` 为 `id?: string`，
+ * 写成必填会让设计器调用方被迫 cast，反而掩盖真实字段不匹配。
+ */
 export interface FontScannableElement {
-  id: string
+  id?: string
   options?: Record<string, any>
 }
 
