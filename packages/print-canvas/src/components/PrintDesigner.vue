@@ -130,6 +130,7 @@
 import '../styles/native-controls.css'
 import { ref, watch, provide, computed, onMounted, onUnmounted } from 'vue'
 import type { RuntimeElement, PrintBusinessField, TemplateData, TableCell, RequestScreenshotFn, UploadImageFn, UploadDesignBackgroundFn } from '@worm-vue3-print/core/designer'
+import type { FontSourceReport } from '@worm-vue3-print/core'
 import { useDesignerState } from '../composables/useDesignerState'
 import { useGuides } from '../composables/useGuides'
 import { TABLE_EDIT_KEY } from '../composables/useTableSelection'
@@ -139,7 +140,8 @@ import { getPaperDimensions } from '@worm-vue3-print/core/designer'
 import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
 import { findMainCell } from '@worm-vue3-print/core/designer'
 import { computeFitScale, FIT_SCALE_MIN_PERCENT } from '@worm-vue3-print/core/designer'
-import { UPLOAD_IMAGE_KEY, UPLOAD_DESIGN_BACKGROUND_KEY } from '../composables/useHostAdapter'
+import { UPLOAD_IMAGE_KEY, UPLOAD_DESIGN_BACKGROUND_KEY, FONT_CATALOG_KEY } from '../composables/useHostAdapter'
+import { useFontCatalog } from '../composables/useFontCatalog'
 import type { AlignMode } from '@worm-vue3-print/core/designer'
 import DesignerToolbar from './DesignerToolbar.vue'
 import LeftPanel from './LeftPanel.vue'
@@ -163,6 +165,10 @@ const props = defineProps<{
   uploadDesignBackground?: UploadDesignBackgroundFn
   /** 是否展示帮助入口（帮助按钮与帮助弹框）；默认开启，传 false 关闭 */
   showHelp?: boolean
+  /** 服务端（PDF 出图端）字体清单；未注入时该端字体不可用 */
+  serverFonts?: FontSourceReport
+  /** 桌面客户端（静默打印端）字体清单；未注入时该端字体不可用 */
+  clientFonts?: FontSourceReport
 }>()
 
 const emit = defineEmits<{
@@ -219,6 +225,12 @@ provide(PREVIEW_IDS_KEY, previewIds)
 
 provide(UPLOAD_IMAGE_KEY, computed(() => props.uploadImage))
 provide(UPLOAD_DESIGN_BACKGROUND_KEY, computed(() => props.uploadDesignBackground))
+
+const { catalog: fontCatalog } = useFontCatalog(
+  computed(() => props.serverFonts),
+  computed(() => props.clientFonts),
+)
+provide(FONT_CATALOG_KEY, fontCatalog)
 watch(selectedElement, el => {
   if (!el || el.printElementType.type !== 'table') setTableSelection(null)
 })
