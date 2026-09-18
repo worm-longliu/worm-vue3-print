@@ -26,7 +26,8 @@
         :show-help="true"
         :upload-image="uploadDemoImage"
         :upload-design-background="uploadDemoImage"
-        :server-fonts="serverFonts"
+        :preset-fonts="PRESET_FONTS"
+        :load-fonts="loadFonts"
         :client-fonts="clientFonts"
         @preview="onPreview"
         @save="onSave"
@@ -70,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import {
   PrintDesigner,
   PrintHtmlPreview,
@@ -79,7 +80,8 @@ import {
 } from '@worm-vue3-print/canvas'
 import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
 import PrintOutputDialog from './components/PrintOutputDialog.vue'
-import { fetchServerFonts, type ServerFontReport } from './render-client'
+import type { ServerFontReport } from './render-client'
+import { loadFonts } from './font-query'
 import rawTemplate from './template-purchase-receipt.json'
 import {
   TEMPLATE_ID,
@@ -98,15 +100,11 @@ const printDialogVisible = ref(false)
 const templateData = ref<TemplateData>(createDefaultTemplate())
 const fields = ref<PrintBusinessField[]>(PURCHASE_RECEIPT_FIELDS)
 
-/** 服务端容器字体清单；未取到时为 undefined（下拉不标注可用范围） */
-const serverFonts = ref<ServerFontReport | undefined>(undefined)
-/** 本机（桌面客户端所在机器）字体清单；未连接时为 undefined */
-const clientFonts = ref<ServerFontReport | undefined>(undefined)
+/** 预设字体：宿主业务常用字体，设计器下拉中置顶，不依赖任何出图端上报 */
+const PRESET_FONTS = ['黑体', '微软雅黑', '华文仿宋', '娃娃体-简']
 
-onMounted(async () => {
-  // 清单后到即填，不阻塞设计器挂载
-  serverFonts.value = await fetchServerFonts()
-})
+/** 本机（桌面客户端所在机器）字体清单：由打印弹窗连接成功后回填，掉线时撤回 */
+const clientFonts = ref<ServerFontReport | undefined>(undefined)
 
 const designerRef = ref<InstanceType<typeof PrintDesigner> | null>(null)
 
