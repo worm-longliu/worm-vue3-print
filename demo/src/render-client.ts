@@ -23,6 +23,35 @@ export async function checkRenderHealth(signal?: AbortSignal): Promise<RenderHea
   }
 }
 
+/** 服务端容器字体清单（GET /fonts 响应体） */
+export interface ServerFontReport {
+  /** false 表示服务端未能给出清单（枚举失败/服务未就绪），不等于「没有字体」 */
+  available: boolean
+  fonts: string[]
+}
+
+/** 取数超时：字体清单绝不阻塞设计器首屏，超时按未上报处理 */
+const FONT_FETCH_TIMEOUT_MS = 3000
+
+/**
+ * 拉取 render 服务容器内的系统字体清单。
+ * 服务不可达或超时返回 { available: false, fonts: [] }，不抛错——调用方无需 try/catch。
+ */
+export async function fetchServerFonts(signal?: AbortSignal): Promise<ServerFontReport> {
+  const unavailable: ServerFontReport = { available: false, fonts: [] }
+  try {
+    const res = await fetch(`${RENDER_API_PREFIX}/fonts`, {
+      signal: signal ?? AbortSignal.timeout(FONT_FETCH_TIMEOUT_MS),
+    })
+    if (!res.ok) return unavailable
+    const data = (await res.json()) as Partial<ServerFontReport>
+    if (typeof data?.available !== 'boolean' || !Array.isArray(data.fonts)) return unavailable
+    return { available: data.available, fonts: data.fonts }
+  } catch {
+    return unavailable
+  }
+}
+
 /**
  * 请求服务端渲染 PDF。
  * @param templateJson 当前画布模板 JSON（对象）

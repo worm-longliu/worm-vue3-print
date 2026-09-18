@@ -27,6 +27,8 @@
         :show-help="true"
         :upload-image="uploadDemoImage"
         :upload-design-background="uploadDemoImage"
+        :server-fonts="serverFonts"
+        :client-fonts="clientFonts"
         @preview="onPreview"
         @save="onSave"
       />
@@ -63,12 +65,13 @@
       :print-data="activePrintData"
       :get-template-json="() => (designerRef?.getTemplateJson() as unknown as Record<string, unknown>)"
       @close="printDialogVisible = false"
+      @client-fonts="clientFonts = $event"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
   PrintDesigner,
   PrintHtmlPreview,
@@ -77,6 +80,7 @@ import {
 } from '@worm-vue3-print/canvas'
 import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
 import PrintOutputDialog from './components/PrintOutputDialog.vue'
+import { fetchServerFonts, type ServerFontReport } from './render-client'
 import rawTemplate from './template-purchase-receipt.json'
 import {
   TEMPLATE_ID,
@@ -94,6 +98,16 @@ const printDialogVisible = ref(false)
 // 页面默认空白；真实模板数据（模板 106977040967000141 的 elements 已存在本地 JSON）在点击「加载默认布局」时载入
 const templateData = ref<TemplateData>(createDefaultTemplate())
 const fields = ref<PrintBusinessField[]>(PURCHASE_RECEIPT_FIELDS)
+
+/** 服务端容器字体清单；未取到时为 undefined（下拉不标注可用范围） */
+const serverFonts = ref<ServerFontReport | undefined>(undefined)
+/** 本机（桌面客户端所在机器）字体清单；未连接时为 undefined */
+const clientFonts = ref<ServerFontReport | undefined>(undefined)
+
+onMounted(async () => {
+  // 清单后到即填，不阻塞设计器挂载
+  serverFonts.value = await fetchServerFonts()
+})
 
 const designerRef = ref<InstanceType<typeof PrintDesigner> | null>(null)
 

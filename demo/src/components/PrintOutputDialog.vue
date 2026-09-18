@@ -81,7 +81,11 @@ const props = defineProps<{
   getTemplateJson: () => string | Record<string, unknown> | undefined
 }>()
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{
+  close: []
+  /** 本机字体清单；未连接或枚举失败时为 available:false */
+  'client-fonts': [report: { available: boolean; fonts: string[] }]
+}>()
 
 // ── 服务端 PDF 打印 ──────────────────────────────────────────────────────
 type RenderStatus = 'checking' | 'online' | 'offline'
@@ -183,6 +187,8 @@ async function connectPrintClient() {
       } else if (s === 'disconnected') {
         clientStatus.value = 'offline'
         clientStatusText.value = '打印客户端离线'
+        // 掉线后本机字体不再可知，必须撤回清单，否则会残留过期的可用范围标注
+        emit('client-fonts', { available: false, fonts: [] })
       }
     })
   }
@@ -191,9 +197,19 @@ async function connectPrintClient() {
     clientStatus.value = 'online'
     clientStatusText.value = '打印客户端在线'
     await refreshClientPrinters()
+    await refreshClientFonts()
   } catch {
     clientStatus.value = 'offline'
     clientStatusText.value = '打印客户端离线'
+    emit('client-fonts', { available: false, fonts: [] })
+  }
+}
+
+async function refreshClientFonts() {
+  try {
+    emit('client-fonts', await client.listFonts())
+  } catch {
+    emit('client-fonts', { available: false, fonts: [] })
   }
 }
 
