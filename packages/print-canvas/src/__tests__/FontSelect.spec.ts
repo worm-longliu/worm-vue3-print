@@ -77,3 +77,28 @@ describe('FontSelect', () => {
     expect(w.emitted('update:model-value')?.[1]).toEqual([undefined])
   })
 })
+
+describe('FontSelect 缺失字体提示', () => {
+  it('字体在服务端缺失时点明缺失端与后果', () => {
+    const w = mountSelect(catalogOf([['SimSun', ['client']]]), 'SimSun')
+    expect(w.text()).toContain('服务端无此字体，出图将回退到默认字体')
+  })
+
+  it('两端都有该字体时不提示缺失', () => {
+    const w = mountSelect(catalogOf([['SimSun', ['server', 'client']]]), 'SimSun')
+    expect(w.text()).not.toContain('无此字体')
+  })
+
+  it('该端未上报时不判定缺失（未连接不等于没有）', () => {
+    const w = mountSelect(
+      catalogOf([['SimSun', ['server']]], { server: true, client: false }),
+      'SimSun',
+    )
+    expect(w.text()).not.toContain('无此字体')
+  })
+
+  it('未设置字体时不提示', () => {
+    const w = mountSelect(catalogOf([['SimSun', ['server']]]))
+    expect(w.text()).not.toContain('无此字体')
+  })
+})

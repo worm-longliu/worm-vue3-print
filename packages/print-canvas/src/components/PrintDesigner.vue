@@ -108,6 +108,7 @@
       :selected-count="selectedIds.size"
       :paper="paperLabel"
       :dirty="dirty"
+      :font-issues="fontIssues"
     />
 
     <!-- 设计稿双击元素/单元格打开的表达式编辑器 -->
@@ -140,8 +141,10 @@ import { getPaperDimensions } from '@worm-vue3-print/core/designer'
 import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
 import { findMainCell } from '@worm-vue3-print/core/designer'
 import { computeFitScale, FIT_SCALE_MIN_PERCENT } from '@worm-vue3-print/core/designer'
+import { findMissingFonts } from '@worm-vue3-print/core'
 import { UPLOAD_IMAGE_KEY, UPLOAD_DESIGN_BACKGROUND_KEY, FONT_CATALOG_KEY } from '../composables/useHostAdapter'
 import { useFontCatalog } from '../composables/useFontCatalog'
+import type { FontIssueSummary } from '../composables/useFontCatalog'
 import type { AlignMode } from '@worm-vue3-print/core/designer'
 import DesignerToolbar from './DesignerToolbar.vue'
 import LeftPanel from './LeftPanel.vue'
@@ -231,6 +234,25 @@ const { catalog: fontCatalog } = useFontCatalog(
   computed(() => props.clientFonts),
 )
 provide(FONT_CATALOG_KEY, fontCatalog)
+
+/** 字体缺失汇总：按端分别校验后合并——校验回答的是「这个出图端有没有」 */
+const fontIssues = computed<FontIssueSummary[]>(() => {
+  const catalog = fontCatalog.value
+  const merged = new Map<string, FontIssueSummary>()
+  for (const source of ['server', 'client'] as const) {
+    for (const item of findMissingFonts(templateData.value as any, catalog, source)) {
+      const key = item.family.trim().toLowerCase()
+      const found = merged.get(key)
+      if (found) {
+        found.sources.push(source)
+        found.targets.push(...item.targets)
+      } else {
+        merged.set(key, { family: item.family, sources: [source], targets: [...item.targets] })
+      }
+    }
+  }
+  return [...merged.values()]
+})
 watch(selectedElement, el => {
   if (!el || el.printElementType.type !== 'table') setTableSelection(null)
 })

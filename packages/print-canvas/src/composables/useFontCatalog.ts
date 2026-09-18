@@ -6,6 +6,7 @@ import {
   mergeFontSources,
   type FontCandidate,
   type FontCatalog,
+  type FontSource,
   type FontSourceReport,
 } from '@worm-vue3-print/core'
 import { FONT_CATALOG_KEY } from './useHostAdapter'
@@ -53,4 +54,13 @@ export function fontOptionLabel(candidate: FontCandidate): string {
   if (candidate.sources[0] === 'server') return `${candidate.family}（仅服务端）`
   if (candidate.sources[0] === 'client') return `${candidate.family}（仅本机）`
   return candidate.family
+}
+
+/** 单个字体在若干出图端缺失的汇总项 */
+export interface FontIssueSummary {
+  family: string
+  /** 缺失的端（只含已成功上报的端） */
+  sources: FontSource[]
+  /** 引用该字体的元素/单元格位置标识 */
+  targets: string[]
 }

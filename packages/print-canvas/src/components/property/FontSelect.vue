@@ -12,6 +12,7 @@
         {{ fontOptionLabel(candidate) }}
       </option>
     </select>
+    <div v-if="missingHint" class="font-select-hint warn">{{ missingHint }}</div>
     <div v-if="hint" class="font-select-hint">{{ hint }}</div>
   </div>
 </template>
@@ -52,6 +53,22 @@ const hint = computed(() => {
   return ''
 })
 
+/**
+ * 当前字体在某个「已成功上报」的出图端不存在。
+ * 未上报的端不参与判定——拿不到清单不等于没有这个字体。
+ */
+const missingHint = computed(() => {
+  const current = props.modelValue?.trim()
+  if (!current) return ''
+  const sources = (['server', 'client'] as const).filter(s => catalog.value.available[s])
+  if (!sources.length) return ''
+  const candidate = findFontCandidate(catalog.value, current)
+  const missing = sources.filter(s => !candidate?.sources.includes(s))
+  if (!missing.length) return ''
+  const labels = missing.map(s => (s === 'server' ? '服务端' : '本机'))
+  return `${labels.join('、')}无此字体，出图将回退到默认字体`
+})
+
 function onChange(value: string): void {
   emit('update:model-value', value || undefined)
 }
@@ -63,5 +80,8 @@ function onChange(value: string): void {
   font-size: 11px;
   line-height: 1.4;
   color: var(--pd-text-muted, #8b909c);
+}
+.font-select-hint.warn {
+  color: var(--pd-accent-secondary, #f56c6c);
 }
 </style>
