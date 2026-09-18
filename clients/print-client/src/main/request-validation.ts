@@ -9,6 +9,8 @@ export interface PrintSubmitSpec {
   /** 对象=单份；非空对象数组=批量（上限 MAX_BATCH_COPIES，合并为一个作业） */
   printData?: Record<string, unknown> | Array<Record<string, unknown>>
   baseUrl?: string
+  /** 相对路径字体资源基址；缺省回落 baseUrl */
+  fontBaseUrl?: string
   /** 连续纸显式纸高逃生门（mm） */
   paperHeightMm?: number
 }
@@ -156,6 +158,10 @@ export function parsePrintSubmit(raw: unknown): {
   if (raw.baseUrl !== undefined) {
     if (typeof raw.baseUrl !== 'string') invalid('baseUrl 必须是字符串')
     spec.baseUrl = raw.baseUrl
+  }
+  if (raw.fontBaseUrl !== undefined) {
+    if (typeof raw.fontBaseUrl !== 'string') invalid('fontBaseUrl 必须是字符串')
+    spec.fontBaseUrl = raw.fontBaseUrl
   }
 
   return { spec, print, templateName: parseTemplateName(raw.templateName) }

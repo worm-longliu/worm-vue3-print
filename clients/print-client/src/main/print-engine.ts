@@ -136,6 +136,7 @@ export class PrintEngine {
       templateJson: spec.templateJson as unknown as PrintTemplateData,
       printData: spec.printData,
       baseUrl: spec.baseUrl,
+      fontBaseUrl: spec.fontBaseUrl,
       paperHeightMm: spec.paperHeightMm,
       paperOverride: toPaperOverride(print.paperSize),
       timeoutMs: PDF_GENERATION_TIMEOUT_MS,

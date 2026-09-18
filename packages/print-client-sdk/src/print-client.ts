@@ -70,17 +70,18 @@ export class PrintClient {
    * 提交静默打印任务。
    * @param templateJson core 模板 JSON
    * @param printData 业务数据
-   * @param options 打印机/纸张/份数等；baseUrl 为相对图片资源基址；timeoutMs 可单独放宽大任务
+   * @param options 打印机/纸张/份数等；baseUrl 为相对图片资源基址，fontBaseUrl 为相对字体资源基址
+   *   （字体常在 CDN/前端站点，与图片不在同一域时需单独指定）；timeoutMs 可单独放宽大任务
    * @param templateName 模板名称，透传给客户端用于任务记录
    */
   print(
     templateJson: Record<string, unknown>,
     printData?: Record<string, unknown> | Array<Record<string, unknown>>,
-    options: PrintOptions & { baseUrl?: string; timeoutMs?: number } = {},
+    options: PrintOptions & { baseUrl?: string; fontBaseUrl?: string; timeoutMs?: number } = {},
     templateName?: string,
   ): Promise<PrintSubmitResponsePayload> {
-    const { baseUrl, timeoutMs, ...print } = options
-    const payload: PrintSubmitRequest = { templateJson, printData, baseUrl, print }
+    const { baseUrl, fontBaseUrl, timeoutMs, ...print } = options
+    const payload: PrintSubmitRequest = { templateJson, printData, baseUrl, fontBaseUrl, print }
     if (typeof templateName === 'string' && templateName.trim().length > 0) {
       payload.templateName = templateName
     }
