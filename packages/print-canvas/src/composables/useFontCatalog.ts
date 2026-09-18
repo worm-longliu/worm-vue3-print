@@ -4,6 +4,7 @@ import { computed, inject, toValue, type ComputedRef, type MaybeRefOrGetter } fr
 import {
   UNAVAILABLE,
   mergeFontSources,
+  type FontCandidate,
   type FontCatalog,
   type FontSourceReport,
 } from '@worm-vue3-print/core'
@@ -34,4 +35,22 @@ export function useFontCatalog(
 /** 由深层组件调用（属性面板 / 状态栏）：未注入时回退空目录，组件可独立挂载 */
 export function useInjectedFontCatalog(): ComputedRef<FontCatalog> {
   return inject(FONT_CATALOG_KEY, EMPTY_FONT_CATALOG)
+}
+
+/** 在目录中按族名查找（大小写不敏感） */
+export function findFontCandidate(
+  catalog: FontCatalog,
+  family?: string,
+): FontCandidate | undefined {
+  const key = family?.trim().toLowerCase()
+  if (!key) return undefined
+  return catalog.fonts.find(f => f.family.trim().toLowerCase() === key)
+}
+
+/** 下拉选项文案：两端都可用不加标注，单端可用标注范围，避免设计者误以为处处可打 */
+export function fontOptionLabel(candidate: FontCandidate): string {
+  if (candidate.sources.length !== 1) return candidate.family
+  if (candidate.sources[0] === 'server') return `${candidate.family}（仅服务端）`
+  if (candidate.sources[0] === 'client') return `${candidate.family}（仅本机）`
+  return candidate.family
 }

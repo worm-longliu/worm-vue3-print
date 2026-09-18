@@ -78,15 +78,11 @@
       </div>
       <div class="cell-style-grid">
         <div class="pd-field"><span class="pd-label">字体</span>
-          <select :value="mainCell.fontFamily" class="pd-select"
-            placeholder="继承默认" @change="write(c => { c.fontFamily = ($event.target as HTMLSelectElement).value || undefined })">
-            <option value="SimSun">宋体</option>
-            <option value="SimHei">黑体</option>
-            <option value="Microsoft YaHei">微软雅黑</option>
-            <option value="KaiTi">楷体</option>
-            <option value="FangSong">仿宋</option>
-            <option value="Arial">Arial</option>
-          </select>
+          <FontSelect
+            :model-value="mainCell.fontFamily"
+            placeholder="继承默认"
+            @update:model-value="write(c => { c.fontFamily = $event })"
+          />
         </div>
         <div class="pd-field"><span class="pd-label">字号 (pt)</span>
           <StepperInput :model-value="mainCell.fontSize"
@@ -174,6 +170,7 @@ import PropertyGroup from './PropertyGroup.vue'
 import StepperInput from './StepperInput.vue'
 import ExpressionEditor from '../ExpressionEditor.vue'
 import PresetColorPicker from '../PresetColorPicker.vue'
+import FontSelect from './FontSelect.vue'
 
 const props = defineProps<{
   element: RuntimeElement

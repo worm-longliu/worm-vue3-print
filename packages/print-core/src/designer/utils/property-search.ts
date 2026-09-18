@@ -25,6 +25,7 @@ export const PROPERTY_REGISTRY: PropertyGroupDef[] = [
     group: 'appearance',
     groupLabel: '外观',
     items: [
+      { key: 'ap-font-family', keywords: ['字体', '字体名', '字体族', 'fontfamily'] },
       { key: 'ap-font-size', keywords: ['字体大小', 'fontsize', '字号'] },
       { key: 'ap-font-weight', keywords: ['字体粗细', '粗体', 'bold'] },
       { key: 'ap-align', keywords: ['对齐', 'align'] },

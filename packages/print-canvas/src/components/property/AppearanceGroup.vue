@@ -2,6 +2,9 @@
   <PropertyGroup title="外观" icon="Brush" default-expanded group-key="appearance">
     <form class="pd-form" @submit.prevent>
       <template v-if="isTextType">
+        <div class="pd-field" v-show="showItem('ap-font-family')"><span class="pd-label">字体</span>
+          <FontSelect v-model="element.options.fontFamily" />
+        </div>
         <div class="pd-field" v-show="showItem('ap-font-size')"><span class="pd-label">字体大小</span>
           <StepperInput v-model="element.options.fontSize"
             :min="8"
@@ -61,6 +64,7 @@ import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 import PresetColorPicker from '../PresetColorPicker.vue'
 import PropertyGroup from './PropertyGroup.vue'
 import StepperInput from './StepperInput.vue'
+import FontSelect from './FontSelect.vue'
 
 const props = defineProps<{
   element: RuntimeElement
