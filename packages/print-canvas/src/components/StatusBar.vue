@@ -5,21 +5,6 @@
     </span>
     <span class="status-item">缩放 {{ scale }}%</span>
     <span class="status-item">元素 {{ elementCount }}{{ selectedCount ? ` (选中 ${selectedCount})` : '' }}</span>
-    <span
-      v-if="fontIssues.length"
-      class="status-item status-font-warn"
-      title="点击查看缺失字体明细"
-      @click="fontDetailVisible = !fontDetailVisible"
-    >
-      {{ fontIssues.length }} 项字体缺失
-    </span>
-    <div v-if="fontDetailVisible && fontIssues.length" class="font-issue-panel">
-      <div v-for="issue in fontIssues" :key="issue.family" class="font-issue-row">
-        <span class="font-issue-family">{{ issue.family }}</span>
-        <span class="font-issue-sources">{{ sourceLabel(issue.sources) }}缺失</span>
-        <span class="font-issue-targets">{{ issue.targets.length }} 处引用</span>
-      </div>
-    </div>
     <span class="status-dirty" :class="{ on: dirty }">
       <span class="dirty-dot" />{{ dirty ? '未保存' : '已保存' }}
     </span>
@@ -28,29 +13,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { FontIssueSummary } from '../composables/useFontCatalog'
-
-withDefaults(defineProps<{
+defineProps<{
   coordinate: { x: number; y: number } | null
   scale: number
   elementCount: number
   selectedCount: number
   paper: string
   dirty: boolean
-  /** 字体缺失汇总；空数组表示无缺失 */
-  fontIssues?: FontIssueSummary[]
-}>(), {
-  fontIssues: () => [],
-})
-
-const fontDetailVisible = ref(false)
-
-/** 缺失端文案：两端都缺时合并为「两端」 */
-function sourceLabel(sources: FontIssueSummary['sources']): string {
-  if (sources.length >= 2) return '两端'
-  return sources[0] === 'server' ? '服务端' : '本机'
-}
+}>()
 </script>
 
 <style scoped>
@@ -105,32 +75,6 @@ function sourceLabel(sources: FontIssueSummary['sources']): string {
   background: var(--pd-accent-secondary, #f56c6c);
   box-shadow: 0 0 0 3px rgba(245, 108, 108, .14);
   animation: dirty-pulse 1.6s ease-in-out infinite;
-}
-.status-font-warn {
-  color: var(--pd-accent-secondary, #f56c6c);
-  cursor: pointer;
-}
-.font-issue-panel {
-  position: absolute;
-  bottom: 34px;
-  left: 16px;
-  z-index: 20;
-  max-height: 180px;
-  overflow: auto;
-  padding: 8px 10px;
-  background: var(--pd-surface, #fff);
-  border: 1px solid var(--pd-border-soft, #e9ecf2);
-  border-radius: 6px;
-  box-shadow: 0 6px 18px rgba(23, 32, 60, .12);
-  font-size: 11.5px;
-}
-.font-issue-row {
-  display: flex;
-  gap: 10px;
-  white-space: nowrap;
-}
-.font-issue-sources {
-  color: var(--pd-accent-secondary, #f56c6c);
 }
 @keyframes dirty-pulse {
   0%, 100% { box-shadow: 0 0 0 2px rgba(245, 108, 108, .12); }

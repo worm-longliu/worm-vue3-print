@@ -3,7 +3,8 @@
 > **后续变更（2026-09-18，本文件之后）**：第 1、3、5、6 节里的 `presetFonts`（宿主声明族名列表）已被
 > `PrintDesigner` 的 `fonts`（`PrintFontDeclaration[]`，模板级字体声明 + woff2 URL）取代：字体不再靠
 > 各端系统字体，而是由模板声明的 `@font-face` 在三端加载同一份文件，并随模板保存进 JSON 的 `fonts` 字段。
-> 本文件第 4 节的查询状态机、离线提示与 `loadFonts` 契约仍然有效。
+> 进一步地，本文件第 4 节的查询状态机、离线提示与 `loadFonts` 契约也已被移除：设计器不再查询
+> 任何出图端的系统字体清单，字体下拉只列出模板声明的字体。
 
 日期：2026-09-18
 范围：`packages/print-core`（字体目录合并语义）、`packages/print-canvas`（字体下拉的展示与查询入口、`PrintDesigner` 宿主契约）、`demo`（宿主接线示例）、`docs`（指南与更新日志）。
@@ -72,6 +73,10 @@ export function mergeFontSources(input: {
 
 - `FontCandidate.sources` 的既有语义是「真实上报成功且包含该字体的端」，`[]` 恰好表达「宿主预设、未经任一出图端确认」。此语义写入类型注释。
 - `findMissingFonts` **不因预设而改变**，仍只认 `sources`：清单已取到且确无该字体 → 照常报缺失；清单未取到（`available === false`）→ 直接返回空，不臆断缺失。因此「预设置顶」是可用性 UI 的便利，不是出图保证。
+
+  > **后续变更（2026-09-18，字体基址修复）**：预设演进为「模板自带 webfont」（`TemplateData.fonts`，带文件 url）后，
+  > 上述规则收紧为：**声明了可用文件 url 的族名不参与系统字体校验**（webfont 随模板走，出图端不需要装系统字体）。
+  > 只声明族名而无可用 url 时仍按缺失上报。详见 CHANGELOG 的「字体缺失告警降噪」条目。
 - 预设字体出现在目录中，`FontSelect` 的 `unknownFamily` 不再把它标注为「（未知）」。
 
 ## 4. canvas：查询状态与展示

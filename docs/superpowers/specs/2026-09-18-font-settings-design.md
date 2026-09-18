@@ -1,5 +1,12 @@
 # 元素与单元格字体设置（含动态字体清单）设计
 
+> **后续变更（2026-09-18，本文件之后）**：本文件的「动态字体清单」部分已整体移除——不再由服务端与
+> 桌面客户端上报系统字体清单，设计器也不做并集展示与缺失字体告警。字体来源改为模板 `fonts`
+> 声明（`PrintFontDeclaration[]`，`@font-face` + webfont 文件）；`GET /fonts`、`X-Font-Warnings`、
+> `fonts.list` / `PrintClient.listFonts()`、`readSystemFonts`、`mergeFontSources`、`findMissingFonts`
+> 均已删除。**仍然有效**的是本文档对单元格/文本元素 `fontFamily` 渲染断链的修复、兜底字体栈与
+> `toFontFamilyStack` 的行为约定。
+
 日期：2026-09-18
 范围：`packages/print-core`（字体模块 + 渲染断链修复 + 校验）、`packages/print-canvas`（注入与 UI）、`packages/print-client-sdk`（WS 门面）、`clients/print-client`（本机字体枚举）、`services/print-render`（容器字体上报）、`demo`（宿主取数示例）。
 

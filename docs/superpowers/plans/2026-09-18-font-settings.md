@@ -1,5 +1,9 @@
 # 元素与单元格字体设置实施计划
 
+> **后续变更（2026-09-18，本计划之后）**：本计划中的「动态字体清单」部分（两端上报、`serverFonts` /
+> `clientFonts` / `loadFonts`、`GET /fonts`、`X-Font-Warnings`、`fonts.list`、缺失字体校验）已被整体移除，
+> 字体来源改为模板 `fonts` 声明。本文件保留为当时的实施记录，勿据此接入已删除的 API。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 让文本元素与表格单元格的字体设置在预览与三端出图中真正生效，并让可用字体清单由服务端容器与桌面客户端动态上报、在设计器中并集展示与校验。

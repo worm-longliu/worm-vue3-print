@@ -19,31 +19,21 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
   data-binder field map). Cell fonts now take effect, so **the output of such existing
   templates will change**. Also fixed `font-family` output missing quotes and the fallback
   stack (family names containing spaces, e.g. `Microsoft YaHei`, did not apply before).
-- `@worm-vue3-print/canvas`: Added a font picker to the text-element and table-cell property
-  panels. It lists the union of fonts available on the server and on the local machine and
-  marks the available scope ("server only" / "local only"). Font names outside the list are
-  still shown, marked "(unknown)", and never silently cleared.
-- `@worm-vue3-print/canvas`: `PrintDesigner` accepts two new optional props, `serverFonts` and
-  `clientFonts` (`{ available: boolean; fonts: string[] }`), supplied by the host. When omitted,
-  the picker still renders but has no options and shows a "font list unavailable" hint (it does
-  not fall back to a built-in hardcoded font list). **Host contract**: `available: false` means "this
-  end could not produce a list" and must NOT be read as "the font is missing".
 - `@worm-vue3-print/canvas` / `@worm-vue3-print/core`: added the `fonts` prop
   (`PrintFontDeclaration[]`) to `PrintDesigner` — **template-level font declarations**. The designer
-  injects `@font-face`, pins them to the top of the font picker in array order (marked "template
-  font"), and writes them into the template JSON `fonts` field on save/preview/screenshot so the
+  injects `@font-face`, lists them in the font picker, and writes them into the template JSON `fonts`
+  field on save/preview/screenshot so the
   render service and desktop client print with the same files instead of whatever their OS happens
   to have. A `url` starting with `/` is resolved against each end's `baseUrl` (same rule as relative
-  image paths); absolute URLs are used as-is. Declarations only say where the files are and **do not
-  feed `findMissingFonts`**: when an end has reported and truly lacks the font, it is still reported.
+  image paths); absolute URLs are used as-is.
 - `@worm-vue3-print/core`: generated HTML now carries `@font-face` rules for the template-declared
   fonts (`font-display: block`), injected in both the measurement pass and the final output; the DOM
   executor explicitly loads declared fonts during readiness instead of only awaiting `fonts.ready`
   (which can resolve early, measuring fallback metrics and breaking pagination).
 - `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: font declarations accept an optional `label`
   (the business name, e.g. "马善政毛笔楷书"). The font input and picker show the label first and add
-  the real family name plus availability in parentheses (e.g. "马善政毛笔楷书（Ma Shan Zheng，模板字体）"),
-  and the search matches both label and family. What gets written into the template and `@font-face`
+  the real family name in parentheses (e.g. "马善政毛笔楷书（Ma Shan Zheng）"), and the search matches both
+  label and family. What gets written into the template and `@font-face`
   is always the `family`; submitting a label maps back to the family so a display name can never be
   stored by accident and silently lose the font.
 - Font base URL is now decoupled from the image base URL (**fixes custom fonts only working on the
@@ -56,34 +46,17 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
   and `PrintHtmlPreview`. In addition, the font host/CDN **must return `Access-Control-Allow-Origin`**:
   rendering ends load the template HTML with a `null`/app-protocol origin, and without CORS the font
   is blocked just the same.
-- `@worm-vue3-print/canvas`: added the `loadFonts` prop
-  (`() => Promise<{ server: FontSourceReport; client: FontSourceReport }>`) and a "Query fonts"
-  button next to the font input. Font lists are now fetched **on demand** — nothing is requested
-  until the user clicks (hosts previously had to fetch while mounting the designer). Query results
-  are only used when the corresponding props are absent (props win). **Host contract**: resolve
-  `{ available: false, fonts: [] }` for an unreachable end; only reject when the query itself failed.
-- `@worm-vue3-print/canvas`: **Behavior change** offline hints became actionable — after a query an
-  unreachable end shows "Server is not connected, please connect the server and query again" /
-  "Desktop client is not connected, please connect it and query again", and a failed query shows
-  "Font query failed: <reason>, please check the server and desktop client connections and retry".
-  Before the first query nothing claims a missing connection; the picker instead points at the button.
-- `@worm-vue3-print/core`: `mergeFontSources` accepts an optional `preset` argument (pinned order,
-  same-name merge that only adds sources and keeps the preset spelling). Omitted, the output is
-  identical to the previous rules.
-- `@worm-vue3-print/client`: Added protocol message `fonts.list` and SDK method
-  `PrintClient.listFonts()`, returning the system font list of the machine running the
-  desktop client.
-- `@worm-vue3-print/render`: Added `GET /fonts`, reporting the container's system fonts.
-  `/render/pdf` and `/render/screenshot` now return an `X-Font-Warnings` response header when
-  fonts are missing (value is `encodeURIComponent` of
-  `Array<{ code: 'FONT_MISSING'; family: string; targets: string[] }>`); the header is omitted
-  when nothing is missing.
-- Desktop client: `print.submit` checks template fonts against the local machine at job start
-  and logs a `warn` entry when fonts are missing. Printing is **never blocked**; Chromium falls
-  back on its own.
-- Known limitation: no cross-language font alias normalization ("宋体" and "SimSun" count as
-  two names), which can produce **false positives** on Chinese Windows. The client font list
-  describes only the workstation running the browser, not other workstations.
+- `@worm-vue3-print/canvas`: the font picker for text elements and table cells now lists **only the
+  template-declared fonts** (showing `label` when present; a current value outside the declarations is
+  kept and marked "(unknown)"). Family names outside the declarations can still be typed freely and
+  are never silently cleared.
+- **Breaking change: removed font querying (server and desktop client)** — the two ends' system font
+  lists are no longer fetched. Removed `PrintDesigner`'s `serverFonts` / `clientFonts` / `loadFonts`
+  props, the "Query fonts" button and the offline/missing-font hints; removed the render service's
+  `GET /fonts` and `X-Font-Warnings` header, the client SDK's `fonts.list` protocol message and
+  `PrintClient.listFonts()`, the desktop client's pre-print missing-font `warn` log, and core's
+  `readSystemFonts` / `mergeFontSources` / `findMissingFonts` helpers. Font availability is now
+  decided solely by the template's `fonts` declarations and their `@font-face` rules.
 
 ### Added
 

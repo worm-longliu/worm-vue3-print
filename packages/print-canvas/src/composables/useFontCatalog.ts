@@ -1,73 +1,60 @@
-// 字体目录：消费宿主注入的两端上报，合并为可供 UI 与校验使用的 FontCatalog。
-// 合并规则本身在 core（mergeFontSources），此处只做响应式接线。
+// 字体下拉的数据源：模板级字体声明（宿主经 PrintDesigner 的 fonts prop 传入）。
+// 声明随模板保存、由各端按 @font-face 加载，设计器不查询任何出图端的系统字体。
 import { computed, inject, toValue, type ComputedRef, type MaybeRefOrGetter } from 'vue'
-import {
-  UNAVAILABLE,
-  mergeFontSources,
-  type FontCandidate,
-  type FontCatalog,
-  type FontPin,
-  type FontSource,
-  type FontSourceReport,
-} from '@worm-vue3-print/core'
+import type { PrintFontDeclaration } from '@worm-vue3-print/core'
 import { FONT_CATALOG_KEY } from './useHostAdapter'
 
-/** 空目录：两端均不可用，用于未注入或未上报时的兜底 */
-export const EMPTY_FONT_CATALOG: ComputedRef<FontCatalog> = computed(() =>
-  mergeFontSources({ server: UNAVAILABLE, client: UNAVAILABLE }),
-)
+/** 下拉候选项：family 写入模板，label 仅用于界面展示 */
+export interface FontOption {
+  family: string
+  label?: string
+}
+
+/** 空目录：宿主未声明字体时的兜底 */
+export const EMPTY_FONT_CATALOG: ComputedRef<readonly FontOption[]> = computed(() => [])
 
 /**
- * 由 PrintDesigner 调用：把两个 props 合并为响应式字体目录。
- * 参数接受 ref / computed / getter 任意形态。
- * `templateFonts` 由模板声明（宿主经 prop 配置），按数组顺序置顶（不经出图端确认，`sources` 为空）。
+ * 由 PrintDesigner 调用：把模板字体声明整理为下拉候选项。
+ * 去空白、丢空值、族名大小写不敏感去重，保留声明顺序（顺序即宿主期望的优先级）。
  */
 export function useFontCatalog(
-  serverFonts: MaybeRefOrGetter<FontSourceReport | undefined>,
-  clientFonts: MaybeRefOrGetter<FontSourceReport | undefined>,
-  templateFonts?: MaybeRefOrGetter<readonly (string | FontPin)[] | undefined>,
-): { catalog: ComputedRef<FontCatalog> } {
-  const catalog = computed<FontCatalog>(() =>
-    mergeFontSources({
-      preset: toValue(templateFonts) ?? [],
-      server: toValue(serverFonts) ?? UNAVAILABLE,
-      client: toValue(clientFonts) ?? UNAVAILABLE,
-    }),
-  )
+  declarations?: MaybeRefOrGetter<readonly PrintFontDeclaration[] | undefined>,
+): { catalog: ComputedRef<readonly FontOption[]> } {
+  const catalog = computed<readonly FontOption[]>(() => {
+    const out: FontOption[] = []
+    const seen = new Set<string>()
+    for (const font of toValue(declarations) ?? []) {
+      const family = font?.family?.trim()
+      if (!family) continue
+      const key = family.toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      const label = font.label?.trim()
+      out.push(label ? { family, label } : { family })
+    }
+    return out
+  })
   return { catalog }
 }
 
-/** 由深层组件调用（属性面板 / 状态栏）：未注入时回退空目录，组件可独立挂载 */
-export function useInjectedFontCatalog(): ComputedRef<FontCatalog> {
+/** 由深层组件调用（属性面板）：未注入时回退空目录，组件可独立挂载 */
+export function useInjectedFontCatalog(): ComputedRef<readonly FontOption[]> {
   return inject(FONT_CATALOG_KEY, EMPTY_FONT_CATALOG)
 }
 
 /** 在目录中按族名查找（大小写不敏感） */
-export function findFontCandidate(
-  catalog: FontCatalog,
+export function findFontOption(
+  fonts: readonly FontOption[],
   family?: string,
-): FontCandidate | undefined {
+): FontOption | undefined {
   const key = family?.trim().toLowerCase()
   if (!key) return undefined
-  return catalog.fonts.find(f => f.family.trim().toLowerCase() === key)
+  return fonts.find(f => f.family.trim().toLowerCase() === key)
 }
 
-/**
- * 下拉选项文案：模板声明字体优先展示 label（宿主配置的业务名），其余用族名；
- * 并标注可用范围，避免设计者误以为有些字体处处可打。写入模板的始终是族名。
- */
-export function fontOptionLabel(candidate: FontCandidate): string {
-  // 展示 label（若有），括号里补上真实族名（写入模板的值）与可用范围
-  const display = candidate.label ?? candidate.family
-  const notes: string[] = []
-  if (candidate.label) notes.push(candidate.family)
-  if (candidate.sources.length === 0) {
-    // sources 为空 = 模板声明字体（自带 webfont，不依赖出图端系统字体）
-    notes.push('模板字体')
-  } else if (candidate.sources.length === 1) {
-    notes.push(candidate.sources[0] === 'server' ? '仅服务端' : '仅本机')
-  }
-  return notes.length ? `${display}（${notes.join('，')}）` : display
+/** 下拉选项文案：有展示名时补上真实族名（写入模板的值） */
+export function fontOptionLabel(option: FontOption): string {
+  return option.label ? `${option.label}（${option.family}）` : option.family
 }
 
 /** 匹配用键：小写并去掉全部空白，使用户输入 `ya hei` 与 `yahei` 等价 */
@@ -93,13 +80,13 @@ function matchRank(nameKey: string, queryKey: string): number {
 
 /**
  * 模糊过滤字体目录：完全相等 > 前缀 > 子串 > 子序列，同档保持目录原有顺序
- * （目录本身已按「两端都可用的在前」排好，过滤不应打乱这个安全顺序）。
+ * （目录顺序由宿主声明决定，过滤不应打乱）。
  * 族名与展示名（label）都参与匹配，设计者按业务名搜也能命中。
  */
-export function filterFontCandidates(
-  fonts: readonly FontCandidate[],
+export function filterFontOptions(
+  fonts: readonly FontOption[],
   query: string,
-): FontCandidate[] {
+): FontOption[] {
   const queryKey = normalizeFontQuery(query.trim())
   if (!queryKey) return [...fonts]
   return fonts
@@ -110,19 +97,10 @@ export function filterFontCandidates(
 }
 
 /** 族名与展示名取更优的一档；两者都不命中返回 -1 */
-function fontMatchRank(font: FontCandidate, queryKey: string): number {
+function fontMatchRank(font: FontOption, queryKey: string): number {
   const byFamily = matchRank(normalizeFontQuery(font.family), queryKey)
   if (!font.label) return byFamily
   const byLabel = matchRank(normalizeFontQuery(font.label), queryKey)
   if (byFamily < 0) return byLabel
   return byLabel < 0 ? byFamily : Math.min(byFamily, byLabel)
-}
-
-/** 单个字体在若干出图端缺失的汇总项 */
-export interface FontIssueSummary {
-  family: string
-  /** 缺失的端（只含已成功上报的端） */
-  sources: FontSource[]
-  /** 引用该字体的元素/单元格位置标识 */
-  targets: string[]
 }

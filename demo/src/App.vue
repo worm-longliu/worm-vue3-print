@@ -27,8 +27,6 @@
         :upload-image="uploadDemoImage"
         :upload-design-background="uploadDemoImage"
         :fonts="DESIGNER_FONTS"
-        :load-fonts="loadFonts"
-        :client-fonts="clientFonts"
         @preview="onPreview"
         @save="onSave"
       />
@@ -66,7 +64,6 @@
       :print-data="activePrintData"
       :get-template-json="() => (designerRef?.getTemplateJson() as unknown as Record<string, unknown>)"
       @close="printDialogVisible = false"
-      @client-fonts="clientFonts = $event"
     />
   </div>
 </template>
@@ -82,8 +79,6 @@ import {
 import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
 import type { PrintFontDeclaration } from '@worm-vue3-print/core'
 import PrintOutputDialog from './components/PrintOutputDialog.vue'
-import type { ServerFontReport } from './render-client'
-import { loadFonts } from './font-query'
 import rawTemplate from './template-purchase-receipt.json'
 import {
   TEMPLATE_ID,
@@ -141,9 +136,6 @@ const DESIGNER_FONTS: PrintFontDeclaration[] = [
     ],
   },
 ]
-
-/** 本机（桌面客户端所在机器）字体清单：由打印弹窗连接成功后回填，掉线时撤回 */
-const clientFonts = ref<ServerFontReport | undefined>(undefined)
 
 const designerRef = ref<InstanceType<typeof PrintDesigner> | null>(null)
 

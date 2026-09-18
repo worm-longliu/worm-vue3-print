@@ -108,7 +108,6 @@
       :selected-count="selectedIds.size"
       :paper="paperLabel"
       :dirty="dirty"
-      :font-issues="fontIssues"
     />
 
     <!-- 设计稿双击元素/单元格打开的表达式编辑器 -->
@@ -131,7 +130,7 @@
 import '../styles/native-controls.css'
 import { ref, watch, provide, computed, onMounted, onUnmounted } from 'vue'
 import type { RuntimeElement, PrintBusinessField, TemplateData, TableCell, RequestScreenshotFn, UploadImageFn, UploadDesignBackgroundFn } from '@worm-vue3-print/core/designer'
-import type { FontSourceReport, PrintFontDeclaration } from '@worm-vue3-print/core'
+import type { PrintFontDeclaration } from '@worm-vue3-print/core'
 import { buildFontFaceCss } from '@worm-vue3-print/core'
 import { useDesignerState } from '../composables/useDesignerState'
 import { useGuides } from '../composables/useGuides'
@@ -142,16 +141,12 @@ import { getPaperDimensions } from '@worm-vue3-print/core/designer'
 import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
 import { findMainCell } from '@worm-vue3-print/core/designer'
 import { computeFitScale, FIT_SCALE_MIN_PERCENT } from '@worm-vue3-print/core/designer'
-import { findMissingFonts } from '@worm-vue3-print/core'
 import {
   UPLOAD_IMAGE_KEY,
   UPLOAD_DESIGN_BACKGROUND_KEY,
   FONT_CATALOG_KEY,
-  FONT_QUERY_KEY,
 } from '../composables/useHostAdapter'
 import { useFontCatalog } from '../composables/useFontCatalog'
-import type { FontIssueSummary } from '../composables/useFontCatalog'
-import { useFontQuery, type LoadFontsFn } from '../composables/useFontQuery'
 import { useDocumentFontFace } from '../composables/useDocumentFontFace'
 import type { AlignMode } from '@worm-vue3-print/core/designer'
 import DesignerToolbar from './DesignerToolbar.vue'
@@ -176,17 +171,11 @@ const props = defineProps<{
   uploadDesignBackground?: UploadDesignBackgroundFn
   /** 是否展示帮助入口（帮助按钮与帮助弹框）；默认开启，传 false 关闭 */
   showHelp?: boolean
-  /** 服务端（PDF 出图端）字体清单；未注入时该端字体不可用 */
-  serverFonts?: FontSourceReport
-  /** 桌面客户端（静默打印端）字体清单；未注入时该端字体不可用 */
-  clientFonts?: FontSourceReport
   /**
-   * 模板级字体声明（宿主配置）：设计器据此注入 @font-face、在字体下拉中置顶标注「模板字体」，
+   * 模板级字体声明（宿主配置）：设计器据此注入 @font-face、在字体下拉中列出，
    * 并在保存/预览/截图时同步写入模板 JSON，供服务端与客户端出图使用同一份字体。
    */
   fonts?: readonly PrintFontDeclaration[]
-  /** 手动字体查询适配器：用户点击「查询字体」时调用；不传则不渲染查询按钮 */
-  loadFonts?: LoadFontsFn
 }>()
 
 const emit = defineEmits<{
@@ -244,18 +233,7 @@ provide(PREVIEW_IDS_KEY, previewIds)
 provide(UPLOAD_IMAGE_KEY, computed(() => props.uploadImage))
 provide(UPLOAD_DESIGN_BACKGROUND_KEY, computed(() => props.uploadDesignBackground))
 
-// 手动查询结果只作为 props 的回退：宿主显式注入的清单即权威，避免两处结果互相覆盖
-const { handle: fontQuery, fetched: fetchedFonts } = useFontQuery(
-  () => props.loadFonts,
-  () => props.serverFonts !== undefined || props.clientFonts !== undefined,
-)
-provide(FONT_QUERY_KEY, fontQuery)
-
-const { catalog: fontCatalog } = useFontCatalog(
-  computed(() => props.serverFonts ?? fetchedFonts.value?.server),
-  computed(() => props.clientFonts ?? fetchedFonts.value?.client),
-  computed(() => props.fonts?.map(font => ({ family: font.family, label: font.label }))),
-)
+const { catalog: fontCatalog } = useFontCatalog(computed(() => props.fonts))
 provide(FONT_CATALOG_KEY, fontCatalog)
 
 /** 画布文档注入同一份 @font-face，保证设计期所见即出图所得 */
@@ -270,24 +248,6 @@ function templateJsonWithFonts(): TemplateData {
   return props.fonts?.length ? { ...json, fonts: [...props.fonts] } : json
 }
 
-/** 字体缺失汇总：按端分别校验后合并——校验回答的是「这个出图端有没有」 */
-const fontIssues = computed<FontIssueSummary[]>(() => {
-  const catalog = fontCatalog.value
-  const merged = new Map<string, FontIssueSummary>()
-  for (const source of ['server', 'client'] as const) {
-    for (const item of findMissingFonts(templateData.value as any, catalog, source)) {
-      const key = item.family.trim().toLowerCase()
-      const found = merged.get(key)
-      if (found) {
-        found.sources.push(source)
-        found.targets.push(...item.targets)
-      } else {
-        merged.set(key, { family: item.family, sources: [source], targets: [...item.targets] })
-      }
-    }
-  }
-  return [...merged.values()]
-})
 watch(selectedElement, el => {
   if (!el || el.printElementType.type !== 'table') setTableSelection(null)
 })

@@ -1,74 +1,84 @@
-// pages/print-canvas/src/__tests__/useFontCatalog.spec.ts
+// packages/print-canvas/src/__tests__/useFontCatalog.spec.ts
 import { describe, it, expect } from 'vitest'
 import { ref } from 'vue'
-import type { FontCandidate, FontSourceReport } from '@worm-vue3-print/core'
-import { filterFontCandidates, useFontCatalog } from '../composables/useFontCatalog'
+import type { PrintFontDeclaration } from '@worm-vue3-print/core'
+import { filterFontOptions, useFontCatalog, type FontOption } from '../composables/useFontCatalog'
+
+const decl = (family: string, label?: string): PrintFontDeclaration => ({
+  family,
+  label,
+  files: [{ url: `/fonts/${family}.woff2` }],
+})
 
 describe('useFontCatalog', () => {
-  it('两端都未上报时返回空目录且 available 全为 false', () => {
-    const { catalog } = useFontCatalog(ref(undefined), ref(undefined))
-    expect(catalog.value.fonts).toEqual([])
-    expect(catalog.value.available).toEqual({ server: false, client: false })
+  it('未声明字体时返回空目录', () => {
+    const { catalog } = useFontCatalog(ref(undefined))
+    expect(catalog.value).toEqual([])
   })
 
-  it('只上报服务端时并集仅含服务端来源', () => {
-    const { catalog } = useFontCatalog(
-      ref({ available: true, fonts: ['SimSun'] } satisfies FontSourceReport),
-      ref(undefined),
-    )
-    expect(catalog.value.fonts).toEqual([{ family: 'SimSun', sources: ['server'] }])
-    expect(catalog.value.available).toEqual({ server: true, client: false })
-  })
-
-  it('客户端上报后响应式补齐来源标注', () => {
-    const client = ref<FontSourceReport | undefined>(undefined)
-    const { catalog } = useFontCatalog(
-      ref({ available: true, fonts: ['SimSun'] } satisfies FontSourceReport),
-      client,
-    )
-    expect(catalog.value.fonts).toEqual([{ family: 'SimSun', sources: ['server'] }])
-
-    client.value = { available: true, fonts: ['SimSun', 'KaiTi'] }
-    expect(catalog.value.available).toEqual({ server: true, client: true })
-    expect(catalog.value.fonts.map(f => [f.family, f.sources])).toEqual([
-      ['SimSun', ['server', 'client']],
-      ['KaiTi', ['client']],
+  it('按声明顺序输出族名与展示名', () => {
+    const { catalog } = useFontCatalog(ref([decl('Ma Shan Zheng', '马善政毛笔楷书'), decl('SimSun')]))
+    expect(catalog.value).toEqual([
+      { family: 'Ma Shan Zheng', label: '马善政毛笔楷书' },
+      { family: 'SimSun' },
     ])
+  })
+
+  it('去空白、丢空族名、族名大小写不敏感去重', () => {
+    const { catalog } = useFontCatalog(ref([
+      decl('  SimSun  '),
+      decl(''),
+      decl('simsun'),
+      decl('  ', '空族名'),
+    ]))
+    expect(catalog.value).toEqual([{ family: 'SimSun' }])
+  })
+
+  it('声明响应式变化后目录同步更新', () => {
+    const declarations = ref<readonly PrintFontDeclaration[]>([decl('SimSun')])
+    const { catalog } = useFontCatalog(declarations)
+    declarations.value = [decl('KaiTi', '楷体')]
+    expect(catalog.value).toEqual([{ family: 'KaiTi', label: '楷体' }])
   })
 })
 
-describe('filterFontCandidates', () => {
-  const fonts: FontCandidate[] = [
-    { family: 'Microsoft YaHei', sources: ['server', 'client'] },
-    { family: 'MS SimHei', sources: ['server'] },
-    { family: 'SimSun', sources: ['server'] },
-    { family: 'KaiTi', sources: ['client'] },
+describe('filterFontOptions', () => {
+  const fonts: FontOption[] = [
+    { family: 'Microsoft YaHei' },
+    { family: 'MS SimHei' },
+    { family: 'SimSun' },
+    { family: 'KaiTi' },
   ]
 
-  it('查询为空时原样返回（保持目录的可用性排序）', () => {
-    expect(filterFontCandidates(fonts, '')).toEqual(fonts)
-    expect(filterFontCandidates(fonts, '   ')).toEqual(fonts)
+  it('查询为空时原样返回（保持声明顺序）', () => {
+    expect(filterFontOptions(fonts, '')).toEqual(fonts)
+    expect(filterFontOptions(fonts, '   ')).toEqual(fonts)
   })
 
   it('子串匹配，大小写与空格不敏感', () => {
-    expect(filterFontCandidates(fonts, 'yahei').map(f => f.family)).toEqual(['Microsoft YaHei'])
-    expect(filterFontCandidates(fonts, '  MICROSOFT   YAHEI ').map(f => f.family)).toEqual(['Microsoft YaHei'])
+    expect(filterFontOptions(fonts, 'yahei').map(f => f.family)).toEqual(['Microsoft YaHei'])
+    expect(filterFontOptions(fonts, '  MICROSOFT   YAHEI ').map(f => f.family)).toEqual(['Microsoft YaHei'])
   })
 
   it('子序列匹配（首字母缩写）', () => {
-    expect(filterFontCandidates(fonts, 'msyh').map(f => f.family)).toEqual(['Microsoft YaHei'])
-    expect(filterFontCandidates(fonts, 'kt').map(f => f.family)).toEqual(['KaiTi'])
+    expect(filterFontOptions(fonts, 'msyh').map(f => f.family)).toEqual(['Microsoft YaHei'])
+    expect(filterFontOptions(fonts, 'kt').map(f => f.family)).toEqual(['KaiTi'])
   })
 
   it('排序为 完全相等 > 前缀 > 子串 > 子序列，同档保持原顺序', () => {
-    expect(filterFontCandidates(fonts, 'sim').map(f => f.family)).toEqual([
+    expect(filterFontOptions(fonts, 'sim').map(f => f.family)).toEqual([
       'SimSun',
       'MS SimHei',
     ])
-    expect(filterFontCandidates(fonts, 'SimSun').map(f => f.family)).toEqual(['SimSun'])
+    expect(filterFontOptions(fonts, 'SimSun').map(f => f.family)).toEqual(['SimSun'])
+  })
+
+  it('展示名（label）也参与匹配', () => {
+    const withLabel: FontOption[] = [{ family: 'Ma Shan Zheng', label: '马善政毛笔楷书' }]
+    expect(filterFontOptions(withLabel, '毛笔')).toEqual(withLabel)
   })
 
   it('无匹配时返回空数组', () => {
-    expect(filterFontCandidates(fonts, 'zzz')).toEqual([])
+    expect(filterFontOptions(fonts, 'zzz')).toEqual([])
   })
 })

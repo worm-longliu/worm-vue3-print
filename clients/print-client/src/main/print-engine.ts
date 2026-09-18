@@ -19,8 +19,6 @@ import type { JobHistoryStore, JobRecord } from './job-history.js'
 import type { PrinterService } from './printer-service.js'
 import { SerialGate } from './serial-gate.js'
 import { ProtocolFailure } from './protocol-error.js'
-import { collectMissingFonts } from './font-warning.js'
-import type { FontService } from './font-service.js'
 import { buildPrintJobSettings } from './print-settings.js'
 import { createElectronDriverFactory } from './driver-electron.js'
 import {
@@ -80,8 +78,6 @@ export class PrintEngine {
       logger: Pick<Logger, 'info' | 'warn' | 'error' | 'debug'>
       /** 生成 PDF 的落盘策略（每次任务读取，支持运行期改配置）；缺省不保留 */
       pdfOutput?: () => PdfOutputPolicy
-      /** 字体清单服务；缺省跳过出图前字体校验 */
-      fontService?: FontService
     },
   ) {}
 
@@ -89,27 +85,10 @@ export class PrintEngine {
     return this.gate.isBusy
   }
 
-  /** 出图前字体校验：只记警告，绝不阻断——字体缺失时 Chromium 会自行回退 */
-  private async warnMissingFonts(templateJson: unknown): Promise<void> {
-    const { fontService, logger } = this.deps
-    if (!fontService) return
-    try {
-      const missing = collectMissingFonts(templateJson, await fontService.list())
-      if (!missing.length) return
-      logger.warn('模板字体在本机缺失，将回退到默认字体', {
-        families: missing.map(m => m.family),
-      })
-    } catch (error) {
-      // 诊断能力失效不应影响打印
-      logger.debug('字体校验失败', { error: String(error) })
-    }
-  }
-
   /** 处理 print.submit 原始 payload（客户端内渲染）；成功在出纸后 resolve */
   submit(raw: unknown): Promise<{ jobId: string }> {
     return this.gate.run(async () => {
       const { spec, print, templateName } = parsePrintSubmit(raw)
-      await this.warnMissingFonts(spec.templateJson)
       return this.runJob({
         name: readTemplateName(spec.templateJson, templateName),
         print,
