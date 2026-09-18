@@ -674,6 +674,12 @@ RenderCell 补 fontFamily 字段与绑定映射，矩阵单元格样式输出 fo
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
+> **实施偏差记录（2026-09-18）**：计划原定在内联样式中直接输出 `font-family:"SimSun", ...`。
+> 实测该写法位于双引号包裹的 `style="..."` 属性内会提前闭合属性（happy-dom 解析后 `fontFamily` 为空串，
+> 整条声明丢失）。故 core 新增 `escapeInlineStyleValue`，内联样式的字体栈引号统一转义为 `&quot;`；
+> HTML 解析后仍是 `"SimSun", "Microsoft YaHei", ...`，与计划语义一致。`<style>` 块内 body 的兜底栈保持双引号原样，
+> css-builder 输出逐字未变。html-generator 的测试断言相应改为转义形式，并新增一条「不得输出未转义裸引号」的守卫用例。
+
 ---
 
 ### Task 3: canvas 字体目录注入

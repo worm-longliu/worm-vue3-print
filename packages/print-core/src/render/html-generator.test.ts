@@ -750,3 +750,61 @@ describe('批量文档拆分函数', () => {
     expect(html).toContain('<section class="print-page"></section>')
   })
 })
+
+// ─── 字体（fontFamily）输出 ───
+// 内联样式位于双引号包裹的 style="..." 属性中，字体栈里的族名引号必须转义为 &quot;，
+// 否则属性会被提前闭合，整条 font-family 声明丢失（实测：happy-dom 解析后 fontFamily 为空串）。
+describe('单元格与文本元素的字体输出', () => {
+  const STACK_SUFFIX = '&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif'
+
+  it('单元格 fontFamily 输出 font-family 并带全局兜底栈', () => {
+    const html = generateHtml(makeTemplate({
+      tableColWidths: [100],
+      _repeatHeaderCount: 0,
+      _renderRows: [
+        { type: 'data', height: 8, cells: [{ ...baseCell, content: 'A', fontFamily: 'SimSun' }] },
+      ],
+    }), pageWith([{ elementId: 'tbl-1', type: 'table-slice', startRow: 0, endRow: 1 }]))
+    expect(html).toContain(`font-family:&quot;SimSun&quot;, ${STACK_SUFFIX}`)
+  })
+
+  it('单元格未设 fontFamily 时不输出 font-family（交还 CSS 继承）', () => {
+    const html = generateHtml(makeTemplate({
+      tableColWidths: [100],
+      _repeatHeaderCount: 0,
+      _renderRows: [
+        { type: 'data', height: 8, cells: [{ ...baseCell, content: 'A' }] },
+      ],
+    }), pageWith([{ elementId: 'tbl-1', type: 'table-slice', startRow: 0, endRow: 1 }]))
+    const td = html.slice(html.indexOf('<td'), html.indexOf('</td>'))
+    expect(td).not.toContain('font-family')
+  })
+
+  it('文本元素 fontFamily 输出转义引号与兜底栈（原为裸值）', () => {
+    const t: TemplateData = {
+      paperSize: 'A4', orientation: 'portrait',
+      margins: { top: 10, right: 10, bottom: 10, left: 10 },
+      header: { height: 0, elements: [] },
+      footer: { height: 0, elements: [] },
+      firstPageOverlay: { height: 0, elements: [] },
+      elements: [{
+        id: 'txt-1', type: 'text',
+        options: { left: 0, top: 0, width: 50, height: 10, fontFamily: 'KaiTi', fontSize: 12, formatter: 'HELLO' },
+      }] as any,
+    } as TemplateData
+    const html = generateHtml(t, pageWith([{ elementId: 'txt-1', type: 'element', renderTop: 0 }]))
+    expect(html).toContain(`font-family:&quot;KaiTi&quot;, ${STACK_SUFFIX}`)
+  })
+
+  it('不输出未转义的裸引号，避免双引号属性被提前闭合', () => {
+    const html = generateHtml(makeTemplate({
+      tableColWidths: [100],
+      _repeatHeaderCount: 0,
+      _renderRows: [
+        { type: 'data', height: 8, cells: [{ ...baseCell, content: 'A', fontFamily: 'SimSun' }] },
+      ],
+    }), pageWith([{ elementId: 'tbl-1', type: 'table-slice', startRow: 0, endRow: 1 }]))
+    expect(html).not.toContain('font-family:"')
+    expect(html).not.toContain('font-family:&quot;SimSun&quot;, "')
+  })
+})

@@ -284,3 +284,18 @@ describe('clampResizedColumnWidth 列宽拖拽钳制', () => {
     expect(clampResizedColumnWidth([40, 40, 40], 1, 47.24, 200)).toBe(47.2)
   })
 })
+
+describe('splitCells 保留字体', () => {
+  it('拆分合并单元格后，恢复出的占位格继承主格 fontFamily', () => {
+    const rows: TableRow[] = [
+      { id: 'r1', type: 'data', height: 8, cells: [
+        createCell({ id: 'c1', fontFamily: 'SimSun' }),
+        createCell({ id: 'c2' }),
+      ] },
+    ]
+    mergeCells(rows, { r1: 0, c1: 0, r2: 0, c2: 1 })
+    splitCells(rows, { r1: 0, c1: 0, r2: 0, c2: 1 })
+    expect(rows[0]!.cells[0]!.fontFamily).toBe('SimSun')
+    expect(rows[0]!.cells[1]!.fontFamily).toBe('SimSun')
+  })
+})

@@ -172,6 +172,7 @@ function makeRenderRow(
       align: cell.align,
       valign: cell.valign,
       fontSize: cell.fontSize,
+      fontFamily: cell.fontFamily,
       fontWeight: cell.fontWeight,
       color: cell.color,
       backgroundColor: cell.backgroundColor,

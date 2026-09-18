@@ -10,6 +10,7 @@ import type {
   RenderCell,
   CodeRenderer,
 } from './types.js'
+import { escapeInlineStyleValue, toFontFamilyStack } from '../print/fonts.js'
 import { getPaperDimensions } from './types.js'
 import { buildPageCss, elementPositionStyle, mm } from './css-builder.js'
 import { injectSystemVariables } from './data-binder.js'
@@ -238,7 +239,7 @@ const H_ALIGN_FLEX: Record<string, string> = { left: 'flex-start', center: 'cent
 function textStyle(opts: Record<string, any>): string {
   const parts: string[] = []
   if (opts.fontSize) parts.push(`font-size:${opts.fontSize}pt`)
-  if (opts.fontFamily) parts.push(`font-family:${opts.fontFamily}`)
+  if (opts.fontFamily) parts.push(`font-family:${escapeInlineStyleValue(toFontFamilyStack(opts.fontFamily))}`)
   if (opts.fontWeight) parts.push(`font-weight:${opts.fontWeight}`)
   if (opts.color) parts.push(`color:${opts.color}`)
   if (opts.backgroundColor) parts.push(`background-color:${opts.backgroundColor}`)
@@ -359,6 +360,7 @@ function matrixCellStyle(cell: RenderCell, opts: Record<string, any>): string {
   const color = cell.color ?? opts.tableDefaultColor
   const padding = cell.padding ?? opts.tableDefaultPadding ?? 1
   if (fontSize) parts.push(`font-size:${fontSize}pt`)
+  if (cell.fontFamily) parts.push(`font-family:${escapeInlineStyleValue(toFontFamilyStack(cell.fontFamily))}`)
   if (cell.fontWeight) parts.push(`font-weight:${cell.fontWeight}`)
   if (color) parts.push(`color:${color}`)
   if (cell.backgroundColor) parts.push(`background-color:${cell.backgroundColor}`)

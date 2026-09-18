@@ -177,6 +177,7 @@ function copyCellStyle(src: TableCell, dst: TableCell): void {
   dst.align = src.align
   dst.valign = src.valign
   dst.fontSize = src.fontSize
+  dst.fontFamily = src.fontFamily
   dst.fontWeight = src.fontWeight
   dst.color = src.color
   dst.backgroundColor = src.backgroundColor

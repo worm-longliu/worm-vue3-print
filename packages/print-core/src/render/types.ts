@@ -113,6 +113,8 @@ export interface RenderCell {
   align?: string
   valign?: string
   fontSize?: number       // pt
+  /** 字体族名；未设置时单元格不输出 font-family，交还 CSS 继承 */
+  fontFamily?: string
   fontWeight?: string
   color?: string
   backgroundColor?: string

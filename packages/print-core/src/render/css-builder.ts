@@ -3,6 +3,7 @@
 
 import type { TemplateData } from './types.js'
 import { getPaperDimensions } from './types.js'
+import { FALLBACK_FONT_STACK } from '../print/fonts.js'
 
 /** mm 值转 CSS 字符串 */
 export function mm(value: number): string {
@@ -37,7 +38,7 @@ export function buildPageCss(template: TemplateData, pageHeightMm?: number): str
 /* 打印必须保留元素背景色（Chromium 默认剔除背景，需显式声明） */
 * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-body { font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif; }
+body { font-family: ${FALLBACK_FONT_STACK.join(', ')}; }
 
 /* ── 屏幕预览：灰底 + 纸张阴影/页间距；打印时去除 ── */
 @media screen {

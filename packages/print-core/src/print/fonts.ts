@@ -134,6 +134,15 @@ export function mergeFontSources(input: {
 }
 
 /**
+ * 把 CSS 值转义为可安全放入双引号包裹的内联样式属性（style="..."）的形式。
+ * 属性值中直接出现 `"` 会提前闭合属性，导致其后的声明整条丢失
+ * （实测：`style="font-family:"SimSun", Arial"` 解析后 fontFamily 为空串）。
+ */
+export function escapeInlineStyleValue(cssValue: string): string {
+  return cssValue.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+}
+
+/**
  * 生成 CSS font-family 值：显式族名 + 全局兜底栈。
  * - 未设置/空白 → 纯兜底栈
  * - 值已含逗号 → 视为调用方给出的完整栈，原样前置（不整体加引号，否则整串会变成一个字体名）
