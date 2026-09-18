@@ -46,6 +46,16 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
   and the search matches both label and family. What gets written into the template and `@font-face`
   is always the `family`; submitting a label maps back to the family so a display name can never be
   stored by accident and silently lose the font.
+- Font base URL is now decoupled from the image base URL (**fixes custom fonts only working on the
+  design canvas**): relative font URLs used to be prefixed with the image `baseUrl` (e.g. a business
+  OSS host) and thus 404'd on every rendering end, silently falling back to system fonts. The
+  signature is now `bindData(template, data, baseUrl, fontBaseUrl)` — `fontBaseUrl` is independent,
+  defaults to `baseUrl`, and an empty string means "do not prefix" (browser resolves against the
+  document origin, which is the default). Supported by `PrintJob`, the render service request body
+  plus its `FONT_BASE_URL` env var, SDK `print(..., { fontBaseUrl })`, client validation/rendering
+  and `PrintHtmlPreview`. In addition, the font host/CDN **must return `Access-Control-Allow-Origin`**:
+  rendering ends load the template HTML with a `null`/app-protocol origin, and without CORS the font
+  is blocked just the same.
 - `@worm-vue3-print/canvas`: added the `loadFonts` prop
   (`() => Promise<{ server: FontSourceReport; client: FontSourceReport }>`) and a "Query fonts"
   button next to the font input. Font lists are now fetched **on demand** — nothing is requested
