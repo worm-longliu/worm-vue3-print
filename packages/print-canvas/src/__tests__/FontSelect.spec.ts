@@ -1,6 +1,6 @@
 // packages/print-canvas/src/__tests__/FontSelect.spec.ts
 import { describe, it, expect } from 'vitest'
-import { computed } from 'vue'
+import { computed, defineComponent } from 'vue'
 import { mount } from '@vue/test-utils'
 import type { FontCatalog } from '@worm-vue3-print/core'
 import FontSelect from '../components/property/FontSelect.vue'
@@ -195,6 +195,32 @@ describe('FontSelect 键盘与提交', () => {
     await input.trigger('blur')
     expect(w.emitted('update:model-value')).toBeUndefined()
     expect((input.element as HTMLInputElement).value).toBe('SimSun')
+  })
+})
+
+describe('FontSelect 列表 id 关联', () => {
+  const catalog = catalogOf([['SimSun', ['server', 'client']]])
+
+  it('输入框的 aria-controls 指向展开的列表', async () => {
+    const w = mountSelect(catalog)
+    await focus(w)
+    expect(w.find('input').attributes('aria-controls')).toBe(w.find('ul').attributes('id'))
+  })
+
+  it('同一应用内多个实例的列表 id 互不相同', async () => {
+    const Wrapper = defineComponent({
+      components: { FontSelect },
+      template: '<div><FontSelect /><FontSelect /></div>',
+    })
+    const w = mount(Wrapper, {
+      global: { provide: { [FONT_CATALOG_KEY]: computed(() => catalog) } },
+    })
+    const inputs = w.findAll('input')
+    await inputs[0]!.trigger('focus')
+    await inputs[1]!.trigger('focus')
+    const [first, second] = w.findAll('ul')
+    expect(first!.attributes('id')).toBeTruthy()
+    expect(second!.attributes('id')).not.toBe(first!.attributes('id'))
   })
 })
 

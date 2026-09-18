@@ -38,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
 import {
   filterFontCandidates,
   findFontCandidate,
@@ -60,8 +60,7 @@ const emit = defineEmits<{ 'update:model-value': [value: string | undefined] }>(
 const catalog = useInjectedFontCatalog()
 
 /** 每实例独立的列表 id，供 combobox 的 aria 关联使用 */
-let uid = 0
-const listId = `font-select-list-${++uid}`
+const listId = `font-select-list-${useId()}`
 
 const listRef = ref<HTMLUListElement | null>(null)
 /** 输入框显示值：未提交时与 modelValue 不一致，提交或取消后回到 modelValue */
