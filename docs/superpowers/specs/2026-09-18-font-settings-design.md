@@ -93,6 +93,8 @@ export function findMissingFonts(
 ): MissingFont[];
 ```
 
+`normalizeFontList` 剔除 `.` 开头族名**不是防御性猜测，是实测结论**：macOS 系统字体枚举返回的 283 个去重族名中，大量为 `.Al Bayan PUA`、`.Apple Color Emoji UI`、`.Apple SD Gothic NeoI` 这类系统内部隐藏字体，不剔除会直接污染下拉列表。
+
 **规则**：`findMissingFonts` 的 `available` 参数由调用方传入**已按 `source` 过滤**的候选列表；若该端未成功上报，调用方直接跳过调用，不传入空列表——否则会把「拿不到清单」误判为「字体缺失」。
 
 ## 4. 渲染侧断链修复
@@ -100,9 +102,9 @@ export function findMissingFonts(
 不依赖任何选择，本次一并修：
 
 1. `packages/print-core/src/render/types.ts:115-117`：`RenderCell` 新增 `fontFamily?: string`。
-2. `packages/print-core/src/render/data-binder.ts:175`：透传 `cell.fontFamily`。
-3. `packages/print-core/src/render/html-generator.ts:356-379`：`matrixCellStyle()` 输出 `font-family`（经 `toFontFamilyStack`），空值时不下发该属性、由 CSS 继承。
-4. `packages/print-core/src/render/html-generator.ts:241`：`textStyle()` 的裸 `font-family:${opts.fontFamily}` 改走 `toFontFamilyStack()`——现状既无引号处理也无任何兜底。
+2. `packages/print-core/src/render/data-binder.ts:158-181`：**在该处重建 `RenderCell` 的显式字段清单中补一项 `fontFamily: cell.fontFamily`**。注意这不是"漏传一个参数"，而是一份逐字段枚举的映射表——`fontFamily` 根本没进这张表，所以在绑定阶段凭空消失（实测：绑定后单元格 `fontFamily` 为 `undefined`）。同处 `fontSize`/`fontWeight`/`color` 均在表中，可对照补齐。
+3. `packages/print-core/src/render/html-generator.ts:356-379`：`matrixCellStyle()` 输出 `font-family`（经 `toFontFamilyStack`），空值时不下发该属性、由 CSS 继承。**该函数当前完全没有任何 font-family 分支**（已由源码直读与渲染实证双重确认）。插入位置参照同函数内既有兜底写法（`cell.fontSize ?? opts.tableDefaultFontSize`）的所在段落。注意该函数拼接时**不追加末尾分号**（与 `textStyle` 不同），新增项须与既有风格一致。
+4. `packages/print-core/src/render/html-generator.ts:241`：`textStyle()` 的 `if (opts.fontFamily) parts.push(\`font-family:${opts.fontFamily}\`)` 改走 `toFontFamilyStack()`——现状是裸值输出，既无引号处理也无任何兜底。
 5. `packages/print-core/src/designer/utils/table-matrix.ts:175-186`：`copyCellStyle()` 补复制 `fontFamily`。
 6. `packages/print-core/src/render/css-builder.ts:40`：改为引用 `FALLBACK_FONT_STACK`。
 
@@ -115,11 +117,11 @@ export function findMissingFonts(
 ### 5.1 服务端（`services/print-render`）
 
 - 新增 `GET /fonts` → `{ fonts: string[] }`，路径与错误包装对齐既有路由风格。
-- 新增 `services/print-render/src/font-catalog.ts`：容器内执行 `fc-list --format='%{family[0]}\n'`，按行切分后交给 core 的 `normalizeFontList`。
-  - 取 `family[0]`（首族名）而非全部族名，避免同一字体以多个别名重复出现。
+- 新增 `services/print-render/src/font-catalog.ts`：容器内执行 `fc-list --format='%{family}\n'`，按行、按逗号切分，交给 core 的 `normalizeFontList`。
+  - **必须取全部族名，不能取 `%{family[0]}`**。`fonts-noto-cjk` 的 `NotoSansCJK-Regular.ttc` 是单个文件承载多族名（JP/SC/TC/KR），取首族名会让容器里明明能渲染的「Noto Sans CJK SC」从清单中消失，直接误导设计者。`fc-list` 的 `%{family}` 输出为逗号分隔的族名列表，切分即可。
   - 镜像不变则清单不变 → **启动时采集一次并 memo**，不在请求路径上 spawn 进程。
   - 采集失败（命令不存在/非零退出）→ 返回 500，宿主记为 `available: false`。**不返回空清单**，以免与「容器确实没有字体」混淆。
-  - Dockerfile 已装 `fonts-noto-cjk`（带入 fontconfig），无需新增系统依赖。
+  - Dockerfile `services/print-render/Dockerfile:13-14` 已显式安装 `fonts-noto-cjk` 与 `fontconfig`，`fc-list` 可用，无需新增系统依赖。
 - 「命令行输出 → 字体名数组」的解析抽为纯函数，单独单测。
 
 ### 5.2 客户端（`clients/print-client`）
@@ -129,7 +131,7 @@ export function findMissingFonts(
 | 平台 | 手段 | 已知坑 |
 |---|---|---|
 | Windows | PowerShell + GDI+ `InstalledFontCollection`，失败降级 `reg query` | 注册表值名带 `(TrueType)` 后缀，中文系统还有 `宋体 & 新宋体` 这类 `&` 合族名——故 GDI+ 优先，注册表仅作降级 |
-| macOS | `system_profiler -json SPFontsDataType` | 输出巨大，只取 `_name` |
+| macOS | `system_profiler -json SPFontsDataType` | 顶层 `_name` 是**字体文件名**（如 `Times New Roman Bold.ttf`），族名在嵌套的 `typefaces[].family`。实测本机 278 个文件条目 → 283 个去重族名，取的必须是 `typefaces[].family`，并对 `typefaces` 缺失/为空的条目跳过 |
 | Linux | `fc-list` | 同服务端 |
 
 - 结果交 core `normalizeFontList`，memo 缓存 TTL 60s。
@@ -232,3 +234,29 @@ export function findMissingFonts(
 新增：`core/src/print/fonts.ts`、`core/tests/fonts.test.ts`、`canvas/src/composables/useFontCatalog.ts`、`services/print-render/src/font-catalog.ts`、`clients/print-client/src/main/platform-fonts.ts`。
 
 修改：`core/src/render/{types,data-binder,html-generator,css-builder}.ts`、`core/src/designer/utils/{table-matrix,property-search}.ts`、`canvas/src/components/property/{AppearanceGroup,TableCellGroup}.vue`、`canvas/src/components/{StatusBar,PrintDesigner,PropertyPanel}.vue`、`canvas/src/composables/useHostAdapter.ts`、`services/print-render/src/*`（路由注册）、`clients/print-client/src/main/*`（WS handler）、`packages/print-client-sdk/src/*`、`demo/src/*`（宿主取数示例）、三处 CHANGELOG。
+
+## 13. 验证记录与未验证假设
+
+本设计在成文后做过一轮实证复核，以下区分「已跑真实代码/命令验证」与「仍是假设」。
+
+### 13.1 已实证（本地开发机运行真实代码与系统命令）
+
+| 结论 | 方法 | 结果 |
+|---|---|---|
+| 单元格 `fontFamily` 不出现在渲染 HTML | 构造含 `tableRows[].cells[].fontFamily='SimSun'` 的模板跑 `generateHtml`，检查 `<td>` 内联样式 | `<td style="text-align:left;vertical-align:middle;padding:1mm;word-break:break-all;border-...">`，**无 font-family** |
+| 绑定阶段丢弃单元格 `fontFamily` | `bindData` 后检查 `_renderRows[].cells[].fontFamily` | 全部为 `undefined`；根因是 data-binder 的显式字段映射表未收录该字段 |
+| 全局兜底字体栈现状 | `buildPageCss` 实际输出 | `body { font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif; }` |
+| `copyCellStyle` 丢失字体 | 直读 `table-matrix.ts:175-186` | 复制 9 个字段（align/valign/fontSize/fontWeight/color/backgroundColor/borders/padding/wordWrap），**无 fontFamily** |
+| 容器内 `fc-list` 可用 | 直读 `Dockerfile:13-14` | 显式安装 `fonts-noto-cjk` 与 `fontconfig` |
+| macOS 字体枚举正确取法 | `system_profiler -json SPFontsDataType` | 顶层 `_name` 是文件名；族名须取 `typefaces[].family`；278 文件条目 → 283 去重族名 |
+| 隐藏字体确实存在 | 同上 | 大量 `.` 开头族名（`.Al Bayan PUA`、`.Apple Color Emoji UI` 等），印证 `normalizeFontList` 剔除规则必要 |
+
+### 13.2 未验证假设（实现期必须验证，不得当作既定事实）
+
+1. **容器内 `fc-list --format='%{family}\n'` 的实际输出格式**。本地无 Docker，macOS 亦无 `fc-list`，无法验证。实现时在容器内执行 `docker run --rm <镜像> fc-list --format='%{family}\n' | head -20`，确认多族名 TTC（`NotoSansCJK-Regular.ttc`）是否以逗号分隔列出全部族名。若不符预期，降级方案为解析 `fc-list` 默认输出，或改用 `fc-query` 逐文件查询。
+2. **Windows GDI+ 枚举的族名形态**。本地为 macOS，无法验证 `[System.Drawing.Text.InstalledFontCollection]` 经 PowerShell 返回的是「宋体」还是「SimSun」——这直接决定第 10 节假阳性的实际范围。须在一台真实中文 Windows 工位机验证，同时确认 `reg query` 降级路径的解析。
+3. **`document.fonts.ready` 对系统字体的等待时机**。`dom-executor.ts:19-20` 已等待该 Promise，但对"系统已装字体"通常立即 resolve；本次不引入 web font，故风险低，但"字体未就绪即测量分页"的影响未做实证。
+
+### 13.3 本轮已知的验证缺口
+
+文本元素 `fontFamily` 的输出形态**未做成端到端实证**——探针构造有误（用了 `content` 而非 `formatter`，元素未被渲染出来），该结论改由源码直读得出（第 4 节第 4 项）。若实现时发现 `textStyle()` 之外还有影响文本元素字体的路径，须回头修正本节与第 4 节。
