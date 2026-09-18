@@ -6,6 +6,7 @@ import {
   mergeFontSources,
   type FontCandidate,
   type FontCatalog,
+  type FontPin,
   type FontSource,
   type FontSourceReport,
 } from '@worm-vue3-print/core'
@@ -19,16 +20,16 @@ export const EMPTY_FONT_CATALOG: ComputedRef<FontCatalog> = computed(() =>
 /**
  * 由 PrintDesigner 调用：把两个 props 合并为响应式字体目录。
  * 参数接受 ref / computed / getter 任意形态。
- * `presetFonts` 由宿主声明，按数组顺序置顶（不经出图端确认，`sources` 为空）。
+ * `templateFonts` 由模板声明（宿主经 prop 配置），按数组顺序置顶（不经出图端确认，`sources` 为空）。
  */
 export function useFontCatalog(
   serverFonts: MaybeRefOrGetter<FontSourceReport | undefined>,
   clientFonts: MaybeRefOrGetter<FontSourceReport | undefined>,
-  presetFonts?: MaybeRefOrGetter<readonly string[] | undefined>,
+  templateFonts?: MaybeRefOrGetter<readonly (string | FontPin)[] | undefined>,
 ): { catalog: ComputedRef<FontCatalog> } {
   const catalog = computed<FontCatalog>(() =>
     mergeFontSources({
-      preset: toValue(presetFonts) ?? [],
+      preset: toValue(templateFonts) ?? [],
       server: toValue(serverFonts) ?? UNAVAILABLE,
       client: toValue(clientFonts) ?? UNAVAILABLE,
     }),
@@ -51,14 +52,22 @@ export function findFontCandidate(
   return catalog.fonts.find(f => f.family.trim().toLowerCase() === key)
 }
 
-/** 下拉选项文案：两端都可用不加标注，单端可用标注范围，避免设计者误以为处处可打 */
+/**
+ * 下拉选项文案：模板声明字体优先展示 label（宿主配置的业务名），其余用族名；
+ * 并标注可用范围，避免设计者误以为有些字体处处可打。写入模板的始终是族名。
+ */
 export function fontOptionLabel(candidate: FontCandidate): string {
-  // sources 为空 = 宿主预设字体，未经任一出图端确认，不能让它看起来像「两端都能用」
-  if (candidate.sources.length === 0) return `${candidate.family}（预设）`
-  if (candidate.sources.length !== 1) return candidate.family
-  if (candidate.sources[0] === 'server') return `${candidate.family}（仅服务端）`
-  if (candidate.sources[0] === 'client') return `${candidate.family}（仅本机）`
-  return candidate.family
+  // 展示 label（若有），括号里补上真实族名（写入模板的值）与可用范围
+  const display = candidate.label ?? candidate.family
+  const notes: string[] = []
+  if (candidate.label) notes.push(candidate.family)
+  if (candidate.sources.length === 0) {
+    // sources 为空 = 模板声明字体（自带 webfont，不依赖出图端系统字体）
+    notes.push('模板字体')
+  } else if (candidate.sources.length === 1) {
+    notes.push(candidate.sources[0] === 'server' ? '仅服务端' : '仅本机')
+  }
+  return notes.length ? `${display}（${notes.join('，')}）` : display
 }
 
 /** 匹配用键：小写并去掉全部空白，使用户输入 `ya hei` 与 `yahei` 等价 */
@@ -85,6 +94,7 @@ function matchRank(nameKey: string, queryKey: string): number {
 /**
  * 模糊过滤字体目录：完全相等 > 前缀 > 子串 > 子序列，同档保持目录原有顺序
  * （目录本身已按「两端都可用的在前」排好，过滤不应打乱这个安全顺序）。
+ * 族名与展示名（label）都参与匹配，设计者按业务名搜也能命中。
  */
 export function filterFontCandidates(
   fonts: readonly FontCandidate[],
@@ -93,10 +103,19 @@ export function filterFontCandidates(
   const queryKey = normalizeFontQuery(query.trim())
   if (!queryKey) return [...fonts]
   return fonts
-    .map((font, index) => ({ font, index, rank: matchRank(normalizeFontQuery(font.family), queryKey) }))
+    .map((font, index) => ({ font, index, rank: fontMatchRank(font, queryKey) }))
     .filter(item => item.rank >= 0)
     .sort((a, b) => a.rank - b.rank || a.index - b.index)
     .map(item => item.font)
+}
+
+/** 族名与展示名取更优的一档；两者都不命中返回 -1 */
+function fontMatchRank(font: FontCandidate, queryKey: string): number {
+  const byFamily = matchRank(normalizeFontQuery(font.family), queryKey)
+  if (!font.label) return byFamily
+  const byLabel = matchRank(normalizeFontQuery(font.label), queryKey)
+  if (byFamily < 0) return byLabel
+  return byLabel < 0 ? byFamily : Math.min(byFamily, byLabel)
 }
 
 /** 单个字体在若干出图端缺失的汇总项 */

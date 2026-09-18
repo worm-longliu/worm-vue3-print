@@ -7,10 +7,10 @@ import FontSelect from '../components/property/FontSelect.vue'
 import { FONT_CATALOG_KEY } from '../composables/useHostAdapter'
 
 const catalogOf = (
-  fonts: Array<[string, Array<'server' | 'client'>]>,
+  fonts: Array<[string, Array<'server' | 'client'>] | [string, Array<'server' | 'client'>, string]>,
   available: { server: boolean; client: boolean } = { server: true, client: true },
 ): FontCatalog => ({
-  fonts: fonts.map(([family, sources]) => ({ family, sources })),
+  fonts: fonts.map(([family, sources, label]) => (label ? { family, sources, label } : { family, sources })),
   available,
 })
 
@@ -66,6 +66,19 @@ describe('FontSelect 展示与标注', () => {
     expect((w.find('input').element as HTMLInputElement).value).toBe('SimSun')
   })
 
+  it('模板声明字体在输入框显示 label，写入模板的仍是族名', async () => {
+    const w = mountSelect(
+      catalogOf([['Ma Shan Zheng', ['server', 'client'], '马善政毛笔楷书']]),
+      'Ma Shan Zheng',
+    )
+    expect((w.find('input').element as HTMLInputElement).value).toBe('马善政毛笔楷书')
+    await focus(w)
+    const option = w.findAll('[role="option"]').find(o => o.text().startsWith('马善政毛笔楷书'))
+    expect(option?.text()).toBe('马善政毛笔楷书（Ma Shan Zheng）')
+    await option!.trigger('mousedown')
+    expect(w.emitted('update:model-value')?.at(-1)).toEqual(['Ma Shan Zheng'])
+  })
+
   it('当前值不在清单内时补一项并标注未知', async () => {
     const w = mountSelect(catalogOf([['SimSun', ['server', 'client']]]), 'Comic Sans MS')
     await focus(w)
@@ -112,6 +125,14 @@ describe('FontSelect 模糊搜索', () => {
     const w = mountSelect(catalog)
     await type(w, 'msyh')
     expect(optionTexts(w)).toEqual(['Microsoft YaHei'])
+  })
+
+  it('按 label 搜索命中，回车提交族名而非展示名', async () => {
+    const w = mountSelect(catalogOf([['Ma Shan Zheng', ['server', 'client'], '马善政毛笔楷书']]))
+    const input = await type(w, '马善政')
+    expect(optionTexts(w)).toEqual(['马善政毛笔楷书（Ma Shan Zheng）'])
+    await input.trigger('keydown', { key: 'Enter' })
+    expect(w.emitted('update:model-value')?.[0]).toEqual(['Ma Shan Zheng'])
   })
 
   it('过滤后隐藏空值行与未知行，只留命中项', async () => {

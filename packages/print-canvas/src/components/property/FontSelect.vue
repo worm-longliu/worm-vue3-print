@@ -27,6 +27,7 @@
         type="button"
         class="pd-button small font-select-query"
         :disabled="fontQuery.status === 'loading'"
+        title="查询桌面客户端与服务端上可用的字体"
         @mousedown.prevent
         @click="fontQuery.run()"
       >{{ fontQuery.status === 'loading' ? '查询中…' : '查询字体' }}</button>
@@ -54,6 +55,7 @@ import {
   filterFontCandidates,
   findFontCandidate,
   fontOptionLabel,
+  normalizeFontQuery,
   useInjectedFontCatalog,
 } from '../../composables/useFontCatalog'
 import { FONT_QUERY_KEY } from '../../composables/useHostAdapter'
@@ -78,8 +80,8 @@ const fontQuery = inject(FONT_QUERY_KEY, DEFAULT_FONT_QUERY)
 const listId = `font-select-list-${useId()}`
 
 const listRef = ref<HTMLUListElement | null>(null)
-/** 输入框显示值：未提交时与 modelValue 不一致，提交或取消后回到 modelValue */
-const text = ref(props.modelValue ?? '')
+/** 输入框显示值：未提交时与 modelValue 不一致，提交或取消后回到 modelValue 的展示名 */
+const text = ref(toDisplayName(props.modelValue))
 /** 过滤词：展开时为空表示「列出全部」 */
 const query = ref('')
 const open = ref(false)
@@ -134,10 +136,28 @@ const rows = computed<FontRow[]>(() => {
   // 清单外字体名可直接录入：一条都没命中时才补「使用「xxx」」，
   // 有命中项时补这行只会成为方向键路径上的噪音。
   if (!matched.length) {
-    matched.push(make('free', '__free__', `使用「${typed}」`, typed))
+    const family = resolveTypedFamily(typed)
+    matched.push(make('free', '__free__', `使用「${family}」`, family))
   }
   return matched
 })
+
+/** 输入的是展示名（label）时，写进模板的必须是真实族名，否则字体静默失效 */
+function resolveTypedFamily(typed: string): string {
+  const key = normalizeFontQuery(typed)
+  const hit = catalog.value.fonts.find(font => font.label && normalizeFontQuery(font.label) === key)
+  return hit?.family ?? typed
+}
+
+/**
+ * 展示名：宿主用 prop 声明了 label 的字体在输入框里显示 label（业务名），
+ * 便于识别；写入模板的始终是族名，展示与存储分离。
+ */
+function toDisplayName(family?: string): string {
+  const key = family?.trim()
+  if (!key) return ''
+  return findFontCandidate(catalog.value, key)?.label ?? key
+}
 
 const activeRowId = computed(() =>
   open.value && highlighted.value >= 0 ? `${listId}-${highlighted.value}` : undefined,
@@ -193,11 +213,14 @@ function onEnter(): void {
     return
   }
   const typed = query.value.trim()
-  if (typed) pick({ kind: 'free', key: '__free__', label: typed, value: typed, selected: false })
+  if (typed) {
+    const family = resolveTypedFamily(typed)
+    pick({ kind: 'free', key: '__free__', label: family, value: family, selected: false })
+  }
 }
 
 function pick(row: FontRow): void {
-  text.value = row.value ?? ''
+  text.value = toDisplayName(row.value)
   query.value = ''
   open.value = false
   highlighted.value = -1
@@ -208,10 +231,10 @@ function onCancel(): void {
   open.value = false
   query.value = ''
   highlighted.value = -1
-  text.value = props.modelValue ?? ''
+  text.value = toDisplayName(props.modelValue)
 }
 
-watch(() => props.modelValue, value => { text.value = value ?? '' })
+watch(() => props.modelValue, value => { text.value = toDisplayName(value) })
 
 /**
  * 查询状态与两端可用性共同决定提示，最多两条（服务端 / 客户端各一条）：

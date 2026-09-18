@@ -131,7 +131,8 @@
 import '../styles/native-controls.css'
 import { ref, watch, provide, computed, onMounted, onUnmounted } from 'vue'
 import type { RuntimeElement, PrintBusinessField, TemplateData, TableCell, RequestScreenshotFn, UploadImageFn, UploadDesignBackgroundFn } from '@worm-vue3-print/core/designer'
-import type { FontSourceReport } from '@worm-vue3-print/core'
+import type { FontSourceReport, PrintFontDeclaration } from '@worm-vue3-print/core'
+import { buildFontFaceCss } from '@worm-vue3-print/core'
 import { useDesignerState } from '../composables/useDesignerState'
 import { useGuides } from '../composables/useGuides'
 import { TABLE_EDIT_KEY } from '../composables/useTableSelection'
@@ -151,6 +152,7 @@ import {
 import { useFontCatalog } from '../composables/useFontCatalog'
 import type { FontIssueSummary } from '../composables/useFontCatalog'
 import { useFontQuery, type LoadFontsFn } from '../composables/useFontQuery'
+import { useDocumentFontFace } from '../composables/useDocumentFontFace'
 import type { AlignMode } from '@worm-vue3-print/core/designer'
 import DesignerToolbar from './DesignerToolbar.vue'
 import LeftPanel from './LeftPanel.vue'
@@ -178,8 +180,11 @@ const props = defineProps<{
   serverFonts?: FontSourceReport
   /** 桌面客户端（静默打印端）字体清单；未注入时该端字体不可用 */
   clientFonts?: FontSourceReport
-  /** 宿主预设的常用字体族名，按数组顺序置顶展示；不参与出图端可用性判定 */
-  presetFonts?: readonly string[]
+  /**
+   * 模板级字体声明（宿主配置）：设计器据此注入 @font-face、在字体下拉中置顶标注「模板字体」，
+   * 并在保存/预览/截图时同步写入模板 JSON，供服务端与客户端出图使用同一份字体。
+   */
+  fonts?: readonly PrintFontDeclaration[]
   /** 手动字体查询适配器：用户点击「查询字体」时调用；不传则不渲染查询按钮 */
   loadFonts?: LoadFontsFn
 }>()
@@ -249,9 +254,21 @@ provide(FONT_QUERY_KEY, fontQuery)
 const { catalog: fontCatalog } = useFontCatalog(
   computed(() => props.serverFonts ?? fetchedFonts.value?.server),
   computed(() => props.clientFonts ?? fetchedFonts.value?.client),
-  computed(() => props.presetFonts),
+  computed(() => props.fonts?.map(font => ({ family: font.family, label: font.label }))),
 )
 provide(FONT_CATALOG_KEY, fontCatalog)
+
+/** 画布文档注入同一份 @font-face，保证设计期所见即出图所得 */
+useDocumentFontFace(computed(() => buildFontFaceCss(props.fonts)))
+
+/**
+ * 保存/预览/截图统一取这一份：把 prop 配置的字体同步写进模板 JSON，
+ * 渲染端（服务端 / 客户端 / 浏览器）只认模板里的声明。宿主未配置时保留模板自带声明。
+ */
+function templateJsonWithFonts(): TemplateData {
+  const json = getTemplateJson()
+  return props.fonts?.length ? { ...json, fonts: [...props.fonts] } : json
+}
 
 /** 字体缺失汇总：按端分别校验后合并——校验回答的是「这个出图端有没有」 */
 const fontIssues = computed<FontIssueSummary[]>(() => {
@@ -287,7 +304,7 @@ async function toggleOverlay() {
     overlayVisible.value = false
     return
   }
-  const templateJson = getTemplateJson()
+  const templateJson = templateJsonWithFonts()
   if (!templateJson) {
     alert('模板数据为空')
     return
@@ -499,10 +516,10 @@ watch(() => props.initialElements, (els) => {
 })
 watch(() => props.fields, (f) => { fields.value = f || [] })
 
-defineExpose({ getTemplateJson })
+defineExpose({ getTemplateJson: templateJsonWithFonts })
 
 function handleSave() {
-  emit('save', JSON.stringify(getTemplateJson()))
+  emit('save', JSON.stringify(templateJsonWithFonts()))
   markSaved()
 }
 </script>

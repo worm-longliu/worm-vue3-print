@@ -77,7 +77,7 @@
         </div>
       </div>
       <div class="cell-style-grid">
-        <div class="pd-field"><span class="pd-label">字体</span>
+        <div class="pd-field cell-font-field"><span class="pd-label">字体</span>
           <FontSelect
             :model-value="mainCell.fontFamily"
             placeholder="继承默认"
@@ -295,6 +295,12 @@ defineExpose({ openFormatterEditor })
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0 8px;
+}
+/* 字体含输入框 + 查询按钮 + 状态提示，半栏放不下，独占一行 */
+.cell-font-field {
+  grid-column: 1 / -1;
+  /* 栅格行距为 0，独占一行时需自己与下方「字号 / 加粗」留出间距 */
+  padding-bottom: 8px;
 }
 .border-style-row {
   display: flex;
