@@ -5,6 +5,7 @@ import express from 'express'
 import { renderPdf, renderScreenshot } from './pdf-render.js'
 import { BrowserPool } from './browser-pool.js'
 import { makeFontService } from './font-service.js'
+import { buildFontWarningsHeader, FONT_WARNINGS_HEADER } from './font-warnings.js'
 import { MAX_BATCH_COPIES } from '@worm-vue3-print/core'
 import type { RenderRequest, PrintTemplateData as TemplateData } from '@worm-vue3-print/core'
 
@@ -91,6 +92,9 @@ app.post('/render/pdf', authMiddleware, async (req, res) => {
     return
   }
 
+  const warnings = buildFontWarningsHeader(tpl, await fontService.list())
+  if (warnings) res.setHeader(FONT_WARNINGS_HEADER, warnings)
+
   // 请求级超时保护
   let timedOut = false
   const timer = setTimeout(() => {
@@ -130,6 +134,9 @@ app.post('/render/screenshot', authMiddleware, async (req, res) => {
     res.status(400).json({ code: 'INVALID_REQUEST', message: printDataError })
     return
   }
+
+  const warnings = buildFontWarningsHeader(body.templateJson, await fontService.list())
+  if (warnings) res.setHeader(FONT_WARNINGS_HEADER, warnings)
 
   let timedOut = false
   const timer = setTimeout(() => {

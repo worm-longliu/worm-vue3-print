@@ -59,6 +59,7 @@ if (!gotLock) {
         history,
         logger,
         pdfOutput: resolvePdfPolicy,
+        fontService,
       })
 
       let actualPort = 0
