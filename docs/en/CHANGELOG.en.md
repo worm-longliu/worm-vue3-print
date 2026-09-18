@@ -14,6 +14,33 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - `print-client`: **behavior change** measurement readiness wait is 5s now; the renderer worker and IPC bridge
   were removed in favor of the core pipeline plus an Electron driver (protocol and printing behavior unchanged).
 - Known gap (not implemented here): the protocol accepts `color` and `pageRanges`, but the PDF→system-print path never applied them.
+- `@worm-vue3-print/core`: **Behavior change** Templates that already stored a `fontFamily`
+  on table cells had that field silently dropped at render time (it was missing from the
+  data-binder field map). Cell fonts now take effect, so **the output of such existing
+  templates will change**. Also fixed `font-family` output missing quotes and the fallback
+  stack (family names containing spaces, e.g. `Microsoft YaHei`, did not apply before).
+- `@worm-vue3-print/canvas`: Added a font picker to the text-element and table-cell property
+  panels. It lists the union of fonts available on the server and on the local machine and
+  marks the available scope ("server only" / "local only"). Font names outside the list are
+  still shown, marked "(unknown)", and never silently cleared.
+- `@worm-vue3-print/canvas`: `PrintDesigner` accepts two new optional props, `serverFonts` and
+  `clientFonts` (`{ available: boolean; fonts: string[] }`), supplied by the host. When omitted,
+  the picker falls back to free-text entry. **Host contract**: `available: false` means "this
+  end could not produce a list" and must NOT be read as "the font is missing".
+- `@worm-vue3-print/client`: Added protocol message `fonts.list` and SDK method
+  `PrintClient.listFonts()`, returning the system font list of the machine running the
+  desktop client.
+- `@worm-vue3-print/render`: Added `GET /fonts`, reporting the container's system fonts.
+  `/render/pdf` and `/render/screenshot` now return an `X-Font-Warnings` response header when
+  fonts are missing (value is `encodeURIComponent` of
+  `Array<{ code: 'FONT_MISSING'; family: string; targets: string[] }>`); the header is omitted
+  when nothing is missing.
+- Desktop client: `print.submit` checks template fonts against the local machine at job start
+  and logs a `warn` entry when fonts are missing. Printing is **never blocked**; Chromium falls
+  back on its own.
+- Known limitation: no cross-language font alias normalization ("宋体" and "SimSun" count as
+  two names), which can produce **false positives** on Chinese Windows. The client font list
+  describes only the workstation running the browser, not other workstations.
 
 ### Added
 
