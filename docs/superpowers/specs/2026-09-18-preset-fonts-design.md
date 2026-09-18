@@ -1,5 +1,10 @@
 # 预设字体与手动字体查询设计
 
+> **后续变更（2026-09-18，本文件之后）**：第 1、3、5、6 节里的 `presetFonts`（宿主声明族名列表）已被
+> `PrintDesigner` 的 `fonts`（`PrintFontDeclaration[]`，模板级字体声明 + woff2 URL）取代：字体不再靠
+> 各端系统字体，而是由模板声明的 `@font-face` 在三端加载同一份文件，并随模板保存进 JSON 的 `fonts` 字段。
+> 本文件第 4 节的查询状态机、离线提示与 `loadFonts` 契约仍然有效。
+
 日期：2026-09-18
 范围：`packages/print-core`（字体目录合并语义）、`packages/print-canvas`（字体下拉的展示与查询入口、`PrintDesigner` 宿主契约）、`demo`（宿主接线示例）、`docs`（指南与更新日志）。
 前置文档：`docs/superpowers/specs/2026-09-18-font-settings-design.md`（字体源、清单语义、缺失校验的基础设计）。

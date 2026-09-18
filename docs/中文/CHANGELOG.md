@@ -16,7 +16,9 @@
 - `@worm-vue3-print/core`：**行为变更** 表格单元格此前已存有 `fontFamily` 的模板，渲染时该字段被静默丢弃（`data-binder` 的字段映射表未收录）；本次修复后单元格字体会真正生效，**同一份旧模板的呈现会发生变化**。同时修复 `font-family` 输出未加引号、未带兜底栈的问题（含空格的族名如 `Microsoft YaHei` 此前不生效）。
 - `@worm-vue3-print/canvas`：文本元素与表格单元格属性面板新增「字体」下拉，列出服务端与本机两端可用字体的并集并标注可用范围（「仅服务端」/「仅本机」）；清单之外的字体名照常展示并标注「（未知）」，不做静默清除。
 - `@worm-vue3-print/canvas`：新增 `PrintDesigner` 的 `serverFonts` / `clientFonts` 两个可选 prop（`{ available: boolean; fonts: string[] }`），由宿主注入两端字体清单；不注入时下拉仍可用，但选项为空并提示「字体清单不可用」（不会回退到内建的硬编码字体列表）。（**宿主契约**：`available: false` 表示「该端未能给出清单」，**不得**据此判定字体缺失。）
-- `@worm-vue3-print/canvas`：新增 `PrintDesigner` 的 `presetFonts` prop（`readonly string[]`）——宿主预设的字体在字体下拉中**按数组顺序置顶**并标注「预设」，与远端清单同名的合并为一行并补上真实可用范围。预设只影响可选性与展示顺序，**不参与可用性判定**：清单已取到且确无该字体时照常报缺失。
+- `@worm-vue3-print/canvas` / `@worm-vue3-print/core`：新增 `PrintDesigner` 的 `fonts` prop（`PrintFontDeclaration[]`）——**模板级字体声明**，宿主配置后设计器注入 `@font-face`、在字体下拉中按数组顺序置顶并标注「模板字体」，保存/预览/截图时同步写入模板 JSON 的 `fonts` 字段，服务端与桌面客户端据此出图，三端不再依赖各自系统里装了什么字体。字体的 `url` 以 `/` 开头时按渲染端 `baseUrl` 解析（复用图片相对路径那套规则），绝对 URL 原样使用。声明只回答「字体文件在哪」，**不参与 `findMissingFonts` 判定**：清单已取到且确无该字体时照常报缺失。
+- `@worm-vue3-print/core`：渲染出的 HTML 会带上模板声明字体的 `@font-face`（`font-display: block`），且第一遍测量与最终出图都注入；DOM 执行器在就绪等待时**显式加载**文档里声明的字体，避免只等 `fonts.ready` 提前 resolve、按兜底字体度量导致分页与出图错版。
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`：字体声明新增可选 `label`（业务名，如「马善政毛笔楷书」），字体输入框与下拉优先展示 label 并在括号里附上真实族名与可用范围（如「马善政毛笔楷书（Ma Shan Zheng，模板字体）」），搜索同时匹配 label 与族名；**写入模板与 `@font-face` 的始终是 `family`**，输入 label 回车会映射回族名，避免把展示名写进模板导致字体静默失效。
 - `@worm-vue3-print/canvas`：新增 `PrintDesigner` 的 `loadFonts` prop（`() => Promise<{ server: FontSourceReport; client: FontSourceReport }>`）与字体输入框旁的「查询字体」按钮，字体清单改为**手动触发**取数：不点击不发任何请求（此前宿主需在设计器挂载时自行取数）。查询结果仅在宿主未传对应 props 时生效，props 优先。**宿主契约**：某一端取不到应 resolve `{ available: false, fonts: [] }`，仅查询流程本身失败才 reject。
 - `@worm-vue3-print/canvas`：**行为变更** 字体下拉的离线提示改为可操作文案——查询后某端不可用提示「服务端未连接，请连接服务端后重新查询」/「桌面客户端未连接，请连接桌面客户端后重新查询」，查询失败提示「字体查询失败：<原因>，请检查服务端与桌面客户端连接后重试」；**未查询前不提示「未连接」**（只是还没查），改提示点击按钮获取清单。
 - `@worm-vue3-print/core`：`mergeFontSources` 新增可选 `preset` 参数（预设置顶、同名合并补来源、族名写法保留预设），不传时输出与既有规则完全一致。

@@ -28,11 +28,24 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
   the picker still renders but has no options and shows a "font list unavailable" hint (it does
   not fall back to a built-in hardcoded font list). **Host contract**: `available: false` means "this
   end could not produce a list" and must NOT be read as "the font is missing".
-- `@worm-vue3-print/canvas`: added the `presetFonts` prop (`readonly string[]`) to `PrintDesigner`.
-  Host-declared fonts are pinned to the top of the font picker **in array order** and marked
-  "preset"; a name that also appears in a remote report is merged into one row with its real
-  scope. Presets affect availability UI and order only and **do not feed the missing-font check**:
-  when an end has reported and truly lacks the font, it is still reported as missing.
+- `@worm-vue3-print/canvas` / `@worm-vue3-print/core`: added the `fonts` prop
+  (`PrintFontDeclaration[]`) to `PrintDesigner` — **template-level font declarations**. The designer
+  injects `@font-face`, pins them to the top of the font picker in array order (marked "template
+  font"), and writes them into the template JSON `fonts` field on save/preview/screenshot so the
+  render service and desktop client print with the same files instead of whatever their OS happens
+  to have. A `url` starting with `/` is resolved against each end's `baseUrl` (same rule as relative
+  image paths); absolute URLs are used as-is. Declarations only say where the files are and **do not
+  feed `findMissingFonts`**: when an end has reported and truly lacks the font, it is still reported.
+- `@worm-vue3-print/core`: generated HTML now carries `@font-face` rules for the template-declared
+  fonts (`font-display: block`), injected in both the measurement pass and the final output; the DOM
+  executor explicitly loads declared fonts during readiness instead of only awaiting `fonts.ready`
+  (which can resolve early, measuring fallback metrics and breaking pagination).
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: font declarations accept an optional `label`
+  (the business name, e.g. "马善政毛笔楷书"). The font input and picker show the label first and add
+  the real family name plus availability in parentheses (e.g. "马善政毛笔楷书（Ma Shan Zheng，模板字体）"),
+  and the search matches both label and family. What gets written into the template and `@font-face`
+  is always the `family`; submitting a label maps back to the family so a display name can never be
+  stored by accident and silently lose the font.
 - `@worm-vue3-print/canvas`: added the `loadFonts` prop
   (`() => Promise<{ server: FontSourceReport; client: FontSourceReport }>`) and a "Query fonts"
   button next to the font input. Font lists are now fetched **on demand** — nothing is requested
