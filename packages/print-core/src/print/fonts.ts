@@ -15,17 +15,84 @@ export const UNAVAILABLE: FontSourceReport = { available: false, fonts: [] }
 
 export interface FontCandidate {
   family: string
+  /** 模板声明字体可带的展示名；下拉列表优先展示它，写入模板的始终是 family */
+  label?: string
   /**
    * 只含真实上报成功且包含该字体的端。
-   * 空数组表示「宿主预设字体」——未经任一出图端确认，不代表该字体真的可用。
+   * 空数组表示「模板声明字体」——自带 webfont 文件，不依赖出图端系统字体，
+   * 但也不参与 findMissingFonts 的判定（判定只回答「系统里有没有」）。
    */
   sources: FontSource[]
+}
+
+/** 置顶字体声明：可只给族名，也可带上展示名 */
+export interface FontPin {
+  family: string
+  /** 下拉列表里展示的名字；缺省用族名 */
+  label?: string
 }
 
 /** 合并后的字体目录，供设计器展示与校验使用 */
 export interface FontCatalog {
   fonts: FontCandidate[]
   available: Record<FontSource, boolean>
+}
+
+/** 模板声明的字体文件：`url` 以 '/' 开头时按渲染端 baseUrl 解析，绝对 URL 原样使用 */
+export interface PrintFontFile {
+  url: string
+  /** CSS 字重；缺省 400。必须与模板里元素实际使用的字重一致，否则 Chromium 会合成粗体（度量不同） */
+  weight?: number
+  /** CSS 字型；缺省 normal */
+  style?: 'normal' | 'italic'
+}
+
+/**
+ * 模板级字体声明：随模板保存，服务端/客户端/浏览器据此生成同一份 @font-face，
+ * 从而不依赖各端系统里装了什么字体。
+ */
+export interface PrintFontDeclaration {
+  /** CSS 族名，必须与元素 options.fontFamily 的写法一致 */
+  family: string
+  /** 设计器下拉里的显示名；缺省用 family */
+  label?: string
+  files: readonly PrintFontFile[]
+}
+
+/**
+ * 生成模板声明字体的 @font-face CSS。
+ *
+ * - `font-display: block`：测量与出图期间绝不能用兜底字体顶上，否则分页按兜底度量算。
+ * - 无声明或声明不合法（无族名/无可用 url）时返回空串，调用方可直接拼接。
+ */
+export function buildFontFaceCss(fonts?: readonly PrintFontDeclaration[]): string {
+  const blocks: string[] = []
+  for (const font of fonts ?? []) {
+    const family = font?.family?.trim()
+    if (!family) continue
+    const quoted = `"${family.replace(/"/g, '')}"`
+    for (const file of font.files ?? []) {
+      const url = file?.url?.trim()
+      if (!url) continue
+      const weight = Number.isFinite(file.weight) ? Number(file.weight) : 400
+      const style = file.style === 'italic' ? 'italic' : 'normal'
+      blocks.push(
+        `@font-face{font-family:${quoted};src:url("${url}")${fontFormatHint(url)};` +
+        `font-weight:${weight};font-style:${style};font-display:block;}`,
+      )
+    }
+  }
+  return blocks.length ? `${blocks.join('')}\n` : ''
+}
+
+/** 按扩展名给出 format 提示；无法判断时不写（让浏览器自行嗅探，避免提示错误导致整条 src 被拒） */
+function fontFormatHint(url: string): string {
+  const path = url.split(/[?#]/)[0]!.toLowerCase()
+  if (path.endsWith('.woff2')) return ' format("woff2")'
+  if (path.endsWith('.woff')) return ' format("woff")'
+  if (path.endsWith('.ttf')) return ' format("truetype")'
+  if (path.endsWith('.otf')) return ' format("opentype")'
+  return ''
 }
 
 export interface MissingFont {
@@ -107,28 +174,46 @@ export function normalizeFontList(raw: readonly string[]): string[] {
   return normalizeFontNames(raw).sort(compareFamily)
 }
 
+/** 规范化置顶字体声明：兼容纯族名写法，去空、去重（族名大小写不敏感，保留首次出现） */
+function normalizePinnedFonts(raw: readonly (string | FontPin)[]): FontPin[] {
+  const seen = new Set<string>()
+  const out: FontPin[] = []
+  for (const item of raw ?? []) {
+    if (typeof item !== 'string' && typeof item !== 'object') continue
+    const family = normalizeFontNames([typeof item === 'string' ? item : item?.family ?? ''])[0]
+    if (!family) continue
+    const key = compareKey(family)
+    if (seen.has(key)) continue
+    seen.add(key)
+    const label = typeof item === 'object' ? item?.label?.trim() : ''
+    out.push(label ? { family, label } : { family })
+  }
+  return out
+}
+
 /**
  * 合并预设字体与两端上报。
  *
- * - `preset` 由宿主声明，按传入顺序**置顶**（顺序即优先级，故不做排序），`sources` 为空——
- *   预设只影响可选性与展示顺序，不代表该字体真的能出图。
- * - 远端清单里的同名字体只补 `sources`，不新增行、不移动位置，族名写法保留先入者（预设优先）。
- * - 远端独有字体排在预设之后，排序为「来源数降序 → 族名升序」，
+ * - `preset` 为模板声明字体（宿主经设计器 prop 写入模板），按传入顺序**置顶**
+ *   （顺序即优先级，故不做排序），`sources` 为空。
+ * - 远端清单里的同名字体只补 `sources`，不新增行、不移动位置，族名写法保留先入者（声明优先）。
+ * - 远端独有字体排在声明字体之后，排序为「来源数降序 → 族名升序」，
  *   使两端都可用的字体排在最前（最安全的选择最先出现）。
  */
 export function mergeFontSources(input: {
-  /** 宿主预设的常用字体族名；不传时行为与仅合并两端上报完全一致 */
-  preset?: readonly string[]
+  /** 模板声明的字体（族名或带展示名的对象）；不传时行为与仅合并两端上报完全一致 */
+  preset?: readonly (string | FontPin)[]
   server: FontSourceReport
   client: FontSourceReport
 }): FontCatalog {
   const byKey = new Map<string, FontCandidate>()
   const pinned: FontCandidate[] = []
 
-  for (const family of normalizeFontNames(input.preset ?? [])) {
-    const candidate: FontCandidate = { family, sources: [] }
+  for (const pin of normalizePinnedFonts(input.preset ?? [])) {
+    const candidate: FontCandidate = { family: pin.family, sources: [] }
+    if (pin.label) candidate.label = pin.label
     pinned.push(candidate)
-    byKey.set(compareKey(family), candidate)
+    byKey.set(compareKey(pin.family), candidate)
   }
 
   const ingest = (report: FontSourceReport | undefined, source: FontSource): void => {

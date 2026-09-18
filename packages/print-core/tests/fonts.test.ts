@@ -5,6 +5,7 @@ import {
   FALLBACK_FONT_STACK,
   normalizeFontList,
   mergeFontSources,
+  buildFontFaceCss,
   toFontFamilyStack,
   findMissingFonts,
 } from '../src/print/fonts.js'
@@ -88,6 +89,18 @@ describe('mergeFontSources', () => {
     expect(cat.fonts.map(f => f.family)).toEqual(['SimSun', 'KaiTi'])
   })
 
+  it('模板声明可带展示名：label 只用于展示，族名仍是写入模板的值', () => {
+    const cat = mergeFontSources({
+      preset: [{ family: 'Ma Shan Zheng', label: '马善政毛笔楷书' }, 'SimSun'],
+      server: { available: true, fonts: ['Ma Shan Zheng'] },
+      client: UNAVAILABLE,
+    })
+    expect(cat.fonts).toEqual([
+      { family: 'Ma Shan Zheng', label: '马善政毛笔楷书', sources: ['server'] },
+      { family: 'SimSun', sources: [] },
+    ])
+  })
+
   it('不传 preset 与传空数组的输出一致', () => {
     const reports = {
       server: { available: true, fonts: ['Noto Sans CJK SC', 'SimSun'] },
@@ -96,6 +109,49 @@ describe('mergeFontSources', () => {
     expect(mergeFontSources({ ...reports }).fonts).toEqual(
       mergeFontSources({ ...reports, preset: [] }).fonts,
     )
+  })
+})
+
+describe('buildFontFaceCss', () => {
+  it('按声明生成 @font-face，含字重/字型与 font-display:block', () => {
+    const css = buildFontFaceCss([
+      {
+        family: 'Noto Sans SC',
+        files: [
+          { url: '/fonts/noto-400.woff2', weight: 400 },
+          { url: '/fonts/noto-700.woff2', weight: 700 },
+          { url: '/fonts/noto-italic.woff2', style: 'italic' },
+        ],
+      },
+    ])
+    expect(css).toContain('@font-face{font-family:"Noto Sans SC";src:url("/fonts/noto-400.woff2") format("woff2");font-weight:400;font-style:normal;font-display:block;}')
+    expect(css).toContain('font-weight:700')
+    expect(css).toContain('font-style:italic')
+    expect(css.match(/@font-face/g)).toHaveLength(3)
+  })
+
+  it('缺省字重按 400，绝对 URL 原样保留，format 提示按扩展名推断', () => {
+    const css = buildFontFaceCss([
+      {
+        family: 'Demo',
+        files: [
+          { url: 'https://cdn.example.com/demo.ttf' },
+          { url: 'https://cdn.example.com/demo.woff?x=1' },
+          { url: 'https://cdn.example.com/no-ext' },
+        ],
+      },
+    ])
+    expect(css).toContain('font-weight:400')
+    expect(css).toContain('url("https://cdn.example.com/demo.ttf") format("truetype")')
+    expect(css).toContain('url("https://cdn.example.com/demo.woff?x=1") format("woff")')
+    expect(css).toContain('url("https://cdn.example.com/no-ext");')
+  })
+
+  it('无声明、空族名或空 url 时产出空串（可安全拼接）', () => {
+    expect(buildFontFaceCss(undefined)).toBe('')
+    expect(buildFontFaceCss([])).toBe('')
+    expect(buildFontFaceCss([{ family: '  ', files: [{ url: '/a.woff2' }] }])).toBe('')
+    expect(buildFontFaceCss([{ family: 'A', files: [{ url: '' }] }])).toBe('')
   })
 })
 

@@ -274,6 +274,33 @@ describe('bindData 图片 src', () => {
     const bound = bindData(t)
     expect(bound.elements[0]!.options.src).toBe('/docfiles/20260824/1_logo.png')
   })
+
+  it('模板声明字体的相对 url 拼接 baseUrl，绝对 url 原样保留', () => {
+    const t = {
+      ...makeImageTemplate('/docfiles/a.png'),
+      fonts: [
+        {
+          family: 'Noto Sans SC',
+          files: [
+            { url: '/fonts/noto-400.woff2', weight: 400 },
+            { url: 'https://cdn.example.com/x.woff2' },
+          ],
+        },
+      ],
+    }
+    const bound = bindData(t, undefined, 'http://host.docker.internal:9303/')
+    expect(bound.fonts![0]!.files[0]!.url).toBe('http://host.docker.internal:9303/fonts/noto-400.woff2')
+    expect(bound.fonts![0]!.files[1]!.url).toBe('https://cdn.example.com/x.woff2')
+  })
+
+  it('未传 baseUrl 时字体 url 保持原样（浏览器同源场景）', () => {
+    const t = {
+      ...makeImageTemplate('/docfiles/a.png'),
+      fonts: [{ family: 'Noto Sans SC', files: [{ url: '/fonts/noto-400.woff2' }] }],
+    }
+    const bound = bindData(t)
+    expect(bound.fonts![0]!.files[0]!.url).toBe('/fonts/noto-400.woff2')
+  })
 })
 
 describe('bindTableData 小计行 subtotal', () => {

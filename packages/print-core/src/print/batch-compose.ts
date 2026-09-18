@@ -1,6 +1,7 @@
 // 批量合并：多份单份渲染产物 → 单个 HTML 文档（纯字符串，不依赖 DOM）。
 import { renderFinalPages, wrapHtmlDocument } from '../render/html-generator.js'
 import { buildBatchPageCss, buildPageCss } from '../render/css-builder.js'
+import { buildFontFaceCss } from './fonts.js'
 import type { CodeRenderer, PageLayout, TemplateData } from '../render/types.js'
 import type { HeightSource, PaperMm } from './types.js'
 
@@ -41,9 +42,11 @@ export function composeBatchHtml(copies: BatchCopyInput[]): {
     })
     .join('\n')
 
-  const css = continuous
+  const pageCss = continuous
     ? buildBatchPageCss(bound, copies.map(c => ({ heightMm: c.derivedHeightMm })))
     : `${buildPageCss(bound)}\n.print-copy:not(:last-child){break-after:page;page-break-after:always;}`
+  // 模板声明的字体必须与页面 CSS 一起进文档外壳，批量合并（含服务端出图）才有一致字体
+  const css = buildFontFaceCss(bound.fonts) + pageCss
 
   return {
     html: wrapHtmlDocument(

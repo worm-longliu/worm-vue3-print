@@ -38,6 +38,8 @@ export interface TemplateData {
     elements: TemplateElement[]
   }
   elements: TemplateElement[] // 内容区主体元素
+  /** 模板级字体声明（由设计器 prop 同步写入）：三端据此生成同一份 @font-face */
+  fonts?: import('../print/fonts.js').PrintFontDeclaration[]
   /** 元素坐标单位（新保存模板固定 'mm'；旧数据无此字段按 pt 迁移） */
   unit?: 'pt' | 'mm'
   /** 自定义纸张宽度（mm），paperSize='CUSTOM' 时有效；CONTINUOUS 时为纸宽（默认 80） */

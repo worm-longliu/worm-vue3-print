@@ -13,6 +13,7 @@ import type {
 import { escapeInlineStyleValue, toFontFamilyStack } from '../print/fonts.js'
 import { getPaperDimensions } from './types.js'
 import { buildPageCss, elementPositionStyle, mm } from './css-builder.js'
+import { buildFontFaceCss } from '../print/fonts.js'
 import { injectSystemVariables } from './data-binder.js'
 import { evaluateTemplate } from './expression-eval.js'
 import { renderWatermarkLayerHtml } from './watermark.js'
@@ -46,7 +47,8 @@ export function generateHtml(
   printData?: Record<string, any>,
   options?: GenerateOptions,
 ): string {
-  const css = buildPageCss(template, options?.pageHeightMm)
+  // 模板声明的字体与页面 CSS 同批注入：测量趟与最终趟必须一致，否则分页会按兜底字体算
+  const css = buildFontFaceCss(template.fonts) + buildPageCss(template, options?.pageHeightMm)
   const isMeasure = options?.isMeasurementPass === true
   const totalPages = isMeasure ? 1 : pageLayouts.length
   const ctx: RenderCtx = {

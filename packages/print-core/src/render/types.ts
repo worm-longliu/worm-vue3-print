@@ -33,6 +33,8 @@ export interface TemplateData {
   pageBackground?: string
   /** 水印配置（同 design/WatermarkOptions，渲染端读取其颜色/透明度/角度/密度/绑定） */
   watermark?: import('../designer/types.js').WatermarkOptions
+  /** 模板级字体声明：三端据此生成同一份 @font-face，不依赖各端系统字体 */
+  fonts?: import('../print/fonts.js').PrintFontDeclaration[]
   margins: { top: number; right: number; bottom: number; left: number }
   header: { height: number; elements: TemplateElement[] }
   footer: { height: number; elements: TemplateElement[] }

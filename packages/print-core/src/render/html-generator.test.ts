@@ -27,6 +27,28 @@ function makeTemplate(tableOptions: Record<string, any>): TemplateData {
 
 const baseCell = { rowspan: 1, colspan: 1, merged: false }
 
+describe('模板声明字体注入', () => {
+  const withFonts = {
+    ...makeTemplate({}),
+    fonts: [{ family: 'Noto Sans SC', files: [{ url: '/fonts/noto-400.woff2', weight: 400 }] }],
+  }
+  const layouts = pageWith([{ elementId: 'tbl-1', type: 'table-slice', startRow: 0, endRow: 3 }])
+
+  it('测量趟与最终趟都注入 @font-face（两趟度量必须同一字体）', () => {
+    const measure = generateHtml(withFonts, [], undefined, { isMeasurementPass: true })
+    const final = generateHtml(withFonts, layouts, {})
+    for (const html of [measure, final]) {
+      expect(html).toContain('@font-face{font-family:"Noto Sans SC"')
+      expect(html).toContain('/fonts/noto-400.woff2')
+      expect(html).toContain('font-display:block')
+    }
+  })
+
+  it('模板未声明字体时不产出 @font-face（老模板行为不变）', () => {
+    expect(generateHtml(makeTemplate({}), layouts, {})).not.toContain('@font-face')
+  })
+})
+
 function matrixOptions() {
   return {
     tableColWidths: [40, 60],

@@ -30,6 +30,19 @@ export function bindData(
   }
   bound.elements = bound.elements.map(el => bindElement(el, data, baseUrl))
 
+  // 模板声明的字体：相对 URL 需按渲染端 baseUrl 解析（与图片 src 同一套规则），
+  // 这样同一份模板在浏览器/服务端/客户端都能取到同一字体文件
+  if (baseUrl && bound.fonts?.length) {
+    const prefix = baseUrl.replace(/\/+$/, '')
+    bound.fonts = bound.fonts.map(font => ({
+      ...font,
+      files: (font.files ?? []).map(file => ({
+        ...file,
+        url: file.url?.startsWith('/') ? prefix + file.url : file.url,
+      })),
+    }))
+  }
+
   return bound
 }
 

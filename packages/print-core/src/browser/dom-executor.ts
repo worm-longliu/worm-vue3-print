@@ -17,7 +17,14 @@ export async function waitReady(win: Window, timeoutMs = DEFAULT_READY_TIMEOUT_M
       await wait(new Promise<void>(resolve => win.addEventListener('load', () => resolve(), { once: true })))
     }
     const fonts = (doc as Document & { fonts?: FontFaceSet }).fonts
-    if (fonts?.ready) await wait(fonts.ready)
+    if (fonts) {
+      // 模板声明的 webfont 必须显式加载：只等 fonts.ready 会在字体尚未进入布局时提前 resolve，
+      // 之后按兜底字体度量，分页与出图静默错版。加载失败不阻断，交给兜底栈。
+      await wait(Promise.all(declaredFontFaces(doc).map(face =>
+        fonts.load(`${face.style} ${face.weight} 16px "${face.family}"`).catch(() => undefined),
+      )))
+      if (fonts.ready) await wait(fonts.ready)
+    }
     await wait(Promise.all(Array.from(doc.images ?? []).map(img =>
       img.complete
         ? Promise.resolve()
@@ -28,6 +35,32 @@ export async function waitReady(win: Window, timeoutMs = DEFAULT_READY_TIMEOUT_M
     )))
   })()
   await wait(ready)
+}
+
+/** 读出文档里 @font-face 声明的族名/字重/字型（跨源样式表读不到时忽略） */
+function declaredFontFaces(doc: Document): Array<{ family: string; weight: string; style: string }> {
+  const out: Array<{ family: string; weight: string; style: string }> = []
+  const CSS_FONT_FACE_RULE = 5
+  for (const sheet of Array.from(doc.styleSheets ?? [])) {
+    let rules: CSSRuleList | undefined
+    try {
+      rules = sheet.cssRules
+    } catch {
+      continue
+    }
+    for (const rule of Array.from(rules ?? [])) {
+      if (rule.type !== CSS_FONT_FACE_RULE) continue
+      const style = (rule as CSSFontFaceRule).style
+      const family = (style.getPropertyValue('font-family') || '').replace(/^["']|["']$/g, '')
+      if (!family) continue
+      out.push({
+        family,
+        weight: style.getPropertyValue('font-weight') || '400',
+        style: style.getPropertyValue('font-style') || 'normal',
+      })
+    }
+  }
+  return out
 }
 
 /** 读取 [data-measure-id] 元素高度与表格行高（原始 CSS px） */
