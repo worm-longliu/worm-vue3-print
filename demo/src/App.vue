@@ -5,7 +5,6 @@
       <span class="demo-logo">打印模板设计器 Demo</span>
       <span class="demo-badge">模板 ID：{{ TEMPLATE_ID }}</span>
       <span class="demo-badge">业务类型：采购收货单（purchase_receipt）</span>
-      <span class="demo-note">加载真实模板数据 · 浏览器端免保存预览</span>
       <button type="button" class="demo-print-btn" @click="onLoadDefaultLayout">加载默认布局</button>
       <button type="button" class="demo-print-btn" @click="onExportTemplate">导出模板</button>
       <button type="button" class="demo-print-btn" @click="fileInputRef?.click()">导入模板</button>
