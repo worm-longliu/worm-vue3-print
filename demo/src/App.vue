@@ -7,11 +7,15 @@
       <span class="demo-badge">业务类型：采购收货单（purchase_receipt）</span>
       <span class="demo-note">加载真实模板数据 · 浏览器端免保存预览</span>
       <button type="button" class="demo-print-btn" @click="onLoadDefaultLayout">加载默认布局</button>
+      <button type="button" class="demo-print-btn" @click="onExportTemplate">导出模板</button>
+      <button type="button" class="demo-print-btn" @click="fileInputRef?.click()">导入模板</button>
+      <button type="button" class="demo-print-btn" @click="onClearTemplate">清空</button>
       <label class="demo-batch-switch" :class="{ on: batchEnabled }" title="开启后浏览器预览/打印、客户端静默打印、服务端 PDF 均传入 3 份数据数组，由打印插件合并为一个作业">
         <input v-model="batchEnabled" type="checkbox" />
         <span>批量打印（{{ BATCH_SIZE }} 份）</span>
       </label>
       <button type="button" class="demo-print-btn" @click="printDialogVisible = true">打印输出</button>
+      <input ref="fileInputRef" type="file" accept="application/json,.json" class="demo-file-input" @change="onImportTemplate($event)" />
     </header>
 
     <main class="demo-container">
@@ -106,19 +110,71 @@ function uploadDemoImage(file: File): Promise<string> {
   })
 }
 
+function downloadTemplateFile(json: string, name: string) {
+  const blob = new Blob([JSON.stringify(JSON.parse(json), null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 /**
  * 保存：宿主在此将 JSON 持久化。
  * demo 仅做控制台输出并下载 JSON 文件，方便对照模板数据。
  */
 function onSave(json: string) {
-  const blob = new Blob([JSON.stringify(JSON.parse(json), null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `template-${Date.now()}.json`
-  a.click()
-  URL.revokeObjectURL(url)
+  downloadTemplateFile(json, `template-${Date.now()}.json`)
   console.log('[demo] 保存模板：', JSON.parse(json))
+}
+
+// ── 模板导入/导出/清空：宿主能力示意（仅浏览器端，不经过服务端） ──
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+/** 导出：下载当前画布 JSON，与 onSave 走同一下载逻辑 */
+function onExportTemplate() {
+  const json = designerRef.value?.getTemplateJson?.()
+  if (!json) return
+  downloadTemplateFile(JSON.stringify(json), `template-${Date.now()}.json`)
+}
+
+/** 轻量结构校验：仅检查模板关键字段是否存在 */
+function isTemplateLike(data: unknown): data is Record<string, unknown> {
+  if (!data || typeof data !== 'object') return false
+  const t = data as Record<string, unknown>
+  return typeof t.paperSize === 'string'
+    && !!t.margins && typeof t.margins === 'object'
+    && Array.isArray(t.elements)
+}
+
+/** 导入：读取本地 JSON 文件，校验通过后回写画布 */
+function onImportTemplate(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(String(reader.result))
+      if (!isTemplateLike(data)) {
+        alert('模板文件结构不合法：缺少 paperSize / margins / elements 等关键字段')
+        return
+      }
+      templateData.value = data as unknown as TemplateData
+    } catch {
+      alert('模板文件读取失败，请确认是有效的 JSON 文件')
+    }
+  }
+  reader.onerror = () => alert('模板文件读取失败')
+  reader.readAsText(file)
+}
+
+/** 清空：恢复空白模板 */
+function onClearTemplate() {
+  if (!confirm('将清空当前画布模板，是否继续？')) return
+  templateData.value = createDefaultTemplate()
 }
 
 // ── 浏览器端免保存预览：直接用当前画布 JSON + demo 数据，无网络请求 ──
@@ -223,7 +279,7 @@ body,
   font-size: 12px;
 }
 .demo-print-btn {
-  margin-left: auto;
+  margin-left: 0;
   padding: 5px 16px;
   border: 1px solid #165dff;
   border-radius: 6px;
@@ -234,6 +290,9 @@ body,
 }
 .demo-print-btn:hover {
   background: #eef3ff;
+}
+.demo-topbar > .demo-print-btn:first-of-type {
+  margin-left: auto;
 }
 .demo-batch-switch {
   display: inline-flex;
@@ -258,6 +317,9 @@ body,
   background: #eef3ff;
   color: #165dff;
   font-weight: 600;
+}
+.demo-file-input {
+  display: none;
 }
 .demo-container {
   flex: 1;
