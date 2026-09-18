@@ -169,6 +169,8 @@ loadFonts?: () => Promise<{ server: FontSourceReport; client: FontSourceReport }
 
 ### canvas（`packages/print-canvas/src/__tests__/`）
 
+> **实施期决定（2026-09-18）**：本轮只提交 core 的合并/校验用例；下列 canvas 行为改为手工验证（见第 11 节），未新增自动化用例。既有 `FontSelect.spec.ts` 仅同步提示文案断言。
+
 1. `useFontCatalog`：预设透传进目录且置顶。
 2. `useFontQuery`：`idle → loading → done`；重复点击不并发；reject 后 `failed` 且记录 `error`。
 3. `FontSelect`：无 `loadFonts` 时不渲染按钮；点击按钮调用一次 `run`；loading 时按钮禁用且文案为「查询中…」。
@@ -197,6 +199,12 @@ loadFonts?: () => Promise<{ server: FontSourceReport; client: FontSourceReport }
 
 ## 10. 未验证假设（实现期必须验证）
 
-1. `@worm-vue3-print/client` 的 `PrintClient.listFonts()` 在 WS **未连接**时的行为：是 reject 还是 resolve `{ available: false }`。这决定 demo 的 `loadFonts` 是否需要自行 catch（按第 5 节约定，宿主应把它转成 `available: false`）。`demo/src/components/PrintOutputDialog.vue:204-212` 目前用 try/catch 兜成 unavailable，实现期需读 SDK 源码确认而不是照抄。
-2. 服务端 `/fonts` 端点不可达时的响应形态（连接被拒 vs 非 2xx），决定 demo 侧 `fetchServerFonts()` 的降级分支是否已覆盖。
+1. `@worm-vue3-print/client` 的 `PrintClient.listFonts()` 在 WS **未连接**时的行为：**已实证**——`WsTransport.request` 在 `status !== 'connected'` 时 reject `WormPrintError('CLIENT_NOT_RUNNING')`（`packages/print-client-sdk/src/transport.ts:105-108`）。demo 的 `loadFonts` 因此必须自行 catch 并降级为 `{ available: false, fonts: [] }`，实现中已按此处理。
+2. 服务端 `/fonts` 端点不可达时的响应形态：`demo/src/render-client.ts` 的 `fetchServerFonts()` 已覆盖连接失败与非 2xx（均返回 unavailable），实现直接复用该函数。
 3. `useId()` 生成的 id 在同一应用树内唯一（已在前一轮修复中实证），本设计不依赖其跨 root 唯一性。
+
+## 11. 验证记录（2026-09-18 实施后）
+
+- 已跑：`npm run build`（含 canvas 的 `vue-tsc` 类型检查）、`npm run typecheck`（demo）、`npm test -w @worm-vue3-print/core`（539 用例）、`npm test -w @worm-vue3-print/canvas`（210 用例）。
+- 已跑（临时、未入库，5 个用例）：预设置顶与「（预设）」标注及同名合并、未查询时不报「未连接」、点击按钮触发查询且 loading 时禁用、查询后按端提示连接、失败文案、无 `loadFonts` 不渲染按钮——全部通过，临时脚本已删除。
+- 未验证（留给人工联调）：真实浏览器中点击按钮后的取数时延与 loading 观感；桌面客户端在线/离线切换时下拉的刷新表现；服务端离线时的超时（3s）体感。

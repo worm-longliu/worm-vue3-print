@@ -28,6 +28,25 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
   the picker still renders but has no options and shows a "font list unavailable" hint (it does
   not fall back to a built-in hardcoded font list). **Host contract**: `available: false` means "this
   end could not produce a list" and must NOT be read as "the font is missing".
+- `@worm-vue3-print/canvas`: added the `presetFonts` prop (`readonly string[]`) to `PrintDesigner`.
+  Host-declared fonts are pinned to the top of the font picker **in array order** and marked
+  "preset"; a name that also appears in a remote report is merged into one row with its real
+  scope. Presets affect availability UI and order only and **do not feed the missing-font check**:
+  when an end has reported and truly lacks the font, it is still reported as missing.
+- `@worm-vue3-print/canvas`: added the `loadFonts` prop
+  (`() => Promise<{ server: FontSourceReport; client: FontSourceReport }>`) and a "Query fonts"
+  button next to the font input. Font lists are now fetched **on demand** — nothing is requested
+  until the user clicks (hosts previously had to fetch while mounting the designer). Query results
+  are only used when the corresponding props are absent (props win). **Host contract**: resolve
+  `{ available: false, fonts: [] }` for an unreachable end; only reject when the query itself failed.
+- `@worm-vue3-print/canvas`: **Behavior change** offline hints became actionable — after a query an
+  unreachable end shows "Server is not connected, please connect the server and query again" /
+  "Desktop client is not connected, please connect it and query again", and a failed query shows
+  "Font query failed: <reason>, please check the server and desktop client connections and retry".
+  Before the first query nothing claims a missing connection; the picker instead points at the button.
+- `@worm-vue3-print/core`: `mergeFontSources` accepts an optional `preset` argument (pinned order,
+  same-name merge that only adds sources and keeps the preset spelling). Omitted, the output is
+  identical to the previous rules.
 - `@worm-vue3-print/client`: Added protocol message `fonts.list` and SDK method
   `PrintClient.listFonts()`, returning the system font list of the machine running the
   desktop client.
