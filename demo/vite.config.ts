@@ -27,6 +27,10 @@ export default defineConfig(({ mode }) => {
       port: 9303,
       host: true,
       open: true,
+      // 字体等静态资源需允许出图端跨源加载：render 容器与桌面客户端加载模板时
+      // origin 不是本站点（render 为 null / 客户端为应用协议），缺少 CORS 头会静默回退系统字体。
+      // 生产环境同样必须由字体所在站点/CDN 返回 Access-Control-Allow-Origin。
+      headers: { 'Access-Control-Allow-Origin': '*' },
       fs: {
         // 允许读取 monorepo 内 packages 源码
         allow: [fileURLToPath(new URL('..', import.meta.url))],

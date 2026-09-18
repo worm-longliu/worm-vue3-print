@@ -20,14 +20,17 @@ node scripts/fetch-test-fonts.mjs
 
 | 端 | 解析结果 | 前提 |
 |---|---|---|
-| 浏览器（设计器画布 / 预览） | `http://localhost:9303/fonts/<file>.woff2` | 同源，直接命中，无 CORS 问题 |
-| 服务端（`services/print-render` 容器） | `<baseUrl>/fonts/<file>.woff2` | 调 render 时把请求的 `baseUrl` 指成容器可达地址，如 `http://host.docker.internal:9303`（Linux 需 `--add-host=host.docker.internal:host-gateway`） |
-| 桌面客户端 | 同上，取客户端配置里的 `baseUrl` | 客户端所在机器能访问该地址 |
+| 浏览器（设计器画布 / 预览 / 浏览器打印） | `http://localhost:9303/fonts/<file>.woff2` | 同源，直接命中，无 CORS 问题 |
+| 服务端（`services/print-render`） | `fontBaseUrl` + `/fonts/<file>.woff2` | demo 传 `FONT_BASE_URL`（默认站点 origin）；容器部署改成容器可达地址，如 `http://host.docker.internal:9303`（Linux 需 `--add-host=host.docker.internal:host-gateway`），或用环境变量 `FONT_BASE_URL` 统一指定 |
+| 桌面客户端 | 同上，取 SDK `print(..., { fontBaseUrl })` / `renderInBrowser` 的基址 | 客户端所在机器能访问该地址 |
 
 ## 注意
 
 - 只把文件放进目录还不够：**文件名必须与 `DESIGNER_FONTS` 的 `url` 完全一致**，否则 404 后会静默回退到兜底字体（`FontFace` 加载失败不阻断出图）。
-- demo 的 `RENDER_BASE_URL`（`src/App.vue`）同时决定「浏览器预览里相对路径字体」的拼接基址。若它指向的地址不提供本节目录的文件，浏览器预览也会取不到字体——纯字体联调时可临时设为 `''`（同源，直接命中 dev server）。
+- 字体基址与图片基址已解耦：图片用 `RENDER_BASE_URL`，字体用 `FONT_BASE_URL`（`src/App.vue`，默认站点 origin，可用 `VITE_FONT_BASE_URL` 覆盖）；
+  浏览器预览不拼基址，相对路径直接按站点同源解析。
+- **字体文件必须允许跨源加载**：出图端加载模板 HTML 时的 origin 不是本站点（render 为 `null`、客户端为应用协议），
+  缺少 `Access-Control-Allow-Origin` 会让字体静默回退。demo 的 `vite.config.ts` 已为 dev server 加上该响应头；生产需在字体站点/CDN 上配置。
 - 字重需要在声明里逐条给出。模板里元素用 `bold` 而声明只有 400 时，Chromium 会合成粗体，字形宽度与真粗体不同，分页会与浏览器不一致。上面三款只有 400 一个字重。
 - 生产环境建议换成 woff2（体积约为 ttf 的一半）。本目录为省去构建期工具直接用 ttf，Chromium 三端都支持。
 - 商业字体（微软雅黑、黑体、华文仿宋、娃娃体等）不可再分发：要用就由宿主自行提供 `url`，别放进本目录。

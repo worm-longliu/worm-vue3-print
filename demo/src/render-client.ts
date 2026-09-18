@@ -57,17 +57,19 @@ export async function fetchServerFonts(signal?: AbortSignal): Promise<ServerFont
  * @param templateJson 当前画布模板 JSON（对象）
  * @param printData 打印业务数据；传非空对象数组时服务端按数组长度批量渲染，份间分页并合并为一个 PDF（最多 500 份）
  * @param baseUrl 相对路径图片（如 /docfiles/...）拼接用的宿主基址
+ * @param fontBaseUrl 相对路径字体基址；出图端必须能访问，缺省回落 baseUrl
  * @returns PDF Blob
  */
 export async function requestServerPdf(
   templateJson: Record<string, unknown>,
   printData: Record<string, unknown> | Array<Record<string, unknown>>,
   baseUrl: string,
+  fontBaseUrl?: string,
 ): Promise<Blob> {
   const res = await fetch(`${RENDER_API_PREFIX}/render/pdf`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ templateJson, printData, baseUrl }),
+    body: JSON.stringify({ templateJson, printData, baseUrl, fontBaseUrl }),
   })
 
   if (!res.ok) {

@@ -14,6 +14,9 @@
   提交给同仓库的 render 微服务（`services/print-render`），服务端两遍渲染出 PDF 后在新标签页打开；
   顶栏实时显示渲染服务在线状态（经 `/render-api/health` 探测）
 - 保存演示：`save` 时输出控制台并将模板 JSON 下载为本地文件
+- 自定义字体联调：`public/fonts/` 放三款公开字体（见该目录 README），经 `fonts` prop 声明为
+  模板级字体；字体基址与图片基址分离（`FONT_BASE_URL`，默认站点 origin，可用 `VITE_FONT_BASE_URL` 覆盖），
+  dev server 已返回 `Access-Control-Allow-Origin: *` 供 render 服务与桌面客户端跨源取字体
 
 ## 运行
 

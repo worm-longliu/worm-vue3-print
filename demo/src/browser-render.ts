@@ -9,17 +9,20 @@ import type { RenderedHtmlPages } from '@worm-vue3-print/client'
  * @param templateJson 当前画布模板 JSON（对象）
  * @param printData 业务数据；传非空对象数组时批量渲染并合并为单个 HTML（份间分页）
  * @param baseUrl 相对路径图片（如 /docfiles/...）拼接用的宿主基址
+ * @param fontBaseUrl 相对路径字体基址；产物要在客户端进程内加载，故需绝对地址
  */
 export async function renderInBrowser(
   templateJson: Record<string, unknown>,
   printData: Record<string, unknown> | Array<Record<string, unknown>>,
   baseUrl: string,
+  fontBaseUrl?: string,
 ): Promise<RenderedHtmlPages> {
   const result = await renderHtmlPages(
     templateJson as unknown as PrintTemplateData,
     printData,
     baseUrl,
     browserCodeRenderer,
+    { fontBaseUrl },
   )
   return {
     html: result.html,

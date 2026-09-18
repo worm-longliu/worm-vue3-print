@@ -61,6 +61,7 @@
     <PrintOutputDialog
       :open="printDialogVisible"
       :base-url="RENDER_BASE_URL"
+      :font-base-url="FONT_BASE_URL"
       :template-name="TEMPLATE_NAME"
       :print-data="activePrintData"
       :get-template-json="() => (designerRef?.getTemplateJson() as unknown as Record<string, unknown>)"
@@ -94,6 +95,13 @@ import { BATCH_SIZE, deriveBatchData } from './batch-data'
 /** 相对路径图片（/docfiles/...）拼接基址：浏览器预览与服务端渲染保持一致 */
 const RENDER_BASE_URL = 'http://localhost:10103'
 
+/**
+ * 相对路径字体基址：demo 的字体挂在 Vite 站点（public/fonts），与图片域（RENDER_BASE_URL）不同。
+ * 出图端必须能访问该地址——render 服务跑在宿主机时站点 origin 即可；
+ * 跑在 Docker 里改成 http://host.docker.internal:9303，生产改成字体 CDN 域名。
+ */
+const FONT_BASE_URL = (import.meta.env.VITE_FONT_BASE_URL as string | undefined) || window.location.origin
+
 /** 打印输出弹窗开关 */
 const printDialogVisible = ref(false)
 
@@ -115,21 +123,21 @@ const DESIGNER_FONTS: PrintFontDeclaration[] = [
     family: 'Ma Shan Zheng',
     label: '马善政毛笔楷书',
     files: [
-      { weight: 400, url: '/fonts/MaShanZheng-Regular.ttf' },
+      { weight: 400, url: 'http://localhost:9303/fonts/MaShanZheng-Regular.ttf' },
     ],
   },
   {
     family: 'ZCOOL KuaiLe',
     label: '站酷快乐体',
     files: [
-      { weight: 400, url: '/fonts/ZCOOLKuaiLe-Regular.ttf' },
+      { weight: 400, url: 'http://localhost:9303/fonts/ZCOOLKuaiLe-Regular.ttf' },
     ],
   },
   {
     family: 'ZCOOL QingKe HuangYou',
     label: '站酷庆科黄油体',
     files: [
-      { weight: 400, url: '/fonts/ZCOOLQingKeHuangYou-Regular.ttf' },
+      { weight: 400, url: 'http://localhost:9303/fonts/ZCOOLQingKeHuangYou-Regular.ttf' },
     ],
   },
 ]
