@@ -56,6 +56,44 @@ export function fontOptionLabel(candidate: FontCandidate): string {
   return candidate.family
 }
 
+/** 匹配用键：小写并去掉全部空白，使用户输入 `ya hei` 与 `yahei` 等价 */
+export function normalizeFontQuery(value: string): string {
+  return value.toLowerCase().replace(/\s+/g, '')
+}
+
+/**
+ * 匹配档位，越小越靠前：
+ * 0 完全相等 · 1 前缀 · 2 子串 · 3 子序列（首字母缩写式） · -1 不匹配
+ */
+function matchRank(nameKey: string, queryKey: string): number {
+  if (nameKey === queryKey) return 0
+  if (nameKey.startsWith(queryKey)) return 1
+  if (nameKey.includes(queryKey)) return 2
+  let cursor = 0
+  for (const char of nameKey) {
+    if (char === queryKey[cursor]) cursor++
+    if (cursor === queryKey.length) return 3
+  }
+  return -1
+}
+
+/**
+ * 模糊过滤字体目录：完全相等 > 前缀 > 子串 > 子序列，同档保持目录原有顺序
+ * （目录本身已按「两端都可用的在前」排好，过滤不应打乱这个安全顺序）。
+ */
+export function filterFontCandidates(
+  fonts: readonly FontCandidate[],
+  query: string,
+): FontCandidate[] {
+  const queryKey = normalizeFontQuery(query.trim())
+  if (!queryKey) return [...fonts]
+  return fonts
+    .map((font, index) => ({ font, index, rank: matchRank(normalizeFontQuery(font.family), queryKey) }))
+    .filter(item => item.rank >= 0)
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map(item => item.font)
+}
+
 /** 单个字体在若干出图端缺失的汇总项 */
 export interface FontIssueSummary {
   family: string
