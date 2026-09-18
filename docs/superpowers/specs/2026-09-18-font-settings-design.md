@@ -11,7 +11,7 @@
 2. **文本元素没有字体名 UI**。`AppearanceGroup.vue:4-17` 的 `isTextType` 分支只有字号与粗细；`fontFamily` 仅在画布元素组件里以 `|| 'inherit'` 透传（`TextElement.vue:26`、`LongTextElement.vue:26`）。
 3. **字体名清单硬编码**在 `TableCellGroup.vue:81-89`（6 项 `<option>`）。
 4. **全局兜底字体栈硬编码**在 `packages/print-core/src/render/css-builder.ts:40`。
-5. **既有缺陷**：`table-matrix.ts:175-186` 的 `copyCellStyle()` 复制样式时漏掉 `fontFamily`，格式刷会丢字体；`TableCellGroup.vue:81` 的 `<select placeholder="继承默认">` 中 `placeholder` 对 `<select>` 无效，且无空选项，导致单元格字体**一旦设置就无法清除**。
+5. **既有缺陷**：`table-matrix.ts:175-186` 的 `copyCellStyle()` 复制样式时漏掉 `fontFamily`，**拆分合并单元格**（`splitCells`，唯一调用点）会丢字体；`TableCellGroup.vue:81` 的 `<select placeholder="继承默认">` 中 `placeholder` 对 `<select>` 无效，且无空选项，导致单元格字体**一旦设置就无法清除**。
 
 ### 目标
 
@@ -116,26 +116,27 @@ export function findMissingFonts(
 
 ### 5.1 服务端（`services/print-render`）
 
-- 新增 `GET /fonts` → `{ fonts: string[] }`，路径与错误包装对齐既有路由风格。
-- 新增 `services/print-render/src/font-catalog.ts`：容器内执行 `fc-list --format='%{family}\n'`，按行、按逗号切分，交给 core 的 `normalizeFontList`。
+- 新增 `GET /fonts` → `{ available: boolean, fonts: string[] }`，路径与错误包装对齐既有路由风格。
+- 新增 `services/print-render/src/font-service.ts`：容器内执行 `fc-list --format='%{family}\n'`，交给 core 的 `normalizeFontList`。
   - **必须取全部族名，不能取 `%{family[0]}`**。`fonts-noto-cjk` 的 `NotoSansCJK-Regular.ttc` 是单个文件承载多族名（JP/SC/TC/KR），取首族名会让容器里明明能渲染的「Noto Sans CJK SC」从清单中消失，直接误导设计者。`fc-list` 的 `%{family}` 输出为逗号分隔的族名列表，切分即可。
-  - 镜像不变则清单不变 → **启动时采集一次并 memo**，不在请求路径上 spawn 进程。
-  - 采集失败（命令不存在/非零退出）→ 返回 500，宿主记为 `available: false`。**不返回空清单**，以免与「容器确实没有字体」混淆。
+  - 镜像不变则清单不变 → **首次请求采集一次并缓存**（只缓存成功结果，失败下次重试）。
+  - 采集失败（命令不存在/非零退出）→ 返回 `{ available: false, fonts: [] }`（HTTP 200），**不是** 500，也**不是**空清单——后两者都会被下游误读成「容器确实没有字体」，从而对每个模板报出满屏假缺失。
   - Dockerfile `services/print-render/Dockerfile:13-14` 已显式安装 `fonts-noto-cjk` 与 `fontconfig`，`fc-list` 可用，无需新增系统依赖。
-- 「命令行输出 → 字体名数组」的解析抽为纯函数，单独单测。
+- 「命令行输出 → 字体名数组」的解析抽为纯函数，单独单测；**三平台解析统一放在 core 的 `print/system-fonts.ts`**，由服务端与桌面客户端共用一份，避免两端各写一份逐字漂移。
 
 ### 5.2 客户端（`clients/print-client`）
 
-- 新增 `src/main/platform-fonts.ts`，**枚举全部在主进程**（沙箱 renderer 无 fs）：
+- 新增 `src/main/font-service.ts`（缓存与命令执行），**枚举全部在主进程**（沙箱 renderer 无 fs）：
 
 | 平台 | 手段 | 已知坑 |
 |---|---|---|
-| Windows | PowerShell + GDI+ `InstalledFontCollection`，失败降级 `reg query` | 注册表值名带 `(TrueType)` 后缀，中文系统还有 `宋体 & 新宋体` 这类 `&` 合族名——故 GDI+ 优先，注册表仅作降级 |
+| Windows | PowerShell + GDI+ `InstalledFontCollection` | 必须显式设 `[Console]::OutputEncoding` 为 UTF8，否则按控制台代码页输出，中文系统下「宋体」等族名乱码 |
 | macOS | `system_profiler -json SPFontsDataType` | 顶层 `_name` 是**字体文件名**（如 `Times New Roman Bold.ttf`），族名在嵌套的 `typefaces[].family`。实测本机 278 个文件条目 → 283 个去重族名，取的必须是 `typefaces[].family`，并对 `typefaces` 缺失/为空的条目跳过 |
 | Linux | `fc-list` | 同服务端 |
 
-- 结果交 core `normalizeFontList`，memo 缓存 TTL 60s。
-- 解析层（命令输出 → 字体名数组）抽为纯函数单独单测，exec 适配层保持最薄。
+- 结果交 core `normalizeFontList`；**进程内缓存，只缓存成功结果**（macOS 的 `system_profiler` 需 1–3s，不缓存会明显拖慢 `/fonts`）。
+- **不做注册表降级**（推翻早先设想）：`reg query` 的值名带 `(TrueType)` 后缀、中文系统还有 `宋体 & 新宋体` 这类合族名，需要第二套解析与清洗规则，收益却只是把「未知」变成「多半还是错的清单」。GDI+ 失败即返回 `available: false`——按本设计的语义，这只会让 UI 少一层标注，不会产生任何假告警。
+- 解析层（命令输出 → 字体名数组）在 core（见 5.1），本文件只留 exec 适配与缓存。
 - **不新增 IPC 通道**：设计器在宿主浏览器中运行、走 WebSocket 取客户端清单；客户端自身设置窗口不展示字体列表，新增 `LIST_FONTS` IPC 属于无人消费的接口面。
 
 ### 5.3 为什么不用浏览器的 `queryLocalFonts()`
@@ -146,8 +147,9 @@ export function findMissingFonts(
 
 ## 6. WebSocket 通道与 SDK
 
-- `clients/print-client` WS 协议新增一对 `list-fonts` 请求/响应消息，WS 服务侧补 handler，内部调 `platform-fonts.ts`。
-- `packages/print-client-sdk` 新增 `listFonts(): Promise<string[]>`，复用既有端口探测、退避重连与 `WormPrintError` 错误码机制；未连接或枚举失败时 **reject**（不复用空数组表达失败——空数组是「已连接且没有字体」），由宿主捕获后记 `available: false`。
+- `clients/print-client` WS 协议新增消息 `fonts.list`（沿用既有 `域.动作` 命名，与 `printers.list` 对齐），WS 服务侧补 handler，内部调 `font-service.ts`。
+- 响应 payload 为 `{ available: boolean, fonts: string[] }`。**枚举失败走 `available: false` 而不是 `ok: false`**——若走错误分支，宿主每次调用都得写 try/catch，漏写的那次会把「枚举失败」显示成「该字体不存在」，正是本设计要杜绝的误判。把「未知」做成正常返回值，宿主就没有走错的机会。
+- `packages/print-client-sdk` 新增 `listFonts(): Promise<{ available: boolean; fonts: string[] }>`，复用既有端口探测与退避重连；**客户端未连接时仍 reject**（这是连接层失败，不是清单结果），宿主捕获后记为 `{ available: false, fonts: [] }`。
 - 宿主取得失败（未连接/超时/报错）时记为 `{ available: false, fonts: [] }`，**不视为致命错误**。
 
 ## 7. canvas 接入与 UI
@@ -192,8 +194,10 @@ export function findMissingFonts(
 | 调用点 | 时机 | 结果去向 |
 |---|---|---|
 | canvas 设计器 | 实时（清单已在内存，零网络） | 字段内联标注 + StatusBar 汇总 |
-| `services/print-render` | 出图前 | 出图接口响应体新增**可选**字段 `warnings: Array<{ code: 'FONT_MISSING'; family: string; targets: string[] }>`（可选即不破坏既有消费者） |
+| `services/print-render` | 出图前 | 出图接口新增**可选响应头** `X-Font-Warnings`，值为 `encodeURIComponent` 后的 `Array<{ code: 'FONT_MISSING'; family: string; targets: string[] }>`（无缺失时不设置该头） |
 | `clients/print-client` | 任务开始时 | 复用既有 job history 与 `LOG_EVENT`；**不新增 SDK 错误码**（不阻断就不该走失败路径） |
+
+**为何服务端走响应头而非响应体**（成文后修正）：`/render/pdf` 与 `/render/screenshot` 返回的是 `application/pdf` / `image/png` **二进制**，响应体里放不进 JSON。改为可选响应头 `X-Font-Warnings`，消费者契约（`warnings` 数组结构）不变，只换承载方式；新增响应头对既有消费者完全惰性。头值必须是 ASCII，故用 `encodeURIComponent` 承载并用 `decodeURIComponent` 还原，同时限量（族名 ≤ 32、每族 targets ≤ 5）以免大模板撑爆响应头上限。
 
 ### 告警呈现
 
@@ -225,15 +229,18 @@ export function findMissingFonts(
 - **core** `packages/print-core/tests/fonts.test.ts`（新增）：`mergeFontSources` 三态（两端可用 / 单端 / 单端不可用）、`normalizeFontList`（去重、大小写、隐藏字体）、`toFontFamilyStack`（含空格族名的引号、空值回落兜底栈）、`findMissingFonts`（元素与单元格均覆盖；**该端 `available: false` 时必须跳过**）。
 - **core 渲染**：`html-generator.test.ts` 补单元格 `font-family` 输出与文本元素兜底栈；`table-matrix` 既有测试补 `copyCellStyle` 复制 `fontFamily`。
 - **canvas** `packages/print-canvas/src/__tests__/`：新增 `useFontCatalog.spec.ts`（合并与降级）与字体下拉组件 spec（下拉渲染、「当前值不在清单内」用例），对照既有 `TableSettingsGroup.spec.ts` 的写法。
-- **render 服务**：`font-catalog.ts` 的解析纯函数单测（喂入固定的 `fc-list` 输出），**不依赖 Playwright**。
-- **client**：`platform-fonts.ts` 的解析纯函数单测（三平台输出各一份固定样本）。
+- **core 采集解析**：`packages/print-core/tests/system-fonts.test.ts`（新增）：三平台输出各一份固定样本 + 采集失败返回 `available: false`。
+- **render 服务**：`font-service.test.ts`（缓存与 `fc-list` 调用，**不依赖 Playwright**）与 `font-warnings.test.ts`（告警头生成与截断）。
+- **client**：`font-service.test.ts`（缓存策略）与 `font-warning.test.ts`（出图前缺失采集，含模板畸形不抛异常）。
 - **架构守卫**：收尾跑 `npm run lint:print-architecture`，确认字体栈落在 core、两端仅做采集。
 
 ## 12. 受影响文件清单
 
-新增：`core/src/print/fonts.ts`、`core/tests/fonts.test.ts`、`canvas/src/composables/useFontCatalog.ts`、`services/print-render/src/font-catalog.ts`、`clients/print-client/src/main/platform-fonts.ts`。
+新增：`core/src/print/{fonts,system-fonts}.ts`、`core/tests/{fonts,system-fonts}.test.ts`、`canvas/src/composables/useFontCatalog.ts`、`canvas/src/components/property/FontSelect.vue`、`services/print-render/src/{font-service,font-warnings}.ts`、`clients/print-client/src/main/{font-service,font-warning}.ts`。
 
-修改：`core/src/render/{types,data-binder,html-generator,css-builder}.ts`、`core/src/designer/utils/{table-matrix,property-search}.ts`、`canvas/src/components/property/{AppearanceGroup,TableCellGroup}.vue`、`canvas/src/components/{StatusBar,PrintDesigner,PropertyPanel}.vue`、`canvas/src/composables/useHostAdapter.ts`、`services/print-render/src/*`（路由注册）、`clients/print-client/src/main/*`（WS handler）、`packages/print-client-sdk/src/*`、`demo/src/*`（宿主取数示例）、三处 CHANGELOG。
+修改：`core/src/print/index.ts`、`core/src/render/{types,data-binder,html-generator,css-builder}.ts`、`core/src/designer/utils/{table-matrix,property-search}.ts`、`canvas/src/components/property/{AppearanceGroup,TableCellGroup}.vue`、`canvas/src/components/{StatusBar,PrintDesigner}.vue`、`canvas/src/composables/useHostAdapter.ts`、`services/print-render/src/server.ts`、`clients/print-client/src/main/{protocol-handler,print-engine,index}.ts`、`packages/print-client-sdk/src/{protocol,print-client}.ts`、`demo/src/*`（宿主取数示例）、中文/英文 CHANGELOG 与 `docs/中文/指南/三端渲染一致性方案.md`。
+
+（完整清单与逐任务归属见实施计划 `docs/superpowers/plans/2026-09-18-font-settings.md` 的「文件结构」表。）
 
 ## 13. 验证记录与未验证假设
 
