@@ -68,4 +68,44 @@ describe('多页面模板渲染（真实 Chromium）', () => {
     expect(texts[0]).toContain('封面标题')
     expect(texts[1]).toContain('内容正文')
   })
+
+  it('封面 1 页 + 内容 2 页 × 2 份 → 6 页 PDF，份间分页、份内页码重置', async () => {
+    const { pdf } = await coreRenderPdf({
+      templateJson: {
+        version: 1,
+        pages: [
+          page('封面', [textEl('cover-e', 10, 30, '{cover}')]),
+          page('内容', [
+            textEl('row-1', 10, 100, '{body}'),
+            textEl('row-2', 110, 100, '{body}'),
+            textEl('row-3', 210, 100, '{body}'),
+            textEl('row-4', 310, 100, '{body}'),
+          ]),
+        ],
+      },
+      printData: [
+        { cover: '封面标题', body: '内容正文一' },
+        { cover: '封面标题', body: '内容正文二' },
+      ],
+    }, runtime)
+    const doc = await getDocument({ data: pdf.slice() }).promise
+    expect(doc.numPages).toBe(6)
+    // 每页 A4（容差 ±0.5mm）
+    for (let i = 1; i <= doc.numPages; i++) {
+      const p = await doc.getPage(i)
+      const viewport = p.getViewport({ scale: 1 })
+      expect(Math.abs(viewport.width / PT_PER_MM - 210)).toBeLessThan(0.5)
+      expect(Math.abs(viewport.height / PT_PER_MM - 297)).toBeLessThan(0.5)
+    }
+    // 第 1/4 页为各份封面；第 2/3/5/6 页为各份内容（份内页码重置，各份正文独立绑定）
+    const texts: string[] = []
+    for (let i = 1; i <= 6; i++) {
+      const content = await (await doc.getPage(i)).getTextContent()
+      texts.push(content.items.map((it: any) => ('str' in it ? it.str : '')).join('').normalize('NFKC'))
+    }
+    expect(texts[0]).toContain('封面标题')
+    expect(texts[1]).toContain('内容正文一')
+    expect(texts[3]).toContain('封面标题')
+    expect(texts[4]).toContain('内容正文二')
+  })
 })

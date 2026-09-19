@@ -14,6 +14,7 @@ import {
   buildBasePageCss,
   buildPageGeometryCss,
   buildPageRuleCss,
+  COPY_BREAK_CSS,
 } from '../render/css-builder.js'
 import { buildFontFaceCss } from './fonts.js'
 import type { PrintFontDeclaration } from './fonts.js'
@@ -122,13 +123,14 @@ export function composeMultiPageDocument(
   }
   const templates = copies[0]!.boundPages
 
-  // CSS：@page（首模板）+ 模板无关基础 + 各页作用域几何
+  // CSS：@page（首模板）+ 模板无关基础 + 各页作用域几何；批量份间追加强制分页
   const css =
     buildFontFaceCss(mergeFontDeclarations(templates)) +
     [
       buildPageRuleCss(templates[0]!),
       buildBasePageCss(),
       ...templates.map((t, i) => buildPageGeometryCss(t, `.mt-${i}`)),
+      ...(copies.length > 1 ? [COPY_BREAK_CSS] : []),
     ].join('\n\n')
 
   // 份内全局页码：每份从 0 基页号重新累计，{pageIndex}/{totalPages} 份内生效

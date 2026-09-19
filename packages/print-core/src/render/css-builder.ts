@@ -239,7 +239,7 @@ export function buildPageCss(template: TemplateData, pageHeightMm?: number): str
 }
 
 /** 份间强制分页：覆盖每份最后一个 .print-page 的 page-break-after:auto */
-const COPY_BREAK_CSS =
+export const COPY_BREAK_CSS =
   '.print-copy:not(:last-child){break-after:page;page-break-after:always;}'
 
 /**
