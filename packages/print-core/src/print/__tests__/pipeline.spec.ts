@@ -275,3 +275,63 @@ describe('拼版打印', () => {
     await expect(prepareDocument(job, runtime)).rejects.toThrow(/最多可放 2 列/)
   })
 })
+
+function multiTemplate() {
+  const cover = template({ name: '封面', elements: [{ id: 'c', type: 'text', options: { left: 0, top: 0, width: 50, height: 30 } }] })
+  const body = template({
+    name: '内容',
+    elements: [
+      // 100mm 高、top 隔 10mm（不重叠）→ 277 内容高可用 275：首页放 2 个（100+100），第 3 个 100>75 换页 → 内容 2 页
+      { id: 'b1', type: 'text', options: { left: 0, top: 0, width: 50, height: 100 } },
+      { id: 'b2', type: 'text', options: { left: 0, top: 110, width: 50, height: 100 } },
+      { id: 'b3', type: 'text', options: { left: 0, top: 220, width: 50, height: 100 } },
+    ],
+  })
+  return { version: 1 as const, pages: [cover, body] }
+}
+
+describe('多页面模板', () => {
+  it('封面 1 页 + 内容 2 页：pageCount=3，作用域类与全局页码正确', async () => {
+    const { runtime } = runtimeOf({ measurements: [] })
+    const result = await prepareDocument({ templateJson: multiTemplate() }, runtime)
+    expect(result.pageCount).toBe(3)
+    expect(result.continuous).toBe(false)
+    expect(result.heightSource).toBe('config')
+    expect(result.paperMm).toEqual({ width: 210, height: 297 })
+    const html = result.html
+    expect(html).toContain('class="print-page mt-0"')
+    expect(html).toContain('class="print-page mt-1"')
+    expect(html).toContain('.mt-1.print-page {')
+    expect(html.match(/<section class="print-page/g)).toHaveLength(3)
+    expect(result.pageLayouts[2].pageIndex).toBe(2)
+  })
+
+  it('批量多模板：每份一份完整文档，页码份内重置', async () => {
+    const { runtime } = runtimeOf({ measurements: [] })
+    const result = await prepareDocument(
+      { templateJson: multiTemplate(), printData: [{ x: 1 }, { x: 2 }] },
+      runtime,
+    )
+    expect(result.pageCount).toBe(6)
+    expect(result.copies).toBe(2)
+    expect(result.html.match(/<section class="print-copy">/g)).toHaveLength(2)
+  })
+
+  it('1 页 wrapper 按单模板渲染（无 mt-0 作用域、无 print-copy 包装）', async () => {
+    const { runtime } = runtimeOf({ measurements: [{ id: 'c', heightPx: 38 }] })
+    const result = await prepareDocument(
+      { templateJson: { version: 1 as const, pages: [template()] } },
+      runtime,
+    )
+    expect(result.pageCount).toBe(1)
+    expect(result.html).not.toContain('class="print-page mt-0"')
+    expect(result.html).not.toContain('<section class="print-copy">')
+  })
+
+  it('截图：多模板按真实分页整份渲染（fullPage）', async () => {
+    const { fake, runtime } = runtimeOf({ measurements: [], screenshotBytes: new Uint8Array([7]) })
+    const buf = await renderScreenshot({ templateJson: multiTemplate() }, runtime)
+    expect(buf).toEqual(new Uint8Array([7]))
+    expect(fake.calls).toContain('screenshot')
+  })
+})

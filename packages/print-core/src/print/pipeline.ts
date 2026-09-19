@@ -9,7 +9,7 @@ import { buildPdfTargetSpec, buildScreenshotTargetSpec } from './pdf-spec.js'
 import { normalizeMeasurements } from './measure.js'
 import { applyTextFitSizes } from './apply-text-fit.js'
 import { pxToMm } from './units.js'
-import type { CodeRenderer, MultiPageTemplateData, PageLayout, TemplateData } from '../render/types.js'
+import type { CodeRenderer, PageLayout, TemplateData } from '../render/types.js'
 import type { PrintRuntime, PrintSession } from './ports.js'
 import type { PreparedDocument, PrintJob, RenderPdfResult } from './types.js'
 import { normalizePrintData } from './normalize-print-data.js'
@@ -17,26 +17,14 @@ import { composeBatchHtml } from './batch-compose.js'
 import type { BatchCopyInput } from './batch-compose.js'
 import { composeTiledHtml } from './tile-compose.js'
 import { computeTileLayout } from './tiling.js'
-import { isMultiPageTemplate } from './multi-template.js'
+import { composeMultiPageDocument, normalizeTemplate } from './multi-template.js'
+import type { MultiPageCopyInput } from './multi-template.js'
 
 /** 单份准备的内部结构：对外文档 + 批量合并所需的中间件 */
 interface SinglePrepared extends PreparedDocument {
   bound: TemplateData
   codeRenderer?: CodeRenderer
   derivedHeightMm?: number
-}
-
-/**
- * 单页面模板守卫：多页面模板整份文档走 composeMultiPageDocument，
- * 本渲染管线本次迭代仅支持单模板，多页面模板在此显式拒绝（避免把 wrapper 误当模板绑定）。
- */
-function requireSingleTemplate(
-  templateJson: TemplateData | MultiPageTemplateData,
-): TemplateData {
-  if (isMultiPageTemplate(templateJson)) {
-    throw new Error('多页面模板渲染尚未接入渲染管线，请使用 composeMultiPageDocument')
-  }
-  return templateJson
 }
 
 /** 阶段 1–6：绑定 → 码值收集/渲染 → 测量 → 分页 → 连续纸 → 最终 HTML */
@@ -57,11 +45,27 @@ export async function renderPdf(job: PrintJob, runtime: PrintRuntime): Promise<R
 /** 截图：不分页，用测量模式 HTML 单页完整渲染；数组数据仅渲染首条。不参与拼版（仍是标签纸单页快照） */
 export async function renderScreenshot(job: PrintJob, runtime: PrintRuntime): Promise<Uint8Array> {
   return runtime.withSession(job, async (session) => {
-    const normalized = normalizePrintData(job.printData)
+    const pageTemplates = normalizeTemplate(job.templateJson)
+
+    // 多页面模板：按真实分页整份渲染截图（fullPage 一次获得整份文档）
+    if (pageTemplates.length > 1) {
+      const normalized = normalizePrintData(job.printData)
+      const data = normalized.mode === 'batch' ? normalized.dataList[0] : normalized.data
+      const copy = await prepareMultiCopy(job, session, data)
+      const doc = composeMultiPageDocument([copy])
+      const viewport = paperViewportPx(getPaperDimensions(pageTemplates[0]!))
+      return session.toScreenshot(doc.html, buildScreenshotTargetSpec(), viewport)
+    }
+
+    // 1 页 wrapper 归一化为单模板，走既有截图路径
+    const singleJob: PrintJob = pageTemplates[0] !== job.templateJson
+      ? { ...job, templateJson: pageTemplates[0]! }
+      : job
+    const normalized = normalizePrintData(singleJob.printData)
     const data = normalized.mode === 'batch' ? normalized.dataList[0] : normalized.data
-    const bound = bindData(requireSingleTemplate(job.templateJson), data, job.baseUrl, job.fontBaseUrl)
+    const bound = bindData(singleJob.templateJson as TemplateData, data, singleJob.baseUrl, singleJob.fontBaseUrl)
     const built = await buildHtmlWithCodes({
-      bound, job, session, data, pageLayouts: [], isMeasurementPass: true,
+      bound, job: singleJob, session, data, pageLayouts: [], isMeasurementPass: true,
     })
     const viewport = paperViewportPx(getPaperDimensions(bound))
     return session.toScreenshot(built.html, buildScreenshotTargetSpec(), viewport)
@@ -69,13 +73,44 @@ export async function renderScreenshot(job: PrintJob, runtime: PrintRuntime): Pr
 }
 
 async function prepareWithSession(job: PrintJob, session: PrintSession): Promise<PreparedDocument> {
-  const normalized = normalizePrintData(job.printData)
-  const template = requireSingleTemplate(job.templateJson)
+  const pageTemplates = normalizeTemplate(job.templateJson)
+
+  // 多页面模板：每份数据 = 一份完整多页文档
+  if (pageTemplates.length > 1) {
+    const normalized = normalizePrintData(job.printData)
+    const rows = normalized.mode === 'batch' ? normalized.dataList : [normalized.data]
+    const copies: MultiPageCopyInput[] = []
+    for (let i = 0; i < rows.length; i++) {
+      try {
+        copies.push(await prepareMultiCopy(job, session, rows[i]!))
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err)
+        throw new Error(`第 ${i + 1} 份渲染失败：${reason}`)
+      }
+    }
+    const doc = composeMultiPageDocument(copies)
+    return {
+      html: doc.html,
+      pageCount: doc.pageCount,
+      paperMm: getPaperDimensions(pageTemplates[0]!),
+      continuous: false,
+      heightSource: 'config',
+      pageLayouts: doc.pageLayouts,
+      copies: copies.length,
+    }
+  }
+
+  // 1 页 wrapper 归一化为单模板，走既有 single/batch/tiling 路径（行为逐字不变）
+  const singleJob: PrintJob = pageTemplates[0] !== job.templateJson
+    ? { ...job, templateJson: pageTemplates[0]! }
+    : job
+  const template = pageTemplates[0]!
+  const normalized = normalizePrintData(singleJob.printData)
   if (normalized.mode === 'single') {
-    const single = await prepareSingleWithSession(job, session, normalized.data)
+    const single = await prepareSingleWithSession(singleJob, session, normalized.data)
     // 单份也走拼版：1 条数据 = 1 格 = 1 张
     if (template.tiling?.enabled === true) {
-      return composeTiledPrepared(job, [{
+      return composeTiledPrepared(singleJob, [{
         bound: single.bound,
         pageLayouts: single.pageLayouts,
         data: normalized.data,
@@ -92,7 +127,7 @@ async function prepareWithSession(job: PrintJob, session: PrintSession): Promise
   const copies: BatchCopyInput[] = []
   for (let i = 0; i < normalized.dataList.length; i++) {
     try {
-      const single = await prepareSingleWithSession(job, session, normalized.dataList[i])
+      const single = await prepareSingleWithSession(singleJob, session, normalized.dataList[i])
       copies.push({
         bound: single.bound,
         pageLayouts: single.pageLayouts,
@@ -109,7 +144,7 @@ async function prepareWithSession(job: PrintJob, session: PrintSession): Promise
   }
   // 拼版：各份不再各自独占一张纸，而是按「列×行」铺进目标纸
   if (template.tiling?.enabled === true) {
-    return composeTiledPrepared(job, copies)
+    return composeTiledPrepared(singleJob, copies)
   }
   const merged = composeBatchHtml(copies)
   return {
@@ -188,7 +223,7 @@ async function prepareSingleWithSession(
   session: PrintSession,
   data: Record<string, any>,
 ): Promise<SinglePrepared> {
-  const bound = bindData(requireSingleTemplate(job.templateJson), data, job.baseUrl, job.fontBaseUrl)
+  const bound = bindData(job.templateJson as TemplateData, data, job.baseUrl, job.fontBaseUrl)
   const continuous = isContinuousPaper(bound)
   const designPaper = getPaperDimensions(bound)
   const viewport = paperViewportPx(designPaper)
@@ -248,6 +283,31 @@ async function prepareSingleWithSession(
     codeRenderer: finalBuild.codeRenderer,
     derivedHeightMm,
   }
+}
+
+/** 单份数据 → 各页面模板的绑定/分页/码制产物（供 composeMultiPageDocument 组合） */
+async function prepareMultiCopy(
+  job: PrintJob,
+  session: PrintSession,
+  data: Record<string, any>,
+): Promise<MultiPageCopyInput> {
+  const templates = normalizeTemplate(job.templateJson)
+  const viewport = paperViewportPx(getPaperDimensions(templates[0]!))
+  const boundPages: TemplateData[] = []
+  const layoutsPerPage: PageLayout[][] = []
+  const codeRenderers: Array<CodeRenderer | undefined> = []
+  for (const t of templates) {
+    const bound = bindData(t, data, job.baseUrl, job.fontBaseUrl)
+    const measurement = await buildHtmlWithCodes({ bound, job, session, data, pageLayouts: [], isMeasurementPass: true })
+    const measurements = await session.measure(measurement.html, viewport)
+    applyTextFitSizes(bound, measurements.fits)
+    const layouts = paginate(bound, normalizeMeasurements(measurements.measurements, bound))
+    const final = await buildHtmlWithCodes({ bound, job, session, data, pageLayouts: layouts, isMeasurementPass: false, baseMap: measurement.map })
+    boundPages.push(bound)
+    layoutsPerPage.push(layouts)
+    codeRenderers.push(final.codeRenderer)
+  }
+  return { boundPages, layoutsPerPage, data, codeRenderers }
 }
 
 interface BuildHtmlInput {
