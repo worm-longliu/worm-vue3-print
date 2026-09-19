@@ -1,12 +1,14 @@
 name: Release
 
-# 推送 v 开头的标签时触发，例如：git tag -a v1.2.2 -m "v1.2.2" && git push origin v1.2.2
+# 仅允许在 GitHub Actions 页面手动触发（已取消推送 v* 标签自动发布）
+# 手动执行前请先打标签：git tag -a v1.2.2 -m "v1.2.2" && git push origin v1.2.2
 on:
-  push:
-    tags:
-      - 'v*'
-  # 允许在 Actions 页面手动触发（可选）
   workflow_dispatch:
+    inputs:
+      tag:
+        description: '要发布的版本标签（如 v1.2.2，需已推送到远端）'
+        required: true
+        type: string
 
 jobs:
   release:
@@ -17,6 +19,8 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
 
       - name: 安装 Node.js
         uses: actions/setup-node@v4
@@ -36,7 +40,8 @@ jobs:
 
       - name: 校验标签与包版本一致
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
+          TAG="${{ inputs.tag }}"
+          TAG="${TAG#v}"
           for pkg in core canvas; do
             VER=$(node -p "require('./packages/print-$pkg/package.json').version")
             if [ "$VER" != "$TAG" ]; then
@@ -63,8 +68,10 @@ jobs:
       - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag }}
+          name: ${{ inputs.tag }}
           body_path: .github/release/notes.md
           draft: false
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ contains(inputs.tag, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
