@@ -63,10 +63,11 @@ app.post('/render/pdf', authMiddleware, async (req, res) => {
   }
 
   const tpl = body.templateJson as TemplateData
-  if (!tpl.paperSize || !tpl.orientation || !tpl.margins) {
+  const hasMultiPages = Array.isArray((body.templateJson as { pages?: unknown }).pages)
+  if (!hasMultiPages && (!tpl.paperSize || !tpl.orientation || !tpl.margins)) {
     res.status(400).json({
       code: 'INVALID_REQUEST',
-      message: 'templateJson must contain paperSize, orientation, and margins',
+      message: 'templateJson must contain paperSize, orientation, and margins (or pages)',
     })
     return
   }
