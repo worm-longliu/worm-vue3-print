@@ -177,6 +177,8 @@ const dragConfig = reactive<DragOptions>({
       clone.id = generateId()
       clone.options.left = pos.left
       clone.options.top = pos.top
+      // 单个元素克隆不继承原组身份，否则克隆体会与原组串在一起、无法独立操作
+      clone.options.groupId = undefined
       // 通过 emit 事件通知父组件处理克隆，而非直接操作 props
       emit('clone-element', clone, { left: pos.left, top: pos.top })
       if (elRef.value) {

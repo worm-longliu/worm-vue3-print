@@ -47,7 +47,10 @@ export function tableDesignBottom(el: TemplateElement): number {
  * 规则：按 Y 排序遍历，每个非表格元素归入「它上方最近的表格」，
  * 且仅当元素设计 top ≥ 该表格设计底部（设计上位于表格下方）。
  */
-function buildFollowMap(sorted: TemplateElement[]): Map<string, string[]> {
+function buildFollowMap(
+  sorted: TemplateElement[],
+  excludedIds?: Set<string>,
+): Map<string, string[]> {
   const map = new Map<string, string[]>()
   let currentTableId: string | null = null
   let currentTableBottom = -1
@@ -58,6 +61,8 @@ function buildFollowMap(sorted: TemplateElement[]): Map<string, string[]> {
       map.set(el.id, [])
       continue
     }
+    // 显式编组成员不归属任何表格跟随区，交由组逻辑统一分页
+    if (excludedIds?.has(el.id)) continue
     const top = el.options?.top ?? 0
     if (currentTableId && top >= currentTableBottom) {
       map.get(currentTableId)!.push(el.id)
@@ -85,6 +90,105 @@ function followGroupHeight(
     maxBottom = Math.max(maxBottom, (m.options?.top ?? 0) + (m.options?.height ?? 0))
   }
   return Math.max(maxBottom - tableBottom, 0)
+}
+
+// ─── 分页单元（堆叠组 / 显式编组） ───
+
+/**
+ * 分页单元：一组必须同页、且纵向只按并集占用一次版面的非表格元素。
+ * - 显式来源：options.groupId 相同（用户编组），强绑定；
+ * - 隐式来源：纵向区间相交（堆叠/并排重叠），避免重复扣高与被拆到不同页。
+ * anchorId 为主遍历序中最先遇到的成员（即 top 最小者），仅在该成员处统一分页。
+ */
+interface PaginationUnit {
+  anchorId: string
+  ids: string[]
+  /** 组内含 pageable:false 元素时整组锁定首页（编组可能跨越可分页性设置） */
+  forceFirstPage: boolean
+}
+
+/** 元素纵向占用：设计高度与实测高度取大（长文本溢出由实测高度兜底） */
+function effectiveHeight(el: TemplateElement, measured: Map<string, MeasuredElement>): number {
+  return Math.max(el.options?.height ?? 0, measured.get(el.id)?.measuredHeight ?? 0)
+}
+
+/**
+ * 构建分页单元映射（elementId → 所属单元）。
+ * 隐式聚类只看纵向区间是否相交：分页模型是一维纵向流，并排/重叠元素共享纵向预算；
+ * 边相切（top 恰等于上一元素底边）不算重叠，保持顺序流式排布结果不变。
+ */
+function buildPaginationUnits(
+  sorted: TemplateElement[],
+  measured: Map<string, MeasuredElement>,
+  groupMap: Map<string, TemplateElement[]>,
+): Map<string, PaginationUnit> {
+  const unitOf = new Map<string, PaginationUnit>()
+
+  // 显式编组
+  for (const members of groupMap.values()) {
+    if (members.length < 2) continue
+    const unit: PaginationUnit = {
+      anchorId: members[0]!.id,
+      ids: members.map(m => m.id),
+      forceFirstPage: members.some(m => paginationOf(m)?.pageable === false),
+    }
+    for (const m of members) unitOf.set(m.id, unit)
+  }
+
+  // 隐式纵向重叠聚类：并查集（DSU），仅纳入可分页、非表格、未显式编组的元素
+  const eligible = sorted.filter(
+    el => !isTableEl(el) && !el.options?.groupId && paginationOf(el)?.pageable !== false,
+  )
+  const parent = new Map<string, string>()
+  eligible.forEach(el => parent.set(el.id, el.id))
+  const find = (id: string): string => {
+    let root = id
+    while (parent.get(root) !== root) root = parent.get(root)!
+    // 路径压缩
+    let cur = id
+    while (parent.get(cur) !== root) {
+      const next = parent.get(cur)!
+      parent.set(cur, root)
+      cur = next
+    }
+    return root
+  }
+  const union = (a: string, b: string): void => {
+    const ra = find(a)
+    const rb = find(b)
+    if (ra !== rb) parent.set(rb, ra)
+  }
+
+  // 扫描线：仅与仍可能相交（bottom > 当前 top）的活跃元素做合并
+  const active: Array<{ id: string; top: number; bottom: number }> = []
+  for (const el of eligible) {
+    const top = el.options?.top ?? 0
+    // 淘汰底边已在当前 top 之上（含相切）的区间
+    for (let i = active.length - 1; i >= 0; i--) {
+      if (active[i]!.bottom <= top) active.splice(i, 1)
+    }
+    const bottom = top + effectiveHeight(el, measured)
+    for (const a of active) {
+      if (a.bottom > top) union(el.id, a.id)
+    }
+    active.push({ id: el.id, top, bottom })
+  }
+
+  // 收集 size≥2 的连通簇，保持 sorted 顺序，锚点为簇内首个元素
+  const clusters = new Map<string, string[]>()
+  for (const el of eligible) {
+    const root = find(el.id)
+    const arr = clusters.get(root)
+    if (arr) arr.push(el.id)
+    else clusters.set(root, [el.id])
+  }
+  for (const ids of clusters.values()) {
+    if (ids.length < 2) continue
+    const unit: PaginationUnit = { anchorId: ids[0]!, ids, forceFirstPage: false }
+    for (const id of ids) unitOf.set(id, unit)
+  }
+
+  return unitOf
 }
 
 // ─── 公共 API ───
@@ -121,19 +225,47 @@ export function paginate(
     )
   }
 
-  // 按 Y 坐标排序内容区元素（使用 options.top）
+  // 元素在模板数组中的原始下标：无 zIndex 时作为层序兜底，与画布 DOM 序保持一致
+  const orderIndex = new Map<string, number>()
+  template.elements.forEach((e, idx) => orderIndex.set(e.id, idx))
+
+  // 排序：top → zIndex（缺省按 0）→ 原数组序。
+  // 第三键保证 top/z 相同时画布与打印的层叠关系确定一致（不依赖引擎排序稳定性）。
   const sorted = [...template.elements].sort((a, b) => {
     const topA = a.options?.top ?? 0
     const topB = b.options?.top ?? 0
-    return topA - topB
+    if (topA !== topB) return topA - topB
+    const zA = a.options?.zIndex ?? 0
+    const zB = b.options?.zIndex ?? 0
+    if (zA !== zB) return zA - zB
+    return (orderIndex.get(a.id) ?? 0) - (orderIndex.get(b.id) ?? 0)
   })
 
-  // 方案 A+B：表格跟随区归属（表格 id → 成员元素 id）
-  const followMap = buildFollowMap(sorted)
+  // 显式编组（options.groupId）的非表格成员：强绑定，整组同页，且不降级为表格跟随区
+  const explicitGroupIds = new Set<string>()
+  const groupMap = new Map<string, TemplateElement[]>()
+  for (const el of sorted) {
+    if (isTableEl(el)) continue
+    const gid = el.options?.groupId
+    if (!gid) continue
+    explicitGroupIds.add(el.id)
+    const arr = groupMap.get(gid)
+    if (arr) arr.push(el)
+    else groupMap.set(gid, [el])
+  }
+
+  // 方案 A+B：表格跟随区归属（表格 id → 成员元素 id）；显式编组成员不参与跟随归属
+  const followMap = buildFollowMap(sorted, explicitGroupIds)
   const followOwner = new Map<string, string>()
   for (const [tableId, members] of followMap) {
     for (const m of members) followOwner.set(m, tableId)
   }
+
+  const elById = new Map<string, TemplateElement>()
+  for (const el of sorted) elById.set(el.id, el)
+
+  // 分页单元：显式编组 + 隐式纵向重叠聚类，成员整组同页、纵向只扣一次并集高度
+  const unitOf = buildPaginationUnits(sorted, measuredElements, groupMap)
 
   const pages: PageLayout[] = []
   let currentPage: PageSection[] = []
@@ -154,13 +286,45 @@ export function paginate(
       : contentHeight - SAFETY_MARGIN
   }
 
-  /** 结束当前页，开启新页 */
-  function finishPage(): void {
-    pages.push({ pageIndex: pages.length, sections: [...currentPage] })
+  /**
+   * 当前页是否含「会被纸面裁掉」的内容。
+   * 只按物理边界（contentHeight）判定，不看分页预算里的安全余量——安全余量只用于
+   * 决定要不要换页，内容贴着纸边排仍是合法排版，不该被上层（拼版）阻断。
+   */
+  let overflowOnCurrent = false
+
+  /** 收下当前页（带溢出标记） */
+  function pushPage(): void {
+    pages.push(
+      overflowOnCurrent
+        ? { pageIndex: pages.length, sections: [...currentPage], overflow: true }
+        : { pageIndex: pages.length, sections: [...currentPage] },
+    )
+  }
+
+  /** 记录裁切风险：内容底部越过内容区就会被纸面裁掉（上层据此阻断，如拼版） */
+  function noteOverflow(bottom: number): void {
+    if (bottom > contentHeight) overflowOnCurrent = true
+  }
+
+  /**
+   * 结束当前页，开启新页。
+   * 空页不入列：当前页尚无内容时换页没有任何意义，只会产出一张空白纸
+   * （典型场景：首个元素/单元就判定放不下）。此时保持本页并沿用设计坐标，
+   * 让内容按「空页允许溢出」落在本页，与表格分支同语义。
+   * @param overflow 被强制留在本页的内容是否真的超出内容区（会被裁掉）
+   */
+  function finishPage(overflow = false): void {
+    if (currentPage.length === 0) {
+      overflowOnCurrent = overflowOnCurrent || overflow
+      return
+    }
+    pushPage()
     currentPage = []
     remaining = contentHeight - SAFETY_MARGIN
     isFirstPage = false
     pageBroken = true
+    overflowOnCurrent = false
   }
 
   // ── 遍历元素 ──
@@ -174,15 +338,32 @@ export function paginate(
       continue
     }
 
-    // 不参与分页的元素：始终放在第一页
-    if (paginationOf(el)?.pageable === false) {
-      currentPage.push({ elementId: el.id, type: 'element', renderTop: sectionTop(el) })
+    const unit = unitOf.get(el.id)
+
+    // 堆叠/编组单元的非锚点成员：已在锚点处分页，跳过
+    if (unit && unit.anchorId !== el.id) {
+      i++
+      continue
+    }
+
+    // 不参与分页的元素：始终放在第一页（含强制首页的整个编组）
+    if (paginationOf(el)?.pageable === false || (unit?.forceFirstPage)) {
+      if (unit) {
+        for (const id of unit.ids) {
+          currentPage.push({ elementId: id, type: 'element', renderTop: (elById.get(id)?.options?.top) ?? 0 })
+        }
+      } else {
+        currentPage.push({ elementId: el.id, type: 'element', renderTop: sectionTop(el) })
+      }
+      // 步进交给循环顶部的「非锚点成员跳过」守卫，无需假设成员在 sorted 中连续
       i++
       continue
     }
 
     if (isTableEl(el)) {
       i = paginateTable(el, measuredElements, i)
+    } else if (unit) {
+      i = paginateUnit(unit, i)
     } else {
       i = paginateNonTable(el, measuredElements, sorted, i)
     }
@@ -190,7 +371,7 @@ export function paginate(
 
   // 收尾：最后一页
   if (currentPage.length > 0) {
-    pages.push({ pageIndex: pages.length, sections: [...currentPage] })
+    pushPage()
   }
   // 空模板至少一页
   if (pages.length === 0) {
@@ -211,6 +392,8 @@ export function paginate(
 
     if (elHeight <= remaining) {
       // 放得下
+      const top = pageBroken ? 0 : (el.options?.top ?? 0)
+      noteOverflow(top + elHeight)
       currentPage.push({ elementId: el.id, type: 'element', renderTop: sectionTop(el) })
       remaining -= elHeight
 
@@ -237,10 +420,53 @@ export function paginate(
       return idx + 1
     }
 
-    // 放不下，整体移到下一页
-    finishPage()
+    // 放不下，整体移到下一页（空页时不换页，仅按物理边界记录裁切风险）
+    const top = pageBroken ? 0 : (el.options?.top ?? 0)
+    finishPage(top + elHeight > contentHeight)
     currentPage.push({ elementId: el.id, type: 'element', renderTop: sectionTop(el) })
     remaining -= elHeight
+    return idx + 1
+  }
+
+  // ─── 分页单元（堆叠组 / 显式编组）：整组同页，纵向只扣一次并集高度 ───
+
+  function paginateUnit(unit: PaginationUnit, idx: number): number {
+    const members = unit.ids
+      .map(id => elById.get(id))
+      .filter((m): m is TemplateElement => !!m)
+
+    let minTop = Number.POSITIVE_INFINITY
+    let maxBottom = Number.NEGATIVE_INFINITY
+    for (const m of members) {
+      const top = m.options?.top ?? 0
+      minTop = Math.min(minTop, top)
+      maxBottom = Math.max(maxBottom, top + effectiveHeight(m, measuredElements))
+    }
+    const unitHeight = Math.max(maxBottom - minTop, 0)
+
+    const place = (): void => {
+      // 首页（未换页）保持设计坐标；换页后整组平移到内容区顶部，组内相对偏移不变
+      const offset = pageBroken ? -minTop : 0
+      noteOverflow(minTop + offset + unitHeight)
+      for (const m of members) {
+        currentPage.push({
+          elementId: m.id,
+          type: 'element',
+          renderTop: (m.options?.top ?? 0) + offset,
+        })
+      }
+      remaining -= unitHeight
+    }
+
+    if (unitHeight <= remaining) {
+      place()
+      return idx + 1
+    }
+
+    // 放不下：整组移到下一页，绝不拆分（与单元素同为"放不下即换页"语义）
+    const top = pageBroken ? 0 : minTop
+    finishPage(top + unitHeight > contentHeight)
+    place()
     return idx + 1
   }
 

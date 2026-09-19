@@ -426,3 +426,139 @@ describe('paginateTable 小计行 subtotal', () => {
     expect(pages[0].sections[0]).toMatchObject({ startRow: 0, endRow: 3, subtotal: true, summary: true })
   })
 })
+
+// ─── 堆叠（纵向重叠）与显式编组：并集计高、整组同页、换页平移 ───
+
+/** 非表格元素模板：A4 竖版、边距 10、无页眉页脚 → 首页可用 275mm */
+function makeFreeTemplate(elements: Array<Record<string, any>>): TemplateData {
+  return {
+    paperSize: 'A4', orientation: 'portrait',
+    margins: { top: 10, right: 10, bottom: 10, left: 10 },
+    header: { height: 0, elements: [] },
+    footer: { height: 0, elements: [] },
+    firstPageOverlay: { height: 0, elements: [] },
+    elements: elements as any,
+  }
+}
+function freeEl(id: string, top: number, height: number, extra: Record<string, any> = {}): Record<string, any> {
+  return { id, type: 'text', options: { left: 0, top, width: 60, height, ...extra } }
+}
+function measureFree(entries: Array<[string, number]>): Map<string, MeasuredElement> {
+  return new Map(entries.map(([id, h]) => [id, { id, measuredHeight: h }]))
+}
+
+/** 自定义纸张（CUSTOM）模板：小纸场景必须能复现真实纸高 */
+function makeCustomPaperTemplate(
+  width: number,
+  height: number,
+  elements: Array<Record<string, any>>,
+): TemplateData {
+  return {
+    paperSize: 'CUSTOM', orientation: 'portrait',
+    customWidth: width, customHeight: height,
+    margins: { top: 10, right: 10, bottom: 10, left: 10 },
+    header: { height: 0, elements: [] },
+    footer: { height: 0, elements: [] },
+    firstPageOverlay: { height: 0, elements: [] },
+    elements: elements as any,
+  }
+}
+
+describe('堆叠元素：纵向重叠按并集计高，不重复扣高', () => {
+  it('两个重叠元素并集 240mm 放得下 → 同页，不被错误拆分（旧逻辑会拆成 2 页）', () => {
+    // e0: top10 h150（底160）；e1: top100 h150（底250）；纵向重叠 [100,160)
+    // 旧逻辑：e0 扣 150 后剩 125，e1(150) 放不下 → 移页（2 页）
+    // 新逻辑：并集 = 250−10 = 240 ≤ 275 → 同页（1 页）
+    const tpl = makeFreeTemplate([freeEl('e0', 10, 150), freeEl('e1', 100, 150)])
+    const pages = paginate(tpl, measureFree([['e0', 150], ['e1', 150]]))
+    expect(pages).toHaveLength(1)
+    const ids = pages[0].sections.map(s => s.elementId)
+    expect(ids).toEqual(['e0', 'e1'])
+    // 首页未换页：保持各自设计 top
+    expect(pages[0].sections[0]).toMatchObject({ elementId: 'e0', renderTop: 10 })
+    expect(pages[0].sections[1]).toMatchObject({ elementId: 'e1', renderTop: 100 })
+  })
+
+  it('上下相切（top 恰等于上一元素底边）不聚类，保持顺序流式分页', () => {
+    // e0: top10 h100（底110）；e1: top110 h200（底310），恰相切
+    // 不重叠 → 各自独立：e0 扣 100 剩 175，e1(200) 放不下 → 单独移页
+    const tpl = makeFreeTemplate([freeEl('e0', 10, 100), freeEl('e1', 110, 200)])
+    const pages = paginate(tpl, measureFree([['e0', 100], ['e1', 200]]))
+    expect(pages).toHaveLength(2)
+    expect(pages[0].sections).toHaveLength(1)
+    expect(pages[0].sections[0]).toMatchObject({ elementId: 'e0', renderTop: 10 })
+    expect(pages[1].sections[0]).toMatchObject({ elementId: 'e1', renderTop: 0 })
+  })
+})
+
+describe('显式编组 groupId：整组同页，换页保持组内相对布局', () => {
+  it('组并集超出本页剩余 → 整组（含本可放下的成员）一起移到下一页并整体平移', () => {
+    // pre: top0 h230（底230），首页剩余 275−230 = 45
+    // 组 g1（成员彼此不重叠、与 pre 不重叠，仅靠 groupId 绑定）：
+    //   a: top240 h20（底260）；b: top266 h20（底286）；组并集 = 286−240 = 46 > 45
+    // 旧逻辑：a(20)、b(20) 分散扣减都能塞进首页 → 1 页（错误：编组被拆散语义虽未变，
+    //   但这里验证的是"并集口径"下整组换页）
+    // 新逻辑：整组移次页，pageBroken，offset=−240 → a renderTop=0、b renderTop=26
+    const tpl = makeFreeTemplate([
+      freeEl('pre', 0, 230),
+      freeEl('a', 240, 20, { groupId: 'g1' }),
+      freeEl('b', 266, 20, { groupId: 'g1' }),
+    ])
+    const pages = paginate(tpl, measureFree([['pre', 230], ['a', 20], ['b', 20]]))
+    expect(pages).toHaveLength(2)
+    expect(pages[0].sections.map(s => s.elementId)).toEqual(['pre'])
+    const second = pages[1].sections
+    expect(second.map(s => s.elementId).sort()).toEqual(['a', 'b'])
+    const topOf = (id: string) => second.find(s => s.elementId === id)!.renderTop
+    expect(topOf('a')).toBe(0)
+    expect(topOf('b')).toBe(26) // 组内相对偏移 266−240 保持不变
+  })
+
+  it('组内含 pageable:false 成员 → 整组锁定首页，不换页', () => {
+    const tpl = makeFreeTemplate([
+      freeEl('a', 250, 20, { groupId: 'g2', pagination: { pageable: false, keepWithNext: false } }),
+      freeEl('b', 255, 20, { groupId: 'g2' }),
+    ])
+    const pages = paginate(tpl, measureFree([['a', 20], ['b', 20]]))
+    expect(pages).toHaveLength(1)
+    expect(pages[0].sections.map(s => s.elementId).sort()).toEqual(['a', 'b'])
+  })
+})
+
+describe('空白页防御：当前页尚无内容时换页不产出空页', () => {
+  it('首个元素就超预算：按设计坐标留在本页，不产出空白第一页', () => {
+    // A4：contentHeight 277，预算 275；e0 高 300 放不下
+    // 旧逻辑：finishPage 无条件 push 空页 → 2 页且第 1 页空白
+    const tpl = makeFreeTemplate([freeEl('e0', 0, 300)])
+    const pages = paginate(tpl, measureFree([['e0', 300]]))
+    expect(pages).toHaveLength(1)
+    expect(pages[0].sections).toMatchObject([{ elementId: 'e0', renderTop: 0 }])
+    // 不产空白页，但溢出事实必须上报（拼版据此阻断）
+    expect(pages[0].overflow).toBe(true)
+  })
+
+  it('80×60mm 自定义纸：单元实测 38.1mm 略超 38mm 预算仍为单页（曾出现空白首页）', () => {
+    // 内容区 40mm（60 − 上下边距各 10），预算 = 40 − 2 = 38
+    // rect top1 h38.1 与 text top6.82 h5.3 纵向重叠 → 单元并集 38.1 > 38
+    // 物理上未越界（底 39.1 < 40），必须保持单页且沿用设计坐标
+    const tpl = makeCustomPaperTemplate(80, 60, [
+      freeEl('rect', 1, 38.1),
+      freeEl('text', 6.8262333333333345, 5.3),
+    ])
+    const pages = paginate(tpl, measureFree([['rect', 38.1], ['text', 5.3]]))
+    expect(pages).toHaveLength(1)
+    const topOf = (id: string) => pages[0].sections.find(s => s.elementId === id)!.renderTop
+    expect(topOf('rect')).toBe(1)
+    expect(topOf('text')).toBe(6.8262333333333345)
+    // 只越过 2mm 安全余量的预算，物理未越界（底 39.1 < 40）→ 不算裁切风险，拼版不得阻断
+    expect(pages[0].overflow).toBeUndefined()
+  })
+
+  it('内容真的超出内容区（会被纸面裁掉）才标记 overflow', () => {
+    // 同上纸张（内容区 40mm），矩形 top10 h38 → 底 48 > 40，物理越界
+    const tpl = makeCustomPaperTemplate(80, 60, [freeEl('rect', 10, 38)])
+    const pages = paginate(tpl, measureFree([['rect', 38]]))
+    expect(pages).toHaveLength(1)
+    expect(pages[0].overflow).toBe(true)
+  })
+})

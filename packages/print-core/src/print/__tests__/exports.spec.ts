@@ -19,4 +19,19 @@ describe('core 根入口的打印 API', () => {
     expect(typeof (globalThis as Record<string, unknown>).document).toBe('undefined')
     await import('../../index.js')
   })
+
+  it('导出拼版能力', async () => {
+    const core = await import('../../index.js')
+    const fns = [
+      'computeTileLayout', 'tilePosition', 'computeMaxColumns',
+      'validateTiling', 'resolveSheetMm', 'normalizeTilingOptions', 'roundMm',
+      'composeTiledHtml',
+    ] as const
+    for (const name of fns) {
+      expect(typeof (core as Record<string, unknown>)[name]).toBe('function')
+    }
+    expect(core.TILE_DEFAULTS.columns).toBe(2)
+    expect(core.TILE_DEFAULTS.sheetPaperSize).toBe('A4')
+    expect(new core.TilingError('COLUMNS_OVERFLOW', 'x')).toBeInstanceOf(Error)
+  })
 })

@@ -111,6 +111,12 @@
             @update:model-value="onDesignBackgroundChange"
           />
 
+          <TilingConfig
+            :model-value="templateData?.tiling"
+            :template-data="templateData"
+            @update:model-value="emitUpdate({ tiling: $event })"
+          />
+
           <h3 class="pd-divider">页边距 (mm)</h3>
           <p v-if="paperSizeModel === 'CONTINUOUS'" class="pd-hint">底部边距即连续纸走纸留白</p>
           <div class="margin-grid">
@@ -168,6 +174,7 @@ import TableCellGroup from './property/TableCellGroup.vue'
 import PresetColorPicker from './PresetColorPicker.vue'
 import WatermarkConfig from './WatermarkConfig.vue'
 import DesignBackgroundConfig from './property/DesignBackgroundConfig.vue'
+import TilingConfig from './property/TilingConfig.vue'
 import type { WatermarkOptions } from '@worm-vue3-print/core/designer'
 import { getElementBindings, getTableCellBindings } from '@worm-vue3-print/core/designer'
 import type { BindingDescriptor } from '@worm-vue3-print/core/designer'

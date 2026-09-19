@@ -85,6 +85,8 @@ function onLoadDefaultLayout() {
 - `is-edit`：是否编辑态。
 - `show-help`：帮助入口开关，默认开启，传入 `false` 可关闭帮助按钮与帮助弹框。
 - `getTemplateJson()`：通过 `ref` 获取当前画布模板 JSON，用于预览 / 保存。
+- `validateTemplate()`：拼版配置校验结果（`TilingIssue[]`，合法为 `[]`）。宿主在「导出 / 另存」等直接消费
+  `getTemplateJson()` 的链路上应先调用它，拦截列数超宽等非法配置（该路径绕不过保存按钮的闸门）。
 - 模板加载 / 重置（如「加载默认布局」）属于宿主业务：把新的 `TemplateData` 赋给
   `initial-template` 即可重载画布并记录一次历史（撤销可回退）；设计器工具栏不内置该入口。
 - `requestScreenshot({ templateJson, printData }) => Promise<Blob>`：叠层对比截图。

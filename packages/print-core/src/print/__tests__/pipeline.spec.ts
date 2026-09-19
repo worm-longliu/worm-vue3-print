@@ -196,3 +196,82 @@ describe('renderScreenshot', () => {
     expect(fake.calls).toContain('screenshot')
   })
 })
+
+describe('拼版打印', () => {
+  const TILING = {
+    enabled: true,
+    columns: 2,
+    gapX: 2,
+    gapY: 2,
+    sheetPaperSize: 'A4' as const,
+    sheetMargin: { top: 10, right: 10, bottom: 10, left: 10 },
+  }
+  const labelTpl = (overrides: Partial<TemplateData> = {}) => template({
+    paperSize: 'CUSTOM',
+    customWidth: 70,
+    customHeight: 40,
+    margins: { top: 3, right: 3, bottom: 3, left: 3 },
+    tiling: TILING,
+    ...overrides,
+  } as Partial<TemplateData>)
+  const list = (n: number) => Array.from({ length: n }, (_, i) => ({ title: `L${i + 1}` }))
+
+  it('拼版关闭 → 与现状结构一致（零回归）', async () => {
+    const { runtime } = runtimeOf({ measurements: [{ id: 'a', heightPx: 10 }] })
+    const result = await prepareDocument({ templateJson: template(), printData: list(3) }, runtime)
+    expect(result.copies).toBe(3)
+    expect(result.pageCount).toBe(3)
+    expect(result.html).toContain('<section class="print-copy">')
+    expect(result.html).not.toContain('print-sheet')
+  })
+
+  it('开启 + 12 条 → paperMm=目标纸、pageCount=张数(1)、copies=12', async () => {
+    const { runtime } = runtimeOf({ measurements: [{ id: 'a', heightPx: 10 }] })
+    const result = await prepareDocument({ templateJson: labelTpl(), printData: list(12) }, runtime)
+    expect(result.copies).toBe(12)
+    expect(result.pageCount).toBe(1)
+    expect(result.paperMm).toEqual({ width: 210, height: 297 })
+    expect(result.html).toContain('<section class="print-sheet">')
+    expect((result.html.match(/class="print-tile"/g) ?? []).length).toBe(12)
+  })
+
+  it('开启 + 13 条 → 2 张', async () => {
+    const { runtime } = runtimeOf({ measurements: [{ id: 'a', heightPx: 10 }] })
+    const result = await prepareDocument({ templateJson: labelTpl(), printData: list(13) }, runtime)
+    expect(result.pageCount).toBe(2)
+    expect(result.copies).toBe(13)
+  })
+
+  it('单份数据也走拼版（1 条 = 1 格 = 1 张）', async () => {
+    const { runtime } = runtimeOf({ measurements: [{ id: 'a', heightPx: 10 }] })
+    const result = await prepareDocument({ templateJson: labelTpl(), printData: { title: 'L1' } }, runtime)
+    expect(result.copies).toBe(1)
+    expect(result.pageCount).toBe(1)
+    expect((result.html.match(/class="print-tile"/g) ?? []).length).toBe(1)
+  })
+
+  it('某份渲染出多页 → 抛错并指出第几份', async () => {
+    const { runtime } = runtimeOf({ measurements: [{ id: 'a', heightPx: 400 }] })
+    await expect(
+      prepareDocument({ templateJson: labelTpl(), printData: list(2) }, runtime),
+    ).rejects.toThrow(/恰好 1 页/)
+  })
+
+  it('连续纸 + 拼版 → 抛错', async () => {
+    const { runtime } = runtimeOf({ measurements: [{ id: 'a', heightPx: 10 }], contentBottomPx: 20 })
+    const job = {
+      templateJson: labelTpl({ paperSize: 'CONTINUOUS', customWidth: 70 } as Partial<TemplateData>),
+      printData: list(2),
+    }
+    await expect(prepareDocument(job, runtime)).rejects.toThrow(/连续纸不支持拼版/)
+  })
+
+  it('列数超宽 → 抛错含「最多可放」', async () => {
+    const { runtime } = runtimeOf({ measurements: [{ id: 'a', heightPx: 10 }] })
+    const job = {
+      templateJson: labelTpl({ tiling: { ...TILING, columns: 5 } } as Partial<TemplateData>),
+      printData: list(1),
+    }
+    await expect(prepareDocument(job, runtime)).rejects.toThrow(/最多可放 2 列/)
+  })
+})

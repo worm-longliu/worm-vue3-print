@@ -102,8 +102,11 @@ Props：
 暴露方法：
 
 - `getTemplateJson(): TemplateData`
+- `validateTemplate(): TilingIssue[]`：拼版配置校验（纯查询，不弹窗、不切页签），合法返回 `[]`。
+  宿主若在「导出 / 另存」等链路上直接消费 `getTemplateJson()`，**必须自行调用它决定是否放行**——
+  那条路径绕不过设计器保存按钮的闸门。
 
-不要假设存在 `back` 事件；返回上一页等导航属于宿主业务层。组件**只 expose 了 `getTemplateJson`**，不存在 `setTemplateMeta` 等方法——模板名称、业务类型、备注等元信息由宿主自行维护并随保存接口提交，不要试图写进设计器实例。
+不要假设存在 `back` 事件；返回上一页等导航属于宿主业务层。组件只 expose 上述两个方法，不存在 `setTemplateMeta` 等方法——模板名称、业务类型、备注等元信息由宿主自行维护并随保存接口提交，不要试图写进设计器实例。
 
 模板加载 / 重置（如「加载默认布局」）同样属于宿主业务：设计器工具栏不内置该按钮，宿主在自己的
 页面 chrome 上渲染入口，把新的 `TemplateData` 赋给 `initial-template` 即可重载画布（设计器按
@@ -159,6 +162,37 @@ const printData = {
 ```
 
 模板表达式写 `{supplier.name}`、`{order.no}`、`{goods.name}` 等；表格 data 行按 `dataSource` 指向的数组迭代。
+
+## 拼版打印（多行多列）
+
+标签尺寸的模板可以把多份数据按「列 × 行」铺到一张更大的纸上（如 70×40 标签铺满 A4，一张纸 12 个）。
+**这是模板级配置**：写在 `templateJson.tiling` 里随模板保存，三端（浏览器 / 服务端 / 桌面客户端）自动一致，
+**不需要改后端协议或客户端代码**——目标纸通过 `PreparedDocument.paperMm` 透出。
+
+```ts
+const templateJson = {
+  // …纸张、元素等
+  tiling: {
+    enabled: true,
+    columns: 2,                                    // 列数（手工指定）；行数按纸面自动推导
+    sheetPaperSize: 'A4',                          // 目标纸：A4/A3/A5/Letter/Legal/CUSTOM
+    sheetOrientation: 'portrait',                  // 只影响目标纸，不影响标签朝向
+    sheetMargin: { top: 10, right: 10, bottom: 10, left: 10 }, // 目标纸留白（mm）
+    gapX: 2, gapY: 2,                              // 格间距（mm）
+    // sheetPaperSize: 'CUSTOM' 时另需 sheetCustomWidth / sheetCustomHeight
+  },
+}
+```
+
+要点：
+
+- **行数自动、列数手工**；按「列 × 行」整块切片，**行不会跨页**，最后一张的空余格留白。
+- 拼版要求**每份数据恰好 1 页**；超出时报错并指明第几份，请缩小内容或调高标签纸张高度。
+- **连续纸模板不支持拼版**（设计器里开关置灰）。
+- 开启拼版后 `PreparedDocument.pageCount` 表示**张数**（`copies` 仍是数据条数）。
+- 设计器「页面属性 → 拼版打印」可配置；列数超出纸面宽度时**不允许保存**，提示「最多可放 N 列」。
+  宿主自行消费 `getTemplateJson()` 的链路上，用 `designerRef.value.validateTemplate()` 做同样的拦截。
+- 字段细节与错误码见 `docs/中文/接口/API文档.md` 的「拼版打印」小节。
 
 ## 仅使用 core 的服务端/同构管线
 

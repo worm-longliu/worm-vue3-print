@@ -103,7 +103,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
   const { selectedIds, selectedElements, select, clearSelection, selectAll: selectAllIds, previewIds, setPreview, clearPreview, commitPreview } = useSelection(elements)
 
   // 编组
-  const { group: groupElements, ungroup: ungroupElements } = useGroup()
+  const { group: groupElements, ungroup: ungroupElements, getGroupedIds } = useGroup()
 
   // 复制粘贴 / 对齐 / 撤销重做
   const { copy: copyElements, paste: pasteElements, hasData: hasClipboardData } = useClipboard()
@@ -232,6 +232,18 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
   function alignSelected(mode: AlignMode) {
     align(selectedElements.value, mode)
     recordHistory()
+  }
+
+  /**
+   * 画布/图层面板点击选择：普通点击组内任一成员 → 选中整组；
+   * Ctrl/⌘ 多选仍按单元素切换，不做整组扩展。
+   */
+  function selectElement(id: string, multiple = false) {
+    if (multiple) {
+      select(id, true)
+      return
+    }
+    selectedIds.value = new Set(getGroupedIds(elements.value, id))
   }
 
   function groupSelected() {
@@ -438,7 +450,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
   return {
     scale, showRuler, showGrid, snapToGrid, showTableGhostBorder,
     templateData, elements, fields,
-    selectedIds, selectedElements, selectedElement, select, clearSelection, selectAll,
+    selectedIds, selectedElements, selectedElement, select, selectElement, clearSelection, selectAll,
     previewIds, setPreview, clearPreview, commitPreview,
     hasClipboard, copy, paste, cutSelected,
     tableSelection, setTableSelection,

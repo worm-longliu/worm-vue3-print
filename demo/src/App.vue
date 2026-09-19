@@ -166,7 +166,22 @@ function downloadTemplateFile(json: string, name: string) {
  * 保存：宿主在此将 JSON 持久化。
  * demo 仅做控制台输出并下载 JSON 文件，方便对照模板数据。
  */
+/**
+ * 宿主侧拼版校验：`getTemplateJson()` 是绕过设计器保存按钮的旁路，
+ * 在「保存 / 导出」等直接消费它的链路上必须自己调 `validateTemplate()` 拦截非法拼版配置
+ * （典型：列数超出目标纸可用宽度）。
+ */
+function assertTilingValid(): boolean {
+  const issues = designerRef.value?.validateTemplate?.() ?? []
+  if (issues.length) {
+    alert(issues[0]!.message)
+    return false
+  }
+  return true
+}
+
 function onSave(json: string) {
+  if (!assertTilingValid()) return
   downloadTemplateFile(json, `template-${Date.now()}.json`)
   console.log('[demo] 保存模板：', JSON.parse(json))
 }
@@ -176,6 +191,7 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 
 /** 导出：下载当前画布 JSON，与 onSave 走同一下载逻辑 */
 function onExportTemplate() {
+  if (!assertTilingValid()) return
   const json = designerRef.value?.getTemplateJson?.()
   if (!json) return
   downloadTemplateFile(JSON.stringify(json), `template-${Date.now()}.json`)

@@ -131,7 +131,7 @@ import '../styles/native-controls.css'
 import { ref, watch, provide, computed, onMounted, onUnmounted } from 'vue'
 import type { RuntimeElement, PrintBusinessField, TemplateData, TableCell, RequestScreenshotFn, UploadImageFn, UploadDesignBackgroundFn } from '@worm-vue3-print/core/designer'
 import type { PrintFontDeclaration } from '@worm-vue3-print/core'
-import { buildFontFaceCss } from '@worm-vue3-print/core'
+import { buildFontFaceCss, validateTiling } from '@worm-vue3-print/core'
 import { useDesignerState } from '../composables/useDesignerState'
 import { useGuides } from '../composables/useGuides'
 import { TABLE_EDIT_KEY } from '../composables/useTableSelection'
@@ -198,7 +198,7 @@ const { leftCollapsed, rightCollapsed, toggleLeft, toggleRight, dirty, markSaved
 const {
   scale, showRuler, showGrid, snapToGrid, showTableGhostBorder,
   templateData, elements, fields,
-  selectedIds, selectedElement, select, clearSelection, selectAll,
+  selectedIds, selectedElement, select, selectElement, clearSelection, selectAll,
   previewIds, setPreview, commitPreview,
   hasClipboard, copy, paste, cutSelected,
   canUndo, canRedo, undo: onUndo, redo: onRedo,
@@ -384,7 +384,8 @@ function onAddOverlayElement() {
   }
 }
 
-const onSelectElement = select
+// 普通点击走分组感知：点组内成员选中整组；Ctrl/⌘ 多选按单元素切换
+const onSelectElement = selectElement
 
 function onToggleVisible(id: string) {
   const el = elements.value.find(e => e.id === id)
@@ -476,9 +477,33 @@ watch(() => props.initialElements, (els) => {
 })
 watch(() => props.fields, (f) => { fields.value = f || [] })
 
-defineExpose({ getTemplateJson: templateJsonWithFonts })
+/**
+ * 拼版配置校验（仅开启拼版时生效）：列数超宽等非法配置不允许保存。
+ * 输入过程只预警不阻断，真正的闸门在这里与 handleSave 上。
+ */
+const tilingIssues = computed(() => {
+  const t = templateData.value
+  if (t?.tiling?.enabled !== true) return []
+  return validateTiling(t)
+})
+
+defineExpose({
+  getTemplateJson: templateJsonWithFonts,
+  /**
+   * 模板校验入口：`getTemplateJson()` 是绕过 handleSave 的旁路，
+   * 宿主在导出/另存链路需自行调用本方法拦截非法配置。
+   */
+  validateTemplate: () => tilingIssues.value,
+})
 
 function handleSave() {
+  // 非法拼版配置：给出原因并把用户带到「页面属性」页签，不落盘
+  const issues = tilingIssues.value
+  if (issues.length) {
+    alert(issues[0].message)
+    activePropertyTab.value = 'page'
+    return
+  }
   emit('save', JSON.stringify(templateJsonWithFonts()))
   markSaved()
 }

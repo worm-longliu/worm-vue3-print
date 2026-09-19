@@ -35,6 +35,8 @@ export interface TemplateData {
   watermark?: import('../designer/types.js').WatermarkOptions
   /** 模板级字体声明：三端据此生成同一份 @font-face，不依赖各端系统字体 */
   fonts?: import('../print/fonts.js').PrintFontDeclaration[]
+  /** 拼版打印配置（模板级）；缺省不写 = 不拼版 */
+  tiling?: import('../print/tiling.js').TilingOptions
   margins: { top: number; right: number; bottom: number; left: number }
   header: { height: number; elements: TemplateElement[] }
   footer: { height: number; elements: TemplateElement[] }
@@ -195,6 +197,11 @@ export interface MeasuredElement {
 export interface PageLayout {
   pageIndex: number
   sections: PageSection[]
+  /**
+   * 本页含「分页预算放不下、被强制留在本页」的内容（首个元素/单元即放不下）。
+   * 该场景不产出空白页，但内容可能超出纸面，需由上层（如拼版「每份恰好 1 页」校验）据此阻断。
+   */
+  overflow?: boolean
 }
 
 export interface PageSection {
@@ -224,8 +231,16 @@ export interface PageSection {
 
 // ─── 纸张辅助 ───
 
-/** 获取纸张物理尺寸（考虑方向；CONTINUOUS 强制纵向，宽度取 customWidth，默认 80） */
-export function getPaperDimensions(template: TemplateData): { width: number; height: number } {
+/**
+ * 获取纸张物理尺寸（考虑方向；CONTINUOUS 强制纵向，宽度取 customWidth，默认 80）。
+ * 参数刻意只用纸张相关字段——不需要 elements，故设计器侧与渲染侧模板均可直接传入。
+ */
+export function getPaperDimensions(template: {
+  paperSize: PaperSize
+  orientation: 'portrait' | 'landscape'
+  customWidth?: number
+  customHeight?: number
+}): { width: number; height: number } {
   const base =
     template.paperSize === 'CUSTOM' || template.paperSize === 'CONTINUOUS'
       ? {

@@ -14,6 +14,8 @@ import type { PreparedDocument, PrintJob, RenderPdfResult } from './types.js'
 import { normalizePrintData } from './normalize-print-data.js'
 import { composeBatchHtml } from './batch-compose.js'
 import type { BatchCopyInput } from './batch-compose.js'
+import { composeTiledHtml } from './tile-compose.js'
+import { computeTileLayout } from './tiling.js'
 
 /** 单份准备的内部结构：对外文档 + 批量合并所需的中间件 */
 interface SinglePrepared extends PreparedDocument {
@@ -37,7 +39,7 @@ export async function renderPdf(job: PrintJob, runtime: PrintRuntime): Promise<R
   })
 }
 
-/** 截图：不分页，用测量模式 HTML 单页完整渲染；数组数据仅渲染首条 */
+/** 截图：不分页，用测量模式 HTML 单页完整渲染；数组数据仅渲染首条。不参与拼版（仍是标签纸单页快照） */
 export async function renderScreenshot(job: PrintJob, runtime: PrintRuntime): Promise<Uint8Array> {
   return runtime.withSession(job, async (session) => {
     const normalized = normalizePrintData(job.printData)
@@ -54,7 +56,20 @@ export async function renderScreenshot(job: PrintJob, runtime: PrintRuntime): Pr
 async function prepareWithSession(job: PrintJob, session: PrintSession): Promise<PreparedDocument> {
   const normalized = normalizePrintData(job.printData)
   if (normalized.mode === 'single') {
-    return toPreparedDocument(await prepareSingleWithSession(job, session, normalized.data))
+    const single = await prepareSingleWithSession(job, session, normalized.data)
+    // 单份也走拼版：1 条数据 = 1 格 = 1 张
+    if (job.templateJson.tiling?.enabled === true) {
+      return composeTiledPrepared(job, [{
+        bound: single.bound,
+        pageLayouts: single.pageLayouts,
+        data: normalized.data,
+        codeRenderer: single.codeRenderer,
+        derivedHeightMm: single.derivedHeightMm,
+        paperMm: single.paperMm,
+        heightSource: single.heightSource,
+      }])
+    }
+    return toPreparedDocument(single)
   }
 
   // 批量：同一 session 内串行渲染各份（避免并发测量竞态），再合并为一个文档
@@ -75,6 +90,10 @@ async function prepareWithSession(job: PrintJob, session: PrintSession): Promise
       const reason = err instanceof Error ? err.message : String(err)
       throw new Error(`第 ${i + 1} 份渲染失败：${reason}`)
     }
+  }
+  // 拼版：各份不再各自独占一张纸，而是按「列×行」铺进目标纸
+  if (job.templateJson.tiling?.enabled === true) {
+    return composeTiledPrepared(job, copies)
   }
   const merged = composeBatchHtml(copies)
   return {
@@ -102,6 +121,49 @@ function toPreparedDocument(s: SinglePrepared): PreparedDocument {
     heightSource: s.heightSource,
     pageLayouts: s.pageLayouts,
     copies: 1,
+  }
+}
+
+/**
+ * 拼版合成：先校验（纸面 / 列数 / 高度）+ 校验每份恰好 1 页，再铺格。
+ * 校验在合并之前完成，任一不合格立即抛错，不产出半成品文档。
+ */
+function composeTiledPrepared(job: PrintJob, copies: BatchCopyInput[]): PreparedDocument {
+  const bound = copies[0].bound
+  // 目标纸先经 paperOverride 解析，再据此算行列——保证布局与物理纸始终一致
+  const layout = computeTileLayout(bound, { paperOverride: job.paperOverride })
+
+  copies.forEach((copy, i) => {
+    // 溢出页：内容放不下但不产空白页，仍留在 1 页里 → 页数看不出来，必须靠 overflow 标记拦下
+    const overflow = copy.pageLayouts[0]?.overflow === true
+    if (copy.pageLayouts.length !== 1 || overflow) {
+      const detail = overflow ? '内容超出纸张高度' : `渲染出 ${copy.pageLayouts.length} 页`
+      throw new Error(
+        `拼版要求每份标签恰好 1 页，第 ${i + 1} 份${detail}；请缩小内容或调整标签纸张高度`,
+      )
+    }
+  })
+
+  const tiled = composeTiledHtml({
+    copies: copies.map(c => ({
+      bound: c.bound,
+      pageLayouts: c.pageLayouts,
+      data: c.data,
+      codeRenderer: c.codeRenderer,
+    })),
+    layout,
+  })
+
+  return {
+    html: tiled.html,
+    // 语义变更：pageCount = 实际输出张数（客户端任务历史、预览「共 N 页」都按此口径）
+    pageCount: tiled.sheetCount,
+    paperMm: { width: layout.sheet.width, height: layout.sheet.height },
+    continuous: false,
+    heightSource: 'config',
+    // 调试用途；各份 pageIndex 均从 0 开始
+    pageLayouts: copies.flatMap(c => c.pageLayouts),
+    copies: copies.length,
   }
 }
 

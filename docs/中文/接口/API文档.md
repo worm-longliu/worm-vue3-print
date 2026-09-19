@@ -80,6 +80,7 @@ import {
 | `resolvePaperMm`、`escapeHeightMm`、`paperViewportPx` | 纸张解析、逃生门、视口换算 |
 | `normalizeMeasurements` | 测量结果 px→mm 归一化 |
 | `PrintFailure`、`toPrintFailure`、`withTimeout` | 统一错误与超时 |
+| 拼版（`tiling.ts` / `tile-compose.ts`） | `computeTileLayout`、`validateTiling`、`computeMaxColumns`、`tilePosition`、`resolveSheetMm`、`normalizeTilingOptions`、`composeTiledHtml`、`TILE_DEFAULTS`、`TilingError`（见下文「拼版打印」） |
 | 类型 | `PrintJob`、`PreparedDocument`、`RenderPdfResult`、`PageDriver`、`PrintRuntime`、`PrintSession`、`RawMeasurement`、`PdfTargetSpec`、`ScreenshotTargetSpec`、`PaperMm`、`ViewportPx`、`CodeSpec`、`PrintFailureCode` |
 
 主要数据类型（主入口导出）：`PrintTemplateData`、`PrintTemplateElement`、`PaperSize`、`PageLayout`、
@@ -95,6 +96,64 @@ interface RenderRequest {
   paperHeightMm?: number                        // 连续纸逃生门
 }
 ```
+
+### 拼版打印（多行多列）
+
+把标签尺寸的模板按「列 × 行」铺到一张更大的纸上批量打印（如 70×40 标签铺满 A4）。
+配置随模板保存（`TemplateData.tiling`），三端（浏览器打印 / 服务端 PDF / 桌面客户端静默打印）行为一致，
+**服务端与客户端不需要改协议**——目标纸通过 `PreparedDocument.paperMm` 透出，各端出纸尺寸自动对齐。
+
+```ts
+import {
+  computeTileLayout, validateTiling, computeMaxColumns, tilePosition,
+  resolveSheetMm, normalizeTilingOptions, composeTiledHtml,
+  TILE_DEFAULTS, TilingError,
+} from '@worm-vue3-print/core'
+```
+
+| API | 说明 |
+|---|---|
+| `computeTileLayout(template, opts?)` | 解析布局：`{ tile, sheet, columns, rows, perSheet, maxColumns, margin, gapX, gapY }`；配置非法时抛 `TilingError`（`message` 与 `validateTiling` 首条 issue 一致） |
+| `validateTiling(template, opts?)` | 校验，**永不抛错**；合法返回 `[]`，issue 的 `message` 是可直接展示的简体中文文案 |
+| `computeMaxColumns(template, opts?)` | 本纸最多可放列数（纯几何、不抛错），供 UI 提示与输入上限 |
+| `tilePosition(layout, index)` | 第 index 格的 `{ left, top }`（mm）；行优先：左→右、上→下 |
+| `resolveSheetMm(template, opts?)` | 解析目标纸物理尺寸（mm） |
+| `composeTiledHtml({ copies, layout })` | 把各份单份产物铺格合成一个 HTML 文档（纯字符串） |
+
+`opts.paperOverride` 与 `PrintJob.paperOverride` 语义一致（宽高都为正数才算覆盖）。
+
+**`TemplateData.tiling`（`TilingOptions`，模板级；缺省不写 = 不拼版）**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `enabled` | `boolean` | 是否启用 |
+| `sheetPaperSize` | `'A4' \| 'A3' \| 'A5' \| 'Letter' \| 'Legal' \| 'CUSTOM'` | 目标纸张，缺省 `A4`；不含 `CONTINUOUS` |
+| `sheetOrientation` | `'portrait' \| 'landscape'` | 目标纸方向，缺省纵向；**只影响目标纸，不影响标签朝向** |
+| `sheetCustomWidth` / `sheetCustomHeight` | `number` | `sheetPaperSize='CUSTOM'` 时的纸宽/纸高（mm），缺省 210 / 297 |
+| `sheetMargin` | `{ top, right, bottom, left }` | 目标纸四边留白（mm）；与模板 `margins`（标签内部边距）不是一回事 |
+| `gapX` / `gapY` | `number` | 相邻格横/纵间距（mm） |
+| `columns` | `number` | 列数（手工指定，≥1 的整数）；**行数由纸面自动推导**，整行切片保证不跨页 |
+
+**目标纸张解析优先级**：调用时 `PrintJob.paperOverride` → `tiling.sheetCustomWidth/Height`（CUSTOM 时）→ `PAPER_PRESETS` → 缺省 A4 纵向。
+
+**`pageCount` 语义变更**（拼版开启时）：由「份数」变为**实际输出张数**；`copies` 仍为数据条数。
+标签内部的 `{pageIndex}` / `{totalPages}` 仍是标签自身的页序，不受影响。
+
+**校验时机**：设计器输入过程只预警不阻断；保存与渲染时阻断。
+
+**错误码**（`TilingIssue.code`）：
+
+| code | 场景 |
+|---|---|
+| `CONTINUOUS_UNSUPPORTED` | 标签纸为连续纸（连续纸不支持拼版） |
+| `SHEET_CONTINUOUS` | 目标纸为连续纸 |
+| `SHEET_SIZE_INVALID` | CUSTOM 目标纸宽高不是正数 |
+| `COLUMNS_INVALID` | 列数缺失 / 0 / 非整数 |
+| `COLUMNS_OVERFLOW` | 列数超出纸面可用宽度（文案含「最多可放 N 列」） |
+| `LABEL_TOO_TALL` | 标签高于纸面可用高度（每张 0 行） |
+
+另有渲染期约束：拼版要求**每份数据恰好渲染 1 页**，超出时管线抛错并指明第几份
+（`拼版要求每份标签恰好 1 页，第 N 份渲染出 M 页…`）。
 
 ### 子路径 `/browser`
 

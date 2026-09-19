@@ -4,6 +4,7 @@
 import type { TemplateData } from './types.js'
 import { getPaperDimensions } from './types.js'
 import { FALLBACK_FONT_STACK } from '../print/fonts.js'
+import type { TileLayout } from '../print/tiling.js'
 
 /** mm 值转 CSS 字符串 */
 export function mm(value: number): string {
@@ -189,6 +190,48 @@ export function buildBatchPageCss(
     })
     .join('\n')
   return `${base}\n${scoped}\n${COPY_BREAK_CSS}`
+}
+
+/**
+ * 拼版纸张 CSS：一张目标纸承载多行多列标签。
+ * 必须由调用方拼在 buildPageCss 之后（同优先级下后出现的 @page 生效），
+ * 否则浏览器 window.print() 会按标签纸尺寸分页——实测 12 格被切成 7 张 70×40mm。
+ */
+export function buildSheetPageCss(layout: TileLayout): string {
+  return `
+/* ── 拼版纸张：@page 尺寸 = 目标纸。服务端/客户端链路以 paperMm 显式定尺寸、不看这里，
+      但浏览器链路只看 @page，故这条是硬需求 ── */
+@page { size: ${mm(layout.sheet.width)} ${mm(layout.sheet.height)}; margin: 0; }
+
+/* ── 一张目标纸 ── */
+.print-sheet {
+  width: ${mm(layout.sheet.width)};
+  height: ${mm(layout.sheet.height)};
+  position: relative;
+  overflow: hidden;
+  break-after: page;
+  page-break-after: always;
+}
+.print-sheet:last-child { break-after: auto; page-break-after: auto; }
+
+/* ── 一格：绝对定位，位置由 tilePosition() 以行内 style 给出 ── */
+.print-tile {
+  position: absolute;
+  width: ${mm(layout.tile.width)};
+  height: ${mm(layout.tile.height)};
+  overflow: hidden;
+}
+/* 防御性声明：绝对定位 + overflow:hidden 容器内的后代不产生分页点，当前布局下无实际作用；
+   若将来改用 flex/grid 布局，格内整页会重新参与分页，故保留 */
+.print-tile > .print-page { break-after: auto; page-break-after: auto; }
+
+@media screen {
+  .print-sheet { margin: 12px auto; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18); }
+  /* 必需：抵消标签 CSS 的 @media screen{.print-page{margin:12px auto}}，
+     否则设计器预览错位 3.17mm、与出纸不一致 */
+  .print-tile > .print-page { margin: 0; box-shadow: none; }
+}
+`
 }
 
 /**
