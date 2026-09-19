@@ -119,7 +119,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
   // 多页面模板：pages 列表 + 当前激活页
   const pages = ref<TemplateData[]>(resolveInitialPages(options.initialTemplate))
   const activePageIndex = ref(0)
-  const templateData = ref<TemplateData>(pages.value[0] ?? createDefaultTemplate())
+  const templateData = ref<TemplateData>(pages.value[0] ?? toRuntimePool(createDefaultTemplate()))
 
   function flushActivePage() {
     pages.value[activePageIndex.value] = templateData.value
@@ -130,7 +130,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     flushActivePage()
     activePageIndex.value = i
     templateData.value = pages.value[i]!
-    clearSelection()
+    resetPageSelection()
   }
 
   // 内容区主体元素（快捷访问）
@@ -166,6 +166,12 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     tableSelection.value = s
   }
 
+  /** 页操作收尾：清空元素选中与表格单元格选区 */
+  function resetPageSelection() {
+    clearSelection()
+    setTableSelection(null)
+  }
+
   /** 当前设计器状态的深拷贝快照（用于历史记录） */
   function getHistoryState(): HistoryState {
     return {
@@ -189,6 +195,8 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
         watermark: templateData.value.watermark ? { ...templateData.value.watermark } : undefined,
         guides: [...(templateData.value.guides ?? [])],
       },
+      pages: JSON.parse(JSON.stringify(pages.value)),
+      activePageIndex: activePageIndex.value,
     }
   }
 
@@ -196,16 +204,31 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     pushHistory(getHistoryState())
   }
 
+  /** 从历史快照取「激活页」元素（多页读 pages[activePageIndex]，单页回退 elements） */
+  function historyActiveElements(state: HistoryState): any[] {
+    return state.pages?.[state.activePageIndex ?? 0]?.elements ?? state.elements
+  }
+
   function undo() {
     const state = undoHistory(getHistoryState())
-    if (state?.templateData) {
+    if (state?.pages) {
+      pages.value = state.pages
+      activePageIndex.value = state.activePageIndex ?? 0
+      templateData.value = pages.value[activePageIndex.value] ?? pages.value[0]!
+      resetPageSelection()
+    } else if (state?.templateData) {
       templateData.value = { ...state.templateData, elements: state.elements }
     }
   }
 
   function redo() {
     const state = redoHistory(getHistoryState())
-    if (state?.templateData) {
+    if (state?.pages) {
+      pages.value = state.pages
+      activePageIndex.value = state.activePageIndex ?? 0
+      templateData.value = pages.value[activePageIndex.value] ?? pages.value[0]!
+      resetPageSelection()
+    } else if (state?.templateData) {
       templateData.value = { ...state.templateData, elements: state.elements }
     }
   }
@@ -356,8 +379,8 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     }
     const sig = (e: RuntimeElement) =>
       `${e.id}:${e.zone || 'content'}:${e.options.left},${e.options.top},${e.options.width},${e.options.height}`
-    const beforeIds = draggingBeforeState.elements.map(sig).join('|')
-    const afterIds = getHistoryState().elements.map(sig).join('|')
+    const beforeIds = historyActiveElements(draggingBeforeState).map(sig).join('|')
+    const afterIds = historyActiveElements(getHistoryState()).map(sig).join('|')
     draggingBeforeState = null
     if (beforeIds !== afterIds) {
       recordHistory()
@@ -426,6 +449,8 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
 
   function updateTemplateData(data: TemplateData) {
     templateData.value = { ...data }
+    // 收敛引用：templateData 被重新赋值后同步回 pages，避免 renamePage 等原地改丢失
+    pages.value[activePageIndex.value] = templateData.value
     if (pages.value.length > 1) {
       const paper = {
         paperSize: data.paperSize, orientation: data.orientation,
@@ -459,6 +484,8 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
           printElementType: { ...e.printElementType },
         })),
       }
+      // 收敛引用：templateData 被重新赋值后同步回 pages[0]
+      pages.value[activePageIndex.value] = templateData.value
     }
     pushHistory(getHistoryState())
   }
@@ -476,6 +503,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     pages.value.push(np)
     activePageIndex.value = pages.value.length - 1
     templateData.value = np
+    resetPageSelection()
     recordHistory()
   }
 
@@ -499,6 +527,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     if (i < activePageIndex.value) activePageIndex.value--
     else if (i === activePageIndex.value && activePageIndex.value >= pages.value.length) activePageIndex.value = pages.value.length - 1
     templateData.value = pages.value[activePageIndex.value]!
+    resetPageSelection()
     recordHistory()
   }
 
@@ -513,6 +542,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     pages.value.splice(to, 0, moved!)
     activePageIndex.value = to
     templateData.value = moved!
+    resetPageSelection()
     recordHistory()
   }
 

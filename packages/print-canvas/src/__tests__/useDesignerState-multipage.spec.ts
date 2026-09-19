@@ -76,4 +76,48 @@ describe('useDesignerState 多页面', () => {
     expect(s.activePageIndex.value).toBe(0)
     expect(s.templateData.value).toBe(s.pages.value[0])
   })
+
+  it('renamePage：改名后序列化保留、切页后不丢失', () => {
+    const s = useDesignerState({ initialTemplate: { version: 1, pages: [page('封面', 30), page('内容', 150)] } })
+    s.renamePage(0, '封面新名')
+    s.switchPage(1)
+    s.switchPage(0)
+    expect(s.templateData.value.name).toBe('封面新名')
+    const json = s.getTemplateJson()
+    if ('pages' in json) {
+      expect(json.pages[0].name).toBe('封面新名')
+    }
+  })
+
+  it('改纸张后重命名再保存：改名保留（引用收敛）', () => {
+    const s = useDesignerState({ initialTemplate: { version: 1, pages: [page('封面', 30), page('内容', 150)] } })
+    s.updateTemplateData({ ...s.templateData.value, paperSize: 'A5' })
+    s.renamePage(0, '封面新名')
+    const json = s.getTemplateJson()
+    if ('pages' in json) {
+      expect(json.pages[0].name).toBe('封面新名')
+      expect(json.pages[0].paperSize).toBe('A5')
+    }
+  })
+
+  it('跨页编辑后撤销：各页内容不被上一页快照污染', () => {
+    const s = useDesignerState({ initialTemplate: { version: 1, pages: [page('封面', 30), page('内容', 150)] } })
+    s.addElement('text') // 首页 +1 → 2 元素
+    s.switchPage(1)
+    s.addElement('text') // 第二页 +1 → 2 元素
+    s.undo()
+    expect(s.pages.value[0].elements.length).toBe(2) // 首页保留 2 元素
+    expect(s.pages.value[1].elements.length).toBe(1) // 第二页回退到原始 1 元素，未被首页快照污染
+  })
+
+  it('addPage 后撤销：恢复 pages 结构与 activePageIndex', () => {
+    const s = useDesignerState({ initialTemplate: { version: 1, pages: [page('封面', 30)] } })
+    s.addPage()
+    expect(s.pages.value).toHaveLength(2)
+    expect(s.activePageIndex.value).toBe(1)
+    s.undo()
+    expect(s.pages.value).toHaveLength(1)
+    expect(s.activePageIndex.value).toBe(0)
+    expect(s.templateData.value.name).toBe('封面')
+  })
 })

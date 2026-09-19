@@ -5,6 +5,10 @@ import type { TemplateData } from '@worm-vue3-print/core/designer'
 export interface HistoryState {
   elements: any[]
   templateData?: TemplateData
+  /** 多页面快照：整份页面数组（深拷贝） */
+  pages?: TemplateData[]
+  /** 多页面快照：录制时的激活页索引 */
+  activePageIndex?: number
 }
 
 export interface UseHistoryOptions {
@@ -42,20 +46,28 @@ export function useHistory(options?: UseHistoryOptions) {
 
   /** 深拷贝快照，避免外部对象突变污染历史 */
   function clone(state: HistoryState | undefined): HistoryState {
-    return {
+    const cloned: HistoryState = {
       elements: JSON.parse(JSON.stringify(state?.elements ?? [])),
       templateData: JSON.parse(JSON.stringify(state?.templateData ?? {})),
     }
+    if (state?.pages) {
+      cloned.pages = JSON.parse(JSON.stringify(state.pages))
+      if (state.activePageIndex !== undefined) cloned.activePageIndex = state.activePageIndex
+    }
+    return cloned
   }
 
   /** 增量快照：只记录元素变更，templateData 只记录非 elements 部分 */
   function cloneIncremental(state: HistoryState): HistoryState {
     const clonedElements = JSON.parse(JSON.stringify(state.elements))
+    const result: HistoryState = { elements: clonedElements }
+    if (state.pages) {
+      result.pages = JSON.parse(JSON.stringify(state.pages))
+      if (state.activePageIndex !== undefined) result.activePageIndex = state.activePageIndex
+    }
     const td = state.templateData
-    if (!td) return { elements: clonedElements }
-    return {
-      elements: clonedElements,
-      templateData: {
+    if (td) {
+      result.templateData = {
         paperSize: td.paperSize,
         orientation: td.orientation,
         margins: { ...td.margins },
@@ -67,8 +79,9 @@ export function useHistory(options?: UseHistoryOptions) {
         customHeight: td.customHeight,
         watermark: td.watermark ? { ...td.watermark } : undefined,
         guides: td.guides ? [...td.guides] : undefined,
-      },
+      }
     }
+    return result
   }
 
   function cloneState(state: HistoryState): HistoryState {
