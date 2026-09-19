@@ -1,6 +1,7 @@
 // web/src/components/print/composables/useDesignerState.ts
 // 设计器核心状态管理：模板数据/选择/历史/剪贴板/编组/键盘/序列化
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import type { MultiPageTemplateData } from '@worm-vue3-print/core'
 import type {
   RuntimeElement, ElementType, ElementZone, PrintBusinessField, TemplateData,
   TableSelection, PrintElementData,
@@ -22,7 +23,7 @@ import { useHistory, type HistoryState } from './useHistory'
 import { useKeyboard } from '@worm-vue3-print/core/designer'
 
 export interface DesignerStateOptions {
-  initialTemplate?: TemplateData
+  initialTemplate?: TemplateData | MultiPageTemplateData
   initialElements?: RuntimeElement[]
   initialFields?: PrintBusinessField[]
 }
@@ -76,6 +77,37 @@ export function toRuntimePool(data: TemplateData): TemplateData {
   }
 }
 
+/** 解析初始模板为运行时页面池：多页 wrapper 展开，单页归一为单元素数组 */
+function resolveInitialPages(initial?: TemplateData | MultiPageTemplateData): TemplateData[] {
+  if (!initial) return [toRuntimePool(createDefaultTemplate())]
+  const list = Array.isArray((initial as MultiPageTemplateData).pages)
+    ? (initial as MultiPageTemplateData).pages
+    : [initial as TemplateData]
+  return list.length ? list.map(p => toRuntimePool(normalizeTemplateUnits(p))) : [toRuntimePool(createDefaultTemplate())]
+}
+
+/** 单页运行时池序列化回三区模板 JSON（按 zone 拆回，补 id/type） */
+function serializePage(page: TemplateData): TemplateData {
+  const all = page.elements as RuntimeElement[]
+  const ser = (zone: ElementZone) => all
+    .filter(e => (e.zone || 'content') === zone)
+    .map(e => ({ id: e.id, type: e.printElementType.type, options: { ...e.options }, printElementType: { ...e.printElementType } }))
+  return {
+    unit: 'mm' as const, ...page,
+    header: { ...page.header, elements: ser('header') },
+    footer: { ...page.footer, elements: ser('footer') },
+    firstPageOverlay: {
+      ...page.firstPageOverlay,
+      elements: (page.firstPageOverlay?.elements ?? []).map(e => ({
+        id: e.id || generateId(), type: e.printElementType?.type || 'text',
+        options: { ...e.options }, printElementType: { ...e.printElementType },
+      })),
+    },
+    elements: ser('content'),
+    guides: [...(page.guides ?? [])],
+  }
+}
+
 export function useDesignerState(options: DesignerStateOptions = {}) {
   const scale = ref(100)
   const showRuler = ref(true)
@@ -84,10 +116,22 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
   // 设计态下无边框表格单元格的虚拟虚线边框开关（默认开启）
   const showTableGhostBorder = ref(true)
 
-  // 单一模板状态（三区元素归一化进运行时元素池）
-  const templateData = ref<TemplateData>(
-    toRuntimePool(options.initialTemplate || createDefaultTemplate())
-  )
+  // 多页面模板：pages 列表 + 当前激活页
+  const pages = ref<TemplateData[]>(resolveInitialPages(options.initialTemplate))
+  const activePageIndex = ref(0)
+  const templateData = ref<TemplateData>(pages.value[0] ?? createDefaultTemplate())
+
+  function flushActivePage() {
+    pages.value[activePageIndex.value] = templateData.value
+  }
+
+  function switchPage(i: number) {
+    if (i < 0 || i >= pages.value.length) return
+    flushActivePage()
+    activePageIndex.value = i
+    templateData.value = pages.value[i]!
+    clearSelection()
+  }
 
   // 内容区主体元素（快捷访问）
   // 优化：setter 直接修改 elements 属性，避免展开替换整个 templateData 触发全量通知
@@ -382,44 +426,28 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
 
   function updateTemplateData(data: TemplateData) {
     templateData.value = { ...data }
+    if (pages.value.length > 1) {
+      const paper = {
+        paperSize: data.paperSize, orientation: data.orientation,
+        customWidth: data.customWidth, customHeight: data.customHeight,
+      }
+      for (const p of pages.value) Object.assign(p, paper)
+    }
     recordHistory()
   }
 
-  /** 当前设计器状态序列化为模板 JSON（单一出口，按 zone 拆回三区，保留 id/type 供渲染服务使用） */
-  function getTemplateJson(): TemplateData {
-    const all = elements.value
-    const ser = (zone: ElementZone) => all
-      .filter(e => (e.zone || 'content') === zone)
-      .map(e => ({
-        id: e.id,
-        type: e.printElementType.type,
-        options: { ...e.options },
-        printElementType: { ...e.printElementType },
-      }))
-    return {
-      unit: 'mm' as const,
-      ...templateData.value,
-      header: { ...templateData.value.header, elements: ser('header') },
-      footer: { ...templateData.value.footer, elements: ser('footer') },
-      // 首页叠加层也需补 id/type
-      firstPageOverlay: {
-        ...templateData.value.firstPageOverlay,
-        elements: templateData.value.firstPageOverlay.elements.map(e => ({
-          id: e.id || generateId(),
-          type: e.printElementType?.type || 'text',
-          options: { ...e.options },
-          printElementType: { ...e.printElementType },
-        })),
-      },
-      elements: ser('content'),
-      guides: [...(templateData.value.guides ?? [])],
-    }
+  /** 当前设计器状态序列化为模板 JSON（单一出口：多页出 wrapper，单页出裸值） */
+  function getTemplateJson(): TemplateData | MultiPageTemplateData {
+    flushActivePage()
+    if (pages.value.length <= 1) return serializePage(pages.value[0]!)
+    return { version: 1, pages: pages.value.map(serializePage) }
   }
 
-  /** 加载模板数据（三区合并进运行时元素池；旧数据按 pt 迁移为 mm） */
-  function loadTemplate(data: TemplateData, els?: RuntimeElement[]) {
-    const migrated = normalizeTemplateUnits(data)
-    templateData.value = toRuntimePool(migrated)
+  /** 加载模板数据（多页 wrapper 展开；三区合并进运行时元素池；旧数据按 pt 迁移为 mm） */
+  function loadTemplate(data: TemplateData | MultiPageTemplateData, els?: RuntimeElement[]) {
+    pages.value = resolveInitialPages(data)
+    activePageIndex.value = 0
+    templateData.value = pages.value[0]!
     if (els) {
       templateData.value = {
         ...templateData.value,
@@ -433,6 +461,59 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
       }
     }
     pushHistory(getHistoryState())
+  }
+
+  /** 新增页面：继承当前页纸张，激活并定位到新页 */
+  function addPage() {
+    flushActivePage()
+    const base = pages.value[activePageIndex.value] ?? createDefaultTemplate()
+    const np = toRuntimePool({
+      ...createDefaultTemplate(),
+      paperSize: base.paperSize, orientation: base.orientation,
+      customWidth: base.customWidth, customHeight: base.customHeight,
+      name: `页面 ${pages.value.length + 1}`,
+    })
+    pages.value.push(np)
+    activePageIndex.value = pages.value.length - 1
+    templateData.value = np
+    recordHistory()
+  }
+
+  /** 复制当前页：重建元素 id 避免同文档冲突，插入当前页之后并激活 */
+  function duplicatePage() {
+    flushActivePage()
+    const src = pages.value[activePageIndex.value]!
+    const cp: TemplateData = JSON.parse(JSON.stringify(src))
+    cp.name = `${src.name ?? `页面 ${activePageIndex.value + 1}`} 副本`
+    cp.elements = cp.elements.map((e: any) => ({ ...e, id: generateId() }))
+    cp.firstPageOverlay = { ...cp.firstPageOverlay, elements: (cp.firstPageOverlay?.elements ?? []).map((e: any) => ({ ...e, id: generateId() })) }
+    pages.value.splice(activePageIndex.value + 1, 0, cp)
+    switchPage(activePageIndex.value + 1)
+    recordHistory()
+  }
+
+  function deletePage(i: number) {
+    if (pages.value.length <= 1) return
+    flushActivePage()
+    pages.value.splice(i, 1)
+    if (i < activePageIndex.value) activePageIndex.value--
+    else if (i === activePageIndex.value && activePageIndex.value >= pages.value.length) activePageIndex.value = pages.value.length - 1
+    templateData.value = pages.value[activePageIndex.value]!
+    recordHistory()
+  }
+
+  function renamePage(i: number, name: string) {
+    if (pages.value[i]) pages.value[i].name = name
+  }
+
+  function movePage(from: number, to: number) {
+    if (from === to) return
+    flushActivePage()
+    const [moved] = pages.value.splice(from, 1)
+    pages.value.splice(to, 0, moved!)
+    activePageIndex.value = to
+    templateData.value = moved!
+    recordHistory()
   }
 
   // 记录设计器初始状态快照
@@ -450,6 +531,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
   return {
     scale, showRuler, showGrid, snapToGrid, showTableGhostBorder,
     templateData, elements, fields,
+    pages, activePageIndex, switchPage, addPage, duplicatePage, deletePage, renamePage, movePage,
     selectedIds, selectedElements, selectedElement, select, selectElement, clearSelection, selectAll,
     previewIds, setPreview, clearPreview, commitPreview,
     hasClipboard, copy, paste, cutSelected,
