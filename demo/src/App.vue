@@ -76,7 +76,7 @@ import {
   DEFAULT_DEMO_DATA,
   createDefaultTemplate,
 } from '@worm-vue3-print/canvas'
-import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField, TemplateData, MultiPageTemplateData } from '@worm-vue3-print/canvas'
 import type { PrintFontDeclaration } from '@worm-vue3-print/core'
 import PrintOutputDialog from './components/PrintOutputDialog.vue'
 import rawTemplate from './template-purchase-receipt.json'
@@ -101,7 +101,7 @@ const FONT_BASE_URL = (import.meta.env.VITE_FONT_BASE_URL as string | undefined)
 const printDialogVisible = ref(false)
 
 // 页面默认空白；真实模板数据（模板 106977040967000141 的 elements 已存在本地 JSON）在点击「加载默认布局」时载入
-const templateData = ref<TemplateData>(createDefaultTemplate())
+const templateData = ref<TemplateData | MultiPageTemplateData>(createDefaultTemplate())
 const fields = ref<PrintBusinessField[]>(PURCHASE_RECEIPT_FIELDS)
 
 /**
@@ -197,13 +197,22 @@ function onExportTemplate() {
   downloadTemplateFile(JSON.stringify(json), `template-${Date.now()}.json`)
 }
 
-/** 轻量结构校验：仅检查模板关键字段是否存在 */
-function isTemplateLike(data: unknown): data is Record<string, unknown> {
-  if (!data || typeof data !== 'object') return false
-  const t = data as Record<string, unknown>
+/** 单页模板关键字段校验（paperSize/margins/elements 三要素） */
+function isSingleTemplateLike(t: Record<string, unknown>): boolean {
   return typeof t.paperSize === 'string'
     && !!t.margins && typeof t.margins === 'object'
     && Array.isArray(t.elements)
+}
+
+/** 轻量结构校验：接受单页模板，或多页面 wrapper（{ pages: [...] }，每页为完整单页模板） */
+function isTemplateLike(data: unknown): data is Record<string, unknown> {
+  if (!data || typeof data !== 'object') return false
+  const t = data as Record<string, unknown>
+  if (isSingleTemplateLike(t)) return true
+  const pages = t.pages
+  return Array.isArray(pages)
+    && pages.length > 0
+    && pages.every(p => !!p && typeof p === 'object' && isSingleTemplateLike(p as Record<string, unknown>))
 }
 
 /** 导入：读取本地 JSON 文件，校验通过后回写画布 */
@@ -217,10 +226,10 @@ function onImportTemplate(event: Event) {
     try {
       const data = JSON.parse(String(reader.result))
       if (!isTemplateLike(data)) {
-        alert('模板文件结构不合法：缺少 paperSize / margins / elements 等关键字段')
+        alert('模板文件结构不合法：缺少 paperSize / margins / elements 等关键字段（或 pages 页列表内缺少这些字段）')
         return
       }
-      templateData.value = data as unknown as TemplateData
+      templateData.value = data as unknown as TemplateData | MultiPageTemplateData
     } catch {
       alert('模板文件读取失败，请确认是有效的 JSON 文件')
     }
