@@ -34,7 +34,7 @@ function pageLabel(p: TemplateData, index: number): string {
 export function normalizeTemplate(
   templateJson: TemplateData | MultiPageTemplateData,
 ): TemplateData[] {
-  const pages = isMultiPageTemplateData(templateJson)
+  const pages = isMultiPageTemplate(templateJson)
     ? templateJson.pages
     : [templateJson]
 
@@ -61,8 +61,11 @@ export function normalizeTemplate(
   return pages
 }
 
-function isMultiPageTemplateData(x: TemplateData | MultiPageTemplateData): x is MultiPageTemplateData {
-  return Array.isArray((x as MultiPageTemplateData).pages)
+/** 是否多页面模板 wrapper（含 pages 数组）；与 normalizeTemplate 的判据一致 */
+export function isMultiPageTemplate(
+  templateJson: TemplateData | MultiPageTemplateData,
+): templateJson is MultiPageTemplateData {
+  return Array.isArray((templateJson as MultiPageTemplateData).pages)
 }
 
 /**

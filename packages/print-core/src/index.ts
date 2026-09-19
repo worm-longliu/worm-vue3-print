@@ -98,9 +98,16 @@ export type {
   RenderRow,
   RenderCell,
   RenderRequest,
+  MultiPageTemplateData,
   CodeRenderer,
   CodeRenderOptions,
 } from './render/types.js'
 
 // 打印管线（纯 TS，Node 与浏览器都可加载；DOM 相关执行器在 ./browser 与 ./node 子路径）
 export * from './print/index.js'
+
+// 多页面模板（固定顺序版式组合）
+export { normalizeTemplate, mergeFontDeclarations, composeMultiPageDocument, isMultiPageTemplate } from './print/multi-template.js'
+export type { MultiPageCopyInput, MultiPageDocument } from './print/multi-template.js'
+export { buildBasePageCss, buildPageGeometryCss, buildPageRuleCss } from './render/css-builder.js'
+export type { RenderFinalPagesOptions } from './render/html-generator.js'

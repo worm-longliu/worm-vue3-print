@@ -1,5 +1,5 @@
 import type { CodeRenderOptions } from '../render/types.js'
-import type { CodeRenderer, PageLayout, TemplateData } from '../render/types.js'
+import type { CodeRenderer, MultiPageTemplateData, PageLayout, TemplateData } from '../render/types.js'
 import type { PrintDataInput } from './normalize-print-data.js'
 
 /** 物理尺寸（毫米）；三端与协议的公共纸尺寸表示 */
@@ -56,8 +56,8 @@ export interface CodeSpec {
 }
 
 export interface PrintJob {
-  /** 模板 JSON（设计器 TemplateData 结构兼容） */
-  templateJson: TemplateData
+  /** 模板 JSON（设计器 TemplateData 结构兼容；含 { pages } 多页面模板） */
+  templateJson: TemplateData | MultiPageTemplateData
   /** 业务数据：对象=单份；非空对象数组=按数组长度批量合并为一个作业 */
   printData?: PrintDataInput
   /** 相对路径图片基址 */

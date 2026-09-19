@@ -34,4 +34,14 @@ describe('core 根入口的打印 API', () => {
     expect(core.TILE_DEFAULTS.sheetPaperSize).toBe('A4')
     expect(new core.TilingError('COLUMNS_OVERFLOW', 'x')).toBeInstanceOf(Error)
   })
+
+  it('多页面模板 API 从根入口导出', async () => {
+    const core = await import('../../index.js')
+    expect(typeof core.normalizeTemplate).toBe('function')
+    expect(typeof core.composeMultiPageDocument).toBe('function')
+    expect(typeof core.isMultiPageTemplate).toBe('function')
+    expect(typeof core.buildBasePageCss).toBe('function')
+    expect(typeof core.buildPageGeometryCss).toBe('function')
+    expect(typeof core.buildPageRuleCss).toBe('function')
+  })
 })

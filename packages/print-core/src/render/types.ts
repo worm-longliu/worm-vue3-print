@@ -206,7 +206,8 @@ export interface CodeRenderer {
 // ─── 渲染请求 / 响应 ───
 
 export interface RenderRequest {
-  templateJson: TemplateData
+  /** 模板 JSON：单模板或 { pages } 多页面模板 */
+  templateJson: TemplateData | MultiPageTemplateData
   /** 业务数据：对象=单份；非空对象数组=批量（数组长度即份数，上限 500） */
   printData?: PrintDataInput
   /** 服务端对外访问 base URL，用于把 /docfiles/... 等相对路径图片拼接为完整地址 */
