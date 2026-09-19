@@ -1,5 +1,5 @@
 <template>
-  <div class="tiling-config">
+  <div class="tiling-config" data-test="tiling-config">
     <h3 class="pd-divider">拼版打印</h3>
     <p class="pd-hint">把标签按「列 × 行」铺到一张大纸上批量打印</p>
 

@@ -108,6 +108,7 @@
         :table-selection="tableSelection"
         :record-history="recordHistory"
         :collapsed="rightCollapsed"
+        :multi-page="pages.length > 1"
         v-model:active-tab="activePropertyTab"
         @delete-element="onDeleteElement"
         @update:template-data="onTemplateDataChanged"

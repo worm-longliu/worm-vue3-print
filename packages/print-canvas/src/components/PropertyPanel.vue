@@ -114,6 +114,7 @@
           />
 
           <TilingConfig
+            v-if="!multiPage"
             :model-value="templateData?.tiling"
             :template-data="templateData"
             @update:model-value="emitUpdate({ tiling: $event })"
@@ -189,6 +190,8 @@ const props = defineProps<{
   tableSelection?: TableSelection | null
   recordHistory?: () => void
   collapsed: boolean
+  /** 多页模式：隐藏拼版配置并禁用连续纸纸型 */
+  multiPage?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -198,17 +201,21 @@ const emit = defineEmits<{
   'toggle-collapse': []
 }>()
 
-/** 纸张下拉分组：按 PAPER_PRESETS 的 group 聚合，保持预设声明顺序 */
-const paperPresetGroups: { group: string; items: { key: string; label: string }[] }[] = []
-for (const [key, preset] of Object.entries(PAPER_PRESETS)) {
-  const group = preset.group ?? '其他'
-  let bucket = paperPresetGroups.find(g => g.group === group)
-  if (!bucket) {
-    bucket = { group, items: [] }
-    paperPresetGroups.push(bucket)
+/** 纸张下拉分组：按 PAPER_PRESETS 的 group 聚合，保持预设声明顺序；多页时过滤连续纸（小票纸/热敏卷纸） */
+const paperPresetGroups = computed(() => {
+  const groups: { group: string; items: { key: string; label: string }[] }[] = []
+  for (const [key, preset] of Object.entries(PAPER_PRESETS)) {
+    if (props.multiPage && isContinuousPaperSize(key)) continue
+    const group = preset.group ?? '其他'
+    let bucket = groups.find(g => g.group === group)
+    if (!bucket) {
+      bucket = { group, items: [] }
+      groups.push(bucket)
+    }
+    bucket.items.push({ key, label: preset.label ?? key })
   }
-  bucket.items.push({ key, label: preset.label ?? key })
-}
+  return groups
+})
 const searchText = ref('')
 
 const isTextType = computed(() => {
@@ -305,8 +312,8 @@ function onImageUploadSuccess(url: string) {
 // ─── 页面属性模型（直接读写 templateData） ───
 
 const paperSizeModel = computed(() => props.templateData?.paperSize || 'A4')
-/** 连续纸（含小票纸）：强制纵向、纸宽可调、出纸高度按内容推导 */
-const continuousPaper = computed(() => isContinuousPaperSize(paperSizeModel.value))
+/** 连续纸（含小票纸）：强制纵向、纸宽可调、出纸高度按内容推导；多页模式不可用 */
+const continuousPaper = computed(() => !props.multiPage && isContinuousPaperSize(paperSizeModel.value))
 const orientationModel = computed(() => props.templateData?.orientation || 'portrait')
 
 const pageBackgroundModel = computed({
