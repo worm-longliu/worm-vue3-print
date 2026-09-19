@@ -7,6 +7,9 @@
 // ─── 模板模型与宿主能力契约类型 ───
 export * from './types.js'
 
+// ─── 文字溢出显示形式的判定（与渲染端共用同一份，避免设计态/出纸两套规则） ───
+export * from '../render/text-fit.js'
+
 // ─── 通用工具 ───
 export * from './utils/units.js'
 export * from './utils/scale.js'

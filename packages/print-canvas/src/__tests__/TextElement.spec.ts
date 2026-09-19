@@ -44,8 +44,7 @@ describe('TextElement 对齐渲染（设计器与打印端一致）', () => {
   })
 })
 
-describe('TextElement 垂直对齐（verticalAlign 显式设置时启用）', () => {
-  it('verticalAlign=middle 且 textAlign=center：flex 垂直居中 + 水平居中', () => {
+describe('TextElement 垂直对齐（verticalAlign 显式设置时启用）', () => {  it('verticalAlign=middle 且 textAlign=center：flex 垂直居中 + 水平居中', () => {
     const wrapper = mount(TextElement, {
       props: { element: makeElement({ textAlign: 'center', verticalAlign: 'middle', formatter: '文本' }), designMode: true },
     })
@@ -70,5 +69,48 @@ describe('TextElement 垂直对齐（verticalAlign 显式设置时启用）', ()
       props: { element: makeElement({ verticalAlign: 'top', formatter: '文本' }), designMode: true },
     })
     expect(styleOf(wrapper)).toContain('align-items:flex-start')
+  })
+})
+
+describe('TextElement 文字溢出显示形式（与打印端同一判定）', () => {
+  it('截断（默认）：锁高度并裁剪，不带自动缩小标记', () => {
+    const wrapper = mount(TextElement, {
+      props: { element: makeElement({ formatter: '文本' }), designMode: true },
+    })
+    const style = styleOf(wrapper)
+    expect(style).toContain('height:100%')
+    expect(style).toContain('overflow:hidden')
+    expect(wrapper.attributes('data-fit')).toBeUndefined()
+  })
+
+  it('截断 + 不换行：单行省略号', () => {
+    const wrapper = mount(TextElement, {
+      props: { element: makeElement({ formatter: '文本', wordWrap: false }), designMode: true },
+    })
+    const style = styleOf(wrapper)
+    expect(style).toContain('white-space:nowrap')
+    expect(style).toContain('text-overflow:ellipsis')
+  })
+
+  it('自适应行高：放开高度与裁剪，由内容撑开', () => {
+    const wrapper = mount(TextElement, {
+      props: { element: makeElement({ formatter: '文本', textFit: 'autoHeight' }), designMode: true },
+    })
+    const style = styleOf(wrapper)
+    expect(style).toContain('height:auto')
+    expect(style).toContain('overflow:visible')
+  })
+
+  it('自动缩小：带 shrink 标记与基准/下限字号，供画布适配', () => {
+    const wrapper = mount(TextElement, {
+      props: {
+        element: makeElement({ formatter: '文本', fontSize: 12, textFit: 'shrink', shrinkMinFontSize: 8 }),
+        designMode: true,
+      },
+    })
+    expect(wrapper.attributes('data-fit')).toBe('shrink')
+    expect(wrapper.attributes('data-fit-base')).toBe('12')
+    expect(wrapper.attributes('data-fit-min')).toBe('8')
+    expect(styleOf(wrapper)).toContain('overflow:hidden')
   })
 })

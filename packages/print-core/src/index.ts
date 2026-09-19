@@ -51,8 +51,27 @@ export type { GenerateOptions } from './render/html-generator.js'
 export { buildPageCss, elementPositionStyle, mm } from './render/css-builder.js'
 export { paginate, tableDesignBottom } from './render/pagination-engine.js'
 export { evaluateTemplate, safeEval } from './render/expression-eval.js'
-export { getPaperDimensions, PAPER_DIMENSIONS, isContinuousPaper } from './render/types.js'
+export {
+  getPaperDimensions,
+  PAPER_DIMENSIONS,
+  isContinuousPaper,
+  isContinuousPaperSize,
+} from './render/types.js'
 export { composeContinuousHeight, MIN_CONTINUOUS_HEIGHT_MM } from './render/continuous-paper.js'
+export {
+  DEFAULT_SHRINK_MIN_FONT_SIZE_PT,
+  MIN_SHRINK_FONT_SIZE_PT,
+  resolveElementTextFit,
+  resolveCellTextFit,
+  resolveShrinkMinFontSize,
+  roundFontSize,
+  floorFontSize,
+  cellFitKey,
+  parseCellFitKey,
+  cellFitCapMm,
+} from './render/text-fit.js'
+export type { TextFit } from './designer/types.js'
+export type { FitFontSize, CellFitRowKind } from './render/text-fit.js'
 export {
   WATERMARK_DEFAULTS,
   WATERMARK_DENSITY_PRESETS,
@@ -71,6 +90,8 @@ export type {
   TemplateData as PrintTemplateData,
   TemplateElement as PrintTemplateElement,
   PaperSize,
+  ContinuousPaperSize,
+  SheetPaperSize,
   PageLayout,
   PageSection,
   MeasuredElement,

@@ -15,3 +15,5 @@ export {
   readContentBottom,
   renderCodes,
 } from './dom-executor.js'
+/** 自动缩小：applyTextFit 处理整个文档；fitTextNode 处理单个节点（设计器画布复用） */
+export { applyTextFit, fitTextNode } from './text-fit-dom.js'

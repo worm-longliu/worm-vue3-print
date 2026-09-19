@@ -6,7 +6,21 @@ import type { PrintDataInput } from '../print/normalize-print-data.js'
 
 // ─── 纸张 ───
 
-export type PaperSize = 'A4' | 'A3' | 'A5' | 'Letter' | 'Legal' | 'CUSTOM' | 'CONTINUOUS'
+export type PaperSize =
+  | 'A4' | 'A3' | 'A5' | 'Letter' | 'Legal'
+  // 针式打印纸（241 系列）：全等分（整张）/ 二等分 / 三等分
+  | 'DOT_FULL' | 'DOT_HALF' | 'DOT_THIRD'
+  // 标签纸
+  | 'LABEL_80X60' | 'LABEL_60X40' | 'LABEL_40X30'
+  // 小票纸（热敏卷纸）：宽度即纸宽，出纸高度按内容推导
+  | 'THERMAL_57' | 'THERMAL_80' | 'THERMAL_110'
+  | 'CUSTOM' | 'CONTINUOUS'
+
+/** 连续纸纸型：出纸高度按渲染内容推导 */
+export type ContinuousPaperSize = 'CONTINUOUS' | 'THERMAL_57' | 'THERMAL_80' | 'THERMAL_110'
+
+/** 固定尺寸纸型：纸面确定，可作拼版目标纸等需要确定纸面的场景 */
+export type SheetPaperSize = Exclude<PaperSize, ContinuousPaperSize>
 
 /** 纸张尺寸映射（mm） */
 export const PAPER_DIMENSIONS: Record<PaperSize, { width: number; height: number }> = {
@@ -15,9 +29,30 @@ export const PAPER_DIMENSIONS: Record<PaperSize, { width: number; height: number
   A5: { width: 148, height: 210 },
   Letter: { width: 216, height: 279 },
   Legal: { width: 216, height: 356 },
+  // 针式打印纸（241 系列等分）：11 英寸整张 279.4mm 按等分取整
+  DOT_FULL: { width: 241, height: 279.4 },
+  DOT_HALF: { width: 241, height: 139.7 },
+  DOT_THIRD: { width: 241, height: 93.1 },
+  // 标签纸
+  LABEL_80X60: { width: 80, height: 60 },
+  LABEL_60X40: { width: 60, height: 40 },
+  LABEL_40X30: { width: 40, height: 30 },
+  // 小票纸（热敏卷纸）：高度仅为设计画布高度，出纸按内容推导
+  THERMAL_57: { width: 57, height: 297 },
+  THERMAL_80: { width: 80, height: 297 },
+  THERMAL_110: { width: 110, height: 297 },
   CUSTOM: { width: 210, height: 297 },
   // 连续纸：默认 80mm 热敏；高度仅为设计画布高度，出纸按内容推导
   CONTINUOUS: { width: 80, height: 297 },
+}
+
+const CONTINUOUS_PAPER_SIZES: ReadonlySet<string> = new Set<ContinuousPaperSize>([
+  'CONTINUOUS', 'THERMAL_57', 'THERMAL_80', 'THERMAL_110',
+])
+
+/** 纸型是否连续纸（小票纸/热敏卷纸）：出纸高度按渲染内容推导 */
+export function isContinuousPaperSize(paperSize: string): boolean {
+  return CONTINUOUS_PAPER_SIZES.has(paperSize)
 }
 
 // ─── 模板数据模型（PRD 3.2 节） ───
@@ -25,9 +60,9 @@ export const PAPER_DIMENSIONS: Record<PaperSize, { width: number; height: number
 export interface TemplateData {
   paperSize: PaperSize
   orientation: 'portrait' | 'landscape'
-  /** 自定义纸张宽度（mm），paperSize='CUSTOM' 时生效；CONTINUOUS 时为纸宽（默认 80） */
+  /** 自定义纸张宽度（mm），paperSize='CUSTOM' 时生效；连续纸（含小票纸）时为纸宽，缺省取预设纸宽 */
   customWidth?: number
-  /** 自定义纸张高度（mm），仅 paperSize='CUSTOM' 时生效；CONTINUOUS 时不使用（固定 297 设计画布，出纸按内容推导） */
+  /** 自定义纸张高度（mm），仅 paperSize='CUSTOM' 时生效；连续纸（含小票纸）时仅作设计画布高度（缺省 297，出纸按内容推导） */
   customHeight?: number
   /** 页面（纸张）背景色；未设置时默认白色 */
   pageBackground?: string
@@ -125,6 +160,12 @@ export interface RenderCell {
   borders?: RenderCellBorders
   padding?: number        // mm
   wordWrap?: boolean
+  /** 文字溢出显示形式；缺省按「不换行→截断，否则自适应行高」判定 */
+  textFit?: string
+  /** 自动缩小（textFit='shrink'）的下限字号（pt）；缺省 6pt */
+  shrinkMinFontSize?: number
+  /** 自动缩小求得的最终字号（pt）：测量趟算出后回写，最终趟据此渲染 */
+  fittedFontSize?: number
 }
 
 /** 绑定后的渲染行，存入 options._renderRows */
@@ -232,7 +273,11 @@ export interface PageSection {
 // ─── 纸张辅助 ───
 
 /**
- * 获取纸张物理尺寸（考虑方向；CONTINUOUS 强制纵向，宽度取 customWidth，默认 80）。
+ * 获取纸张物理尺寸（考虑方向）。
+ * - CUSTOM：宽高取 customWidth/customHeight，缺省回退 A4；
+ * - 连续纸（小票纸/热敏卷纸）：强制纵向，宽度取 customWidth（缺省取预设纸宽），
+ *   高度仅为设计画布高度（取 customHeight，缺省取预设值），出纸高度由内容推导；
+ * - 其余预设：取 PAPER_DIMENSIONS，横向时宽高互换。
  * 参数刻意只用纸张相关字段——不需要 elements，故设计器侧与渲染侧模板均可直接传入。
  */
 export function getPaperDimensions(template: {
@@ -241,21 +286,21 @@ export function getPaperDimensions(template: {
   customWidth?: number
   customHeight?: number
 }): { width: number; height: number } {
-  const base =
-    template.paperSize === 'CUSTOM' || template.paperSize === 'CONTINUOUS'
-      ? {
-          width: template.customWidth ?? (template.paperSize === 'CONTINUOUS' ? 80 : 210),
-          height: template.customHeight ?? 297,
-        }
-      : PAPER_DIMENSIONS[template.paperSize]
+  const continuous = isContinuousPaperSize(template.paperSize)
+  const base = template.paperSize === 'CUSTOM' || continuous
+    ? {
+        width: template.customWidth ?? PAPER_DIMENSIONS[template.paperSize].width,
+        height: template.customHeight ?? PAPER_DIMENSIONS[template.paperSize].height,
+      }
+    : PAPER_DIMENSIONS[template.paperSize]
   // 连续纸只有纵向
-  if (template.orientation === 'landscape' && template.paperSize !== 'CONTINUOUS') {
+  if (template.orientation === 'landscape' && !continuous) {
     return { width: base.height, height: base.width }
   }
   return { ...base }
 }
 
-/** 是否连续纸（热敏/标签）：出纸高度按渲染内容推导 */
+/** 是否连续纸（热敏/小票/标签卷纸）：出纸高度按渲染内容推导 */
 export function isContinuousPaper(template: { paperSize: string }): boolean {
-  return template.paperSize === 'CONTINUOUS'
+  return isContinuousPaperSize(template.paperSize)
 }

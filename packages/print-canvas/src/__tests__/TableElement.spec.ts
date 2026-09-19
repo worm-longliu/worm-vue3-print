@@ -341,3 +341,84 @@ describe('TableElement 列宽拖拽', () => {
     document.dispatchEvent(new MouseEvent('mouseup'))
   })
 })
+
+describe('TableElement 单元格文字溢出显示形式', () => {
+  /** 单列单行表格：行高 8mm、默认内边距 1mm → 可用内容高度 6mm */
+  function makeFitElement(cell: Record<string, any> = {}): RuntimeElement {
+    return {
+      id: 'el-table-fit',
+      options: {
+        left: 0,
+        top: 0,
+        width: 50,
+        height: 8,
+        tableColWidths: [50],
+        tableDefaultFontSize: 10,
+        tableDefaultPadding: 1,
+        tableRows: [{
+          id: 'row-1',
+          type: 'header',
+          height: 8,
+          cells: [{ id: 'cell-1', formatter: '内容', ...cell }],
+        }],
+      },
+      printElementType: { type: 'table', title: '表格' },
+    }
+  }
+
+  function mountFitTable(element: RuntimeElement) {
+    return mount(TableElement, {
+      props: { element, designMode: true },
+      global: {
+        provide: {
+          [TABLE_EDIT_KEY]: {
+            tableSelection: ref<TableSelection | null>(null),
+            setTableSelection: () => {},
+            recordHistory: () => {},
+            maxTableWidth: ref(Infinity),
+          },
+        },
+      },
+    })
+  }
+
+  it('自适应行高（默认）：不加定高容器，由行自身撑高', () => {
+    const wrapper = mountFitTable(makeFitElement())
+    expect(wrapper.find('.cell-fit').exists()).toBe(false)
+    expect(wrapper.find('td').text()).toBe('内容')
+  })
+
+  it('截断：内容包定高容器（max-height = 可用高度）并裁剪', () => {
+    const wrapper = mountFitTable(makeFitElement({ textFit: 'clip' }))
+    const box = wrapper.find('.cell-fit')
+    expect(box.exists()).toBe(true)
+    const style = (box.attributes('style') ?? '').replace(/\s/g, '')
+    expect(style).toContain('max-height:6mm')
+    expect(style).toContain('overflow:hidden')
+    expect(box.attributes('data-fit')).toBeUndefined()
+  })
+
+  it('截断 + 不换行：单行省略号', () => {
+    const wrapper = mountFitTable(makeFitElement({ textFit: 'clip', wordWrap: false }))
+    const style = (wrapper.find('.cell-fit').attributes('style') ?? '').replace(/\s/g, '')
+    expect(style).toContain('white-space:nowrap')
+    expect(style).toContain('text-overflow:ellipsis')
+  })
+
+  it('自动缩小：带行定位标记与基准字号，供画布二分适配', () => {
+    const wrapper = mountFitTable(makeFitElement({ textFit: 'shrink' }))
+    const box = wrapper.find('.cell-fit')
+    expect(box.attributes('data-fit')).toBe('shrink')
+    expect(box.attributes('data-fit-base')).toBe('10')
+    expect(box.attributes('data-fit-min')).toBe('6')
+    // 可用高度 6mm 由同一函数换算（与打印端 data-fit-mm 同口径）
+    expect(box.attributes('data-fit-mm')).toBe('6')
+  })
+
+  it('单元格级字号优先作为自动缩小基准', () => {
+    const wrapper = mountFitTable(makeFitElement({ textFit: 'shrink', fontSize: 14, shrinkMinFontSize: 9 }))
+    const box = wrapper.find('.cell-fit')
+    expect(box.attributes('data-fit-base')).toBe('14')
+    expect(box.attributes('data-fit-min')).toBe('9')
+  })
+})

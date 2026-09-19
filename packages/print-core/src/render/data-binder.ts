@@ -200,6 +200,8 @@ function makeRenderRow(
       borders: cell.borders,
       padding: cell.padding,
       wordWrap: cell.wordWrap,
+      textFit: cell.textFit,
+      shrinkMinFontSize: cell.shrinkMinFontSize,
     })),
   }
 }

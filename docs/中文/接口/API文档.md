@@ -49,8 +49,13 @@ import {
   generateHtml, buildPageCss, elementPositionStyle, mm,
   paginate, tableDesignBottom,
   evaluateTemplate, safeEval,
-  getPaperDimensions, PAPER_DIMENSIONS, isContinuousPaper,
+  getPaperDimensions, PAPER_DIMENSIONS, isContinuousPaper, isContinuousPaperSize,
   composeContinuousHeight, MIN_CONTINUOUS_HEIGHT_MM,
+  // 文字溢出显示形式（截断 / 自动缩小 / 自适应行高）
+  resolveElementTextFit, resolveCellTextFit, resolveShrinkMinFontSize,
+  cellFitCapMm, cellFitKey, parseCellFitKey,
+  DEFAULT_SHRINK_MIN_FONT_SIZE_PT, MIN_SHRINK_FONT_SIZE_PT,
+  roundFontSize, floorFontSize, applyTextFitSizes,
   // 水印
   WATERMARK_DEFAULTS, WATERMARK_DENSITY_PRESETS, PX_PER_MM, MM_PER_PX,
   isWatermarkVisible, resolveWatermarkText, formatTimestamp,
@@ -67,8 +72,12 @@ import {
 | `paginate(...)` / `tableDesignBottom(...)` | 分页算法、表格设计态底边计算 |
 | `evaluateTemplate(text, ctx)` | 渲染管线模板求值（含 SUM/AVG 等聚合预处理，失败保留原文） |
 | `safeEval(expr, ctx)` | 受限沙箱内求值单个表达式 |
-| `getPaperDimensions(template)` / `PAPER_DIMENSIONS` / `isContinuousPaper({ paperSize })` | 纸张解析 |
+| `getPaperDimensions(template)` / `PAPER_DIMENSIONS` / `isContinuousPaper({ paperSize })` / `isContinuousPaperSize(paperSize)` | 纸张解析；连续纸判定（含小票纸） |
 | `composeContinuousHeight(...)` / `MIN_CONTINUOUS_HEIGHT_MM` | 连续纸纸高推导 |
+| `resolveElementTextFit(type, options)` / `resolveCellTextFit(cell)` / `resolveShrinkMinFontSize(pt)` | 文字溢出显示形式的默认值判定（元素/单元格共用；截断、自动缩小、自适应行高） |
+| `cellFitCapMm(rows, rowIndex, cell, defaultPadding?)` | 单元格可用内容高度（mm）：所跨行高 − 内边距 − 塌陷边框 |
+| `cellFitKey(...)` / `parseCellFitKey(key)` | 单元格自动缩小结果的键（`元素id#行类别#行:列`）构造与解析 |
+| `applyTextFitSizes(template, fits)` | 把测量趟求得的自动缩小字号回写绑定后的模板（元素 `_fitFontSize` / 单元格 `fittedFontSize`） |
 
 打印管线命名空间（`print/`，主入口通过 `export *` 转出）：
 
@@ -127,7 +136,7 @@ import {
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `enabled` | `boolean` | 是否启用 |
-| `sheetPaperSize` | `'A4' \| 'A3' \| 'A5' \| 'Letter' \| 'Legal' \| 'CUSTOM'` | 目标纸张，缺省 `A4`；不含 `CONTINUOUS` |
+| `sheetPaperSize` | `'A4' \| 'A3' \| 'A5' \| 'Letter' \| 'Legal' \| 针式等分 \| 标签纸 \| 'CUSTOM'` | 目标纸张，缺省 `A4`；**不含连续纸**（`CONTINUOUS` 与小票纸 `THERMAL_*`） |
 | `sheetOrientation` | `'portrait' \| 'landscape'` | 目标纸方向，缺省纵向；**只影响目标纸，不影响标签朝向** |
 | `sheetCustomWidth` / `sheetCustomHeight` | `number` | `sheetPaperSize='CUSTOM'` 时的纸宽/纸高（mm），缺省 210 / 297 |
 | `sheetMargin` | `{ top, right, bottom, left }` | 目标纸四边留白（mm）；与模板 `margins`（标签内部边距）不是一回事 |
@@ -163,9 +172,14 @@ import {
   createBrowserPrintRuntime, createIframeDriverFactory,
   domExecutor, EXECUTOR_VERSION,
   waitReady, readMeasurements, readContentBottom, renderCodes,
+  applyTextFit, fitTextNode,
 } from '@worm-vue3-print/core/browser'
 import type { BrowserRenderResult, BrowserRenderOptions } from '@worm-vue3-print/core/browser'
 ```
+
+`applyTextFit(doc)`：对文档内 `data-fit="shrink"` 的节点（文本元素或单元格定高容器）
+二分缩小字号，返回 `FitFontSize[]`（`{ key, fontSizePt }`，key 为元素 id 或 `元素id#行类别#行:列`）；
+`fitTextNode(el)` 处理单个节点，供自定义宿主与设计器画布复用。两者均须在读取测量值**之前**调用。
 
 ```ts
 renderHtmlPages(

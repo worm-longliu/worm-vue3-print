@@ -9,7 +9,7 @@ import type {
   PageLayout,
   PageSection,
 } from './types.js'
-import { getPaperDimensions } from './types.js'
+import { getPaperDimensions, isContinuousPaper } from './types.js'
 
 /** 分页配置读取：options 内优先（前端序列化位置），顶层兼容旧测试/旧数据 */
 function paginationOf(el: TemplateElement): { pageable?: boolean; keepWithNext?: boolean } | undefined {
@@ -214,7 +214,7 @@ export function paginate(
   const overlayH = template.firstPageOverlay?.height ?? 0
 
   // PRD 4.3: contentHeight = paperHeight - marginTop - marginBottom - headerHeight - footerHeight
-  const continuous = template.paperSize === 'CONTINUOUS'
+  const continuous = isContinuousPaper(template)
   // 连续纸：内容高视为无限，单页承载全部（实际纸高由浏览器探针 + composeContinuousHeight 推导）
   const contentHeight = continuous
     ? Number.POSITIVE_INFINITY

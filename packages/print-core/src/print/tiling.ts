@@ -1,7 +1,12 @@
 // print-core/src/print/tiling.ts
 // 标签多行多列拼版：类型、校验、布局纯函数（无 DOM / 无 IO）
-import { PAPER_DIMENSIONS, getPaperDimensions, isContinuousPaper } from '../render/types.js'
-import type { PaperSize } from '../render/types.js'
+import {
+  PAPER_DIMENSIONS,
+  getPaperDimensions,
+  isContinuousPaper,
+  isContinuousPaperSize,
+} from '../render/types.js'
+import type { PaperSize, SheetPaperSize } from '../render/types.js'
 
 /** 拼版配置（模板级，随模板保存） */
 export interface TilingOptions {
@@ -216,9 +221,9 @@ export function validateTiling(t: TilingTemplateInput, opts?: TilingResolveOptio
       message: '连续纸不支持拼版打印，请将模板纸张改为固定纸张或关闭拼版',
     })
   }
-  // 类型上已排除 CONTINUOUS，但存量模板 / 手写 JSON 仍可能传入，运行时必须拦住
+  // 类型上已排除连续纸，但存量模板 / 手写 JSON 仍可能传入，运行时必须拦住
   const sheetPaperSize = cfg.sheetPaperSize as string | undefined
-  const sheetContinuous = sheetPaperSize === 'CONTINUOUS'
+  const sheetContinuous = isContinuousPaperSize(sheetPaperSize ?? '')
   if (sheetContinuous) {
     issues.push({ code: 'SHEET_CONTINUOUS', message: '拼版目标纸张不能是连续纸' })
   }

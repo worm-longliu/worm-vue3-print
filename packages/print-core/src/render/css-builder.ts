@@ -2,7 +2,7 @@
 // 生成打印页面 CSS 样式，所有尺寸使用 mm 单位
 
 import type { TemplateData } from './types.js'
-import { getPaperDimensions } from './types.js'
+import { getPaperDimensions, isContinuousPaper } from './types.js'
 import { FALLBACK_FONT_STACK } from '../print/fonts.js'
 import type { TileLayout } from '../print/tiling.js'
 
@@ -166,7 +166,7 @@ export function buildBatchPageCss(
   template: TemplateData,
   copies: Array<{ heightMm?: number }>,
 ): string {
-  if (template.paperSize !== 'CONTINUOUS') {
+  if (!isContinuousPaper(template)) {
     return `${buildPageCss(template)}\n${COPY_BREAK_CSS}`
   }
 

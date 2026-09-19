@@ -1,8 +1,11 @@
 import type { DriverFactory, ExecutorBundle, PageDriver } from '../driver.js'
 import type { RawMeasurement } from '../types.js'
+import type { FitFontSize } from '../../render/text-fit.js'
 
 export interface FakeDriverOptions {
   measurements?: RawMeasurement[]
+  /** 自动缩小结果（applyTextFit 返回值）；缺省空清单 */
+  fits?: FitFontSize[]
   contentBottomPx?: number
   /** 指定键的 SVG；未指定的规格返回通用假 SVG */
   codeMap?: Record<string, string>
@@ -31,6 +34,7 @@ export function createFakeDriverFactory(options: FakeDriverOptions = {}) {
     async evaluate<T>(method: string, args?: unknown[]): Promise<T> {
       await slow(`evaluate:${method}`)
       if (method === 'readMeasurements') return (options.measurements ?? []) as T
+      if (method === 'applyTextFit') return (options.fits ?? []) as T
       if (method === 'readContentBottom') return (options.contentBottomPx ?? 0) as T
       if (method === 'renderCodes') {
         const specs = (args?.[0] ?? []) as Array<{ key: string }>

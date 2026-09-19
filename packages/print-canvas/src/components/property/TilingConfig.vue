@@ -25,7 +25,7 @@
           :value="cfg.sheetPaperSize ?? 'A4'"
           @change="onSheetPaperChange(($event.target as HTMLSelectElement).value)"
         >
-          <option v-for="key in sheetPresetKeys" :key="key" :value="key">{{ key }}</option>
+          <option v-for="key in sheetPresetKeys" :key="key" :value="key">{{ PAPER_PRESETS[key]?.label ?? key }}</option>
           <option value="CUSTOM">自定义</option>
         </select>
       </div>
@@ -132,7 +132,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { TemplateData } from '@worm-vue3-print/core/designer'
-import { PAPER_PRESETS } from '@worm-vue3-print/core/designer'
+import { PAPER_PRESETS, isContinuousPaperSize } from '@worm-vue3-print/core/designer'
 import {
   TILE_DEFAULTS,
   computeMaxColumns,
@@ -151,10 +151,11 @@ const props = defineProps<{
 
 const emit = defineEmits<{ 'update:modelValue': [value: TilingOptions] }>()
 
-/** 目标纸张可选预设：排除连续纸与 CUSTOM（后者由下拉的「自定义」项承担） */
-const sheetPresetKeys = Object.keys(PAPER_PRESETS).filter(k => k !== 'CONTINUOUS' && k !== 'CUSTOM')
+/** 目标纸张可选预设：排除连续纸（含小票纸）与 CUSTOM（后者由下拉的「自定义」项承担） */
+const sheetPresetKeys = Object.keys(PAPER_PRESETS)
+  .filter(k => k !== 'CUSTOM' && !PAPER_PRESETS[k]?.continuous)
 
-const labelContinuous = computed(() => props.templateData?.paperSize === 'CONTINUOUS')
+const labelContinuous = computed(() => isContinuousPaperSize(props.templateData?.paperSize))
 
 /**
  * 展示态配置：缺省字段补 TILE_DEFAULTS；未配置过拼版的模板 enabled 视为 false

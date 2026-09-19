@@ -2,6 +2,7 @@
 import { renderFinalPages, wrapHtmlDocument } from '../render/html-generator.js'
 import { buildBatchPageCss, buildPageCss } from '../render/css-builder.js'
 import { buildFontFaceCss } from './fonts.js'
+import { isContinuousPaper } from '../render/types.js'
 import type { CodeRenderer, PageLayout, TemplateData } from '../render/types.js'
 import type { HeightSource, PaperMm } from './types.js'
 
@@ -29,7 +30,7 @@ export function composeBatchHtml(copies: BatchCopyInput[]): {
   copyPaperMm: PaperMm[]
 } {
   const bound = copies[0].bound
-  const continuous = bound.paperSize === 'CONTINUOUS'
+  const continuous = isContinuousPaper(bound)
 
   const bodyInner = copies
     .map((copy, i) => {

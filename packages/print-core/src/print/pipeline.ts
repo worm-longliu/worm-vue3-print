@@ -7,6 +7,7 @@ import { createCollectingCodeRenderer, createMapCodeRenderer, mergeCodeMaps } fr
 import { escapeHeightMm, paperViewportPx, resolvePaperMm } from './paper.js'
 import { buildPdfTargetSpec, buildScreenshotTargetSpec } from './pdf-spec.js'
 import { normalizeMeasurements } from './measure.js'
+import { applyTextFitSizes } from './apply-text-fit.js'
 import { pxToMm } from './units.js'
 import type { CodeRenderer, PageLayout, TemplateData } from '../render/types.js'
 import type { PrintRuntime, PrintSession } from './ports.js'
@@ -100,7 +101,7 @@ async function prepareWithSession(job: PrintJob, session: PrintSession): Promise
     html: merged.html,
     pageCount: merged.pageCount,
     paperMm: copies[0].paperMm,
-    continuous: copies[0].bound.paperSize === 'CONTINUOUS',
+    continuous: isContinuousPaper(copies[0].bound),
     // 同模板同参数各份来源必然一致；不能用 derivedHeightMm 是否存在判断——
     // 连续纸逃生门时该字段有值但来源是 config
     heightSource: copies[0].heightSource,
@@ -183,7 +184,10 @@ async function prepareSingleWithSession(
     bound, job, session, data, pageLayouts: [], isMeasurementPass: true,
   })
   const measurements = await session.measure(measurement.html, viewport)
-  const pageLayouts = paginate(bound, normalizeMeasurements(measurements, bound))
+  // 自动缩小（textFit='shrink'）的字号先回写模板，再据此分页与出图：
+  // 测量趟的实测高度已按缩小后字号得出，最终趟必须用同一字号渲染
+  applyTextFitSizes(bound, measurements.fits)
+  const pageLayouts = paginate(bound, normalizeMeasurements(measurements.measurements, bound))
 
   // 最终 HTML：补齐测量趟看不到的码值（页眉/页脚/首页叠加中的真实页码）
   const finalBuild = await buildHtmlWithCodes({

@@ -137,7 +137,7 @@ import { useGuides } from '../composables/useGuides'
 import { TABLE_EDIT_KEY } from '../composables/useTableSelection'
 import { SELECTED_IDS_KEY, PREVIEW_IDS_KEY } from '../composables/useSelection'
 import { getZoneRects } from '@worm-vue3-print/core/designer'
-import { getPaperDimensions } from '@worm-vue3-print/core/designer'
+import { getPaperDimensions, PAPER_PRESETS } from '@worm-vue3-print/core/designer'
 import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
 import { findMainCell } from '@worm-vue3-print/core/designer'
 import { computeFitScale, FIT_SCALE_MIN_PERCENT } from '@worm-vue3-print/core/designer'
@@ -291,7 +291,8 @@ const paperLabel = computed(() => {
   const t = templateData.value
   const dim = getPaperDimensions(t)
   const orient = t.orientation === 'landscape' ? '横向' : '纵向'
-  return `${t.paperSize} ${orient} ${Math.round(dim.width)}×${Math.round(dim.height)}mm`
+  const name = PAPER_PRESETS[t.paperSize]?.label ?? t.paperSize
+  return `${name} ${orient} ${Math.round(dim.width)}×${Math.round(dim.height)}mm`
 })
 
 function onFitWindow() {

@@ -1,6 +1,6 @@
 <!-- Excel 风格表格元素：单元格矩阵编辑器（选区/右键菜单/双击编辑） -->
 <template>
-  <div class="print-table" :class="{ 'design-mode': designMode }" @contextmenu.prevent>
+  <div ref="rootRef" class="print-table" :class="{ 'design-mode': designMode }" @contextmenu.prevent>
     <table ref="tableRef" :style="{ fontSize: defaultFontSize + 'pt', color: defaultColor }">
       <colgroup>
         <col v-for="(w, i) in colWidths" :key="i" :style="{ width: w + 'mm' }" />
@@ -39,6 +39,21 @@
                 :design-mode="designMode"
                 :data="imageData"
               />
+              <!-- 截断 / 自动缩小：内容包定高容器（max-height = 可用高度），超出即裁 -->
+              <div
+                v-else-if="needsFitBox(cell)"
+                class="cell-fit"
+                :style="cellFitStyle(cell, ri)"
+                :data-fit="cellTextFit(cell) === 'shrink' ? 'shrink' : undefined"
+                :data-fit-base="String(cellBaseFontSize(cell))"
+                :data-fit-min="String(resolveShrinkMinFontSize(cell.shrinkMinFontSize))"
+                :data-fit-mm="cellCapMm(ri, cell)"
+              >
+                <span v-if="row.type === 'data'" class="data-placeholder">
+                  {{ cellDisplay(row, cell) }}
+                </span>
+                <template v-else>{{ cellDisplay(row, cell) }}</template>
+              </div>
               <span v-else-if="row.type === 'data'" class="data-placeholder">
                 {{ cellDisplay(row, cell) }}
               </span>
@@ -101,6 +116,9 @@ import CellBarcode from './CellBarcode.vue'
 import CellImage from './CellImage.vue'
 import { resolveBarcodeDesignValue } from '@worm-vue3-print/core/designer'
 import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
+import type { TextFit } from '@worm-vue3-print/core/designer'
+import { cellFitCapMm, resolveCellTextFit, resolveShrinkMinFontSize } from '@worm-vue3-print/core/designer'
+import { useShrinkFit } from '../../composables/useShrinkFit'
 
 const ROW_TYPE_BADGE: Record<TableRowType, string> = {
   header: '题', data: '数', subtotal: '小', summary: '汇',
@@ -154,6 +172,8 @@ function rowTopMm(ri: number): number {
 // 设计框体（虚线选框/选中框/位置标签/吸附对齐）需跟随 <table> 实测高度，
 // 否则选中时示意虚线框与表格真实占用高度不一致。
 const tableRef = ref<HTMLTableElement | null>(null)
+/** 元素根节点：单元格自动缩小（data-fit）挂在其后代上，统一由此适配 */
+const rootRef = ref<HTMLElement | null>(null)
 
 /** 96dpi 下 1mm ≈ 3.78px（与 render/browser-pagination 测量遍同一常量） */
 const PX_PER_MM = 3.7795275591
@@ -259,6 +279,48 @@ function cellStyle(_row: TableRow, cell: TableCell): Record<string, string> {
     overflow: (cell.wordWrap ?? true) ? 'visible' : 'hidden',
   }
 }
+
+// ─── 文字溢出显示形式（截断 / 自动缩小 / 自适应行高） ───
+
+/** 单元格溢出形式；与打印端 resolveCellTextFit 同一判定 */
+function cellTextFit(cell: TableCell): TextFit {
+  return resolveCellTextFit(cell)
+}
+
+/** 截断与自动缩小都需要定高容器；自适应行高由单元格自身撑高 */
+function needsFitBox(cell: TableCell): boolean {
+  return cellTextFit(cell) !== 'autoHeight'
+}
+
+/** 单元格基准字号：自动缩小的起点（与打印端 data-fit-base 同口径） */
+function cellBaseFontSize(cell: TableCell): number {
+  return cell.fontSize ?? defaultFontSize.value
+}
+
+/** 可用内容高度（mm）：所跨行高之和扣除内边距与边框，与打印端同一函数 */
+function cellCapMm(ri: number, cell: TableCell): number {
+  return cellFitCapMm(rows.value, ri, cell, props.element.options.tableDefaultPadding ?? 1)
+}
+
+function cellFitStyle(cell: TableCell, ri: number): Record<string, string> {
+  return {
+    maxHeight: cellCapMm(ri, cell) + 'mm',
+    overflow: 'hidden',
+    ...(cell.wordWrap === false ? { whiteSpace: 'nowrap', textOverflow: 'ellipsis' } : {}),
+  }
+}
+
+// 单元格自动缩小：与打印端共用 core 的二分算法，设计态字号即出纸字号
+useShrinkFit(rootRef, () => [
+  props.designMode,
+  props.data?.length,
+  colWidths.value.join(','),
+  defaultFontSize.value,
+  props.element.options.tableDefaultPadding,
+  rows.value
+    .map(row => `${row.height}:${row.cells.map(c => `${c.formatter ?? ''}|${c.fontSize ?? ''}|${c.wordWrap ?? ''}|${c.textFit ?? ''}|${c.colspan ?? 1}`).join('~')}`)
+    .join(','),
+])
 
 function cellClass(ri: number, ci: number): Record<string, boolean> {
   const s = selection.value

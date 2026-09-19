@@ -138,6 +138,21 @@
       <div class="pd-field"><span class="pd-label">自动换行</span>
         <input :checked="mainCell.wordWrap ?? true" type="checkbox" class="pd-switch" @input="write(c => { c.wordWrap = !!($event.target as HTMLInputElement).checked })" />
       </div>
+      <div class="pd-field" v-if="isTextCell"><span class="pd-label">文字溢出</span>
+        <select class="pd-select" :value="cellTextFit" style="width: 100%" @change="onTextFitChange">
+          <option value="clip">截断</option>
+          <option value="shrink">自动缩小</option>
+          <option value="autoHeight">自适应行高</option>
+        </select>
+      </div>
+      <div class="pd-field" v-if="isTextCell && cellTextFit === 'shrink'"><span class="pd-label">最小字号 (pt)</span>
+        <StepperInput :model-value="mainCell.shrinkMinFontSize"
+          :min="1"
+          :max="72"
+          :step="0.5"
+          placeholder="默认 6"
+          @update:model-value="write(c => { c.shrinkMinFontSize = $event ?? undefined })" />
+      </div>
 
       <div class="merge-btns">
         <button type="button" class="pd-button small" :disabled="!!mergeReason" :title="mergeReason || ''" @click="doMerge">
@@ -164,6 +179,7 @@ import type {
 } from '@worm-vue3-print/core/designer'
 import {
   canMergeReason, mergeCells, splitCells, applyBorderPreset, findMainCell, type BorderPreset,
+  resolveCellTextFit, type TextFit,
 } from '@worm-vue3-print/core/designer'
 import { TABLE_EDIT_KEY } from '../../composables/useTableSelection'
 import PropertyGroup from './PropertyGroup.vue'
@@ -192,6 +208,15 @@ const pendingFormatterValue = ref('')
 const isBarcodeCell = computed(() => mainCell.value.cellType === 'barcode')
 const isQrcodeCell = computed(() => mainCell.value.cellType === 'qrcode')
 const isImageCell = computed(() => mainCell.value.cellType === 'image')
+/** 文字溢出形式仅对文本单元格有意义（码值/图片由 fit/maxWidth 控制） */
+const isTextCell = computed(() => !isBarcodeCell.value && !isQrcodeCell.value && !isImageCell.value)
+/** 未配置时：不换行→截断，否则自适应行高（与打印端同一判定） */
+const cellTextFit = computed(() => resolveCellTextFit(mainCell.value))
+
+function onTextFitChange(e: Event) {
+  const value = (e.target as HTMLSelectElement).value as TextFit
+  write(c => { c.textFit = value })
+}
 
 function onAlignChange(v: string) {
   write(c => { c.align = v as TextAlign })

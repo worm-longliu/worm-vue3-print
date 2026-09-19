@@ -73,6 +73,21 @@ describe('CONTINUOUS 纸型', () => {
     expect(composeContinuousHeight(t, 315)).toBe(318)
   })
 
+  it('小票纸预设（THERMAL_57/80/110）同样按连续纸推导，纸宽取预设值', () => {
+    expect(getPaperDimensions({ ...continuousTemplate({ customWidth: undefined }), paperSize: 'THERMAL_57' }))
+      .toEqual({ width: 57, height: 297 })
+    expect(getPaperDimensions({ ...continuousTemplate({ customWidth: undefined }), paperSize: 'THERMAL_80' }))
+      .toEqual({ width: 80, height: 297 })
+    expect(getPaperDimensions({ ...continuousTemplate({ customWidth: undefined }), paperSize: 'THERMAL_110' }))
+      .toEqual({ width: 110, height: 297 })
+    expect(isContinuousPaper({ paperSize: 'THERMAL_57' })).toBe(true)
+  })
+
+  it('小票纸纸宽可被 customWidth 覆盖，方向强制纵向', () => {
+    const t = { ...continuousTemplate({ customWidth: 58 }), paperSize: 'THERMAL_80', orientation: 'landscape' }
+    expect(getPaperDimensions(t)).toEqual({ width: 58, height: 297 })
+  })
+
   it('buildPageCss 接收显式纸高：@page/.print-page/footer 全部对齐该高度', () => {
     const t = continuousTemplate({
       margins: { top: 5, right: 5, bottom: 3, left: 5 },

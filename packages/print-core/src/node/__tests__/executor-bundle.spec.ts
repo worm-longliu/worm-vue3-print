@@ -31,7 +31,7 @@ describe('loadExecutorBundle', () => {
       }))
     `)
     const result = JSON.parse(output)
-    expect(result.version).toBe('1')
+    expect(result.version).toBe('2')
     expect(result.hasExecutor).toBe(true)
     expect(result.sameSource).toBe(true)
     expect(result.sizeKb).toBeGreaterThan(50)

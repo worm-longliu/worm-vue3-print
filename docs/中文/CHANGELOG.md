@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`：文本元素与表格单元格支持**三种文字溢出显示形式**（属性面板「文字溢出」，模板字段 `textFit`）：
+  `clip` 截断（不换行 `wordWrap:false` 时以省略号收尾）、`shrink` 自动缩小（下限 `shrinkMinFontSize`，缺省 6pt，缩到下限仍放不下则退化为截断）、
+  `autoHeight` 自适应行高（元素高度/行高随内容增高）。**缺省值与既有行为一致，存量模板不受影响**（`text` 缺省截断、`longText` 与单元格缺省自适应行高）；
+  自动缩小在测量趟用真实排版引擎二分求解并通过 `applyTextFit` 回写模板（会话原语 `measure` 返回值由 `RawMeasurement[]` 变为 `{ measurements, fits }`），
+  三端字号一致；设计器画布复用同一份算法与可用高度换算（`fitTextNode`），设计态字号即出纸字号。DOM 执行器产物版本升到 `2`（新增 `applyTextFit`）。
 - `@worm-vue3-print/core`：新增打印管线模块（driver 契约 + 共享 DOM 宿主 runtime + 三端 driver），
   浏览器、服务端、桌面客户端统一使用同一份测量、分页、连续纸推导、码制渲染与出图规格；
   新增 IIFE 执行器产物与 `@worm-vue3-print/core/node` 出口（`loadExecutorBundle`）。
@@ -36,6 +41,7 @@
 - `@worm-vue3-print/canvas`：水印配置面板合并为单一「水印表达式」输入——**纯文本即静态水印（`mode=fixed`）**，含 `{字段}`、函数调用（`CONCAT(...)`）或字段路径（`order.no`）则按表达式解析（`mode=binding`），无需再手选模式；表达式通过表达式弹框（按钮或双击输入框打开）编辑，弹框内可直接选业务字段与打印日期/时间等变量；移除预设绑定字段下拉与时间戳开关（时间戳改由表达式里的 `{printDate}`/`{printTime}` 表达）；测试值仅在表达式模式下展示；保留密度（密/中/疏/自定义瓦片尺寸）等设置。
 - `@worm-vue3-print/canvas`：`WatermarkConfig`、`CanvasPaper` 水印渲染改用 core 同构模块，三端渲染一致。
 - `@worm-vue3-print/core` / `@worm-vue3-print/canvas`：新增**标签拼版**（模板 `tiling` 配置）——小尺寸标签模板不再「一张纸打一个标签」：开启后按「列 × 行」把多份标签铺进目标纸（默认 A4 纵向、四边留白 10mm、格间距 2mm、列数手工指定、行数按纸面自动推导），单份数据同样走拼版（1 格 1 张）。core 新增 `print/tiling.ts`（`computeTileLayout`：纸面/列数/标签高度校验与行列推导，连续纸不支持拼版）与 `print/tile-compose.ts`（按格铺排合成 HTML）；拼版下 `renderPdf` 的 `pageCount` 改为**实际输出张数**（预览「共 N 页」与客户端任务历史同口径），`paperMm` 为目标纸尺寸。canvas 新增拼版配置面板（开关、目标纸与方向、自定义尺寸、四边留白、横纵间距、列数），实时显示行列数与可容纳格数；任一份标签底部超出其内容区时拼版直接报错，不静默裁切。`@worm-vue3-print/render` 新增拼版端到端集成测试（真实 Chromium 校验张数与格坐标）。
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`：纸张预设新增**针式打印纸**（`DOT_FULL` 全等分 241×279.4mm、`DOT_HALF` 二等分 241×139.7mm、`DOT_THIRD` 三等分 241×93.1mm）、**标签纸**（`LABEL_80X60` / `LABEL_60X40` / `LABEL_40X30`）、**小票纸**（`THERMAL_57` / `THERMAL_80` / `THERMAL_110`，连续纸：纸宽取预设值、可用 `customWidth` 覆盖如 58mm，出纸高度仍按内容推导、方向强制纵向）。`PaperSize` 与 `PAPER_DIMENSIONS`/`PAPER_PRESETS` 同步扩展，`isContinuousPaperSize(paperSize)` 判定连续纸（小票纸与 `CONTINUOUS` 均为真），拼版目标纸下拉仍排除连续纸；设计器「纸张尺寸」下拉按「常用纸张 / 针式打印纸 / 标签纸 / 小票纸 / 连续纸」分组显示中文名与尺寸。
 
 ### 修复
 

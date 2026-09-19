@@ -11,8 +11,17 @@ import type {
   CodeRenderer,
 } from './types.js'
 import { escapeInlineStyleValue, toFontFamilyStack } from '../print/fonts.js'
-import { getPaperDimensions } from './types.js'
+import { getPaperDimensions, isContinuousPaper } from './types.js'
 import { buildPageCss, elementPositionStyle, mm } from './css-builder.js'
+import {
+  cellFitCapMm,
+  cellFitKey,
+  resolveCellTextFit,
+  resolveElementTextFit,
+  resolveShrinkMinFontSize,
+  roundFontSize,
+  type CellFitRowKind,
+} from './text-fit.js'
 import { buildFontFaceCss } from '../print/fonts.js'
 import { injectSystemVariables } from './data-binder.js'
 import { evaluateTemplate } from './expression-eval.js'
@@ -155,7 +164,7 @@ function generateFinalHtml(
   return wrapHtmlDocument(
     css,
     bodyInner,
-    template.paperSize === 'CONTINUOUS' ? 'continuous' : undefined,
+    isContinuousPaper(template) ? 'continuous' : undefined,
   )
 }
 
@@ -240,7 +249,10 @@ const H_ALIGN_FLEX: Record<string, string> = { left: 'flex-start', center: 'cent
 /** 文本类元素字体/颜色/对齐内联样式（字段与前端 ElementOptions 对齐，fontSize/lineHeight 单位 pt） */
 function textStyle(opts: Record<string, any>): string {
   const parts: string[] = []
-  if (opts.fontSize) parts.push(`font-size:${opts.fontSize}pt`)
+  // 自动缩小求得字号优先：测量趟算出后回写 _fitFontSize，最终趟据此渲染。
+  // 仅缩放结果取整（与写入 DOM 的字符串逐字一致），未配置缩放时字号原样输出。
+  const fontSize = opts._fitFontSize === undefined ? opts.fontSize : roundFontSize(opts._fitFontSize)
+  if (fontSize) parts.push(`font-size:${fontSize}pt`)
   if (opts.fontFamily) parts.push(`font-family:${escapeInlineStyleValue(toFontFamilyStack(opts.fontFamily))}`)
   if (opts.fontWeight) parts.push(`font-weight:${opts.fontWeight}`)
   if (opts.color) parts.push(`color:${opts.color}`)
@@ -255,17 +267,44 @@ function textStyle(opts: Record<string, any>): string {
   return parts.length ? parts.join(';') + ';' : ''
 }
 
+/**
+ * 文字溢出显示形式对应的内联样式。
+ * - 截断：容器本就裁剪（.print-element 的 overflow:hidden），仅「不换行 + 省略号」需额外声明
+ * - 自动缩小：容器同样裁剪（缩到下限仍放不下即截断），字号由测量趟的 applyTextFit 求得
+ * - 自适应行高：放开裁剪，内容撑开盒子（测量趟同时省略高度，使实测高度等于内容高度）
+ */
+function elementFitStyle(fit: string, opts: Record<string, any>): string {
+  if (fit === 'autoHeight') return 'overflow:visible;'
+  if (opts.wordWrap === false) return 'white-space:nowrap;text-overflow:ellipsis;'
+  return ''
+}
+
+/**
+ * 自动缩小标记：供测量趟的 DOM 执行器读取（元素级 key 即元素 id）。
+ * 两趟都输出：测量趟据此二分字号，最终趟的字号已回写，标记在此纯属惰性残留；
+ * 一律输出可避免「某条渲染分支忘带标记 → 该分支静默不缩放」这类漏网。
+ */
+function fitAttrs(fit: string, key: string, baseFontSizePt: number, opts: Record<string, any>): string {
+  if (fit !== 'shrink') return ''
+  const min = resolveShrinkMinFontSize(opts.shrinkMinFontSize)
+  return ` data-fit="shrink" data-fit-key="${esc(key)}" data-fit-base="${baseFontSizePt}" data-fit-min="${min}"`
+}
+
 function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?: string, overrideTop?: number, ctx?: RenderCtx): string {
   const opts = el.options ?? {}
   const left = opts.left ?? 0
   const top = overrideTop ?? opts.top ?? 0
   const width = opts.width ?? 100
   const height = opts.height ?? undefined
-  // 方案 A+B：flow-group 内跟随元素用相对容器样式（containerStyle）覆盖绝对定位
-  const style = containerStyle ?? elementPositionStyle(left, top, width, height, opts.zIndex)
-  const measureAttr = isMeasure ? ` data-measure-id="${el.id}"` : ''
-
   const type = el.type || el.printElementType?.type || 'text'
+  const fit = resolveElementTextFit(type, opts)
+  // 自适应行高：不写死高度（两趟一致），盒子由内容撑开——
+  // 实测高度即内容高度，分页与连续纸探针才能拿到真实占位；设计高度仍作为分页下限保留
+  const fitHeight = fit === 'autoHeight' ? undefined : height
+  // 方案 A+B：flow-group 内跟随元素用相对容器样式（containerStyle）覆盖绝对定位
+  const style = containerStyle ?? elementPositionStyle(left, top, width, fitHeight, opts.zIndex)
+  const measureAttr = isMeasure ? ` data-measure-id="${el.id}"` : ''
+  const fitAttr = fitAttrs(fit, el.id, opts.fontSize ?? 12, opts)
 
   switch (type) {
     case 'table':
@@ -292,11 +331,11 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
     case 'oval':
       return `<div class="print-element" style="${style};border:${opts.borderWidth ?? 1}px solid ${opts.borderColor ?? '#000'};border-radius:50%;"${measureAttr}></div>`
     case 'longText':
-      return `<div class="print-element" style="${style}${textStyle(opts)}overflow:visible;"${measureAttr}>${esc(opts.formatter ?? opts.testData ?? '')}</div>`
+      return `<div class="print-element" style="${style}${textStyle(opts)}${elementFitStyle(fit, opts)}"${measureAttr}${fitAttr}>${esc(opts.formatter ?? opts.testData ?? '')}</div>`
     case 'html':
       return `<div class="print-element" style="${style}"${measureAttr}>${opts.testData ?? opts.title ?? ''}</div>`
     default:
-      return `<div class="print-element" style="${style}${textStyle(opts)}"${measureAttr}>${esc(opts.formatter ?? opts.testData ?? '')}</div>`
+      return `<div class="print-element" style="${style}${textStyle(opts)}${elementFitStyle(fit, opts)}"${measureAttr}${fitAttr}>${esc(opts.formatter ?? opts.testData ?? '')}</div>`
   }
 }
 
@@ -358,7 +397,8 @@ function codeImgHtml(
 /** 单元格内联样式：逐格样式 + 元素级默认值兜底 */
 function matrixCellStyle(cell: RenderCell, opts: Record<string, any>): string {
   const parts: string[] = []
-  const fontSize = cell.fontSize ?? opts.tableDefaultFontSize
+  // 自动缩小求得字号优先：测量趟算出后回写 fittedFontSize，最终趟据此渲染
+  const fontSize = cell.fittedFontSize ?? cell.fontSize ?? opts.tableDefaultFontSize
   const color = cell.color ?? opts.tableDefaultColor
   const padding = cell.padding ?? opts.tableDefaultPadding ?? 1
   if (fontSize) parts.push(`font-size:${fontSize}pt`)
@@ -390,16 +430,21 @@ function renderMatrixRows(
   opts: Record<string, any>,
   withRowIndex: boolean,
   ctx?: RenderCtx,
+  /** 所属元素 id 与行类别：自动缩小结果据此回写到对应渲染行 */
+  fitOwner: { elementId: string; kind: CellFitRowKind } = { elementId: '', kind: 'b' },
 ): string {
   const trs: string[] = []
+  const defaultPadding = opts.tableDefaultPadding ?? 1
   for (let r = start; r < end; r++) {
     const row = renderRows[r]
     if (!row) continue
     const idxAttr = withRowIndex ? ` data-row-index="${r}"` : ''
     const tds = row.cells
-      .filter(cell => !cell.merged)
-      .map(cell => {
+      .map((cell, ci) => ({ cell, ci }))
+      .filter(({ cell }) => !cell.merged)
+      .map(({ cell, ci }) => {
         const span = `${cell.rowspan > 1 ? ` rowspan="${cell.rowspan}"` : ''}${cell.colspan > 1 ? ` colspan="${cell.colspan}"` : ''}`
+        const colIndex = ci
         let inner: string
         if (cell.cellType === 'barcode' || cell.cellType === 'qrcode') {
           // 单元格条形码按单元格等比填满（fill）；单元格二维码保持原 shrink-to-fit 行为
@@ -412,7 +457,7 @@ function renderMatrixRows(
           const maxHeight = cell.maxHeight ? `max-height:${cell.maxHeight}mm;` : 'max-height:100%;'
           inner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;"><img src="${esc(cell.content)}" style="object-fit:${fit};${maxWidth}${maxHeight}display:block;" /></div>`
         } else {
-          inner = esc(cell.content)
+          inner = renderTextCellInner(renderRows, r, colIndex, cell, opts, fitOwner, defaultPadding)
         }
         return `<td${span} style="${matrixCellStyle(cell, opts)}">${inner}</td>`
       })
@@ -420,6 +465,37 @@ function renderMatrixRows(
     trs.push(`<tr${idxAttr} style="height:${row.height}mm;">${tds}</tr>`)
   }
   return trs.join('\n')
+}
+
+/**
+ * 文本单元格内容：
+ * - 自适应行高：直接输出文本，行高随内容增高（既有行为）
+ * - 截断 / 自动缩小：内容包一层定高容器（max-height = 可用高度），超出即裁；
+ *   自动缩小另带 data-fit 标记，由测量趟的 DOM 执行器把字号缩到放得下为止。
+ */
+function renderTextCellInner(
+  renderRows: RenderRow[],
+  rowIndex: number,
+  colIndex: number,
+  cell: RenderCell,
+  opts: Record<string, any>,
+  fitOwner: { elementId: string; kind: CellFitRowKind },
+  defaultPadding: number,
+): string {
+  const fit = resolveCellTextFit(cell)
+  const text = esc(cell.content)
+  if (fit === 'autoHeight') return text
+  const capMm = cellFitCapMm(renderRows, rowIndex, cell, defaultPadding)
+  const nowrap = cell.wordWrap === false
+  const style = [
+    `max-height:${capMm}mm`,
+    'overflow:hidden',
+    ...(nowrap ? ['white-space:nowrap', 'text-overflow:ellipsis'] : []),
+  ].join(';')
+  const attrs = fit === 'shrink' && fitOwner.elementId
+    ? ` data-fit="shrink" data-fit-key="${esc(cellFitKey(fitOwner.elementId, fitOwner.kind, rowIndex, colIndex))}" data-fit-base="${cell.fontSize ?? opts.tableDefaultFontSize ?? 12}" data-fit-min="${resolveShrinkMinFontSize(cell.shrinkMinFontSize)}" data-fit-mm="${capMm}"`
+    : ''
+  return `<div class="cell-fit" style="${style}"${attrs}>${text}</div>`
 }
 
 /** 矩阵表格骨架：colgroup（列宽 mm）+ 单一 tbody */
@@ -446,7 +522,7 @@ function renderTableElement(
   const opts = el.options
   const style = elementPositionStyle(opts.left ?? 0, opts.top ?? 0, opts.width ?? 100, undefined, opts.zIndex)
   const renderRows: RenderRow[] = opts._renderRows ?? []
-  const bodyHtml = renderMatrixRows(renderRows, 0, renderRows.length, opts, isMeasure, ctx)
+  const bodyHtml = renderMatrixRows(renderRows, 0, renderRows.length, opts, isMeasure, ctx, { elementId: el.id, kind: 'b' })
   return `<div class="print-element" style="${style};overflow:visible;"${measureAttr}>
   ${matrixTableHtml(el, bodyHtml)}
 </div>`
@@ -462,9 +538,9 @@ function renderTableSlice(el: TemplateElement, section: PageSection, ctx?: Rende
   const repeatCount: number = opts._repeatHeaderCount ?? 0
 
   const repeatHtml = section.repeatHeader && repeatCount > 0
-    ? renderMatrixRows(renderRows, 0, repeatCount, opts, false, ctx)
+    ? renderMatrixRows(renderRows, 0, repeatCount, opts, false, ctx, { elementId: el.id, kind: 'b' })
     : ''
-  const bodyHtml = renderMatrixRows(renderRows, startRow, endRow, opts, false, ctx)
+  const bodyHtml = renderMatrixRows(renderRows, startRow, endRow, opts, false, ctx, { elementId: el.id, kind: 'b' })
   const subtotalHtml = section.subtotal ? renderSubtotalRows(el, section, opts, ctx) : ''
   const summaryHtml = section.summary ? renderSummaryRows(el, opts, ctx) : ''
 
@@ -500,14 +576,14 @@ function renderSubtotalRows(
       ? { ...cell, content: evaluateTemplate(cell.rawFormatter, { rows: pageCtx, ...mainData }) }
       : cell),
   }))
-  return renderMatrixRows(rows, 0, rows.length, opts, false, ctx)
+  return renderMatrixRows(rows, 0, rows.length, opts, false, ctx, { elementId: el.id, kind: 'st' })
 }
 
 /** 渲染整表汇总行（总计，仅最后一页） */
 function renderSummaryRows(el: TemplateElement, opts: Record<string, any>, ctx?: RenderCtx): string {
   const summaryRows: RenderRow[] = opts._summaryRows ?? []
   if (summaryRows.length === 0) return ''
-  return renderMatrixRows(summaryRows, 0, summaryRows.length, opts, false, ctx)
+  return renderMatrixRows(summaryRows, 0, summaryRows.length, opts, false, ctx, { elementId: el.id, kind: 'sm' })
 }
 
 /**
@@ -540,9 +616,9 @@ function renderFlowGroup(
     const renderRows: RenderRow[] = opts._renderRows ?? []
     const repeatCount: number = opts._repeatHeaderCount ?? 0
     const repeatHtml = section.repeatHeader && repeatCount > 0
-      ? renderMatrixRows(renderRows, 0, repeatCount, opts, false, ctx)
+      ? renderMatrixRows(renderRows, 0, repeatCount, opts, false, ctx, { elementId: el.id, kind: 'b' })
       : ''
-    const bodyHtml = renderMatrixRows(renderRows, startRow, endRow, opts, false, ctx)
+    const bodyHtml = renderMatrixRows(renderRows, startRow, endRow, opts, false, ctx, { elementId: el.id, kind: 'b' })
     const subtotalHtml = section.subtotal ? renderSubtotalRows(el, section, opts, ctx) : ''
     const summaryHtml = section.summary ? renderSummaryRows(el, opts, ctx) : ''
     sliceHtml = `<div class="flow-slice" style="position:relative;width:${mm(tableWidth)};overflow:visible;">

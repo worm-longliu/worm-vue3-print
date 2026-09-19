@@ -34,6 +34,9 @@ export const PROPERTY_REGISTRY: PropertyGroupDef[] = [
       { key: 'ap-bg-color', keywords: ['背景色', 'background'] },
       { key: 'ap-line-height', keywords: ['行高', 'lineheight'] },
       { key: 'ap-letter-spacing', keywords: ['字间距', 'letterspacing'] },
+      { key: 'ap-text-fit', keywords: ['溢出', '溢出显示', '截断', '自动缩小', '自适应行高', 'textfit', 'overflow'] },
+      { key: 'ap-shrink-min', keywords: ['最小字号', '缩放下限', 'shrinkminfontsize'] },
+      { key: 'ap-word-wrap', keywords: ['自动换行', '不换行', 'wordwrap'] },
     ],
   },
   {

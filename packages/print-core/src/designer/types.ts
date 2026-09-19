@@ -3,8 +3,20 @@
 
 // ─── 新模板数据模型（PRD 3.2 节） ───
 
-/** 纸张尺寸；CONTINUOUS=连续纸（热敏/标签，设计高度固定 297mm，出纸高度按内容推导，底边距用 margins.bottom） */
-export type PaperSize = 'A4' | 'A3' | 'A5' | 'Letter' | 'Legal' | 'CUSTOM' | 'CONTINUOUS'
+/**
+ * 纸张尺寸。
+ * - DOT_FULL / DOT_HALF / DOT_THIRD：针式打印纸 241 系列全等分 / 二等分 / 三等分；
+ * - LABEL_80X60 / LABEL_60X40 / LABEL_40X30：标签纸；
+ * - THERMAL_57 / THERMAL_80 / THERMAL_110：小票纸（热敏卷纸，连续纸，出纸高度按内容推导）；
+ * - CONTINUOUS=连续纸（热敏/标签，设计高度固定 297mm，出纸高度按内容推导，底边距用 margins.bottom）。
+ * 连续纸（含小票纸）设计高度仅作画布，方向强制纵向，纸宽可用 customWidth 覆盖。
+ */
+export type PaperSize =
+  | 'A4' | 'A3' | 'A5' | 'Letter' | 'Legal'
+  | 'DOT_FULL' | 'DOT_HALF' | 'DOT_THIRD'
+  | 'LABEL_80X60' | 'LABEL_60X40' | 'LABEL_40X30'
+  | 'THERMAL_57' | 'THERMAL_80' | 'THERMAL_110'
+  | 'CUSTOM' | 'CONTINUOUS'
 
 /** 元素所属区域（运行时标记，序列化时剥离；区域元素 left/top 相对所在区域左上角，单位 pt） */
 export type ElementZone = 'content' | 'header' | 'footer'
@@ -44,9 +56,9 @@ export interface TemplateData {
   tiling?: import('../print/tiling.js').TilingOptions
   /** 元素坐标单位（新保存模板固定 'mm'；旧数据无此字段按 pt 迁移） */
   unit?: 'pt' | 'mm'
-  /** 自定义纸张宽度（mm），paperSize='CUSTOM' 时有效；CONTINUOUS 时为纸宽（默认 80） */
+  /** 自定义纸张宽度（mm），paperSize='CUSTOM' 时有效；连续纸（含小票纸）时为纸宽，缺省取预设纸宽 */
   customWidth?: number
-  /** 自定义纸张高度（mm），仅 paperSize='CUSTOM' 时有效；CONTINUOUS 时不使用（固定 297 设计画布） */
+  /** 自定义纸张高度（mm），仅 paperSize='CUSTOM' 时有效；连续纸（含小票纸）时仅作设计画布高度（缺省 297，出纸按内容推导） */
   customHeight?: number
   /** 页面（纸张）背景色；未设置时默认白色 */
   pageBackground?: string
@@ -72,6 +84,17 @@ export type ElementType =
 
 /** 对齐方式 */
 export type TextAlign = 'left' | 'center' | 'right'
+
+/**
+ * 文字超出可用空间时的显示形式（文本类元素与表格单元格共用）：
+ * - `clip`：截断，超出部分不显示；不换行（`wordWrap=false`）时以省略号收尾
+ * - `shrink`：自动缩小字号，缩到下限字号仍放不下则退化为截断
+ * - `autoHeight`：自适应高度，元素高度 / 表格行高随内容增高
+ *
+ * 未显式设置时按元素类型取默认值（text=clip、longText=autoHeight、单元格=autoHeight），
+ * 与既有渲染行为一致，存量模板不受影响。
+ */
+export type TextFit = 'clip' | 'shrink' | 'autoHeight'
 
 /** 垂直对齐方式（文本类元素，未设置时按顶部处理，与打印端一致） */
 export type VerticalAlign = 'top' | 'middle' | 'bottom'
@@ -156,6 +179,10 @@ export interface TableCell {
   borders?: TableCellBorders
   padding?: number            // mm
   wordWrap?: boolean          // 默认 true
+  /** 文字溢出显示形式；缺省按「不换行→截断，否则自适应行高」判定 */
+  textFit?: TextFit
+  /** 自动缩小（textFit='shrink'）的下限字号（pt）；缺省 6pt */
+  shrinkMinFontSize?: number
   // 图片类型特有属性
   fit?: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down'  // 缩放模式，默认 contain
   maxWidth?: number     // 最大宽度（mm）
@@ -204,6 +231,12 @@ export interface ElementOptions {
   verticalAlign?: VerticalAlign
   lineHeight?: number
   letterSpacing?: number
+  /** 文字溢出显示形式（text/longText）；缺省按元素类型取默认值 */
+  textFit?: TextFit
+  /** 自动缩小（textFit='shrink'）的下限字号（pt）；缺省 6pt */
+  shrinkMinFontSize?: number
+  /** 自动换行（text/longText）；缺省 true。false 时单行显示，截断形式下以省略号收尾 */
+  wordWrap?: boolean
   fixed?: boolean
   locked?: boolean
   /** 元素可见性（图层面板切换） */

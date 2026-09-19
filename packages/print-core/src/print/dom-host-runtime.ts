@@ -1,7 +1,7 @@
 import { PrintFailure, toPrintFailure, withTimeout } from './errors.js'
 import { DEFAULT_READINESS_MS, DEFAULT_TIMEOUT_MS } from './ports.js'
 import type { DriverFactory, ExecutorBundle, PageDriver } from './driver.js'
-import type { PrintRuntime, PrintSession, SessionBudget } from './ports.js'
+import type { PrintRuntime, PrintSession, SessionBudget, MeasureResult } from './ports.js'
 import type {
   CodeSpec,
   PdfTargetSpec,
@@ -9,6 +9,7 @@ import type {
   ScreenshotTargetSpec,
   ViewportPx,
 } from './types.js'
+import type { FitFontSize } from '../render/text-fit.js'
 
 /**
  * 共享 DOM 宿主 runtime：把「载入 → 注入 → 等就绪 → 执行 → 释放」的时序、
@@ -65,13 +66,17 @@ export function createDomHostRuntime(factory: DriverFactory, bundle?: ExecutorBu
           )
         },
 
-        async measure(html: string, viewport: ViewportPx): Promise<RawMeasurement[]> {
+        async measure(html: string, viewport: ViewportPx): Promise<MeasureResult> {
           const ms = budget()
           return withTimeout(
             (async () => {
               try {
                 await load(html, viewport)
-                return await driver.evaluate<RawMeasurement[]>('readMeasurements')
+                // 自动缩小必须先于读测量：字号变化会改变元素高度与行高，
+                // 顺序颠倒会得到与最终渲染不一致的分页输入
+                const fits = (await driver.evaluate<FitFontSize[] | undefined>('applyTextFit')) ?? []
+                const measurements = await driver.evaluate<RawMeasurement[]>('readMeasurements')
+                return { measurements, fits }
               } catch (err) {
                 throw fail(err, 'MEASURE_FAILED', '测量失败')
               }

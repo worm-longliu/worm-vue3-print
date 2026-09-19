@@ -4,6 +4,15 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: text elements and table cells now support **three text-overflow
+  display modes** (property panel "文字溢出", template field `textFit`): `clip` (truncate; single-line ellipsis when
+  `wordWrap: false`), `shrink` (auto-shrink down to `shrinkMinFontSize`, default 6pt, falling back to truncation if it
+  still overflows) and `autoHeight` (element height / row height grows with the content). **Defaults keep existing
+  behavior, so current templates are unaffected** (`text` defaults to truncate, `longText` and cells default to auto
+  height). Auto-shrink is solved by binary search in the measurement pass and written back via `applyTextFit`
+  (session primitive `measure` now returns `{ measurements, fits }` instead of `RawMeasurement[]`), so all three
+  runtimes render the same font size; the designer canvas reuses the same algorithm and available-height math
+  (`fitTextNode`). The DOM executor artifact version is bumped to `2` (new `applyTextFit`).
 - `@worm-vue3-print/core`: added the print pipeline module (driver contract + shared DOM host runtime + three drivers).
   Browser preview, render service and desktop client now share one implementation of measurement, pagination,
   continuous-paper probe, code rendering and PDF target spec; added the IIFE executor artifact and the
@@ -86,6 +95,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - `@worm-vue3-print/canvas`: The watermark panel now uses a single "watermark expression" input — plain text is a static watermark (`mode=fixed`), while `{field}`, function calls (`CONCAT(...)`) or field paths (`order.no`) are evaluated as expressions (`mode=binding`), so no manual mode switch is needed. Expressions are edited through the expression dialog (button or double-click on the input), where fields and print date/time variables can be picked directly. The preset field dropdown and the timestamp switch were removed (use `{printDate}`/`{printTime}` in the expression instead); the test value row only shows in expression mode; density (dense/medium/loose/custom tile size) and the other settings remain.
 - `@worm-vue3-print/canvas`: `WatermarkConfig` and `CanvasPaper` reuse the core watermark module, so design, preview, and print render identically.
 - `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: Added **label tiling** (template `tiling` config) — small label templates no longer need "one sheet per label". When enabled, copies are laid out in a column × row grid onto a target sheet (default A4 portrait, 10mm sheet margins, 2mm gutters, manual column count, rows derived from the sheet), and a single copy goes through the same path (one cell = one sheet). Core gained `print/tiling.ts` (`computeTileLayout`: sheet/column/label-height validation and row-column derivation; continuous paper cannot be tiled) and `print/tile-compose.ts` (grid HTML composition). With tiling on, `renderPdf` reports `pageCount` as the **actual number of sheets** (the preview's page count and the desktop client's job history share that meaning) and `paperMm` as the target sheet size. The designer gained a tiling panel (toggle, target sheet and orientation, custom size, sheet margins, gutters, columns) showing the live grid and capacity; if any label's content bottom exceeds its content area, tiling fails loudly instead of clipping silently. `@worm-vue3-print/render` gained an end-to-end tiling integration test (real Chromium, asserting sheet count and cell coordinates).
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: Added new paper presets — **dot-matrix paper** (`DOT_FULL` 241×279.4mm, `DOT_HALF` 241×139.7mm, `DOT_THIRD` 241×93.1mm), **label paper** (`LABEL_80X60` / `LABEL_60X40` / `LABEL_40X30`), and **thermal receipt paper** (`THERMAL_57` / `THERMAL_80` / `THERMAL_110`, continuous: width comes from the preset and can be overridden with `customWidth` (e.g. 58mm rolls), height is still derived from content, orientation forced to portrait). `PaperSize`, `PAPER_DIMENSIONS` and `PAPER_PRESETS` were extended accordingly, and `isContinuousPaperSize(paperSize)` reports continuous paper (receipt sizes and `CONTINUOUS`); the tiling target-sheet dropdown still excludes continuous paper. The designer's "paper size" dropdown is now grouped (common / dot-matrix / label / receipt / continuous) with Chinese names and dimensions.
 
 ### Changed
 

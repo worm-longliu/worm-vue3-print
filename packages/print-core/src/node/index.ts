@@ -8,5 +8,6 @@ const EXECUTOR_FILE = new URL('../dom-executor.iife.global.js', import.meta.url)
 
 /** 读取 core 自带的 DOM 执行器 IIFE 产物；宿主把它注入页面后即可调用 __wormDom */
 export function loadExecutorBundle(): ExecutorBundle {
-  return { source: readFileSync(fileURLToPath(EXECUTOR_FILE), 'utf8'), version: '1' }
+  // version 与 browser/dom-executor.ts 的 EXECUTOR_VERSION 保持一致（此处字面量避免把浏览器执行器拖进 Node 入口）
+  return { source: readFileSync(fileURLToPath(EXECUTOR_FILE), 'utf8'), version: '2' }
 }

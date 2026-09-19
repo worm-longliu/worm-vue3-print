@@ -74,11 +74,13 @@
 
           <div class="pd-field"><span class="pd-label">纸张尺寸</span>
             <select :value="paperSizeModel" class="pd-select" @change="onPaperSizeChange(($event.target as HTMLSelectElement).value)" style="width: 100%">
-              <option v-for="key in paperPresetKeys" :key="key" :value="key">{{ paperPresetLabel(key) }}</option>
-              <option value="CUSTOM">自定义</option>
+              <optgroup v-for="group in paperPresetGroups" :key="group.group" :label="group.group">
+                <option v-for="item in group.items" :key="item.key" :value="item.key">{{ item.label }}</option>
+              </optgroup>
+              <option value="CUSTOM">自定义宽高</option>
             </select>
           </div>
-          <div class="pd-field" v-if="paperSizeModel === 'CUSTOM' || paperSizeModel === 'CONTINUOUS'"><span class="pd-label">{{ paperSizeModel === 'CONTINUOUS' ? '纸宽 (mm)' : '自定义宽高 (mm)' }}</span>
+          <div class="pd-field" v-if="continuousPaper || paperSizeModel === 'CUSTOM'"><span class="pd-label">{{ continuousPaper ? '纸宽 (mm)' : '自定义宽高 (mm)' }}</span>
             <div class="custom-size-grid">
               <StepperInput :model-value="customWidth"
                 :min="25"
@@ -93,7 +95,7 @@
               </template>
             </div>
           </div>
-          <div class="pd-field" v-if="paperSizeModel !== 'CONTINUOUS'"><span class="pd-label">方向</span>
+          <div class="pd-field" v-if="!continuousPaper"><span class="pd-label">方向</span>
             <div class="pd-radio-group" role="radiogroup">
               <label class="pd-radio"><input type="radio" value="portrait" :checked="orientationModel === 'portrait'" @change="onOrientationChange(($event.target as HTMLInputElement).value)"><span>纵向</span></label>
               <label class="pd-radio"><input type="radio" value="landscape" :checked="orientationModel === 'landscape'" @change="onOrientationChange(($event.target as HTMLInputElement).value)"><span>横向</span></label>
@@ -118,7 +120,7 @@
           />
 
           <h3 class="pd-divider">页边距 (mm)</h3>
-          <p v-if="paperSizeModel === 'CONTINUOUS'" class="pd-hint">底部边距即连续纸走纸留白</p>
+          <p v-if="continuousPaper" class="pd-hint">底部边距即连续纸走纸留白</p>
           <div class="margin-grid">
             <div class="pd-field"><span class="pd-label">上</span>
               <StepperInput :model-value="marginTop" :min="0" :max="50" @update:model-value="onMarginTopChange" />
@@ -156,7 +158,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { RuntimeElement, PrintBusinessField, TemplateData, TableSelection } from '@worm-vue3-print/core/designer'
-import { PAPER_PRESETS } from '@worm-vue3-print/core/designer'
+import { PAPER_PRESETS, isContinuousPaperSize } from '@worm-vue3-print/core/designer'
 import { searchProperties } from '@worm-vue3-print/core/designer'
 import PropertySearch from './property/PropertySearch.vue'
 import PositionSizeGroup from './property/PositionSizeGroup.vue'
@@ -196,10 +198,16 @@ const emit = defineEmits<{
   'toggle-collapse': []
 }>()
 
-const paperPresets = PAPER_PRESETS
-const paperPresetKeys = Object.keys(paperPresets)
-function paperPresetLabel(key: string): string {
-  return key === 'CONTINUOUS' ? '连续纸' : key
+/** 纸张下拉分组：按 PAPER_PRESETS 的 group 聚合，保持预设声明顺序 */
+const paperPresetGroups: { group: string; items: { key: string; label: string }[] }[] = []
+for (const [key, preset] of Object.entries(PAPER_PRESETS)) {
+  const group = preset.group ?? '其他'
+  let bucket = paperPresetGroups.find(g => g.group === group)
+  if (!bucket) {
+    bucket = { group, items: [] }
+    paperPresetGroups.push(bucket)
+  }
+  bucket.items.push({ key, label: preset.label ?? key })
 }
 const searchText = ref('')
 
@@ -297,6 +305,8 @@ function onImageUploadSuccess(url: string) {
 // ─── 页面属性模型（直接读写 templateData） ───
 
 const paperSizeModel = computed(() => props.templateData?.paperSize || 'A4')
+/** 连续纸（含小票纸）：强制纵向、纸宽可调、出纸高度按内容推导 */
+const continuousPaper = computed(() => isContinuousPaperSize(paperSizeModel.value))
 const orientationModel = computed(() => props.templateData?.orientation || 'portrait')
 
 const pageBackgroundModel = computed({
@@ -313,7 +323,7 @@ const headerHeight = computed(() => props.templateData?.header.height ?? 10)
 const footerHeight = computed(() => props.templateData?.footer.height ?? 10)
 const overlayHeight = computed(() => props.templateData?.firstPageOverlay.height ?? 0)
 
-const customWidth = computed(() => props.templateData?.customWidth ?? (paperSizeModel.value === 'CONTINUOUS' ? 80 : 210))
+const customWidth = computed(() => props.templateData?.customWidth ?? PAPER_PRESETS[paperSizeModel.value]?.width ?? 210)
 const customHeight = computed(() => props.templateData?.customHeight ?? 297)
 
 const designBackgroundModel = computed(() => props.templateData?.designBackground)
@@ -347,11 +357,12 @@ function emitUpdate(partial: Partial<TemplateData>) {
 
 function onPaperSizeChange(size: string) {
   if (!props.templateData) return
-  if (size === 'CONTINUOUS') {
-    // 连续纸默认：80mm 宽、纵向、底边距 0（走纸留白由用户配置）
+  if (isContinuousPaperSize(size)) {
+    // 连续纸默认：纵向、底边距 0（走纸留白由用户配置）；
+    // 纸宽取 customWidth，切到具体小票纸预设时清掉旧自定义宽度，回到预设纸宽
     emitUpdate({
-      paperSize: 'CONTINUOUS',
-      customWidth: props.templateData?.customWidth ?? 80,
+      paperSize: size as TemplateData['paperSize'],
+      customWidth: size === 'CONTINUOUS' ? props.templateData?.customWidth ?? 80 : undefined,
       orientation: 'portrait',
       margins: {
         ...props.templateData!.margins,
@@ -364,7 +375,7 @@ function onPaperSizeChange(size: string) {
     emitUpdate({ paperSize: 'CUSTOM' })
     return
   }
-  if (!paperPresets[size]) return
+  if (!PAPER_PRESETS[size]) return
   emitUpdate({ paperSize: size as TemplateData['paperSize'] })
 }
 

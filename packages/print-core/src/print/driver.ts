@@ -1,7 +1,12 @@
 import type { PdfTargetSpec, RawMeasurement, ScreenshotTargetSpec, ViewportPx } from './types.js'
 
 /** 执行器可被宿主调用的方法名（与 browser/dom-executor.ts 一一对应） */
-export type ExecutorMethod = 'waitReady' | 'readMeasurements' | 'readContentBottom' | 'renderCodes'
+export type ExecutorMethod =
+  | 'waitReady'
+  | 'readMeasurements'
+  | 'readContentBottom'
+  | 'renderCodes'
+  | 'applyTextFit'
 
 /** 执行器方法的宿主目标种类：window（waitReady）/ document（读 DOM）/ none（纯计算，无首参） */
 export type ExecutorTargetKind = 'window' | 'document' | 'none'
@@ -15,6 +20,7 @@ export const EXECUTOR_TARGETS: Record<ExecutorMethod, ExecutorTargetKind> = {
   readMeasurements: 'document',
   readContentBottom: 'document',
   renderCodes: 'none',
+  applyTextFit: 'document',
 }
 
 /** core 自带的 DOM 执行器产物；宿主负责把它送进页面 */

@@ -6,15 +6,17 @@ import { EXECUTOR, createFakeDriverFactory } from './fake-driver.js'
 const viewport = { width: 794, height: 1123 }
 
 describe('createDomHostRuntime', () => {
-  it('measure：按 open → setContent → 注入 → 就绪 → 读测量 的顺序调用，并返回原始 px', async () => {
+  it('measure：按 open → setContent → 注入 → 就绪 → 自动缩小 → 读测量 的顺序调用，并返回原始 px', async () => {
     const raw = [{ id: 'a', heightPx: 38 }]
     const fake = createFakeDriverFactory({ measurements: raw })
     const runtime = createDomHostRuntime(fake.factory, EXECUTOR)
     const result = await runtime.withSession({}, session => session.measure('<html/>', viewport))
-    expect(result).toEqual(raw)
+    expect(result.measurements).toEqual(raw)
+    // 无自动缩小节点时执行器返回空清单
+    expect(result.fits).toEqual([])
     expect(fake.calls).toEqual([
       'createDriver', 'open', 'setContent', 'injectExecutor',
-      'evaluate:waitReady', 'evaluate:readMeasurements', 'close',
+      'evaluate:waitReady', 'evaluate:applyTextFit', 'evaluate:readMeasurements', 'close',
     ])
   })
 
