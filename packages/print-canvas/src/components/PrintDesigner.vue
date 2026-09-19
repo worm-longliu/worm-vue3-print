@@ -33,6 +33,19 @@
       @help="helpVisible = true"
     />
 
+    <!-- 页面栏：多页签 + 新增/复制/删除/排序 -->
+    <PageTabs
+      :pages="pages"
+      :active-index="activePageIndex"
+      :multi="pages.length > 1"
+      @select="switchPage"
+      @add="addPage"
+      @duplicate="duplicatePage"
+      @delete="deletePage"
+      @rename="renamePage"
+      @move="movePage"
+    />
+
     <!-- 三栏布局 -->
     <div class="designer-body">
       <LeftPanel
@@ -130,8 +143,8 @@
 import '../styles/native-controls.css'
 import { ref, watch, provide, computed, onMounted, onUnmounted } from 'vue'
 import type { RuntimeElement, PrintBusinessField, TemplateData, TableCell, RequestScreenshotFn, UploadImageFn, UploadDesignBackgroundFn } from '@worm-vue3-print/core/designer'
-import type { PrintFontDeclaration } from '@worm-vue3-print/core'
-import { buildFontFaceCss, validateTiling } from '@worm-vue3-print/core'
+import type { PrintFontDeclaration, MultiPageTemplateData, PrintTemplateData } from '@worm-vue3-print/core'
+import { buildFontFaceCss, validateTiling, normalizeTemplate } from '@worm-vue3-print/core'
 import { useDesignerState } from '../composables/useDesignerState'
 import { useGuides } from '../composables/useGuides'
 import { TABLE_EDIT_KEY } from '../composables/useTableSelection'
@@ -156,10 +169,11 @@ import PropertyPanel from './PropertyPanel.vue'
 import StatusBar from './StatusBar.vue'
 import ExpressionEditor from './ExpressionEditor.vue'
 import HelpModal from './HelpModal.vue'
+import PageTabs from './PageTabs.vue'
 import { useStudioChrome } from '../composables/useStudioChrome'
 
 const props = defineProps<{
-  initialTemplate?: TemplateData
+  initialTemplate?: TemplateData | MultiPageTemplateData
   initialElements?: RuntimeElement[]
   fields?: PrintBusinessField[]
   isEdit?: boolean
@@ -208,6 +222,7 @@ const {
   addElement: onDropElement, addFieldElement: onDropField,
   moveLayer: onMoveLayer, updateTemplateData,
   getTemplateJson, loadTemplate,
+  pages, activePageIndex, switchPage, addPage, duplicatePage, deletePage, renamePage, movePage,
   tableSelection, setTableSelection, recordHistory,
 } = useDesignerState({
   initialTemplate: props.initialTemplate,
@@ -243,9 +258,13 @@ useDocumentFontFace(computed(() => buildFontFaceCss(props.fonts)))
  * 保存/预览/截图统一取这一份：把 prop 配置的字体同步写进模板 JSON，
  * 渲染端（服务端 / 客户端 / 浏览器）只认模板里的声明。宿主未配置时保留模板自带声明。
  */
-function templateJsonWithFonts(): TemplateData {
+function templateJsonWithFonts(): TemplateData | MultiPageTemplateData {
   const json = getTemplateJson()
-  return props.fonts?.length ? { ...json, fonts: [...props.fonts] } : json
+  if (!props.fonts?.length) return json
+  if (Array.isArray((json as MultiPageTemplateData).pages)) {
+    return { ...(json as MultiPageTemplateData), pages: (json as MultiPageTemplateData).pages.map(p => ({ ...p, fonts: [...props.fonts!] })) }
+  }
+  return { ...(json as TemplateData), fonts: [...props.fonts] }
 }
 
 watch(selectedElement, el => {
@@ -274,7 +293,12 @@ async function toggleOverlay() {
     return
   }
   try {
-    const blob = await props.requestScreenshot({ templateJson, printData: DEFAULT_DEMO_DATA })
+    // 叠层对比针对当前激活页生成截图：多页模板取 activePage 单页模板
+    const mp = templateJson as MultiPageTemplateData
+    const activeTemplate: TemplateData = Array.isArray(mp.pages)
+      ? (mp.pages[activePageIndex.value]! as unknown as TemplateData)
+      : (templateJson as TemplateData)
+    const blob = await props.requestScreenshot({ templateJson: activeTemplate, printData: DEFAULT_DEMO_DATA })
     if (screenshotUrl.value) URL.revokeObjectURL(screenshotUrl.value)
     screenshotUrl.value = URL.createObjectURL(blob)
     overlayVisible.value = true
@@ -505,7 +529,12 @@ function handleSave() {
     activePropertyTab.value = 'page'
     return
   }
-  emit('save', JSON.stringify(templateJsonWithFonts()))
+  const json = templateJsonWithFonts()
+  // 多页模板：保存前做归一化校验（纸张尺寸一致、禁连续纸/拼版），非法则阻断
+  if (Array.isArray((json as MultiPageTemplateData).pages)) {
+    try { normalizeTemplate(json as PrintTemplateData | MultiPageTemplateData) } catch (e) { alert(e instanceof Error ? e.message : String(e)); return }
+  }
+  emit('save', JSON.stringify(json))
   markSaved()
 }
 </script>
