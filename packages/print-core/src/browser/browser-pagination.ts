@@ -1,7 +1,7 @@
 // 浏览器端入口：与 print-render / print-client 走同一份 core 管线，仅 driver 不同。
 import { createBrowserPrintRuntime } from './browser-runtime.js'
 import { prepareDocument } from '../print/pipeline.js'
-import type { CodeRenderer, PageLayout, TemplateData as PrintTemplateData } from '../render/types.js'
+import type { CodeRenderer, MultiPageTemplateData, PageLayout, TemplateData } from '../render/types.js'
 
 export interface BrowserRenderResult {
   /** 最终多页 HTML 字符串 */
@@ -33,14 +33,14 @@ export interface BrowserRenderOptions {
 
 /**
  * 浏览器内完成「数据绑定 → 码值渲染 → 测量 → 分页 → 连续纸推导 → 最终 HTML」。
- * @param template 模板 JSON（设计器 TemplateData 结构兼容）
+ * @param template 模板 JSON（设计器 TemplateData 结构兼容；含 { pages } 多页面模板）
  * @param printData 业务数据
  * @param baseUrl 图片相对路径拼接前缀
  * @param codeRenderer 调用方提供的码值渲染器；传入时沿用该渲染器（既有覆盖语义）
  * @param options 渲染选项（连续纸纸高覆盖等）
  */
 export async function renderHtmlPages(
-  template: PrintTemplateData,
+  template: TemplateData | MultiPageTemplateData,
   printData?: Record<string, any> | Record<string, any>[],
   baseUrl?: string,
   codeRenderer?: CodeRenderer,

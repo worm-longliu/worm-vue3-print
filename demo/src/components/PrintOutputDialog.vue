@@ -65,6 +65,7 @@
 import { ref, watch } from 'vue'
 import { PrintClient, WormPrintError } from '@worm-vue3-print/client'
 import type { PrinterInfo } from '@worm-vue3-print/client'
+import type { MultiPageTemplateData, PrintTemplateData } from '@worm-vue3-print/core'
 import {
   checkRenderHealth,
   requestServerPdf,
@@ -233,7 +234,12 @@ async function onClientPrint() {
     // 浏览器侧两遍渲染（测量/分页/最终 HTML 全部在本页完成）；
     // printData 为数组时由 core 在浏览器侧合并多份为单个 HTML，再直送客户端静默打印
     // 交给客户端渲染打印：HTML 里的相对字体地址必须绝对化，否则在客户端进程内解析不到
-    const rendered = await renderInBrowser(templateJson, props.printData, props.baseUrl, props.fontBaseUrl)
+    const rendered = await renderInBrowser(
+      templateJson as unknown as PrintTemplateData | MultiPageTemplateData,
+      props.printData,
+      props.baseUrl,
+      props.fontBaseUrl,
+    )
     const res = await client.printHtml(
       rendered,
       { printerName: selectedPrinter.value || undefined },
