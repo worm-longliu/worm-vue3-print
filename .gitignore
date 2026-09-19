@@ -5,9 +5,8 @@ out/
 # macOS 目录元数据
 .DS_Store
 
-# demo 联调用的字体二进制：来源见 demo/public/fonts/README.md（OFL 可再分发，但体积大且各人自取）
-demo/public/fonts/*.ttf
-demo/public/fonts/*.otf
-demo/public/fonts/*.woff
-demo/public/fonts/*.woff2
-demo/public/fonts/*.ttc
+# demo 联调字体二进制：三款 OFL 固定测试字体入库（来源见 demo/public/fonts/README.md），其余自定义测试字体不入库
+demo/public/fonts/*
+!demo/public/fonts/MaShanZheng-Regular.ttf
+!demo/public/fonts/ZCOOLKuaiLe-Regular.ttf
+!demo/public/fonts/ZCOOLQingKeHuangYou-Regular.ttf
