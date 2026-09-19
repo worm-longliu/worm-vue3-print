@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { buildBatchPageCss, buildPageCss, buildSheetPageCss } from './css-builder.js'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
+import { buildBatchPageCss, buildPageCss, buildSheetPageCss, buildBasePageCss, buildPageGeometryCss } from './css-builder.js'
 import type { TemplateData } from './types.js'
 import type { TileLayout } from '../print/tiling.js'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 function tpl(paperSize: 'A4' | 'CONTINUOUS'): TemplateData {
   return {
@@ -76,5 +81,88 @@ describe('buildSheetPageCss', () => {
 
   it('预览期覆盖格内 .print-page 的 margin（SPIKE D1 回归保护）', () => {
     expect(css).toContain('.print-tile > .print-page { margin: 0; box-shadow: none; }')
+  })
+})
+
+// ─── 多页面模板：CSS 作用域化重构的零回归与作用域验证 ───
+
+function fixture(over: Partial<TemplateData>): TemplateData {
+  return {
+    paperSize: 'A4', orientation: 'portrait',
+    margins: { top: 10, right: 12, bottom: 8, left: 14 },
+    header: { height: 15, elements: [] },
+    footer: { height: 12, elements: [] },
+    firstPageOverlay: { height: 0, elements: [] },
+    ...over,
+  }
+}
+
+// 重构前 buildPageCss 输出 fixture（dump-css 生成，保持逐字比对）
+const cssFixture = JSON.parse(
+  readFileSync(join(__dirname, '__fixtures__', 'build-page-css.json'), 'utf-8'),
+) as Record<string, string>
+
+describe('多页面模板：buildPageCss 重构零回归', () => {
+  const t1 = fixture({ pageBackground: '#f5f5f5' })
+  const t2 = fixture({
+    paperSize: 'A4', orientation: 'landscape',
+    margins: { top: 5, right: 5, bottom: 5, left: 5 },
+    header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
+    firstPageOverlay: { height: 20, elements: [] },
+  })
+  const t3 = fixture({
+    paperSize: 'CUSTOM', orientation: 'portrait', customWidth: 120, customHeight: 80,
+    margins: { top: 3, right: 4, bottom: 5, left: 6 },
+    header: { height: 8, elements: [] }, footer: { height: 6, elements: [] },
+    firstPageOverlay: { height: 10, elements: [] },
+  })
+  const t4 = fixture({
+    paperSize: 'CONTINUOUS', orientation: 'portrait', customWidth: 80,
+    margins: { top: 2, right: 2, bottom: 10, left: 2 },
+    header: { height: 5, elements: [] }, footer: { height: 8, elements: [] },
+    firstPageOverlay: { height: 0, elements: [] },
+  })
+
+  it('A4 竖版与 fixture 逐字一致', () => {
+    expect(buildPageCss(t1)).toBe(cssFixture.a4Portrait)
+  })
+  it('A4 横版与 fixture 逐字一致', () => {
+    expect(buildPageCss(t2)).toBe(cssFixture.a4Landscape)
+  })
+  it('CUSTOM 纸张与 fixture 逐字一致', () => {
+    expect(buildPageCss(t3)).toBe(cssFixture.custom)
+  })
+  it('连续纸推导纸高与 fixture 逐字一致', () => {
+    expect(buildPageCss(t4, 123.45)).toBe(cssFixture.continuous)
+  })
+})
+
+describe('多页面模板：作用域几何 CSS', () => {
+  it('页面规则按 .mt-N 作用域，:last-child 保持全局', () => {
+    const t = fixture({
+      paperSize: 'A4', orientation: 'landscape',
+      margins: { top: 5, right: 5, bottom: 5, left: 5 },
+      header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
+      firstPageOverlay: { height: 20, elements: [] },
+    })
+    const css = `${buildBasePageCss()}\n${buildPageGeometryCss(t, '.mt-1')}`
+    expect(css).toContain('.mt-1.print-page {')
+    expect(css).toContain('padding: 5mm 5mm 5mm 5mm;')
+    // :last-child 必须保持全局（仅文档末页取消强制分页，模板边界仍需分页）
+    expect(css).toContain('.print-page:last-child {')
+    expect(css).not.toContain('.mt-1.print-page:last-child {')
+    // 区域规则后代作用域
+    expect(css).toContain('.mt-1 .page-header {')
+    expect(css).toContain('.mt-1 .page-footer {')
+    expect(css).toContain('.mt-1 .content-area {')
+    expect(css).toContain('.mt-1 .first-page-overlay {')
+  })
+
+  it('同一纸张不同边距的多页模板：作用域规则互不干扰', () => {
+    const pageA = fixture({})
+    const pageB = fixture({ margins: { top: 2, right: 2, bottom: 2, left: 2 } })
+    const css = `${buildPageCss(pageA)}\n${buildPageGeometryCss(pageB, '.mt-1')}`
+    expect(css).toContain('.print-page {\n  width: 210mm;\n  min-height: 297mm;\n  background: #fff;\n  padding: 10mm 12mm 8mm 14mm;')
+    expect(css).toContain('.mt-1.print-page {\n  width: 210mm;\n  min-height: 297mm;\n  background: #fff;\n  padding: 2mm 2mm 2mm 2mm;')
   })
 })

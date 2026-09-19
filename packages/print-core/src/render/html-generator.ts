@@ -122,17 +122,29 @@ function generateMeasurementHtml(
 
 // ─── 第二遍：最终渲染 ───
 
+/** renderFinalPages 的扩展选项（多页面模板：全局页码 + 页面作用域类） */
+export interface RenderFinalPagesOptions {
+  /** 全局页码偏移：模板在整份文档中的起始页号（0 基页号偏移）；缺省 0（单模板） */
+  pageOffset?: number
+  /** 整份文档总页数（多页面模板）；缺省 = 本模板页数（单模板） */
+  totalPages?: number
+  /** 追加到每个 .print-page 的类名（多页面模板 CSS 作用域，如 'mt-1'）；缺省空 */
+  pageClass?: string
+}
+
 /** 第二遍最终渲染：仅生成 body 内的 .print-page 序列（含系统变量注入），不含文档外壳 */
 export function renderFinalPages(
   template: TemplateData,
   pageLayouts: PageLayout[],
   printData: Record<string, any>,
   ctx: RenderCtx,
+  options?: RenderFinalPagesOptions,
 ): string {
-  const totalPages = pageLayouts.length
+  const pageOffset = options?.pageOffset ?? 0
+  const totalPages = options?.totalPages ?? pageLayouts.length
   const pagesHtml = pageLayouts.map(page => {
-    const pageNum = page.pageIndex + 1
-    return renderPage(template, page, pageNum, totalPages, ctx, printData)
+    const pageNum = page.pageIndex + 1 + pageOffset
+    return renderPage(template, page, pageNum, totalPages, ctx, printData, options?.pageClass)
   }).join('\n')
   return injectSystemVariables(pagesHtml)
 }
@@ -175,6 +187,7 @@ function renderPage(
   totalPages: number,
   ctx: RenderCtx,
   printData?: Record<string, any> | Record<string, any>[],
+  pageClass?: string,
 ): string {
   const paper = getPaperDims(template)
   // 连续纸最终纸高由探针推导（options.pageHeightMm），水印网格须按同一纸高铺满
@@ -215,7 +228,7 @@ function renderPage(
   contentHtml = contentHtml.replace(/\{pageIndex\}/g, String(pageNum))
   contentHtml = contentHtml.replace(/\{totalPages\}/g, String(totalPages))
 
-  return `<section class="print-page" data-page="${pageNum}">
+  return `<section class="print-page${pageClass ? ` ${pageClass}` : ''}" data-page="${pageNum}">
   ${renderWatermarkLayerHtml(template.watermark, printData, paperMm, { pageIndex: pageNum, totalPages })}
   <div class="page-header">${headerHtml}</div>
   ${overlayHtml}

@@ -68,6 +68,8 @@ export interface TemplateData {
   pageBackground?: string
   /** 水印配置（同 design/WatermarkOptions，渲染端读取其颜色/透明度/角度/密度/绑定） */
   watermark?: import('../designer/types.js').WatermarkOptions
+  /** 页面名称（多页面模板中用于设计器页签与错误上下文；渲染端忽略） */
+  name?: string
   /** 模板级字体声明：三端据此生成同一份 @font-face，不依赖各端系统字体 */
   fonts?: import('../print/fonts.js').PrintFontDeclaration[]
   /** 拼版打印配置（模板级）；缺省不写 = 不拼版 */
@@ -303,4 +305,13 @@ export function getPaperDimensions(template: {
 /** 是否连续纸（热敏/小票/标签卷纸）：出纸高度按渲染内容推导 */
 export function isContinuousPaper(template: { paperSize: string }): boolean {
   return isContinuousPaperSize(template.paperSize)
+}
+
+// ─── 多页面模板（固定顺序版式组合：各页独立版式、共用同一份数据） ───
+
+export interface MultiPageTemplateData {
+  /** 版本号，缺省 1 */
+  version?: 1
+  /** 按打印顺序排列的页面模板，每个都是完整的单页 TemplateData */
+  pages: TemplateData[]
 }

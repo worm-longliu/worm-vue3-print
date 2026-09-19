@@ -11,28 +11,18 @@ export function mm(value: number): string {
   return `${value}mm`
 }
 
-/**
- * 生成完整的打印页面 CSS。
- * 包含纸张尺寸、边距、页眉页脚、内容区、首页叠加区域等样式。
- * @param pageHeightMm 连续纸由浏览器探针推导出的最终纸高（mm）；传入时替换模板纸张高度，
- *                     使 @page/.print-page/footer 全部对齐该高度。普通纸不传。
- */
-export function buildPageCss(template: TemplateData, pageHeightMm?: number): string {
-  const basePaper = getPaperDimensions(template)
-  const paper =
-    pageHeightMm && pageHeightMm > 0
-      ? { width: basePaper.width, height: pageHeightMm }
-      : basePaper
-  const { top: mt, right: mr, bottom: mb, left: ml } = template.margins
-  const headerH = template.header?.height ?? 0
-  const footerH = template.footer?.height ?? 0
-  const overlayH = template.firstPageOverlay?.height ?? 0
-  const contentWidth = paper.width - ml - mr
+/** 纸张物理尺寸解析：连续纸推导纸高覆盖模板纸高，其余按模板纸面 */
+function resolvePaper(template: TemplateData, pageHeightMm?: number): { width: number; height: number } {
+  const base = getPaperDimensions(template)
+  return pageHeightMm && pageHeightMm > 0
+    ? { width: base.width, height: pageHeightMm }
+    : base
+}
 
+// ── 基础块（模板无关；多页时整体只输出一份） ──
+
+function screenBlock(): string {
   return `
-/* ── 打印纸张：浏览器原生打印按此尺寸分页（Playwright page.pdf 以显式宽高为准，无副作用） ── */
-@page { size: ${mm(paper.width)} ${mm(paper.height)}; margin: 0; }
-
 /* ── 全局重置 ── */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -50,21 +40,11 @@ body { font-family: ${FALLBACK_FONT_STACK.join(', ')}; }
   body { background: #fff; }
   .print-page { margin: 0; box-shadow: none; }
 }
-
-/* ── 纸张页面 ── */
-.print-page {
-  width: ${mm(paper.width)};
-  min-height: ${mm(paper.height)};
-  background: ${template.pageBackground ?? '#fff'};
-  padding: ${mm(mt)} ${mm(mr)} ${mm(mb)} ${mm(ml)};
-  position: relative;
-  page-break-after: always;
-  overflow: hidden;
-}
-.print-page:last-child {
-  page-break-after: auto;
+`
 }
 
+function watermarkBlock(): string {
+  return `
 /* ── 水印层：覆盖整页、位于所有内容之下（显式矢量瓦片，禁止用 CSS 平铺背景：
        Chromium 会把它编译成 PDF 平铺图案，出纸链路的 RIP 会忽略图案矩阵导致水印放大/错位） ── */
 .watermark-layer {
@@ -82,39 +62,11 @@ body { font-family: ${FALLBACK_FONT_STACK.join(', ')}; }
   position: absolute;
   pointer-events: none;
 }
-
-/* ── 页眉 ── */
-.page-header {
-  width: ${mm(contentWidth)};
-  height: ${mm(headerH)};
-  position: relative;
+`
 }
 
-/* ── 页脚：绝对定位固定在页面底部（内容不足时不随文档流上浮） ──
-   用显式 top 定位到「纸高 - 下边距 - 页脚高」，保证下边距生效、
-   与设计器 CanvasPaper 的三区几何一致。 */
-.page-footer {
-  width: ${mm(contentWidth)};
-  height: ${mm(footerH)};
-  position: absolute;
-  top: ${mm(paper.height - mb - footerH)};
-  left: 0;
-}
-
-/* ── 内容区 ── */
-.content-area {
-  width: ${mm(contentWidth)};
-  position: relative;
-  overflow: visible;
-}
-
-/* ── 首页叠加区域 ── */
-.first-page-overlay {
-  width: ${mm(contentWidth)};
-  height: ${mm(overlayH)};
-  position: relative;
-}
-
+function elementBlock(): string {
+  return `
 /* ── 元素通用定位 ── */
 .print-element {
   position: absolute;
@@ -149,7 +101,141 @@ body { font-family: ${FALLBACK_FONT_STACK.join(', ')}; }
   height: auto;
   overflow: visible;
 }
-`.trim()
+`
+}
+
+// ── 几何块（模板相关；多页时按模板作用域化，单页时保持原始选择器） ──
+
+/** @page 规则：纸张尺寸（含连续纸推导纸高）；@page 无法作用域化，多页时由首个模板输出一次 */
+function pageRuleBlock(paper: { width: number; height: number }): string {
+  return `
+/* ── 打印纸张：浏览器原生打印按此尺寸分页（Playwright page.pdf 以显式宽高为准，无副作用） ── */
+@page { size: ${mm(paper.width)} ${mm(paper.height)}; margin: 0; }
+`
+}
+
+/**
+ * 纸张页几何：.print-page 宽高/背景/内边距，以及文档末页取消强制分页。
+ * @param pageSel 页面选择器：单页 '.print-page'；作用域化时 '.mt-N.print-page'
+ */
+function pageGeometryBlock(
+  template: TemplateData,
+  paper: { width: number; height: number },
+  pageSel: string,
+): string {
+  const { top: mt, right: mr, bottom: mb, left: ml } = template.margins
+  return `
+/* ── 纸张页面 ── */
+${pageSel} {
+  width: ${mm(paper.width)};
+  min-height: ${mm(paper.height)};
+  background: ${template.pageBackground ?? '#fff'};
+  padding: ${mm(mt)} ${mm(mr)} ${mm(mb)} ${mm(ml)};
+  position: relative;
+  page-break-after: always;
+  overflow: hidden;
+}
+.print-page:last-child {
+  page-break-after: auto;
+}
+`
+}
+
+/**
+ * 区域几何：页眉/页脚/内容区/首页叠加。
+ * @param desc 后代前缀：单页 ''；作用域化时 '.mt-N '
+ */
+function areaGeometryBlock(
+  template: TemplateData,
+  paper: { width: number; height: number },
+  desc: string,
+): string {
+  const { right: mr, left: ml } = template.margins
+  const { bottom: mb } = template.margins
+  const headerH = template.header?.height ?? 0
+  const footerH = template.footer?.height ?? 0
+  const overlayH = template.firstPageOverlay?.height ?? 0
+  const contentWidth = paper.width - ml - mr
+  return `
+/* ── 页眉 ── */
+${desc}.page-header {
+  width: ${mm(contentWidth)};
+  height: ${mm(headerH)};
+  position: relative;
+}
+
+/* ── 页脚：绝对定位固定在页面底部（内容不足时不随文档流上浮） ──
+   用显式 top 定位到「纸高 - 下边距 - 页脚高」，保证下边距生效、
+   与设计器 CanvasPaper 的三区几何一致。 */
+${desc}.page-footer {
+  width: ${mm(contentWidth)};
+  height: ${mm(footerH)};
+  position: absolute;
+  top: ${mm(paper.height - mb - footerH)};
+  left: 0;
+}
+
+/* ── 内容区 ── */
+${desc}.content-area {
+  width: ${mm(contentWidth)};
+  position: relative;
+  overflow: visible;
+}
+
+/* ── 首页叠加区域 ── */
+${desc}.first-page-overlay {
+  width: ${mm(contentWidth)};
+  height: ${mm(overlayH)};
+  position: relative;
+}
+`
+}
+
+/** 模板无关的基础 CSS（多页文档外壳用；不含 @page，@page 由首模板单独输出） */
+export function buildBasePageCss(): string {
+  return [screenBlock(), watermarkBlock(), elementBlock()].join('').trim()
+}
+
+/** @page 规则 CSS（纸张尺寸，含连续纸推导纸高）。@page 无法作用域化，多页文档由首个模板输出一份 */
+export function buildPageRuleCss(template: TemplateData, pageHeightMm?: number): string {
+  return pageRuleBlock(resolvePaper(template, pageHeightMm)).trim()
+}
+
+/**
+ * 模板相关几何 CSS，可按作用域前缀输出（多页时每页模板一份）。
+ * @param scope 页面作用域类选择器（如 '.mt-3'）；缺省输出原始选择器
+ * @param pageHeightMm 连续纸推导纸高（mm）；普通纸不传
+ */
+export function buildPageGeometryCss(
+  template: TemplateData,
+  scope?: string,
+  pageHeightMm?: number,
+): string {
+  const paper = resolvePaper(template, pageHeightMm)
+  const pageSel = scope ? `${scope}.print-page` : '.print-page'
+  const desc = scope ? `${scope} ` : ''
+  return [
+    pageGeometryBlock(template, paper, pageSel),
+    areaGeometryBlock(template, paper, desc),
+  ].join('').trim()
+}
+
+/**
+ * 生成完整的打印页面 CSS。
+ * 包含纸张尺寸、边距、页眉页脚、内容区、首页叠加区域等样式。
+ * @param pageHeightMm 连续纸由浏览器探针推导出的最终纸高（mm）；传入时替换模板纸张高度，
+ *                     使 @page/.print-page/footer 全部对齐该高度。普通纸不传。
+ */
+export function buildPageCss(template: TemplateData, pageHeightMm?: number): string {
+  const paper = resolvePaper(template, pageHeightMm)
+  return [
+    pageRuleBlock(paper),
+    screenBlock(),
+    pageGeometryBlock(template, paper, '.print-page'),
+    watermarkBlock(),
+    areaGeometryBlock(template, paper, ''),
+    elementBlock(),
+  ].join('').trim()
 }
 
 /** 份间强制分页：覆盖每份最后一个 .print-page 的 page-break-after:auto */

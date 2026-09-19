@@ -50,6 +50,8 @@ export interface TemplateData {
     elements: TemplateElement[]
   }
   elements: TemplateElement[] // 内容区主体元素
+  /** 页面名称（多页面模板中用于设计器页签显示；渲染端忽略） */
+  name?: string
   /** 模板级字体声明（由设计器 prop 同步写入）：三端据此生成同一份 @font-face */
   fonts?: import('../print/fonts.js').PrintFontDeclaration[]
   /** 拼版打印配置（模板级）；缺省不写 = 不拼版 */

@@ -206,3 +206,16 @@ export function buildPageGeometryCss(template: TemplateData, scope?: string, pag
 - 单模板路径输出与今日逐字一致（CSS 重构由护栏测试保证）；
 - 设计器 1 页时保存仍为裸 `TemplateData`，存量模板与宿主零改动；
 - 消费方仅放宽类型，无逻辑变化。
+
+## 十二、核心逻辑验证记录（2026-09-19）
+
+生成实现计划前，先用测试验证了核心业务逻辑（纯逻辑，无 DOM/浏览器）：
+
+- **CSS 零回归**：`buildPageCss` 重构拆分为 `buildBasePageCss + buildPageGeometryCss`，对 A4 竖/横、CUSTOM、CONTINUOUS（含推导纸高）四类模板与重构前 fixture **逐字一致**（回归护栏测试）；
+- **作用域几何**：`.mt-N.print-page` 页面规则、`.mt-N .page-header/.page-footer/.content-area/.first-page-overlay` 后代规则正确，`:last-child` 保持全局（模板边界仍需强制分页）；
+- **normalizeTemplate**：单模板透传、多模板展开、1 页按单模板、空 pages/纸张不一致（含方向）/连续纸/拼版四类校验，错误信息带页面名；
+- **整份文档组合**：封面 1 页 + 内容 2 页 → `pageCount=3`，页码全局连续 `1/3、2/3、3/3`；每模板整页 `.print-page` 序列拼接（下一模板必然新开一页）；首页叠加只在各模板自身首页出现；
+- **批量**：2 份 → `pageCount=6`，份间 `.print-copy` 包装，页码份内重置；
+- **字体合并**：按 `font-family` 去重保留首个。
+
+验证产物（已提交）：`src/print/multi-template.ts`（normalizeTemplate / mergeFontDeclarations / composeMultiPageDocument）、css-builder 拆分、html-generator 的 `pageOffset/totalPages/pageClass` 扩展、`MultiPageTemplateData` 类型与页面 `name` 字段、配套单测与 CSS fixture。**core 全量 632 测试通过**。
