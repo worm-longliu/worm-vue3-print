@@ -78,11 +78,18 @@ export function toRuntimePool(data: TemplateData): TemplateData {
 
 /** 解析初始模板为运行时页面池：多页 wrapper 展开，单页归一为单元素数组 */
 function resolveInitialPages(initial?: TemplateData | MultiPageTemplateData): TemplateData[] {
-  if (!initial) return [toRuntimePool(createDefaultTemplate())]
+  const withDefaultName = (p: TemplateData, i: number): TemplateData => {
+    const rt = toRuntimePool(normalizeTemplateUnits(p))
+    // 无名页面补存固定默认名：页签显示若依赖位置回退（页面 ${i+1}），
+    // 页面重排后索引变化会导致页签名漂移并与已存储页名重名（如「页面 1」变「页面 2」）
+    if (!rt.name) rt.name = `页面 ${i + 1}`
+    return rt
+  }
+  if (!initial) return [withDefaultName(createDefaultTemplate(), 0)]
   const list = Array.isArray((initial as MultiPageTemplateData).pages)
     ? (initial as MultiPageTemplateData).pages
     : [initial as TemplateData]
-  return list.length ? list.map(p => toRuntimePool(normalizeTemplateUnits(p))) : [toRuntimePool(createDefaultTemplate())]
+  return list.length ? list.map(withDefaultName) : [withDefaultName(createDefaultTemplate(), 0)]
 }
 
 /** 单页运行时池序列化回三区模板 JSON（按 zone 拆回，补 id/type） */
@@ -489,6 +496,14 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     pushHistory(getHistoryState())
   }
 
+  /** 新增页默认名：从「页面 N」递增取第一个未被占用的名字，避免与现存页重名 */
+  function nextDefaultPageName(): string {
+    const used = new Set(pages.value.map(p => p.name))
+    let n = pages.value.length + 1
+    while (used.has(`页面 ${n}`)) n++
+    return `页面 ${n}`
+  }
+
   /** 新增页面：继承当前页纸张，激活并定位到新页 */
   function addPage() {
     flushActivePage()
@@ -497,7 +512,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
       ...createDefaultTemplate(),
       paperSize: base.paperSize, orientation: base.orientation,
       customWidth: base.customWidth, customHeight: base.customHeight,
-      name: `页面 ${pages.value.length + 1}`,
+      name: nextDefaultPageName(),
     })
     pages.value.push(np)
     activePageIndex.value = pages.value.length - 1

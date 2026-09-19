@@ -120,4 +120,27 @@ describe('useDesignerState 多页面', () => {
     expect(s.activePageIndex.value).toBe(0)
     expect(s.templateData.value.name).toBe('封面')
   })
+
+  it('无名页面补存固定默认名：移动页面后各页名不漂移、不重名', () => {
+    // 首页无 name（如宿主直接载入的单页/多页模板），其余页由 addPage 生成固定名
+    const s = useDesignerState({ initialTemplate: { version: 1, pages: [page('', 30)] } })
+    expect(s.pages.value[0].name).toBe('页面 1')
+    s.addPage()
+    s.addPage()
+    s.addPage()
+    expect(s.pages.value.map(p => p.name)).toEqual(['页面 1', '页面 2', '页面 3', '页面 4'])
+    // 页面 4 移到最左：无名页的页签名不再随索引漂移，也不与已存储页名重名
+    s.movePage(3, 0)
+    expect(s.pages.value.map(p => p.name)).toEqual(['页面 4', '页面 1', '页面 2', '页面 3'])
+  })
+
+  it('addPage 取名避开现存页名：删页后再新增不产生重名', () => {
+    const s = useDesignerState({ initialTemplate: { version: 1, pages: [page('页面 1', 30)] } })
+    s.addPage()
+    s.addPage()
+    s.addPage() // [页面 1, 页面 2, 页面 3, 页面 4]
+    s.deletePage(0) // [页面 2, 页面 3, 页面 4]
+    s.addPage()
+    expect(s.pages.value.map(p => p.name)).toEqual(['页面 2', '页面 3', '页面 4', '页面 5'])
+  })
 })
