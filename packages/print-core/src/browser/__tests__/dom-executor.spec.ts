@@ -10,8 +10,12 @@ beforeAll(() => {
   proto.getContext = () => ({ font: '', measureText: (text: string) => ({ width: String(text).length * 8 }) })
 })
 
+/** stub 布局高度：执行器读 getBoundingClientRect().height，必须是亚像素精度 */
 function stubHeight<T extends HTMLElement>(node: T, height: number): T {
-  Object.defineProperty(node, 'offsetHeight', { value: height, configurable: true })
+  Object.defineProperty(node, 'getBoundingClientRect', {
+    value: () => ({ height, top: 0, bottom: height, width: 0, left: 0, right: 0 }),
+    configurable: true,
+  })
   return node
 }
 
@@ -34,6 +38,12 @@ describe('readMeasurements', () => {
       { id: 'a', heightPx: 38 },
       { id: 't', heightPx: 760, rowHeightsPx: [38, 190] },
     ])
+  })
+
+  it('亚像素高度原样返回，不向上取整（38mm = 143.609px 不得读作 144px）', () => {
+    document.body.innerHTML = '<div data-measure-id="f"></div>'
+    stubHeight(document.querySelector('[data-measure-id="f"]') as HTMLElement, 143.609375)
+    expect(readMeasurements(document)).toEqual([{ id: 'f', heightPx: 143.609375 }])
   })
 
   it('缺 data-measure-id 的元素被跳过', () => {

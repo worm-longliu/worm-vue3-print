@@ -19,6 +19,8 @@
 - `@worm-vue3-print/core` / `@worm-vue3-print/canvas`：字体声明新增可选 `label`（业务名，如「马善政毛笔楷书」），字体输入框与下拉优先展示 label 并在括号里附上真实族名（如「马善政毛笔楷书（Ma Shan Zheng）」），搜索同时匹配 label 与族名；**写入模板与 `@font-face` 的始终是 `family`**，输入 label 回车会映射回族名，避免把展示名写进模板导致字体静默失效。
 - 字体基址与图片基址解耦（**修复自定义字体只在设计稿生效**）：模板声明字体的相对 URL 此前被拼到图片 `baseUrl` 上（如业务 OSS 域名），出图端因此 404、静默回退系统字体。现改为 `bindData(template, data, baseUrl, fontBaseUrl)`——`fontBaseUrl` 独立指定，缺省回落 `baseUrl`，传空串表示不拼接（浏览器端按文档 origin 解析，缺省行为）；`PrintJob`、render 服务的请求体与 `FONT_BASE_URL` 环境变量、SDK `print(..., { fontBaseUrl })`、客户端校验与渲染、`PrintHtmlPreview` 均支持。另外 **字体站点/CDN 必须返回 `Access-Control-Allow-Origin`**：出图端加载模板 HTML 时的 origin 为 `null`/应用协议，缺 CORS 头字体同样会被拦下。
 - `@worm-vue3-print/canvas`：文本元素与表格单元格属性面板的「字体」下拉只列出模板声明字体（展示 label，模板当前值不在声明内时保留并标注「（未知）」）；声明之外的字体名仍可直接输入，不做静默清除。
+- `@worm-vue3-print/core`：分页引擎支持**元素堆叠与显式编组同页**。此前内容区每个非表格元素各自扣减一次实测高度，纵向重叠的元素会被重复计高（触发本不需要的换页），且放不下时单个元素被独自推到下一页，导致设计器里的层叠组合在打印时被静默拆散。现改为：① 纵向区间相交的元素按并查集聚为「堆叠单元」，纵向只按并集占用一次版面、放不下时整组一起换页（上下边相切不算重叠，顺序流式排版结果不变）；② `options.groupId` 相同的显式编组成员强绑定同页，不参与表格跟随区归属，组内含 `pageable:false` 成员时整组锁定首页；③ 换页后整组平移到内容区顶部，组内相对偏移保持设计值；④ 内容区层序排序由仅按 `top` 改为 `top → zIndex → 模板数组序`，无 zIndex 时与设计器 DOM 层序确定一致。
+- `@worm-vue3-print/canvas`：单击已编组元素的任一成员即选中整组（此前只选中单个成员），整组拖拽移动、Ctrl+G 编组、Ctrl+Shift+G 取消编组、右键菜单与图层层级保持一致；Ctrl/⌘ 多选仍按单元素切换。
 - **破坏性变更：移除字体查询功能（含服务端与桌面客户端）** 不再获取两端系统字体清单——删除 `PrintDesigner` 的 `serverFonts` / `clientFonts` / `loadFonts` props 与「查询字体」按钮、离线与缺失字体提示；删除 `@worm-vue3-print/render` 的 `GET /fonts` 与 `X-Font-Warnings` 响应头、`@worm-vue3-print/client` 的 `fonts.list` 协议与 `PrintClient.listFonts()`、桌面客户端 `print.submit` 的缺字 `warn` 日志，以及 core 的 `readSystemFonts` / `mergeFontSources` / `findMissingFonts` 等清单合并与缺失校验能力。字体可用性完全由模板 `fonts` 声明与 `@font-face` 决定。
 
 ### 新增
@@ -33,6 +35,7 @@
 - `@worm-vue3-print/core`：水印表达式支持系统变量 `{printDate}`（打印日期 YYYY-MM-DD）、`{printTime}`（打印时间 HH:mm:ss）、`{pageIndex}`（当前页码）、`{totalPages}`（总页数），与表达式弹框「变量」一致；`injectSystemVariables` 同步支持 `{printTime}` 替换，并导出 `resolveSystemVariables` 供设计器预览复用（预览与打印取值同源）。
 - `@worm-vue3-print/canvas`：水印配置面板合并为单一「水印表达式」输入——**纯文本即静态水印（`mode=fixed`）**，含 `{字段}`、函数调用（`CONCAT(...)`）或字段路径（`order.no`）则按表达式解析（`mode=binding`），无需再手选模式；表达式通过表达式弹框（按钮或双击输入框打开）编辑，弹框内可直接选业务字段与打印日期/时间等变量；移除预设绑定字段下拉与时间戳开关（时间戳改由表达式里的 `{printDate}`/`{printTime}` 表达）；测试值仅在表达式模式下展示；保留密度（密/中/疏/自定义瓦片尺寸）等设置。
 - `@worm-vue3-print/canvas`：`WatermarkConfig`、`CanvasPaper` 水印渲染改用 core 同构模块，三端渲染一致。
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`：新增**标签拼版**（模板 `tiling` 配置）——小尺寸标签模板不再「一张纸打一个标签」：开启后按「列 × 行」把多份标签铺进目标纸（默认 A4 纵向、四边留白 10mm、格间距 2mm、列数手工指定、行数按纸面自动推导），单份数据同样走拼版（1 格 1 张）。core 新增 `print/tiling.ts`（`computeTileLayout`：纸面/列数/标签高度校验与行列推导，连续纸不支持拼版）与 `print/tile-compose.ts`（按格铺排合成 HTML）；拼版下 `renderPdf` 的 `pageCount` 改为**实际输出张数**（预览「共 N 页」与客户端任务历史同口径），`paperMm` 为目标纸尺寸。canvas 新增拼版配置面板（开关、目标纸与方向、自定义尺寸、四边留白、横纵间距、列数），实时显示行列数与可容纳格数；任一份标签底部超出其内容区时拼版直接报错，不静默裁切。`@worm-vue3-print/render` 新增拼版端到端集成测试（真实 Chromium 校验张数与格坐标）。
 
 ### 修复
 
@@ -40,6 +43,7 @@
 - 打印客户端：修复**出纸方向与浏览器/服务端预览不一致**（横向页面被打成纵向）。根因是出纸命令未声明纸张，CUPS 按队列默认纸张（多为纵向 A4）处理，`pdftopdf` 把横向页旋转 90°（产物 PDF 带 `/Rotate 90`）。现在按「宿主指定驱动纸型 → 标准纸型匹配 → `Custom.<宽>x<高>`（点）」显式下发 `-o media=…`，实测同一份横向 A4 页面由 `/Rotate 90` 恢复为 `/Rotate 0`，纵向页面不受影响。
 - 打印客户端：修复静默打印「PDF 生成超时 → 后续任务全部 BUSY」——`webContents.printToPDF` 已移除回调重载（回调永不触发、Promise 拒绝被静默吞掉），且 `PrintToPDFOptions.pageSize` 单位是**英寸**而非微米（误传微米会得到 210000×297000 英寸纸张，Electron 44 直接生成失败）。改用 Promise + 超时兜底（`src/main/pdf-generator.ts`）、纸张微米→英寸换算、显式零边距与 `printBackground: true`；生成失败/超时统一以 `PRINT_FAILED` 返回并释放串行锁，客户端静默打印产物与服务端 PDF 的水印、纸张尺寸一致。
 - 打印客户端：出纸链路文档同步为「HTML → printToPDF → 系统打印命令」（`clients/print-client/README.md`、`docs/中文/指南/静默打印.md`、静默打印技能参考）。
+- `@worm-vue3-print/core`：修复小纸张模板输出**空白第一页**（如 80×60mm 自定义纸、边距 10mm、内容高 38mm）。两处根因：① 分页引擎 `finishPage()` 无条件把当前页入列，首个元素/单元判定放不下时会产出一张空纸、内容整体下移一页；现在空页不入列，内容按设计坐标留在本页；同时在 `PageLayout.overflow` 标记「内容底部超出内容区会被纸面裁掉」（按物理边界判定，不看分页预算里的 2mm 安全余量——贴着纸边排仍是合法排版），拼版「每份恰好 1 页」校验据此继续阻断真正超高的内容。② DOM 执行器测量元素高度用 `offsetHeight`（整数 px，向上取整），38mm 被读成 144px = 38.1mm，恰好越过 40mm 内容区扣除 2mm 安全余量后的 38mm 预算，把「放得下」误判为「放不下」；现改用 `getBoundingClientRect().height` 取亚像素真实高度（表格行高同理）。
 
 ### 变更
 

@@ -63,23 +63,29 @@ function declaredFontFaces(doc: Document): Array<{ family: string; weight: strin
   return out
 }
 
-/** 读取 [data-measure-id] 元素高度与表格行高（原始 CSS px） */
+/**
+ * 读取 [data-measure-id] 元素高度与表格行高（原始 CSS px）。
+ * 用 getBoundingClientRect().height 而非 offsetHeight：后者是取整整数，
+ * 38mm 会被舍成 144px（38.1mm），在内容刚好顶满分页预算时把「放得下」误判为
+ * 「放不下」，进而触发换页。亚像素精度才能反映真实布局高度。
+ */
 export function readMeasurements(doc: Document): RawMeasurement[] {
   const result: RawMeasurement[] = []
   doc.querySelectorAll('[data-measure-id]').forEach(node => {
     const el = node as HTMLElement
     const id = el.getAttribute('data-measure-id')
     if (!id) return
+    const heightPx = el.getBoundingClientRect().height
     const table = el.querySelector('table.print-table')
     if (!table) {
-      result.push({ id, heightPx: el.offsetHeight })
+      result.push({ id, heightPx })
       return
     }
     const rowHeightsPx: number[] = []
     table.querySelectorAll('tbody > tr[data-row-index]').forEach(row => {
-      rowHeightsPx.push((row as HTMLElement).offsetHeight)
+      rowHeightsPx.push((row as HTMLElement).getBoundingClientRect().height)
     })
-    result.push({ id, heightPx: el.offsetHeight, rowHeightsPx })
+    result.push({ id, heightPx, rowHeightsPx })
   })
   return result
 }
