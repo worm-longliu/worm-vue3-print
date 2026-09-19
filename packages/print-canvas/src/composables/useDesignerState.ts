@@ -1,10 +1,9 @@
 // web/src/components/print/composables/useDesignerState.ts
 // 设计器核心状态管理：模板数据/选择/历史/剪贴板/编组/键盘/序列化
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import type { MultiPageTemplateData } from '@worm-vue3-print/core'
 import type {
   RuntimeElement, ElementType, ElementZone, PrintBusinessField, TemplateData,
-  TableSelection, PrintElementData,
+  TableSelection, PrintElementData, MultiPageTemplateData,
 } from '@worm-vue3-print/core/designer'
 import { createRuntimeElement, generateId } from '@worm-vue3-print/core/designer'
 import { createFieldElement } from '@worm-vue3-print/core/designer'

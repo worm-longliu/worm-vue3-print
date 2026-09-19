@@ -142,8 +142,8 @@
 <script setup lang="ts">
 import '../styles/native-controls.css'
 import { ref, watch, provide, computed, onMounted, onUnmounted } from 'vue'
-import type { RuntimeElement, PrintBusinessField, TemplateData, TableCell, RequestScreenshotFn, UploadImageFn, UploadDesignBackgroundFn } from '@worm-vue3-print/core/designer'
-import type { PrintFontDeclaration, MultiPageTemplateData, PrintTemplateData } from '@worm-vue3-print/core'
+import type { RuntimeElement, PrintBusinessField, TemplateData, TableCell, RequestScreenshotFn, UploadImageFn, UploadDesignBackgroundFn, MultiPageTemplateData } from '@worm-vue3-print/core/designer'
+import type { PrintFontDeclaration, PrintTemplateData, MultiPageTemplateData as PrintMultiPageTemplateData } from '@worm-vue3-print/core'
 import { buildFontFaceCss, validateTiling, normalizeTemplate } from '@worm-vue3-print/core'
 import { useDesignerState } from '../composables/useDesignerState'
 import { useGuides } from '../composables/useGuides'
@@ -296,7 +296,7 @@ async function toggleOverlay() {
     // 叠层对比针对当前激活页生成截图：多页模板取 activePage 单页模板
     const mp = templateJson as MultiPageTemplateData
     const activeTemplate: TemplateData = Array.isArray(mp.pages)
-      ? (mp.pages[activePageIndex.value]! as unknown as TemplateData)
+      ? mp.pages[activePageIndex.value]!
       : (templateJson as TemplateData)
     const blob = await props.requestScreenshot({ templateJson: activeTemplate, printData: DEFAULT_DEMO_DATA })
     if (screenshotUrl.value) URL.revokeObjectURL(screenshotUrl.value)
@@ -532,7 +532,7 @@ function handleSave() {
   const json = templateJsonWithFonts()
   // 多页模板：保存前做归一化校验（纸张尺寸一致、禁连续纸/拼版），非法则阻断
   if (Array.isArray((json as MultiPageTemplateData).pages)) {
-    try { normalizeTemplate(json as PrintTemplateData | MultiPageTemplateData) } catch (e) { alert(e instanceof Error ? e.message : String(e)); return }
+    try { normalizeTemplate(json as PrintTemplateData | PrintMultiPageTemplateData) } catch (e) { alert(e instanceof Error ? e.message : String(e)); return }
   }
   emit('save', JSON.stringify(json))
   markSaved()

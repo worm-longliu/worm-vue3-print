@@ -72,6 +72,16 @@ export interface TemplateData {
   designBackground?: DesignBackground
 }
 
+/**
+ * 多页面模板（设计器侧 wrapper）：pages 为设计器完整模型 TemplateData。
+ * 与主入口 render 管线的同名 MultiPageTemplateData（pages 为简化 TemplateData）有意分离，
+ * 两侧运行时代表同一份 JSON（{version, pages}），由 canvas 侧经 normalizeTemplate 交给渲染端。
+ */
+export interface MultiPageTemplateData {
+  version?: 1
+  pages: TemplateData[]
+}
+
 /** 模板元素引用（用于 TemplateData 各区域） */
 export type TemplateElement = PrintElementData
 
