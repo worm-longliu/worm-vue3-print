@@ -39,7 +39,7 @@ PrintEngine（串行锁，并发直接 BUSY）
 
 ```bash
 npm install                      # 在仓库根目录
-npm run dev -w @worm-vue3-print/print-client   # 启动客户端（electron-vite dev）
+npm run dev:client               # 启动客户端（electron-vite dev，根脚本短别名）
 npm run test -w @worm-vue3-print/print-client  # 单元/集成测试（node + happy-dom，不依赖 Electron）
 npm run build -w @worm-vue3-print/print-client # electron-vite 三环境构建到 out/
 ```

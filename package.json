@@ -11,6 +11,11 @@
     "clients/*"
   ],
   "scripts": {
+    "dev:core": "npm run build -w @worm-vue3-print/core -- --watch",
+    "dev:canvas": "npm exec -w @worm-vue3-print/canvas -- vite build --watch",
+    "dev:render": "npm run dev -w @worm-vue3-print/render",
+    "dev:client": "npm run dev -w @worm-vue3-print/print-client",
+    "dev:demo": "npm run dev --prefix demo",
     "build": "npm run build -w @worm-vue3-print/core && npm run build -w @worm-vue3-print/client && npm run build -w @worm-vue3-print/render && npm run build -w @worm-vue3-print/canvas && npm run build -w @worm-vue3-print/print-client",
     "test": "npm run test -w @worm-vue3-print/core && npm run test -w @worm-vue3-print/canvas && npm run test -w @worm-vue3-print/client && npm run test -w @worm-vue3-print/print-client",
     "lint:print-architecture": "node scripts/check-print-architecture.mjs",

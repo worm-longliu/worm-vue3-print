@@ -47,8 +47,8 @@ npm install
 # 仅在系统没有 Chromium/Chrome 时执行：安装 Playwright 自带 Chromium
 npx playwright install chromium
 
-# 常用命令（仓库根执行）
-npm run dev -w @worm-vue3-print/render     # 开发运行（tsx 直跑 src/server.ts）
+# 常用命令（仓库根执行；dev:render / dev:client / dev:demo 为根脚本短别名）
+npm run dev:render                        # 开发运行（tsx 直跑 src/server.ts）
 npm run build -w @worm-vue3-print/render   # tsc 编译到 services/print-render/dist/
 npm run start -w @worm-vue3-print/render   # 生产运行（node dist/server.js）
 npm run test -w @worm-vue3-print/render    # vitest（截图/分页用例需可启动浏览器）

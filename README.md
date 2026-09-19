@@ -96,6 +96,19 @@ npm run build    # 构建所有包
 npm test         # 运行所有包测试
 ```
 
+各模块开发启动（均在仓库根执行）：
+
+| 命令 | 作用 |
+|---|---|
+| `npm run dev:demo` | 启动 demo（Vite，http://localhost:9303） |
+| `npm run dev:render` | 启动渲染微服务（tsx 直跑，http://localhost:3001） |
+| `npm run dev:client` | 启动 Electron 桌面客户端（electron-vite dev） |
+| `npm run dev:core` | core 以 watch 模式持续构建 dist（tsup） |
+| `npm run dev:canvas` | canvas 以 watch 模式持续构建 dist（vite build --watch，不含 vue-tsc 类型检查） |
+
+> demo 与 Electron 客户端消费 core / canvas / SDK 的构建产物（dist），改库代码后可用
+> `dev:core`、`dev:canvas` 自动重编译；类型检查仍需执行完整 `npm run build`。
+
 ## 安装
 
 ```bash
@@ -273,7 +286,7 @@ client.pair(token)                            // 安全配对：客户端开启�
 
 ```bash
 # 本地开发（首次需 npx playwright install chromium，macOS 可直接使用系统 Chrome）
-npm run dev -w @worm-vue3-print/render
+npm run dev:render
 
 # Docker 构建（在仓库根执行）
 docker build -f services/print-render/Dockerfile -t worm-vue3-print-render .
