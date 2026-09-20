@@ -60,6 +60,12 @@ export function isContinuousPaperSize(paperSize: string): boolean {
 export interface TemplateData {
   paperSize: PaperSize
   orientation: 'portrait' | 'landscape'
+  /**
+   * 出纸旋转角度（整页内容旋转出纸）：缺省 0（不旋转）。仅固定纸（非连续纸、非拼版）生效。
+   * 0° 纸张不变、内容不旋转；180° 纸张不变、内容翻转；90°/270° 纸张长宽互换以贴合旋转后的内容包围盒，
+   * 设计稿内容保持原方向不变，不被拉伸或裁切。
+   */
+  outputRotation?: 0 | 90 | 180 | 270
   /** 自定义纸张宽度（mm），paperSize='CUSTOM' 时生效；连续纸（含小票纸）时为纸宽，缺省取预设纸宽 */
   customWidth?: number
   /** 自定义纸张高度（mm），仅 paperSize='CUSTOM' 时生效；连续纸（含小票纸）时仅作设计画布高度（缺省 297，出纸按内容推导） */
@@ -301,6 +307,59 @@ export function getPaperDimensions(template: {
     return { width: base.height, height: base.width }
   }
   return { ...base }
+}
+
+/**
+ * 实际出纸纸张尺寸（考虑出纸旋转角度 outputRotation）。
+ * - 连续纸（小票纸/热敏卷纸）/拼版：无出纸旋转概念，直接返回设计稿纸张尺寸（见 getPaperDimensions）；
+ * - 其余固定纸：0°/180° 纸张长宽不变（内容旋转或翻转）；90°/270° 内容包围盒为 Hd×Wd，
+ *   需交换纸张长宽以贴合旋转后的内容，即「设计稿横向排版、竖向出纸」场景：出纸页为竖向纸，内容整页旋转填入。
+ */
+export function getOutputPaperDimensions(template: {
+  paperSize: PaperSize
+  orientation: 'portrait' | 'landscape'
+  outputRotation?: 0 | 90 | 180 | 270
+  customWidth?: number
+  customHeight?: number
+  tiling?: { enabled?: boolean } | undefined
+}): { width: number; height: number } {
+  const continuous = isContinuousPaperSize(template.paperSize)
+  if (continuous || template.tiling?.enabled === true) {
+    return getPaperDimensions(template)
+  }
+  const design = getPaperDimensions(template)
+  // 90/270 旋转后内容包围盒为 Hd×Wd，交换纸张长宽贴合；0/180 纸张不变
+  const swap = template.outputRotation === 90 || template.outputRotation === 270
+  return swap ? { width: design.height, height: design.width } : design
+}
+
+/**
+ * 当前出纸旋转角度（0/90/180/270）；连续纸/拼版强制 0（无旋转概念）。
+ */
+export function getOutputRotationAngle(template: {
+  paperSize: PaperSize
+  orientation: 'portrait' | 'landscape'
+  outputRotation?: 0 | 90 | 180 | 270
+  tiling?: { enabled?: boolean } | undefined
+}): 0 | 90 | 180 | 270 {
+  const continuous = isContinuousPaperSize(template.paperSize)
+  if (continuous || template.tiling?.enabled === true) return 0
+  return template.outputRotation ?? 0
+}
+
+/**
+ * 是否需要在最终出纸时旋转整页：出纸旋转角度非 0，且仅固定纸（非连续纸、非拼版）生效。
+ * 连续纸强制纵向、拼版按目标纸铺格，二者都不存在「出纸旋转」概念。
+ */
+export function shouldApplyOutputRotation(template: {
+  paperSize: PaperSize
+  orientation: 'portrait' | 'landscape'
+  outputRotation?: 0 | 90 | 180 | 270
+  tiling?: { enabled?: boolean } | undefined
+}): boolean {
+  const continuous = isContinuousPaperSize(template.paperSize)
+  if (continuous || template.tiling?.enabled === true) return false
+  return template.outputRotation != null && template.outputRotation !== 0
 }
 
 /** 是否连续纸（热敏/小票/标签卷纸）：出纸高度按渲染内容推导 */

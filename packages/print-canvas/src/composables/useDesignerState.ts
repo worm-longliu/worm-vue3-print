@@ -191,6 +191,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
       templateData: {
         paperSize: templateData.value.paperSize,
         orientation: templateData.value.orientation,
+        outputRotation: templateData.value.outputRotation,
         margins: { ...templateData.value.margins },
         header: { height: templateData.value.header.height, elements: [] },
         footer: { height: templateData.value.footer.height, elements: [] },
@@ -460,6 +461,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     if (pages.value.length > 1) {
       const paper = {
         paperSize: data.paperSize, orientation: data.orientation,
+        outputRotation: data.outputRotation,
         customWidth: data.customWidth, customHeight: data.customHeight,
       }
       for (const p of pages.value) Object.assign(p, paper)

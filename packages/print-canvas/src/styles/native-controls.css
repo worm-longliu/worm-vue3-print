@@ -94,6 +94,17 @@ textarea.pd-input {
   flex-wrap: wrap;
   gap: 6px;
 }
+/* 两列网格布局：选项每行两个（如内容旋转角度） */
+.pd-radio-group--2col,
+.pd-checkbox-group--2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.pd-radio-group--2col > .pd-radio,
+.pd-checkbox-group--2col > .pd-checkbox {
+  width: 60%;
+  justify-content: flex-start;
+}
 .pd-radio,
 .pd-checkbox {
   display: inline-flex;

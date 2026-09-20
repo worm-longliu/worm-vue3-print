@@ -317,7 +317,13 @@ const paperLabel = computed(() => {
   const dim = getPaperDimensions(t)
   const orient = t.orientation === 'landscape' ? '横向' : '纵向'
   const name = PAPER_PRESETS[t.paperSize]?.label ?? t.paperSize
-  return `${name} ${orient} ${Math.round(dim.width)}×${Math.round(dim.height)}mm`
+  const base = `${name} ${orient} ${Math.round(dim.width)}×${Math.round(dim.height)}mm`
+  // 出纸旋转角度非 0 时，状态栏明确提示（设计稿内容不旋转，仅整页内容旋转出纸）
+  const rot = t.outputRotation
+  if (rot) {
+    return `${base}（旋转${rot}°）`
+  }
+  return base
 })
 
 function onFitWindow() {

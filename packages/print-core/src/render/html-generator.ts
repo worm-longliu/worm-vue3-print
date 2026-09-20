@@ -11,7 +11,7 @@ import type {
   CodeRenderer,
 } from './types.js'
 import { escapeInlineStyleValue, toFontFamilyStack } from '../print/fonts.js'
-import { getPaperDimensions, isContinuousPaper } from './types.js'
+import { getPaperDimensions, isContinuousPaper, getOutputRotationAngle } from './types.js'
 import { buildPageCss, elementPositionStyle, mm } from './css-builder.js'
 import {
   cellFitCapMm,
@@ -228,14 +228,23 @@ function renderPage(
   contentHtml = contentHtml.replace(/\{pageIndex\}/g, String(pageNum))
   contentHtml = contentHtml.replace(/\{totalPages\}/g, String(totalPages))
 
-  return `<section class="print-page${pageClass ? ` ${pageClass}` : ''}" data-page="${pageNum}">
+  // 设计稿整页内容（水印+三区+首叠加）；出纸旋转角度非 0 时包进转子层整页旋转
+  const pageInner = `
   ${renderWatermarkLayerHtml(template.watermark, printData, paperMm, { pageIndex: pageNum, totalPages })}
   <div class="page-header">${headerHtml}</div>
   ${overlayHtml}
   <div class="content-area">
     ${contentHtml}
   </div>
-  <div class="page-footer">${footerHtml}</div>
+  <div class="page-footer">${footerHtml}</div>`
+
+  const rot = getOutputRotationAngle(template)
+  const pageBody = rot !== 0
+    ? `<div class="print-page-rotor print-page-rotor-${rot}">${pageInner}</div>`
+    : pageInner
+
+  return `<section class="print-page${pageClass ? ` ${pageClass}` : ''}" data-page="${pageNum}">
+  ${pageBody}
 </section>`
 }
 

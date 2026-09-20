@@ -35,7 +35,14 @@ export interface TablePaginationConfig {
 /** 新模板数据模型（替代旧 PrintPanel / PrintTemplateJson） */
 export interface TemplateData {
   paperSize: PaperSize
+  /** 方向（纸张方向）= 当前纸张长宽；切换时直接交换纸张宽高（设计稿内容随之铺在该尺寸上） */
   orientation: 'portrait' | 'landscape'
+  /**
+   * 出纸旋转角度（整页内容旋转出纸）：缺省 0（不旋转）。仅固定纸（非连续纸、非拼版）生效。
+   * 0° 纸张不变、内容不旋转；180° 纸张不变、内容翻转；90°/270° 纸张长宽互换以贴合旋转后的内容包围盒，
+   * 设计稿内容保持原方向不变，不被拉伸或裁切。
+   */
+  outputRotation?: 0 | 90 | 180 | 270
   margins: { top: number; right: number; bottom: number; left: number } // mm
   header: {
     height: number // mm

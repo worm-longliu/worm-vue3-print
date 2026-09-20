@@ -830,3 +830,46 @@ describe('单元格与文本元素的字体输出', () => {
     expect(html).not.toContain('font-family:&quot;SimSun&quot;, "')
   })
 })
+
+describe('出纸旋转（outputRotation）整页旋转', () => {
+  const t: TemplateData = {
+    paperSize: 'A4', orientation: 'landscape',
+    outputRotation: 90,
+    margins: { top: 10, right: 10, bottom: 10, left: 10 },
+    header: { height: 0, elements: [] },
+    footer: { height: 0, elements: [] },
+    firstPageOverlay: { height: 0, elements: [] },
+    elements: [{
+      id: 'txt-1', type: 'text',
+      options: { left: 0, top: 0, width: 50, height: 10, fontSize: 12, formatter: 'HELLO' },
+    }] as any,
+  } as TemplateData
+
+  it('最终渲染把设计稿整页包进 .print-page-rotor.print-page-rotor-90', () => {
+    const html = generateHtml(t, pageWith([{ elementId: 'txt-1', type: 'element', renderTop: 0 }]))
+    const rotorIdx = html.indexOf('<div class="print-page-rotor print-page-rotor-90"')
+    const elIdx = html.indexOf('<div class="print-element"')
+    // 转子元素存在，且内容元素位于转子内部
+    expect(rotorIdx).toBeGreaterThanOrEqual(0)
+    expect(elIdx).toBeGreaterThan(rotorIdx)
+    expect(html).toContain('<div class="content-area">')
+  })
+
+  it('旋转 180° / 270° 也包裹对应角度转子类', () => {
+    const r180 = generateHtml({ ...t, outputRotation: 180 }, pageWith([{ elementId: 'txt-1', type: 'element', renderTop: 0 }]))
+    expect(r180).toContain('<div class="print-page-rotor print-page-rotor-180"')
+    const r270 = generateHtml({ ...t, outputRotation: 270 }, pageWith([{ elementId: 'txt-1', type: 'element', renderTop: 0 }]))
+    expect(r270).toContain('<div class="print-page-rotor print-page-rotor-270"')
+  })
+
+  it('测量趟不包裹转子元素（保证测量尺寸按设计稿）', () => {
+    const html = generateHtml(t, [], undefined, { isMeasurementPass: true })
+    expect(html).not.toContain('<div class="print-page-rotor"')
+  })
+
+  it('无 outputRotation（0°）时最终渲染也不包裹转子', () => {
+    const plain = { ...t, outputRotation: undefined } as TemplateData
+    const html = generateHtml(plain, pageWith([{ elementId: 'txt-1', type: 'element', renderTop: 0 }]))
+    expect(html).not.toContain('<div class="print-page-rotor"')
+  })
+})

@@ -95,11 +95,21 @@
               </template>
             </div>
           </div>
-          <div class="pd-field" v-if="!continuousPaper"><span class="pd-label">方向</span>
+          <div class="pd-field" v-if="!continuousPaper"><span class="pd-label">纸张方向</span>
             <div class="pd-radio-group" role="radiogroup">
               <label class="pd-radio"><input type="radio" value="portrait" :checked="orientationModel === 'portrait'" @change="onOrientationChange(($event.target as HTMLInputElement).value)"><span>纵向</span></label>
               <label class="pd-radio"><input type="radio" value="landscape" :checked="orientationModel === 'landscape'" @change="onOrientationChange(($event.target as HTMLInputElement).value)"><span>横向</span></label>
             </div>
+            <p class="pd-hint">切换即交换纸张长宽（设计稿内容随之铺在该尺寸上）</p>
+          </div>
+          <div class="pd-field" v-if="!continuousPaper && !tilingEnabled"><span class="pd-label">内容旋转角度</span>
+            <div class="pd-radio-group pd-radio-group--2col" role="radiogroup">
+              <label class="pd-radio"><input type="radio" value="0" :checked="outputRotationModel === 0" @change="onOutputRotationChange(($event.target as HTMLInputElement).value)"><span>0°</span></label>
+              <label class="pd-radio"><input type="radio" value="90" :checked="outputRotationModel === 90" @change="onOutputRotationChange(($event.target as HTMLInputElement).value)"><span>90°</span></label>
+              <label class="pd-radio"><input type="radio" value="180" :checked="outputRotationModel === 180" @change="onOutputRotationChange(($event.target as HTMLInputElement).value)"><span>180°</span></label>
+              <label class="pd-radio"><input type="radio" value="270" :checked="outputRotationModel === 270" @change="onOutputRotationChange(($event.target as HTMLInputElement).value)"><span>270°</span></label>
+            </div>
+            <p class="pd-hint">整页内容旋转对应角度出纸；90°/270° 时纸张长宽互换以贴合内容，内容不变形不裁切；0° 为不旋转（默认）</p>
           </div>
           <div class="pd-field"><span class="pd-label">页面背景色</span>
             <div class="page-bg-row">
@@ -315,6 +325,13 @@ const paperSizeModel = computed(() => props.templateData?.paperSize || 'A4')
 /** 连续纸（含小票纸）：强制纵向、纸宽可调、出纸高度按内容推导；多页模式不可用 */
 const continuousPaper = computed(() => !props.multiPage && isContinuousPaperSize(paperSizeModel.value))
 const orientationModel = computed(() => props.templateData?.orientation || 'portrait')
+/** 拼版（标签铺格）无出纸方向概念，隐藏出纸方向控件 */
+const tilingEnabled = computed(() => !!props.templateData?.tiling?.enabled)
+/**
+ * 内容旋转角度：缺省 0（不旋转）；可设为 90/180/270，整页内容旋转对应角度出纸。
+ * 渲染端仅在固定纸（非连续纸、非拼版）场景按角度旋转整页。
+ */
+const outputRotationModel = computed(() => props.templateData?.outputRotation ?? 0)
 
 const pageBackgroundModel = computed({
   get: () => props.templateData?.pageBackground || '#ffffff',
@@ -388,6 +405,10 @@ function onPaperSizeChange(size: string) {
 
 function onOrientationChange(val: string | number | boolean | undefined) {
   emitUpdate({ orientation: String(val) as TemplateData['orientation'] })
+}
+
+function onOutputRotationChange(val: string | number | boolean | undefined) {
+  emitUpdate({ outputRotation: Number(val) as TemplateData['outputRotation'] })
 }
 
 function onPageBackgroundChange(v: string) {

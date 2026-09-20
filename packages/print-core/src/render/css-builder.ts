@@ -2,7 +2,7 @@
 // 生成打印页面 CSS 样式，所有尺寸使用 mm 单位
 
 import type { TemplateData } from './types.js'
-import { getPaperDimensions, isContinuousPaper } from './types.js'
+import { getPaperDimensions, getOutputPaperDimensions, getOutputRotationAngle, isContinuousPaper } from './types.js'
 import { FALLBACK_FONT_STACK } from '../print/fonts.js'
 import type { TileLayout } from '../print/tiling.js'
 
@@ -11,12 +11,27 @@ export function mm(value: number): string {
   return `${value}mm`
 }
 
-/** 纸张物理尺寸解析：连续纸推导纸高覆盖模板纸高，其余按模板纸面 */
-function resolvePaper(template: TemplateData, pageHeightMm?: number): { width: number; height: number } {
-  const base = getPaperDimensions(template)
-  return pageHeightMm && pageHeightMm > 0
-    ? { width: base.width, height: pageHeightMm }
-    : base
+/**
+ * 外层纸张尺寸（@page / .print-page 实际出纸尺寸）。
+ * - 固定纸且出纸旋转 90/270：取交换长宽后的尺寸（Hd×Wd）；
+ * - 连续纸：设计稿尺寸，并允许 pageHeightMm 覆盖推导纸高。
+ */
+function resolveOuterPaper(template: TemplateData, pageHeightMm?: number): { width: number; height: number } {
+  const out = getOutputPaperDimensions(template)
+  return pageHeightMm && pageHeightMm > 0 && isContinuousPaper(template)
+    ? { width: out.width, height: pageHeightMm }
+    : out
+}
+
+/**
+ * 内层纸张尺寸（设计稿尺寸）：三区几何、页脚定位、内容区宽度都基于它，
+ * 与出纸方向无关；连续纸允许 pageHeightMm 覆盖推导纸高。
+ */
+function resolveAreaPaper(template: TemplateData, pageHeightMm?: number): { width: number; height: number } {
+  const design = getPaperDimensions(template)
+  return pageHeightMm && pageHeightMm > 0 && isContinuousPaper(template)
+    ? { width: design.width, height: pageHeightMm }
+    : design
 }
 
 // ── 基础块（模板无关；多页时整体只输出一份） ──
@@ -115,22 +130,61 @@ function pageRuleBlock(paper: { width: number; height: number }): string {
 }
 
 /**
- * 纸张页几何：.print-page 宽高/背景/内边距，以及文档末页取消强制分页。
+ * 转子层（出纸旋转容器）：设计稿尺寸，按 angle 整页旋转把设计稿填入出纸纸张。
+ * 仅在出纸旋转非 0 的固定纸场景输出；连续纸/拼版不输出。
+ * 物理映射（设计稿 Wd×Hd，旋转后包围盒）：
+ *   90°  → translate(Hd,0) rotate(90deg)   → 填满 Hd×Wd（纸张交换长宽）
+ *   180° → translate(Wd,Hd) rotate(180deg)  → 填满 Wd×Hd（纸张不变）
+ *   270° → translate(0,Wd) rotate(270deg)   → 填满 Hd×Wd（纸张交换长宽，方向反向）
+ * 无需缩放，内容不被拉伸/裁切。基础规则 .print-page-rotor 无 transform，由 .print-page-rotor-${angle} 补旋转。
+ */
+function buildRotorCss(area: { width: number; height: number }, margins: { top: number; right: number; bottom: number; left: number }, angle: 0 | 90 | 180 | 270): string {
+  const base = `
+/* ── 出纸转子：设计稿整页旋转 ${angle}° 填入出纸纸张 ── */
+.print-page-rotor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: ${mm(area.width)};
+  height: ${mm(area.height)};
+  padding: ${mm(margins.top)} ${mm(margins.right)} ${mm(margins.bottom)} ${mm(margins.left)};
+  box-sizing: border-box;
+  transform-origin: 0 0;
+}`
+  if (angle === 0) return base.trim()
+  const transforms: Record<90 | 180 | 270, string> = {
+    90: `translate(${mm(area.height)}, 0mm) rotate(90deg)`,
+    180: `translate(${mm(area.width)}, ${mm(area.height)}) rotate(180deg)`,
+    270: `translate(0mm, ${mm(area.width)}) rotate(270deg)`,
+  }
+  const tf = transforms[angle]
+  return [
+    base.trim(),
+    `.print-page-rotor-${angle} {\n  transform: ${tf};\n}`,
+  ].join('\n')
+}
+
+/**
+ * 纸张页几何：.print-page 宽高/背景，以及文档末页取消强制分页。
  * @param pageSel 页面选择器：单页 '.print-page'；作用域化时 '.mt-N.print-page'
+ * @param outerPaper 外层（出纸）尺寸：@page / .print-page 实际尺寸
+ * @param rotated 是否出纸旋转：旋转时 .print-page 不内边距（边距由转子承担），否则沿用设计稿边距
  */
 function pageGeometryBlock(
   template: TemplateData,
-  paper: { width: number; height: number },
+  outerPaper: { width: number; height: number },
   pageSel: string,
+  rotated: boolean,
 ): string {
   const { top: mt, right: mr, bottom: mb, left: ml } = template.margins
+  const padding = rotated ? '0' : `${mm(mt)} ${mm(mr)} ${mm(mb)} ${mm(ml)}`
   return `
 /* ── 纸张页面 ── */
 ${pageSel} {
-  width: ${mm(paper.width)};
-  min-height: ${mm(paper.height)};
+  width: ${mm(outerPaper.width)};
+  min-height: ${mm(outerPaper.height)};
   background: ${template.pageBackground ?? '#fff'};
-  padding: ${mm(mt)} ${mm(mr)} ${mm(mb)} ${mm(ml)};
+  padding: ${padding};
   position: relative;
   page-break-after: always;
   overflow: hidden;
@@ -198,7 +252,7 @@ export function buildBasePageCss(): string {
 
 /** @page 规则 CSS（纸张尺寸，含连续纸推导纸高）。@page 无法作用域化，多页文档由首个模板输出一份 */
 export function buildPageRuleCss(template: TemplateData, pageHeightMm?: number): string {
-  return pageRuleBlock(resolvePaper(template, pageHeightMm)).trim()
+  return pageRuleBlock(resolveOuterPaper(template, pageHeightMm)).trim()
 }
 
 /**
@@ -211,30 +265,39 @@ export function buildPageGeometryCss(
   scope?: string,
   pageHeightMm?: number,
 ): string {
-  const paper = resolvePaper(template, pageHeightMm)
+  const angle = getOutputRotationAngle(template)
+  const rotated = angle !== 0
+  const outer = resolveOuterPaper(template, pageHeightMm)
+  const area = resolveAreaPaper(template, pageHeightMm)
   const pageSel = scope ? `${scope}.print-page` : '.print-page'
   const desc = scope ? `${scope} ` : ''
   return [
-    pageGeometryBlock(template, paper, pageSel),
-    areaGeometryBlock(template, paper, desc),
+    pageGeometryBlock(template, outer, pageSel, rotated),
+    areaGeometryBlock(template, area, desc),
+    ...(rotated ? [buildRotorCss(area, template.margins, angle)] : []),
   ].join('').trim()
 }
 
 /**
  * 生成完整的打印页面 CSS。
  * 包含纸张尺寸、边距、页眉页脚、内容区、首页叠加区域等样式。
+ * 出纸旋转角度非 0（固定纸）时，额外输出 .print-page-rotor / .print-page-rotor-${angle} 转子规则完成整页旋转。
  * @param pageHeightMm 连续纸由浏览器探针推导出的最终纸高（mm）；传入时替换模板纸张高度，
  *                     使 @page/.print-page/footer 全部对齐该高度。普通纸不传。
  */
 export function buildPageCss(template: TemplateData, pageHeightMm?: number): string {
-  const paper = resolvePaper(template, pageHeightMm)
+  const angle = getOutputRotationAngle(template)
+  const rotated = angle !== 0
+  const outer = resolveOuterPaper(template, pageHeightMm)
+  const area = resolveAreaPaper(template, pageHeightMm)
   return [
-    pageRuleBlock(paper),
+    pageRuleBlock(outer),
     screenBlock(),
-    pageGeometryBlock(template, paper, '.print-page'),
+    pageGeometryBlock(template, outer, '.print-page', rotated),
     watermarkBlock(),
-    areaGeometryBlock(template, paper, ''),
+    areaGeometryBlock(template, area, ''),
     elementBlock(),
+    ...(rotated ? [buildRotorCss(area, template.margins, angle)] : []),
   ].join('').trim()
 }
 

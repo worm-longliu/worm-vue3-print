@@ -2,7 +2,7 @@ import { bindData } from '../render/data-binder.js'
 import { generateHtml } from '../render/html-generator.js'
 import { paginate } from '../render/pagination-engine.js'
 import { composeContinuousHeight } from '../render/continuous-paper.js'
-import { getPaperDimensions, isContinuousPaper } from '../render/types.js'
+import { getPaperDimensions, getOutputPaperDimensions, isContinuousPaper } from '../render/types.js'
 import { createCollectingCodeRenderer, createMapCodeRenderer, mergeCodeMaps } from './codes.js'
 import { escapeHeightMm, paperViewportPx, resolvePaperMm } from './paper.js'
 import { buildPdfTargetSpec, buildScreenshotTargetSpec } from './pdf-spec.js'
@@ -92,7 +92,7 @@ async function prepareWithSession(job: PrintJob, session: PrintSession): Promise
     return {
       html: doc.html,
       pageCount: doc.pageCount,
-      paperMm: getPaperDimensions(pageTemplates[0]!),
+      paperMm: getOutputPaperDimensions(pageTemplates[0]!),
       continuous: false,
       heightSource: 'config',
       pageLayouts: doc.pageLayouts,
@@ -265,8 +265,12 @@ async function prepareSingleWithSession(
     ? { ...job.paperOverride, height: heightEscape }
     : job.paperOverride
 
+  // 出纸尺寸 = 出纸旋转对应的物理纸张（90/270 时交换长宽；0/180 不变）；
+  // 连续纸无出纸旋转概念，getOutputPaperDimensions 回退设计稿尺寸，下方 heightSource 仍按连续纸推导。
+  const outputPaper = getOutputPaperDimensions(bound)
+
   const { paperMm, heightSource } = resolvePaperMm({
-    paperMm: { width: designPaper.width, height: derivedHeightMm ?? designPaper.height },
+    paperMm: { width: outputPaper.width, height: derivedHeightMm ?? outputPaper.height },
     continuous,
     override: overrideForPaper,
   })

@@ -86,7 +86,17 @@ describe('小票纸按连续纸处理', () => {
   it('A4 等固定纸仍显示方向选择、不显示纸宽', () => {
     const wrapper = mountPanel(pageTemplate())
     const labels = wrapper.findAll('.pd-label').map(l => l.text())
-    expect(labels).toContain('方向')
+    // 纸张方向（切换即交换纸张长宽）+ 内容旋转角度（0/90/180/270）均为固定纸可见
+    expect(labels).toContain('纸张方向')
+    expect(labels).toContain('内容旋转角度')
     expect(labels).not.toContain('纸宽 (mm)')
+  })
+
+  it('固定纸显示内容旋转角度四档（0/90/180/270），默认 0° 不旋转', () => {
+    const wrapper = mountPanel(pageTemplate({ orientation: 'landscape' }))
+    const radios = wrapper.findAll('input[type="radio"]').map(r => (r.element as HTMLInputElement).value)
+    expect(radios).toEqual(expect.arrayContaining(['0', '90', '180', '270']))
+    const checked = wrapper.findAll('input[type="radio"]:checked').map(r => (r.element as HTMLInputElement).value)
+    expect(checked).toContain('0')
   })
 })

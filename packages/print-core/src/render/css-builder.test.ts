@@ -166,3 +166,70 @@ describe('多页面模板：作用域几何 CSS', () => {
     expect(css).toContain('.mt-1.print-page {\n  width: 210mm;\n  min-height: 297mm;\n  background: #fff;\n  padding: 2mm 2mm 2mm 2mm;')
   })
 })
+
+describe('出纸旋转（outputRotation）整页旋转', () => {
+  it('旋转 90°：@page/外层为竖向纸，转子为设计稿横版并旋转 90°', () => {
+    const t = fixture({
+      orientation: 'landscape',
+      outputRotation: 90,
+      margins: { top: 10, right: 12, bottom: 8, left: 14 },
+      header: { height: 15, elements: [] },
+      footer: { height: 12, elements: [] },
+    })
+    const css = buildPageCss(t)
+    // 外层（出纸）尺寸 = 竖向纸 210×297
+    expect(css).toContain('@page { size: 210mm 297mm; margin: 0; }')
+    expect(css).toMatch(/\.print-page\s*\{[^}]*width:\s*210mm/)
+    expect(css).toMatch(/\.print-page\s*\{[^}]*min-height:\s*297mm/)
+    // 旋转时 .print-page 不内边距（边距由转子承担）
+    expect(css).toMatch(/\.print-page\s*\{[^}]*padding:\s*0;/)
+    // 转子层 = 设计稿横版 297×210，整页旋转 90° 填入竖向纸（基础规则 + -90 修饰类）
+    expect(css).toContain('.print-page-rotor {')
+    expect(css).toMatch(/\.print-page-rotor\s*\{[^}]*width:\s*297mm/)
+    expect(css).toMatch(/\.print-page-rotor\s*\{[^}]*height:\s*210mm/)
+    expect(css).toContain('.print-page-rotor-90 {')
+    expect(css).toContain('transform: translate(210mm, 0mm) rotate(90deg);')
+    // 三区几何基于设计稿（横版 297×210）：内容宽 = 297-14-12=271，页脚 top = 210-8-12=190
+    expect(css).toMatch(/\.content-area\s*\{[^}]*width:\s*271mm/)
+    expect(css).toMatch(/\.page-footer\s*\{[^}]*top:\s*190mm/)
+  })
+
+  it('旋转 180°：纸张不变（仍横版 297×210），转子翻转 180°', () => {
+    const t = fixture({
+      orientation: 'landscape',
+      outputRotation: 180,
+      margins: { top: 10, right: 12, bottom: 8, left: 14 },
+      header: { height: 15, elements: [] },
+      footer: { height: 12, elements: [] },
+    })
+    const css = buildPageCss(t)
+    expect(css).toContain('@page { size: 297mm 210mm; margin: 0; }')
+    expect(css).toContain('.print-page-rotor-180 {')
+    expect(css).toContain('transform: translate(297mm, 210mm) rotate(180deg);')
+  })
+
+  it('旋转 270°：纸张交换长宽（竖向 210×297），转子旋转 270°', () => {
+    const t = fixture({
+      orientation: 'landscape',
+      outputRotation: 270,
+      margins: { top: 10, right: 12, bottom: 8, left: 14 },
+    })
+    const css = buildPageCss(t)
+    expect(css).toContain('@page { size: 210mm 297mm; margin: 0; }')
+    expect(css).toContain('.print-page-rotor-270 {')
+    expect(css).toContain('transform: translate(0mm, 297mm) rotate(270deg);')
+  })
+
+  it('无 outputRotation（0°）时不输出转子规则（零回归）', () => {
+    const css = buildPageCss(fixture({ orientation: 'landscape' }))
+    expect(css).not.toContain('.print-page-rotor')
+    expect(css).not.toContain('rotate(90deg)')
+    expect(css).not.toContain('rotate(180deg)')
+    expect(css).not.toContain('rotate(270deg)')
+  })
+
+  it('连续纸忽略旋转：不输出转子', () => {
+    const css = buildPageCss(fixture({ paperSize: 'CONTINUOUS', orientation: 'portrait', outputRotation: 90 }))
+    expect(css).not.toContain('.print-page-rotor')
+  })
+})
