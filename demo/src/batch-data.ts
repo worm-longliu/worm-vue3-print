@@ -26,23 +26,35 @@ function addDays(date: string, days: number): string {
 
 /**
  * 由一条原型数据派生 BATCH_SIZE 条批量打印数据（深拷贝，不修改入参）。
+ *
+ * 各示例的数据结构不同，这里只认「采购收货单式」的 supplier / receiver / order / goods 路径：
+ * 命中的字段随份次变化，未命中则原样保留，因此任意结构的示例都能安全派生。
+ * 需要精确控制批量内容（如一枚一条的标签）的示例请自带 batchData，不走本函数。
  */
 export function deriveBatchData(base: Record<string, any>): Record<string, any>[] {
   return Array.from({ length: BATCH_SIZE }, (_, i) => {
     const data: Record<string, any> = structuredClone(base)
-    data.supplier = { ...SUPPLIERS[i] }
-    data.receiver = { ...data.receiver, name: RECEIVERS[i] }
-    data.order = {
-      ...data.order,
-      no: `${data.order.no}-B${String(i + 1).padStart(2, '0')}`,
-      date: addDays(String(data.order.date), i),
+    if (data.supplier) data.supplier = { ...data.supplier, ...SUPPLIERS[i % SUPPLIERS.length] }
+    if (data.receiver) data.receiver = { ...data.receiver, name: RECEIVERS[i % RECEIVERS.length] }
+    if (data.order && typeof data.order === 'object') {
+      data.order = {
+        ...data.order,
+        ...(typeof data.order.no === 'string'
+          ? { no: `${data.order.no}-B${String(i + 1).padStart(2, '0')}` }
+          : {}),
+        ...(typeof data.order.date === 'string' ? { date: addDays(data.order.date, i) } : {}),
+      }
     }
-    const goods = (base.goods as any[]).slice(0, GOODS_LIMITS[i]).map((g: any) => {
-      const qty = g.qty * (i + 1)
-      return { ...g, qty, amount: round2(qty * g.price) }
-    })
-    data.goods = goods
-    data.order.total = round2(goods.reduce((sum, g) => sum + g.amount, 0))
+    if (Array.isArray(data.goods)) {
+      const goods = (base.goods as any[]).slice(0, GOODS_LIMITS[i]).map((g: any) => {
+        const qty = g.qty * (i + 1)
+        return { ...g, qty, amount: round2(qty * g.price) }
+      })
+      data.goods = goods
+      if (typeof data.order?.total === 'number') {
+        data.order.total = round2(goods.reduce((sum, g) => sum + g.amount, 0))
+      }
+    }
     return data
   })
 }

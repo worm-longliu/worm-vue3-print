@@ -4,13 +4,12 @@
 
 ## 内容
 
-- 加载真实模板数据：模板 `106977040967000141`（采购收货单，A5 横向），其 `elements`
-  已导出到 `src/template-purchase-receipt.json`
-- 集成 `PrintDesigner`：初始模板 / 业务字段注入，以及 `preview / save` 事件的宿主实现；
-  「加载默认布局」按钮由宿主自渲染（顶栏按钮回写 `initial-template`，设计器不内置该入口）
-- 浏览器端免保存预览：`preview` 时把当前画布 JSON + `DEFAULT_DEMO_DATA`
+- 示例模板库：顶栏「加载默认布局」唤出选择弹窗（`src/samples/`），7 份内置示例
+  全部自带静态数据，选中后同时回写模板、字段树与打印数据（宿主自渲染入口，设计器不内置）
+- 集成 `PrintDesigner`：初始模板 / 业务字段注入，以及 `preview / save` 事件的宿主实现
+- 浏览器端免保存预览：`preview` 时把当前画布 JSON + 当前示例的静态数据
   交给 `PrintHtmlPreview` 同构渲染、分页并支持打印（无需后端 PDF 服务）
-- 服务端 PDF 打印：顶栏「服务端 PDF」按钮把当前画布 JSON + `DEFAULT_DEMO_DATA`
+- 服务端 PDF 打印：顶栏「服务端 PDF」按钮把当前画布 JSON + 当前示例的静态数据
   提交给同仓库的 render 微服务（`services/print-render`），服务端两遍渲染出 PDF 后在新标签页打开；
   顶栏实时显示渲染服务在线状态（经 `/render-api/health` 探测）
 - 保存演示：`save` 时输出控制台并将模板 JSON 下载为本地文件

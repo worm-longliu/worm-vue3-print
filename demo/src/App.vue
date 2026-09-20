@@ -4,14 +4,14 @@
       <span class="demo-project">worm-vue3-print</span>
       <span class="demo-logo">打印模板设计器 Demo</span>
       <span class="demo-badge">模板 ID：{{ TEMPLATE_ID }}</span>
-      <span class="demo-badge">业务类型：采购收货单（purchase_receipt）</span>
+      <span class="demo-badge">业务类型：{{ currentSample ? currentSample.name : '空白模板' }}</span>
       <button type="button" class="demo-print-btn" @click="onLoadDefaultLayout">加载默认布局</button>
       <button type="button" class="demo-print-btn" @click="onExportTemplate">导出模板</button>
       <button type="button" class="demo-print-btn" @click="fileInputRef?.click()">导入模板</button>
       <button type="button" class="demo-print-btn" @click="onClearTemplate">清空</button>
       <label class="demo-batch-switch" :class="{ on: batchEnabled }" title="开启后浏览器预览/打印、客户端静默打印、服务端 PDF 均传入 3 份数据数组，由打印插件合并为一个作业">
         <input v-model="batchEnabled" type="checkbox" />
-        <span>批量打印（{{ BATCH_SIZE }} 份）</span>
+        <span>批量打印（{{ batchDataList.length }} 份）</span>
       </label>
       <button type="button" class="demo-print-btn" @click="printDialogVisible = true">打印输出</button>
       <input ref="fileInputRef" type="file" accept="application/json,.json" class="demo-file-input" @change="onImportTemplate($event)" />
@@ -60,16 +60,24 @@
       :open="printDialogVisible"
       :base-url="RENDER_BASE_URL"
       :font-base-url="FONT_BASE_URL"
-      :template-name="TEMPLATE_NAME"
+      :template-name="currentSample ? currentSample.name : TEMPLATE_NAME"
       :print-data="activePrintData"
       :get-template-json="() => (designerRef?.getTemplateJson() as unknown as Record<string, unknown>)"
       @close="printDialogVisible = false"
+    />
+
+    <!-- 示例模板库：点击「加载默认布局」唤出，选中后覆盖当前画布 -->
+    <TemplateGalleryDialog
+      :open="galleryVisible"
+      :current-id="currentSample?.id"
+      @select="applySample"
+      @close="galleryVisible = false"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, shallowRef, computed } from 'vue'
 import {
   PrintDesigner,
   PrintHtmlPreview,
@@ -79,13 +87,14 @@ import {
 import type { PrintBusinessField, TemplateData, MultiPageTemplateData } from '@worm-vue3-print/canvas'
 import type { PrintFontDeclaration } from '@worm-vue3-print/core'
 import PrintOutputDialog from './components/PrintOutputDialog.vue'
-import rawTemplate from './template-purchase-receipt.json'
+import TemplateGalleryDialog from './components/TemplateGalleryDialog.vue'
+import type { SampleTemplate } from './samples'
 import {
   TEMPLATE_ID,
   TEMPLATE_NAME,
   PURCHASE_RECEIPT_FIELDS,
 } from './business'
-import { BATCH_SIZE, deriveBatchData } from './batch-data'
+import { deriveBatchData } from './batch-data'
 
 /** 相对路径图片（/docfiles/...）拼接基址：浏览器预览与服务端渲染保持一致 */
 const RENDER_BASE_URL = 'http://localhost:10103'
@@ -100,9 +109,32 @@ const FONT_BASE_URL = (import.meta.env.VITE_FONT_BASE_URL as string | undefined)
 /** 打印输出弹窗开关 */
 const printDialogVisible = ref(false)
 
-// 页面默认空白；真实模板数据（模板 106977040967000141 的 elements 已存在本地 JSON）在点击「加载默认布局」时载入
+// 页面默认空白；点击「加载默认布局」从示例模板库中选择一份载入
 const templateData = ref<TemplateData | MultiPageTemplateData>(createDefaultTemplate())
 const fields = ref<PrintBusinessField[]>(PURCHASE_RECEIPT_FIELDS)
+
+/** 示例模板库弹窗开关 */
+const galleryVisible = ref(false)
+/**
+ * 当前画布加载的示例（清空/导入后为 null）。
+ * 用 shallowRef：静态数据与批量派生都要求拿到原始对象——
+ * 深层响应式 Proxy 会让 `structuredClone`（批量派生）抛 DataCloneError。
+ */
+const currentSample = shallowRef<SampleTemplate | null>(null)
+/** 当前生效的静态打印数据：随示例切换，未选示例时为采购收货单 demo 数据 */
+const activeSampleData = shallowRef<Record<string, any>>(DEFAULT_DEMO_DATA as unknown as Record<string, any>)
+
+/**
+ * 载入示例：模板深拷贝后回写（保证重复选同一示例也能触发设计器重载），
+ * 同时切换字段树与静态打印数据，预览/打印即刻看到该示例的真实值。
+ */
+function applySample(sample: SampleTemplate) {
+  templateData.value = JSON.parse(JSON.stringify(sample.template)) as TemplateData
+  fields.value = [...sample.fields]
+  activeSampleData.value = sample.data
+  currentSample.value = sample
+  galleryVisible.value = false
+}
 
 /**
  * 模板字体声明（宿主配置）：保存时同步写入模板 JSON，服务端与客户端按模板出图。
@@ -230,6 +262,7 @@ function onImportTemplate(event: Event) {
         return
       }
       templateData.value = data as unknown as TemplateData | MultiPageTemplateData
+      currentSample.value = null
     } catch {
       alert('模板文件读取失败，请确认是有效的 JSON 文件')
     }
@@ -238,10 +271,11 @@ function onImportTemplate(event: Event) {
   reader.readAsText(file)
 }
 
-/** 清空：恢复空白模板 */
+/** 清空：恢复空白模板（字段树与打印数据保留，便于继续拖字段） */
 function onClearTemplate() {
   if (!confirm('将清空当前画布模板，是否继续？')) return
   templateData.value = createDefaultTemplate()
+  currentSample.value = null
 }
 
 // ── 浏览器端免保存预览：直接用当前画布 JSON + demo 数据，无网络请求 ──
@@ -250,15 +284,18 @@ const previewPages = ref(0)
 const previewTemplateJson = ref<Record<string, any> | null>(null)
 const htmlPreviewRef = ref<InstanceType<typeof PrintHtmlPreview> | null>(null)
 
-/** 批量打印开关：开启后三条打印链路统一传数组（默认 BATCH_SIZE 份），关闭则传单对象 */
+/** 批量打印开关：开启后三条打印链路统一传数组，关闭则传单对象 */
 const batchEnabled = ref(false)
-/** 批量数据由原型一次性派生（派生函数内部深拷贝，不污染 DEFAULT_DEMO_DATA） */
-const batchDataList = deriveBatchData(DEFAULT_DEMO_DATA as unknown as Record<string, any>)
+/**
+ * 批量数据：优先用示例自带的静态批量数据（一枚一条的标签场景），
+ * 否则由当前单份数据派生（派生函数内部深拷贝，不污染示例数据）。
+ */
+const batchDataList = computed<Record<string, any>[]>(
+  () => currentSample.value?.batchData ?? deriveBatchData(activeSampleData.value),
+)
 /** 当前生效的打印数据：对象=单份，数组=批量，浏览器/客户端/服务端三端共用同一数据源 */
 const activePrintData = computed<Record<string, any> | Record<string, any>[]>(() =>
-  batchEnabled.value
-    ? batchDataList
-    : (DEFAULT_DEMO_DATA as unknown as Record<string, any>),
+  batchEnabled.value ? batchDataList.value : activeSampleData.value,
 )
 
 function onPreview() {
@@ -274,13 +311,12 @@ function printPreview() {
 }
 
 /**
- * 加载默认布局：宿主自实现的业务能力——demo 载入本地的采购收货单真实模板数据。
+ * 加载默认布局：弹出示例模板库，由用户选择一份（采购收货单 / 称签 / 价签 / 面单 / 小票 …）。
  * 真实宿主可在此按业务类型拉取服务端默认模板；用新对象回写 `initialTemplate` 引用，
  * 设计器监听到变化后重载画布并记录一次历史（撤销可回退）。
  */
 function onLoadDefaultLayout() {
-  if (!confirm('将覆盖当前画布内容，是否继续？')) return
-  templateData.value = rawTemplate as TemplateData
+  galleryVisible.value = true
 }
 </script>
 
