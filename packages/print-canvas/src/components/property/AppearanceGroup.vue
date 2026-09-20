@@ -117,5 +117,9 @@ function onTextFitChange(e: Event) {
 <style scoped>
 .color-row {
   display: flex;
-  gap: 16px;
+  gap: 12px;
+}
+.color-row > .pd-field {
+  flex: 1 1 0;
+  min-width: 0;
 }</style>
