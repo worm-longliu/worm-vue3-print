@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { PAPER_PRESETS, getPaperDimensions, isContinuousPaperSize } from '../default-config.js'
+import {
+  PAPER_PRESETS,
+  getPaperDimensions,
+  isContinuousPaperSize,
+  isLabelPaperSize,
+  labelPaperDefaults,
+} from '../default-config.js'
 import type { TemplateData } from '../../types.js'
 
 function tpl(over: Partial<TemplateData> = {}): TemplateData {
@@ -46,6 +52,28 @@ describe('纸张预设：标签纸', () => {
     expect(isContinuousPaperSize('LABEL_80X60')).toBe(false)
     expect(getPaperDimensions(tpl({ paperSize: 'LABEL_80X60', orientation: 'landscape' })))
       .toEqual({ width: 60, height: 80 })
+  })
+
+  it('标签纸判定：三个预设为真，其余纸型为假', () => {
+    expect(isLabelPaperSize('LABEL_80X60')).toBe(true)
+    expect(isLabelPaperSize('LABEL_60X40')).toBe(true)
+    expect(isLabelPaperSize('LABEL_40X30')).toBe(true)
+    expect(isLabelPaperSize('A4')).toBe(false)
+    expect(isLabelPaperSize('THERMAL_80')).toBe(false)
+    expect(isLabelPaperSize('CONTINUOUS')).toBe(false)
+    expect(isLabelPaperSize(undefined)).toBe(false)
+  })
+
+  it('标签纸默认版面：四边距归零、页眉页脚高度归零，但保留其中已有元素', () => {
+    const headerEl = { id: 'h1' } as any
+    const patch = labelPaperDefaults(tpl({
+      header: { height: 12, elements: [headerEl] },
+      footer: { height: 8, elements: [] },
+    }))
+    expect(patch.margins).toEqual({ top: 0, right: 0, bottom: 0, left: 0 })
+    expect(patch.header.height).toBe(0)
+    expect(patch.footer.height).toBe(0)
+    expect(patch.header.elements).toEqual([headerEl])
   })
 })
 

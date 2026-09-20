@@ -4,6 +4,29 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: switching the paper size to a **label paper** (80×60 / 60×40 / 40×30mm)
+  now applies a "the whole sheet is the content area" layout by default — all four margins go to zero and the header/footer
+  heights go to zero (elements already placed in the header/footer are kept; raising the height restores them). The default is
+  applied **once, at the moment of switching**; users can still change margins and zone heights afterwards, and existing label
+  templates are never rewritten on load. core exposes `isLabelPaperSize` / `labelPaperDefaults` so hosts and custom designers
+  can reuse the same rule.
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: **behavior change** barcodes (both **elements** and **table cells**)
+  no longer stretch to fill their box. All ends now settle the size through one shared algorithm
+  (`resolveBarcodeSize` in `render/barcode-dot.ts`): ① **preferred size comes from the bar width** — one module is
+  `barWidth/2 × 0.25mm`; when the box is wide enough the barcode prints at that size instead of being scaled up
+  (scaling up is exactly what produced non-integer module widths, i.e. the "bars alternate between 2 and 3 dots"
+  artifact); ② **when a printer resolution is set, dpi wins** — the preferred size snaps to an integer number of
+  printer dots per module (dpi takes priority over the exact millimetre value, e.g. 0.25mm becomes 3 dots ≈ 0.254mm
+  at 300dpi); ③ **when the box is too narrow the barcode shrinks proportionally** — in integer-dot steps while the dot
+  grid holds, and only falls back to continuous scaling when even one dot per module does not fit (then dot alignment
+  is impossible, but the barcode still never overflows the box). Width and height always scale together, so the
+  barcode is never distorted. Designer canvas, browser output and the render service share the same constants and
+  algorithm for elements and cells alike; barcode output is now **always inlined as `<svg>`** (Chromium rounds the
+  intrinsic size of an `<img>`-hosted SVG to whole CSS pixels, which rewrote the settled millimetre size), and
+  `maxWidth` / `maxHeight` are folded into the available box. Because stretching breaks integer module widths, the
+  "缩放模式" (fit) option is **removed for barcodes** — use the bar width to change size and "最大宽高" to cap it.
+  **Existing templates will print smaller barcodes** (about half the element box with the default `barWidth: 2`);
+  that is intentional — raise the bar width to grow them and get stable bar widths on paper.
 - `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: text elements and table cells now support **three text-overflow
   display modes** (property panel "文字溢出", template field `textFit`): `clip` (truncate; single-line ellipsis when
   `wordWrap: false`), `shrink` (auto-shrink down to `shrinkMinFontSize`, default 6pt, falling back to truncation if it

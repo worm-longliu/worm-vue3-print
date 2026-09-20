@@ -60,6 +60,50 @@ describe('纸张尺寸下拉：预设分组', () => {
   })
 })
 
+describe('标签纸默认取消页眉页脚与页边距', () => {
+  it('切到 80×60mm：四边距与页眉页脚高度归零', async () => {
+    const template = pageTemplate({
+      margins: { top: 10, right: 10, bottom: 10, left: 10 },
+      header: { height: 12, elements: [] },
+      footer: { height: 8, elements: [] },
+    })
+    const wrapper = mountPanel(template)
+    await wrapper.find('select').setValue('LABEL_80X60')
+
+    const next = wrapper.emitted('update:templateData')?.[0]?.[0] as TemplateData
+    expect(next.paperSize).toBe('LABEL_80X60')
+    expect(next.margins).toEqual({ top: 0, right: 0, bottom: 0, left: 0 })
+    expect(next.header.height).toBe(0)
+    expect(next.footer.height).toBe(0)
+  })
+
+  it('页眉页脚已有元素保留（改回高度即可恢复，不静默删内容）', async () => {
+    const template = pageTemplate({ header: { height: 12, elements: [{ id: 'h1' }] as any } })
+    const wrapper = mountPanel(template)
+    await wrapper.find('select').setValue('LABEL_60X40')
+
+    const next = wrapper.emitted('update:templateData')?.[0]?.[0] as TemplateData
+    expect(next.header.height).toBe(0)
+    expect(next.header.elements).toHaveLength(1)
+  })
+
+  it('切回 A4 不覆盖版面设置（默认只在切到标签纸时套用一次）', async () => {
+    const wrapper = mountPanel(pageTemplate({ paperSize: 'LABEL_80X60' }))
+    await wrapper.find('select').setValue('A4')
+
+    const next = wrapper.emitted('update:templateData')?.[0]?.[0] as TemplateData
+    expect(next.paperSize).toBe('A4')
+    expect(next.margins).toEqual({ top: 10, right: 10, bottom: 10, left: 10 })
+    expect(next.header.height).toBe(0)
+  })
+
+  it('标签纸下给出默认版面提示', () => {
+    const wrapper = mountPanel(pageTemplate({ paperSize: 'LABEL_80X60' }))
+    expect(wrapper.text()).toContain('已取消页边距与页眉页脚')
+    expect(mountPanel(pageTemplate({ paperSize: 'A4' })).text()).not.toContain('已取消页边距与页眉页脚')
+  })
+})
+
 describe('小票纸按连续纸处理', () => {
   it('选中 57mm：写入 paperSize=THERMAL_57、强制纵向、不带旧自定义宽度', async () => {
     const wrapper = mountPanel(pageTemplate({ customWidth: 200, orientation: 'landscape' }))

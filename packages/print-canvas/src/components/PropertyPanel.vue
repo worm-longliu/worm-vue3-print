@@ -82,6 +82,7 @@
               <option value="CUSTOM">自定义宽高</option>
             </select>
           </div>
+          <p v-if="labelPaper" class="pd-hint">标签纸默认整张给内容区：已取消页边距与页眉页脚，可在下方自行改回</p>
           <div class="pd-field" v-if="continuousPaper || paperSizeModel === 'CUSTOM'"><span class="pd-label">{{ continuousPaper ? '纸宽 (mm)' : '自定义宽高 (mm)' }}</span>
             <div class="custom-size-grid">
               <StepperInput :model-value="customWidth"
@@ -171,7 +172,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { RuntimeElement, PrintBusinessField, TemplateData, TableSelection } from '@worm-vue3-print/core/designer'
-import { PAPER_PRESETS, isContinuousPaperSize } from '@worm-vue3-print/core/designer'
+import { PAPER_PRESETS, isContinuousPaperSize, isLabelPaperSize, labelPaperDefaults } from '@worm-vue3-print/core/designer'
 import { searchProperties } from '@worm-vue3-print/core/designer'
 import PropertySearch from './property/PropertySearch.vue'
 import PositionSizeGroup from './property/PositionSizeGroup.vue'
@@ -333,6 +334,8 @@ function onImageUploadSuccess(url: string) {
 const paperSizeModel = computed(() => props.templateData?.paperSize || 'A4')
 /** 连续纸（含小票纸）：强制纵向、纸宽可调、出纸高度按内容推导；多页模式不可用 */
 const continuousPaper = computed(() => !props.multiPage && isContinuousPaperSize(paperSizeModel.value))
+/** 标签纸：切到该纸型时已套用「无页边距、无页眉页脚」默认版面 */
+const labelPaper = computed(() => isLabelPaperSize(paperSizeModel.value))
 const orientationModel = computed(() => props.templateData?.orientation || 'portrait')
 /** 拼版（标签铺格）无出纸方向概念，隐藏出纸方向控件 */
 const tilingEnabled = computed(() => !!props.templateData?.tiling?.enabled)
@@ -409,6 +412,11 @@ function onPaperSizeChange(size: string) {
     return
   }
   if (!PAPER_PRESETS[size]) return
+  if (isLabelPaperSize(size)) {
+    // 标签纸默认：整张纸都给内容区（无页边距、无页眉页脚），用户仍可在下方自行改回
+    emitUpdate({ paperSize: size as TemplateData['paperSize'], ...labelPaperDefaults(props.templateData) })
+    return
+  }
   emitUpdate({ paperSize: size as TemplateData['paperSize'] })
 }
 

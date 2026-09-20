@@ -1,6 +1,9 @@
 // web/src/components/print/utils/default-config.ts
 import type { TemplateData } from '../types.js'
 
+/** 标签纸分组名（PAPER_PRESETS.group）：该组纸型默认取消页眉、页脚与页边距 */
+export const LABEL_PAPER_GROUP = '标签纸'
+
 export interface PaperPreset {
   width: number
   height: number
@@ -24,9 +27,9 @@ export const PAPER_PRESETS: Record<string, PaperPreset> = {
   DOT_HALF:  { width: 241, height: 139.7, label: '二等分 241×139.7mm', group: '针式打印纸' },
   DOT_THIRD: { width: 241, height: 93.1,  label: '三等分 241×93.1mm',  group: '针式打印纸' },
   // 标签纸
-  LABEL_80X60: { width: 80, height: 60, label: '80×60mm', group: '标签纸' },
-  LABEL_60X40: { width: 60, height: 40, label: '60×40mm', group: '标签纸' },
-  LABEL_40X30: { width: 40, height: 30, label: '40×30mm', group: '标签纸' },
+  LABEL_80X60: { width: 80, height: 60, label: '80×60mm', group: LABEL_PAPER_GROUP },
+  LABEL_60X40: { width: 60, height: 40, label: '60×40mm', group: LABEL_PAPER_GROUP },
+  LABEL_40X30: { width: 40, height: 30, label: '40×30mm', group: LABEL_PAPER_GROUP },
   // 小票纸（热敏卷纸）：高度仅为设计画布高度，出纸按内容推导
   THERMAL_57:  { width: 57,  height: 297, continuous: true, label: '57mm',  group: '小票纸' },
   THERMAL_80:  { width: 80,  height: 297, continuous: true, label: '80mm',  group: '小票纸' },
@@ -38,6 +41,26 @@ export const PAPER_PRESETS: Record<string, PaperPreset> = {
 /** 纸型是否连续纸（小票纸/热敏卷纸）：出纸高度按渲染内容推导 */
 export function isContinuousPaperSize(paperSize: string | undefined): boolean {
   return !!paperSize && PAPER_PRESETS[paperSize]?.continuous === true
+}
+
+/** 纸型是否标签纸：整张纸即一张标签，默认不留页边距、不占页眉页脚 */
+export function isLabelPaperSize(paperSize: string | undefined): boolean {
+  return !!paperSize && PAPER_PRESETS[paperSize]?.group === LABEL_PAPER_GROUP
+}
+
+/**
+ * 标签纸的默认版面：四边页边距归零、页眉页脚高度归零（整张纸都给内容区）。
+ * 页眉页脚里的元素保留，之后把高度改回即可恢复——切换纸型不应静默删掉用户内容。
+ * 只在「切到标签纸」时套用一次，用户随后仍可自行调整。
+ */
+export function labelPaperDefaults(
+  t: Pick<TemplateData, 'header' | 'footer'>,
+): Pick<TemplateData, 'margins' | 'header' | 'footer'> {
+  return {
+    margins: { top: 0, right: 0, bottom: 0, left: 0 },
+    header: { ...t.header, height: 0 },
+    footer: { ...t.footer, height: 0 },
+  }
 }
 
 /**
