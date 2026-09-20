@@ -1,0 +1,156 @@
+{
+  "unit": "mm",
+  "paperSize": "LABEL_40X30",
+  "orientation": "portrait",
+  "margins": {
+    "top": 1.5,
+    "right": 1.5,
+    "bottom": 1.5,
+    "left": 1.5
+  },
+  "tiling": {
+    "enabled": true,
+    "sheetPaperSize": "A4",
+    "sheetOrientation": "portrait",
+    "sheetMargin": {
+      "top": 10,
+      "right": 10,
+      "bottom": 10,
+      "left": 10
+    },
+    "gapX": 2,
+    "gapY": 2,
+    "columns": 4
+  },
+  "header": {
+    "height": 0,
+    "elements": []
+  },
+  "footer": {
+    "height": 0,
+    "elements": []
+  },
+  "firstPageOverlay": {
+    "height": 0,
+    "elements": []
+  },
+  "watermark": {},
+  "elements": [
+    {
+      "id": "pr-1",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 0,
+        "width": 37,
+        "height": 4.4,
+        "formatter": "{product.name}",
+        "fontSize": 9,
+        "fontWeight": "bold",
+        "textAlign": "center",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "pr-2",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 4.4,
+        "width": 37,
+        "height": 2.8,
+        "formatter": "{product.spec} / {product.unit}",
+        "fontSize": 6.5,
+        "color": "#666666",
+        "textAlign": "center",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "pr-3",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 7.2,
+        "width": 37,
+        "height": 5.8,
+        "formatter": "¥{MONEY(product.price)}",
+        "fontSize": 16,
+        "fontWeight": "bold",
+        "color": "#c8211e",
+        "textAlign": "center",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "pr-4",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 13,
+        "width": 37,
+        "height": 2.6,
+        "formatter": "原价 ¥{MONEY(product.oldPrice)}",
+        "fontSize": 6.5,
+        "color": "#999999",
+        "textDecoration": "line-through",
+        "textAlign": "center",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "pr-5",
+      "type": "barcode",
+      "options": {
+        "left": 0,
+        "top": 15.6,
+        "width": 37,
+        "height": 5.4,
+        "formatter": "{product.barcode}",
+        "barcodeType": "code128",
+        "barWidth": 2,
+        "printerDpi": 203,
+        "hideTitle": false
+      },
+      "printElementType": {
+        "type": "barcode",
+        "title": "条形码"
+      }
+    },
+    {
+      "id": "pr-6",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 21,
+        "width": 37,
+        "height": 2.8,
+        "formatter": "{shop.name}",
+        "fontSize": 6,
+        "color": "#666666",
+        "textAlign": "center",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    }
+  ]
+}

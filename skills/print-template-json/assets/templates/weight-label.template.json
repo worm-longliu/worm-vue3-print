@@ -1,0 +1,183 @@
+{
+  "unit": "mm",
+  "paperSize": "LABEL_60X40",
+  "orientation": "portrait",
+  "margins": {
+    "top": 2,
+    "right": 2,
+    "bottom": 2,
+    "left": 2
+  },
+  "header": {
+    "height": 0,
+    "elements": []
+  },
+  "footer": {
+    "height": 0,
+    "elements": []
+  },
+  "firstPageOverlay": {
+    "height": 0,
+    "elements": []
+  },
+  "watermark": {},
+  "elements": [
+    {
+      "id": "wt-1",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 0,
+        "width": 56,
+        "height": 4.2,
+        "formatter": "{shop.name}",
+        "fontSize": 8,
+        "textAlign": "center",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "wt-2",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 4.2,
+        "width": 56,
+        "height": 5.4,
+        "formatter": "{product.name}",
+        "fontSize": 11,
+        "fontWeight": "bold",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "wt-3",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 9.6,
+        "width": 56,
+        "height": 3.9,
+        "formatter": "单价 ¥{MONEY(product.unitPrice)} 元/500g",
+        "fontSize": 8,
+        "color": "#444444"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "wt-4",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 13.5,
+        "width": 28,
+        "height": 4.8,
+        "formatter": "净重 {product.weight} kg",
+        "fontSize": 9,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "wt-5",
+      "type": "text",
+      "options": {
+        "left": 28,
+        "top": 13.5,
+        "width": 28,
+        "height": 4.8,
+        "formatter": "¥{MONEY(product.amount)}",
+        "fontSize": 12,
+        "fontWeight": "bold",
+        "color": "#c8211e",
+        "textAlign": "right",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "wt-6",
+      "type": "hline",
+      "options": {
+        "left": 0,
+        "top": 18.8,
+        "width": 56,
+        "height": 0.2,
+        "borderWidth": 0.4,
+        "borderColor": "#9a9a9a"
+      },
+      "printElementType": {
+        "type": "hline",
+        "title": "横线"
+      }
+    },
+    {
+      "id": "wt-7",
+      "type": "barcode",
+      "options": {
+        "left": 0,
+        "top": 19.3,
+        "width": 56,
+        "height": 7.7,
+        "formatter": "{product.barcode}",
+        "barcodeType": "code128",
+        "barWidth": 2,
+        "printerDpi": 203,
+        "hideTitle": false
+      },
+      "printElementType": {
+        "type": "barcode",
+        "title": "条形码"
+      }
+    },
+    {
+      "id": "wt-8",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 27.3,
+        "width": 56,
+        "height": 3.1,
+        "formatter": "包装 {product.packedAt}  保质至 {product.expireAt}",
+        "fontSize": 6.5
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "wt-9",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 30.4,
+        "width": 56,
+        "height": 3.2,
+        "formatter": "门店 {shop.code}  追溯码 {product.traceCode}",
+        "fontSize": 6.5
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    }
+  ]
+}

@@ -1,0 +1,884 @@
+[
+  {
+    "id": "purchase-receipt",
+    "name": "采购收货单",
+    "group": "单据",
+    "paper": "A5 横向 · 190mm 版心",
+    "desc": "供应商收货凭证：抬头信息区 + 明细表格 + 每页小计与整表合计，用于验证多页分页。",
+    "fields": [
+      {
+        "id": "1",
+        "fieldKey": "supplier",
+        "fieldLabel": "供应商信息",
+        "fieldType": "string",
+        "sortOrder": 1
+      },
+      {
+        "id": "2",
+        "fieldKey": "supplier.name",
+        "fieldLabel": "供应商名称",
+        "fieldType": "string",
+        "sortOrder": 2
+      },
+      {
+        "id": "3",
+        "fieldKey": "supplier.phone",
+        "fieldLabel": "供应商电话",
+        "fieldType": "string",
+        "sortOrder": 3
+      },
+      {
+        "id": "4",
+        "fieldKey": "supplier.address",
+        "fieldLabel": "供应商地址",
+        "fieldType": "string",
+        "sortOrder": 4
+      },
+      {
+        "id": "5",
+        "fieldKey": "receiver",
+        "fieldLabel": "收货信息",
+        "fieldType": "string",
+        "sortOrder": 5
+      },
+      {
+        "id": "6",
+        "fieldKey": "receiver.name",
+        "fieldLabel": "收货人",
+        "fieldType": "string",
+        "sortOrder": 6
+      },
+      {
+        "id": "7",
+        "fieldKey": "receiver.phone",
+        "fieldLabel": "收货电话",
+        "fieldType": "string",
+        "sortOrder": 7
+      },
+      {
+        "id": "8",
+        "fieldKey": "receiver.address",
+        "fieldLabel": "收货地址",
+        "fieldType": "string",
+        "sortOrder": 8
+      },
+      {
+        "id": "9",
+        "fieldKey": "order",
+        "fieldLabel": "订单信息",
+        "fieldType": "string",
+        "sortOrder": 9
+      },
+      {
+        "id": "10",
+        "fieldKey": "order.no",
+        "fieldLabel": "订单编号",
+        "fieldType": "string",
+        "sortOrder": 10
+      },
+      {
+        "id": "11",
+        "fieldKey": "order.date",
+        "fieldLabel": "订单日期",
+        "fieldType": "date",
+        "sortOrder": 11
+      },
+      {
+        "id": "12",
+        "fieldKey": "order.total",
+        "fieldLabel": "订单金额",
+        "fieldType": "number",
+        "sortOrder": 12
+      },
+      {
+        "id": "13",
+        "fieldKey": "goods",
+        "fieldLabel": "商品明细",
+        "fieldType": "list",
+        "sortOrder": 13
+      },
+      {
+        "id": "14",
+        "fieldKey": "goods.name",
+        "fieldLabel": "商品名称",
+        "fieldType": "string",
+        "sortOrder": 14
+      },
+      {
+        "id": "15",
+        "fieldKey": "goods.spec",
+        "fieldLabel": "规格",
+        "fieldType": "string",
+        "sortOrder": 15
+      },
+      {
+        "id": "16",
+        "fieldKey": "goods.unit",
+        "fieldLabel": "单位",
+        "fieldType": "string",
+        "sortOrder": 16
+      },
+      {
+        "id": "17",
+        "fieldKey": "goods.qty",
+        "fieldLabel": "数量",
+        "fieldType": "number",
+        "sortOrder": 17
+      },
+      {
+        "id": "18",
+        "fieldKey": "goods.price",
+        "fieldLabel": "单价",
+        "fieldType": "number",
+        "sortOrder": 18
+      },
+      {
+        "id": "19",
+        "fieldKey": "goods.amount",
+        "fieldLabel": "金额",
+        "fieldType": "number",
+        "sortOrder": 19
+      },
+      {
+        "id": "20",
+        "fieldKey": "goods.remark",
+        "fieldLabel": "备注",
+        "fieldType": "string",
+        "sortOrder": 20
+      }
+    ]
+  },
+  {
+    "id": "sales-outbound",
+    "name": "销售出库单",
+    "group": "单据",
+    "paper": "A5 纵向 · 128mm 版心",
+    "desc": "出库凭证：抬头信息区 + 明细表格（每页小计 + 整表合计）+ 金额大写与签字栏，演示多页分页。",
+    "fields": [
+      {
+        "id": "so-1",
+        "fieldKey": "company",
+        "fieldLabel": "公司信息",
+        "fieldType": "string",
+        "sortOrder": 1
+      },
+      {
+        "id": "so-2",
+        "fieldKey": "company.name",
+        "fieldLabel": "公司名称",
+        "fieldType": "string",
+        "sortOrder": 2
+      },
+      {
+        "id": "so-3",
+        "fieldKey": "customer",
+        "fieldLabel": "客户信息",
+        "fieldType": "string",
+        "sortOrder": 3
+      },
+      {
+        "id": "so-4",
+        "fieldKey": "customer.name",
+        "fieldLabel": "客户名称",
+        "fieldType": "string",
+        "sortOrder": 4
+      },
+      {
+        "id": "so-5",
+        "fieldKey": "customer.contact",
+        "fieldLabel": "联系人",
+        "fieldType": "string",
+        "sortOrder": 5
+      },
+      {
+        "id": "so-6",
+        "fieldKey": "customer.phone",
+        "fieldLabel": "联系电话",
+        "fieldType": "string",
+        "sortOrder": 6
+      },
+      {
+        "id": "so-7",
+        "fieldKey": "customer.address",
+        "fieldLabel": "收货地址",
+        "fieldType": "string",
+        "sortOrder": 7
+      },
+      {
+        "id": "so-8",
+        "fieldKey": "order",
+        "fieldLabel": "单据信息",
+        "fieldType": "string",
+        "sortOrder": 8
+      },
+      {
+        "id": "so-9",
+        "fieldKey": "order.no",
+        "fieldLabel": "出库单号",
+        "fieldType": "string",
+        "sortOrder": 9
+      },
+      {
+        "id": "so-10",
+        "fieldKey": "order.date",
+        "fieldLabel": "出库日期",
+        "fieldType": "date",
+        "sortOrder": 10
+      },
+      {
+        "id": "so-11",
+        "fieldKey": "order.salesman",
+        "fieldLabel": "业务员",
+        "fieldType": "string",
+        "sortOrder": 11
+      },
+      {
+        "id": "so-12",
+        "fieldKey": "order.keeper",
+        "fieldLabel": "仓管员",
+        "fieldType": "string",
+        "sortOrder": 12
+      },
+      {
+        "id": "so-13",
+        "fieldKey": "order.remark",
+        "fieldLabel": "备注",
+        "fieldType": "string",
+        "sortOrder": 13
+      },
+      {
+        "id": "so-14",
+        "fieldKey": "order.total",
+        "fieldLabel": "合计金额",
+        "fieldType": "number",
+        "sortOrder": 14
+      },
+      {
+        "id": "so-15",
+        "fieldKey": "goods",
+        "fieldLabel": "出库明细",
+        "fieldType": "list",
+        "sortOrder": 15
+      },
+      {
+        "id": "so-16",
+        "fieldKey": "goods.name",
+        "fieldLabel": "商品名称",
+        "fieldType": "string",
+        "sortOrder": 16
+      },
+      {
+        "id": "so-17",
+        "fieldKey": "goods.spec",
+        "fieldLabel": "规格",
+        "fieldType": "string",
+        "sortOrder": 17
+      },
+      {
+        "id": "so-18",
+        "fieldKey": "goods.unit",
+        "fieldLabel": "单位",
+        "fieldType": "string",
+        "sortOrder": 18
+      },
+      {
+        "id": "so-19",
+        "fieldKey": "goods.price",
+        "fieldLabel": "单价",
+        "fieldType": "number",
+        "sortOrder": 19
+      },
+      {
+        "id": "so-20",
+        "fieldKey": "goods.qty",
+        "fieldLabel": "数量",
+        "fieldType": "number",
+        "sortOrder": 20
+      },
+      {
+        "id": "so-21",
+        "fieldKey": "goods.amount",
+        "fieldLabel": "金额",
+        "fieldType": "number",
+        "sortOrder": 21
+      }
+    ]
+  },
+  {
+    "id": "express-waybill",
+    "name": "快递电子面单",
+    "group": "单据",
+    "paper": "自定义纸 100×150mm",
+    "desc": "一联电子面单：运单条码、收寄双方信息、查件二维码、目的地大字与签收栏。",
+    "fields": [
+      {
+        "id": "ew-1",
+        "fieldKey": "express",
+        "fieldLabel": "快递公司",
+        "fieldType": "string",
+        "sortOrder": 1
+      },
+      {
+        "id": "ew-2",
+        "fieldKey": "express.company",
+        "fieldLabel": "公司名称",
+        "fieldType": "string",
+        "sortOrder": 2
+      },
+      {
+        "id": "ew-3",
+        "fieldKey": "express.product",
+        "fieldLabel": "产品类型",
+        "fieldType": "string",
+        "sortOrder": 3
+      },
+      {
+        "id": "ew-4",
+        "fieldKey": "express.hotline",
+        "fieldLabel": "客服热线",
+        "fieldType": "string",
+        "sortOrder": 4
+      },
+      {
+        "id": "ew-5",
+        "fieldKey": "waybill",
+        "fieldLabel": "运单信息",
+        "fieldType": "string",
+        "sortOrder": 5
+      },
+      {
+        "id": "ew-6",
+        "fieldKey": "waybill.no",
+        "fieldLabel": "运单号",
+        "fieldType": "string",
+        "sortOrder": 6
+      },
+      {
+        "id": "ew-7",
+        "fieldKey": "waybill.qrcode",
+        "fieldLabel": "查件二维码",
+        "fieldType": "string",
+        "sortOrder": 7
+      },
+      {
+        "id": "ew-8",
+        "fieldKey": "waybill.goodsName",
+        "fieldLabel": "托寄物",
+        "fieldType": "string",
+        "sortOrder": 8
+      },
+      {
+        "id": "ew-9",
+        "fieldKey": "waybill.weight",
+        "fieldLabel": "重量（kg）",
+        "fieldType": "number",
+        "sortOrder": 9
+      },
+      {
+        "id": "ew-10",
+        "fieldKey": "waybill.count",
+        "fieldLabel": "件数",
+        "fieldType": "number",
+        "sortOrder": 10
+      },
+      {
+        "id": "ew-11",
+        "fieldKey": "waybill.remark",
+        "fieldLabel": "备注",
+        "fieldType": "string",
+        "sortOrder": 11
+      },
+      {
+        "id": "ew-12",
+        "fieldKey": "waybill.printedAt",
+        "fieldLabel": "打印时间",
+        "fieldType": "string",
+        "sortOrder": 12
+      },
+      {
+        "id": "ew-13",
+        "fieldKey": "waybill.destCode",
+        "fieldLabel": "目的地代码",
+        "fieldType": "string",
+        "sortOrder": 13
+      },
+      {
+        "id": "ew-14",
+        "fieldKey": "sender",
+        "fieldLabel": "寄件方",
+        "fieldType": "string",
+        "sortOrder": 14
+      },
+      {
+        "id": "ew-15",
+        "fieldKey": "sender.name",
+        "fieldLabel": "寄件人",
+        "fieldType": "string",
+        "sortOrder": 15
+      },
+      {
+        "id": "ew-16",
+        "fieldKey": "sender.phone",
+        "fieldLabel": "寄件电话",
+        "fieldType": "string",
+        "sortOrder": 16
+      },
+      {
+        "id": "ew-17",
+        "fieldKey": "sender.province",
+        "fieldLabel": "寄件省份",
+        "fieldType": "string",
+        "sortOrder": 17
+      },
+      {
+        "id": "ew-18",
+        "fieldKey": "sender.city",
+        "fieldLabel": "寄件城市",
+        "fieldType": "string",
+        "sortOrder": 18
+      },
+      {
+        "id": "ew-19",
+        "fieldKey": "sender.address",
+        "fieldLabel": "寄件地址",
+        "fieldType": "string",
+        "sortOrder": 19
+      },
+      {
+        "id": "ew-20",
+        "fieldKey": "receiver",
+        "fieldLabel": "收件方",
+        "fieldType": "string",
+        "sortOrder": 20
+      },
+      {
+        "id": "ew-21",
+        "fieldKey": "receiver.name",
+        "fieldLabel": "收件人",
+        "fieldType": "string",
+        "sortOrder": 21
+      },
+      {
+        "id": "ew-22",
+        "fieldKey": "receiver.phone",
+        "fieldLabel": "收件电话",
+        "fieldType": "string",
+        "sortOrder": 22
+      },
+      {
+        "id": "ew-23",
+        "fieldKey": "receiver.province",
+        "fieldLabel": "收件省份",
+        "fieldType": "string",
+        "sortOrder": 23
+      },
+      {
+        "id": "ew-24",
+        "fieldKey": "receiver.city",
+        "fieldLabel": "收件城市",
+        "fieldType": "string",
+        "sortOrder": 24
+      },
+      {
+        "id": "ew-25",
+        "fieldKey": "receiver.district",
+        "fieldLabel": "收件区县",
+        "fieldType": "string",
+        "sortOrder": 25
+      },
+      {
+        "id": "ew-26",
+        "fieldKey": "receiver.address",
+        "fieldLabel": "收件地址",
+        "fieldType": "string",
+        "sortOrder": 26
+      }
+    ]
+  },
+  {
+    "id": "weight-label",
+    "name": "称签打印",
+    "group": "标签",
+    "paper": "标签纸 60×40mm · 单枚",
+    "desc": "条码秤称重标签：品名、单价、净重、金额与商品条码，生鲜散装区即称即打。",
+    "fields": [
+      {
+        "id": "wl-1",
+        "fieldKey": "shop",
+        "fieldLabel": "门店信息",
+        "fieldType": "string",
+        "sortOrder": 1
+      },
+      {
+        "id": "wl-2",
+        "fieldKey": "shop.name",
+        "fieldLabel": "门店名称",
+        "fieldType": "string",
+        "sortOrder": 2
+      },
+      {
+        "id": "wl-3",
+        "fieldKey": "shop.code",
+        "fieldLabel": "门店编码",
+        "fieldType": "string",
+        "sortOrder": 3
+      },
+      {
+        "id": "wl-4",
+        "fieldKey": "product",
+        "fieldLabel": "商品信息",
+        "fieldType": "string",
+        "sortOrder": 4
+      },
+      {
+        "id": "wl-5",
+        "fieldKey": "product.name",
+        "fieldLabel": "商品名称",
+        "fieldType": "string",
+        "sortOrder": 5
+      },
+      {
+        "id": "wl-6",
+        "fieldKey": "product.unitPrice",
+        "fieldLabel": "单价（元/500g）",
+        "fieldType": "number",
+        "sortOrder": 6
+      },
+      {
+        "id": "wl-7",
+        "fieldKey": "product.weight",
+        "fieldLabel": "净重（kg）",
+        "fieldType": "number",
+        "sortOrder": 7
+      },
+      {
+        "id": "wl-8",
+        "fieldKey": "product.amount",
+        "fieldLabel": "应付金额",
+        "fieldType": "number",
+        "sortOrder": 8
+      },
+      {
+        "id": "wl-9",
+        "fieldKey": "product.barcode",
+        "fieldLabel": "商品条码",
+        "fieldType": "string",
+        "sortOrder": 9
+      },
+      {
+        "id": "wl-10",
+        "fieldKey": "product.packedAt",
+        "fieldLabel": "包装日期",
+        "fieldType": "date",
+        "sortOrder": 10
+      },
+      {
+        "id": "wl-11",
+        "fieldKey": "product.expireAt",
+        "fieldLabel": "保质期至",
+        "fieldType": "date",
+        "sortOrder": 11
+      },
+      {
+        "id": "wl-12",
+        "fieldKey": "product.traceCode",
+        "fieldLabel": "追溯码",
+        "fieldType": "string",
+        "sortOrder": 12
+      }
+    ]
+  },
+  {
+    "id": "price-label",
+    "name": "价签打印",
+    "group": "标签",
+    "paper": "标签 40×30mm · 拼版 A4（4×8）",
+    "desc": "货架价签：品名、规格、促销价与划线原价 + 商品条码，开启拼版后一张 A4 可铺 32 枚。",
+    "fields": [
+      {
+        "id": "pl-1",
+        "fieldKey": "shop",
+        "fieldLabel": "门店信息",
+        "fieldType": "string",
+        "sortOrder": 1
+      },
+      {
+        "id": "pl-2",
+        "fieldKey": "shop.name",
+        "fieldLabel": "门店名称",
+        "fieldType": "string",
+        "sortOrder": 2
+      },
+      {
+        "id": "pl-3",
+        "fieldKey": "product",
+        "fieldLabel": "商品信息",
+        "fieldType": "string",
+        "sortOrder": 3
+      },
+      {
+        "id": "pl-4",
+        "fieldKey": "product.name",
+        "fieldLabel": "商品名称",
+        "fieldType": "string",
+        "sortOrder": 4
+      },
+      {
+        "id": "pl-5",
+        "fieldKey": "product.spec",
+        "fieldLabel": "规格",
+        "fieldType": "string",
+        "sortOrder": 5
+      },
+      {
+        "id": "pl-6",
+        "fieldKey": "product.unit",
+        "fieldLabel": "计价单位",
+        "fieldType": "string",
+        "sortOrder": 6
+      },
+      {
+        "id": "pl-7",
+        "fieldKey": "product.price",
+        "fieldLabel": "现价",
+        "fieldType": "number",
+        "sortOrder": 7
+      },
+      {
+        "id": "pl-8",
+        "fieldKey": "product.oldPrice",
+        "fieldLabel": "原价",
+        "fieldType": "number",
+        "sortOrder": 8
+      },
+      {
+        "id": "pl-9",
+        "fieldKey": "product.barcode",
+        "fieldLabel": "商品条码",
+        "fieldType": "string",
+        "sortOrder": 9
+      }
+    ]
+  },
+  {
+    "id": "asset-tag",
+    "name": "资产/设备标签",
+    "group": "标签",
+    "paper": "标签 60×40mm · 拼版 A4（3×6）",
+    "desc": "固定资产标签：二维码 + 编号、型号、部门、责任人与购置日期，拼版一张 A4 打 18 枚。",
+    "fields": [
+      {
+        "id": "at-1",
+        "fieldKey": "company",
+        "fieldLabel": "公司信息",
+        "fieldType": "string",
+        "sortOrder": 1
+      },
+      {
+        "id": "at-2",
+        "fieldKey": "company.name",
+        "fieldLabel": "公司名称",
+        "fieldType": "string",
+        "sortOrder": 2
+      },
+      {
+        "id": "at-3",
+        "fieldKey": "asset",
+        "fieldLabel": "资产信息",
+        "fieldType": "string",
+        "sortOrder": 3
+      },
+      {
+        "id": "at-4",
+        "fieldKey": "asset.code",
+        "fieldLabel": "资产编号",
+        "fieldType": "string",
+        "sortOrder": 4
+      },
+      {
+        "id": "at-5",
+        "fieldKey": "asset.name",
+        "fieldLabel": "资产名称",
+        "fieldType": "string",
+        "sortOrder": 5
+      },
+      {
+        "id": "at-6",
+        "fieldKey": "asset.model",
+        "fieldLabel": "规格型号",
+        "fieldType": "string",
+        "sortOrder": 6
+      },
+      {
+        "id": "at-7",
+        "fieldKey": "asset.dept",
+        "fieldLabel": "使用部门",
+        "fieldType": "string",
+        "sortOrder": 7
+      },
+      {
+        "id": "at-8",
+        "fieldKey": "asset.keeper",
+        "fieldLabel": "责任人",
+        "fieldType": "string",
+        "sortOrder": 8
+      },
+      {
+        "id": "at-9",
+        "fieldKey": "asset.boughtAt",
+        "fieldLabel": "购置日期",
+        "fieldType": "date",
+        "sortOrder": 9
+      }
+    ]
+  },
+  {
+    "id": "thermal-receipt",
+    "name": "零售小票",
+    "group": "小票",
+    "paper": "热敏纸 80mm · 连续纸",
+    "desc": "门店购物小票：店头信息、明细表格、合计与支付找零、电子发票二维码，连续纸按内容出纸。",
+    "fields": [
+      {
+        "id": "tr-1",
+        "fieldKey": "store",
+        "fieldLabel": "门店信息",
+        "fieldType": "string",
+        "sortOrder": 1
+      },
+      {
+        "id": "tr-2",
+        "fieldKey": "store.name",
+        "fieldLabel": "门店名称",
+        "fieldType": "string",
+        "sortOrder": 2
+      },
+      {
+        "id": "tr-3",
+        "fieldKey": "store.address",
+        "fieldLabel": "门店地址",
+        "fieldType": "string",
+        "sortOrder": 3
+      },
+      {
+        "id": "tr-4",
+        "fieldKey": "store.tel",
+        "fieldLabel": "门店电话",
+        "fieldType": "string",
+        "sortOrder": 4
+      },
+      {
+        "id": "tr-5",
+        "fieldKey": "order",
+        "fieldLabel": "订单信息",
+        "fieldType": "string",
+        "sortOrder": 5
+      },
+      {
+        "id": "tr-6",
+        "fieldKey": "order.no",
+        "fieldLabel": "小票号",
+        "fieldType": "string",
+        "sortOrder": 6
+      },
+      {
+        "id": "tr-7",
+        "fieldKey": "order.time",
+        "fieldLabel": "交易时间",
+        "fieldType": "string",
+        "sortOrder": 7
+      },
+      {
+        "id": "tr-8",
+        "fieldKey": "order.cashier",
+        "fieldLabel": "收银员",
+        "fieldType": "string",
+        "sortOrder": 8
+      },
+      {
+        "id": "tr-9",
+        "fieldKey": "order.payMethod",
+        "fieldLabel": "支付方式",
+        "fieldType": "string",
+        "sortOrder": 9
+      },
+      {
+        "id": "tr-10",
+        "fieldKey": "order.paid",
+        "fieldLabel": "实付金额",
+        "fieldType": "number",
+        "sortOrder": 10
+      },
+      {
+        "id": "tr-11",
+        "fieldKey": "order.change",
+        "fieldLabel": "找零",
+        "fieldType": "number",
+        "sortOrder": 11
+      },
+      {
+        "id": "tr-12",
+        "fieldKey": "order.memberNo",
+        "fieldLabel": "会员卡号",
+        "fieldType": "string",
+        "sortOrder": 12
+      },
+      {
+        "id": "tr-13",
+        "fieldKey": "order.points",
+        "fieldLabel": "本次积分",
+        "fieldType": "number",
+        "sortOrder": 13
+      },
+      {
+        "id": "tr-14",
+        "fieldKey": "order.total",
+        "fieldLabel": "合计金额",
+        "fieldType": "number",
+        "sortOrder": 14
+      },
+      {
+        "id": "tr-15",
+        "fieldKey": "order.qrcode",
+        "fieldLabel": "电子发票二维码",
+        "fieldType": "string",
+        "sortOrder": 15
+      },
+      {
+        "id": "tr-16",
+        "fieldKey": "items",
+        "fieldLabel": "商品明细",
+        "fieldType": "list",
+        "sortOrder": 16
+      },
+      {
+        "id": "tr-17",
+        "fieldKey": "items.name",
+        "fieldLabel": "商品名称",
+        "fieldType": "string",
+        "sortOrder": 17
+      },
+      {
+        "id": "tr-18",
+        "fieldKey": "items.qty",
+        "fieldLabel": "数量",
+        "fieldType": "number",
+        "sortOrder": 18
+      },
+      {
+        "id": "tr-19",
+        "fieldKey": "items.price",
+        "fieldLabel": "单价",
+        "fieldType": "number",
+        "sortOrder": 19
+      },
+      {
+        "id": "tr-20",
+        "fieldKey": "items.amount",
+        "fieldLabel": "金额",
+        "fieldType": "number",
+        "sortOrder": 20
+      }
+    ]
+  }
+]

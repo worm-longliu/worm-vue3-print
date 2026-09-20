@@ -1,0 +1,32 @@
+{
+  "express": {
+    "company": "迅达速运",
+    "product": "标准快递",
+    "hotline": "400-820-0000"
+  },
+  "waybill": {
+    "no": "XD7788009900123",
+    "qrcode": "https://example.com/track/XD7788009900123",
+    "goodsName": "数码配件",
+    "weight": 1.35,
+    "count": 2,
+    "remark": "易碎轻放，请勿倒置",
+    "printedAt": "2026-09-20 15:42",
+    "destCode": "571-03-08"
+  },
+  "sender": {
+    "name": "张伟",
+    "phone": "138****1234",
+    "province": "浙江省",
+    "city": "杭州市",
+    "address": "余杭区文一西路 998 号 3 幢 502 室"
+  },
+  "receiver": {
+    "name": "李娜",
+    "phone": "139****5678",
+    "province": "广东省",
+    "city": "深圳市",
+    "district": "南山区",
+    "address": "科技园南区高新南七道 12 号 A 座 1801"
+  }
+}

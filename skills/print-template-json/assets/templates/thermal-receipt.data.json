@@ -1,0 +1,57 @@
+{
+  "store": {
+    "name": "好邻居便利店（文一西路店）",
+    "address": "杭州市余杭区文一西路 969 号",
+    "tel": "0571-8888 6688"
+  },
+  "order": {
+    "no": "20260920000158",
+    "time": "2026-09-20 16:08:32",
+    "cashier": "王芳 / 1001",
+    "payMethod": "微信支付",
+    "paid": 50,
+    "change": 0.5,
+    "memberNo": "8802 3311 0099",
+    "points": 49,
+    "total": 49.5,
+    "qrcode": "https://example.com/invoice/20260920000158"
+  },
+  "items": [
+    {
+      "name": "饮用天然水 550ml",
+      "qty": 2,
+      "price": 2,
+      "amount": 4
+    },
+    {
+      "name": "红烧牛肉面 桶装",
+      "qty": 1,
+      "price": 5.5,
+      "amount": 5.5
+    },
+    {
+      "name": "常温酸奶 205g",
+      "qty": 3,
+      "price": 6.5,
+      "amount": 19.5
+    },
+    {
+      "name": "卤香鸡蛋",
+      "qty": 2,
+      "price": 2.5,
+      "amount": 5
+    },
+    {
+      "name": "辣味豆干 108g",
+      "qty": 1,
+      "price": 3.5,
+      "amount": 3.5
+    },
+    {
+      "name": "抽取式面巾纸",
+      "qty": 1,
+      "price": 12,
+      "amount": 12
+    }
+  ]
+}

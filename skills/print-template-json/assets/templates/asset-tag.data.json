@@ -1,0 +1,13 @@
+{
+  "company": {
+    "name": "杭州示例科技有限公司"
+  },
+  "asset": {
+    "code": "ZC-2026-01358",
+    "name": "笔记本电脑",
+    "model": "ThinkBook 14 G6",
+    "dept": "研发中心",
+    "keeper": "陈默",
+    "boughtAt": "2026-03-12"
+  }
+}

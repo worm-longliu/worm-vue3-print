@@ -1,0 +1,430 @@
+{
+  "unit": "mm",
+  "paperSize": "CUSTOM",
+  "orientation": "portrait",
+  "customWidth": 100,
+  "customHeight": 150,
+  "margins": {
+    "top": 5,
+    "right": 5,
+    "bottom": 5,
+    "left": 5
+  },
+  "header": {
+    "height": 0,
+    "elements": []
+  },
+  "footer": {
+    "height": 0,
+    "elements": []
+  },
+  "firstPageOverlay": {
+    "height": 0,
+    "elements": []
+  },
+  "watermark": {},
+  "elements": [
+    {
+      "id": "ew-1",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 0,
+        "width": 60,
+        "height": 6,
+        "formatter": "{express.company}",
+        "fontSize": 13,
+        "fontWeight": "bold",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "ew-2",
+      "type": "text",
+      "options": {
+        "left": 60,
+        "top": 0,
+        "width": 30,
+        "height": 6,
+        "formatter": "{express.product}",
+        "fontSize": 10,
+        "textAlign": "right",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "ew-3",
+      "type": "barcode",
+      "options": {
+        "left": 0,
+        "top": 6.5,
+        "width": 90,
+        "height": 13,
+        "formatter": "{waybill.no}",
+        "barcodeType": "code128",
+        "barWidth": 2,
+        "printerDpi": 203,
+        "hideTitle": false
+      },
+      "printElementType": {
+        "type": "barcode",
+        "title": "条形码"
+      }
+    },
+    {
+      "id": "ew-4",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 21,
+        "width": 90,
+        "height": 4.5,
+        "formatter": "收件人   {receiver.name}   {receiver.phone}",
+        "fontSize": 11,
+        "fontWeight": "bold",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "ew-5",
+      "type": "longText",
+      "options": {
+        "left": 0,
+        "top": 25.5,
+        "width": 90,
+        "height": 10,
+        "formatter": "{receiver.province}{receiver.city}{receiver.district}{receiver.address}",
+        "fontSize": 9,
+        "lineHeight": 13
+      },
+      "printElementType": {
+        "type": "longText",
+        "title": "长文"
+      }
+    },
+    {
+      "id": "ew-6",
+      "type": "hline",
+      "options": {
+        "left": 0,
+        "top": 36,
+        "width": 90,
+        "height": 0.2,
+        "borderWidth": 0.4,
+        "borderColor": "#bbbbbb"
+      },
+      "printElementType": {
+        "type": "hline",
+        "title": "横线"
+      }
+    },
+    {
+      "id": "ew-7",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 37,
+        "width": 90,
+        "height": 4,
+        "formatter": "寄件人   {sender.name}   {sender.phone}",
+        "fontSize": 9,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "ew-8",
+      "type": "longText",
+      "options": {
+        "left": 0,
+        "top": 41,
+        "width": 90,
+        "height": 8,
+        "formatter": "{sender.province}{sender.city}{sender.address}",
+        "fontSize": 8,
+        "color": "#444444",
+        "lineHeight": 12
+      },
+      "printElementType": {
+        "type": "longText",
+        "title": "长文"
+      }
+    },
+    {
+      "id": "ew-9",
+      "type": "hline",
+      "options": {
+        "left": 0,
+        "top": 50,
+        "width": 90,
+        "height": 0.2,
+        "borderWidth": 0.4,
+        "borderColor": "#bbbbbb"
+      },
+      "printElementType": {
+        "type": "hline",
+        "title": "横线"
+      }
+    },
+    {
+      "id": "ew-10",
+      "type": "qrcode",
+      "options": {
+        "left": 0,
+        "top": 52,
+        "width": 24,
+        "height": 24,
+        "formatter": "{waybill.qrcode}",
+        "qrCodeLevel": "M"
+      },
+      "printElementType": {
+        "type": "qrcode",
+        "title": "二维码"
+      }
+    },
+    {
+      "id": "ew-11",
+      "type": "text",
+      "options": {
+        "left": 27,
+        "top": 52,
+        "width": 63,
+        "height": 4.5,
+        "formatter": "托寄物：{waybill.goodsName}",
+        "fontSize": 9,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "ew-12",
+      "type": "text",
+      "options": {
+        "left": 27,
+        "top": 56.5,
+        "width": 63,
+        "height": 4.5,
+        "formatter": "重量：{waybill.weight} kg   件数：{waybill.count}",
+        "fontSize": 9,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "ew-13",
+      "type": "text",
+      "options": {
+        "left": 27,
+        "top": 61,
+        "width": 63,
+        "height": 4.5,
+        "formatter": "备注：{waybill.remark}",
+        "fontSize": 9,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "ew-14",
+      "type": "text",
+      "options": {
+        "left": 27,
+        "top": 65.5,
+        "width": 63,
+        "height": 4.5,
+        "formatter": "签收人：____________",
+        "fontSize": 9,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "ew-15",
+      "type": "hline",
+      "options": {
+        "left": 0,
+        "top": 71,
+        "width": 90,
+        "height": 0.2,
+        "borderWidth": 0.4,
+        "borderColor": "#dddddd"
+      },
+      "printElementType": {
+        "type": "hline",
+        "title": "横线"
+      }
+    },
+    {
+      "id": "ew-16",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 72,
+        "width": 90,
+        "height": 4,
+        "formatter": "打印时间：{waybill.printedAt}",
+        "fontSize": 8,
+        "color": "#666666",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "ew-17",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 76,
+        "width": 90,
+        "height": 4,
+        "formatter": "客服热线：{express.hotline}",
+        "fontSize": 8,
+        "color": "#666666",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "ew-18",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 82,
+        "width": 90,
+        "height": 16,
+        "formatter": "{waybill.destCode}",
+        "fontSize": 22,
+        "fontWeight": "bold",
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "borderWidth": 0.6,
+        "borderColor": "#333333"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "ew-19",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 99,
+        "width": 90,
+        "height": 4,
+        "formatter": "收件人存根联   {express.company}",
+        "fontSize": 7.5,
+        "color": "#999999",
+        "textAlign": "center",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "ew-20",
+      "type": "hline",
+      "options": {
+        "left": 0,
+        "top": 108,
+        "width": 90,
+        "height": 0.2,
+        "borderWidth": 0.4,
+        "borderColor": "#dddddd"
+      },
+      "printElementType": {
+        "type": "hline",
+        "title": "横线"
+      }
+    },
+    {
+      "id": "ew-21",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 110,
+        "width": 90,
+        "height": 6,
+        "formatter": "签收时间：______年____月____日",
+        "fontSize": 9,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "ew-22",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 117,
+        "width": 90,
+        "height": 6,
+        "formatter": "派件员：__________     收件人签收：__________",
+        "fontSize": 9,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "ew-23",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 126,
+        "width": 90,
+        "height": 5,
+        "formatter": "本联为收件人存根，请核对包裹完好后再签收",
+        "fontSize": 8,
+        "color": "#999999",
+        "textAlign": "center",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    }
+  ]
+}

@@ -1,0 +1,477 @@
+{
+  "unit": "mm",
+  "paperSize": "A5",
+  "orientation": "portrait",
+  "margins": {
+    "top": 10,
+    "right": 10,
+    "bottom": 10,
+    "left": 10
+  },
+  "header": {
+    "height": 12,
+    "elements": [
+      {
+        "id": "so-1",
+        "type": "text",
+        "options": {
+          "left": 0,
+          "top": 0,
+          "width": 128,
+          "height": 5,
+          "formatter": "{company.name}",
+          "fontSize": 9,
+          "textAlign": "center",
+          "verticalAlign": "middle"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      },
+      {
+        "id": "so-2",
+        "type": "text",
+        "options": {
+          "left": 0,
+          "top": 5,
+          "width": 128,
+          "height": 7,
+          "formatter": "销售出库单",
+          "fontSize": 16,
+          "fontWeight": "bold",
+          "letterSpacing": 4,
+          "textAlign": "center",
+          "verticalAlign": "middle"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      }
+    ]
+  },
+  "footer": {
+    "height": 8,
+    "elements": [
+      {
+        "id": "so-3",
+        "type": "text",
+        "options": {
+          "left": 0,
+          "top": 1,
+          "width": 88,
+          "height": 5,
+          "formatter": "{company.name}",
+          "fontSize": 8,
+          "color": "#666666",
+          "verticalAlign": "middle"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      },
+      {
+        "id": "so-4",
+        "type": "text",
+        "options": {
+          "left": 88,
+          "top": 1,
+          "width": 40,
+          "height": 5,
+          "formatter": "第 {pageIndex} 页 / 共 {totalPages} 页",
+          "fontSize": 8,
+          "color": "#666666",
+          "textAlign": "right",
+          "verticalAlign": "middle"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      }
+    ]
+  },
+  "firstPageOverlay": {
+    "height": 0,
+    "elements": []
+  },
+  "watermark": {},
+  "elements": [
+    {
+      "id": "so-8",
+      "type": "table",
+      "options": {
+        "left": 0,
+        "top": 0,
+        "width": 128,
+        "height": 21,
+        "tableMode": "dynamic",
+        "tableColWidths": [
+          22,
+          42,
+          22,
+          42
+        ],
+        "tableDefaultFontSize": 9,
+        "tableDefaultPadding": 1,
+        "tablePagination": {
+          "enabled": false
+        },
+        "tableRows": [
+          {
+            "id": "row-so-5",
+            "type": "header",
+            "height": 7,
+            "cells": [
+              {
+                "id": "cell-so-5-1",
+                "formatter": "客户名称",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-so-5-2",
+                "formatter": "{customer.name}"
+              },
+              {
+                "id": "cell-so-5-3",
+                "formatter": "出库单号",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-so-5-4",
+                "formatter": "{order.no}"
+              }
+            ]
+          },
+          {
+            "id": "row-so-6",
+            "type": "header",
+            "height": 7,
+            "cells": [
+              {
+                "id": "cell-so-6-1",
+                "formatter": "联系人",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-so-6-2",
+                "formatter": "{customer.contact}  {customer.phone}"
+              },
+              {
+                "id": "cell-so-6-3",
+                "formatter": "出库日期",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-so-6-4",
+                "formatter": "{order.date}"
+              }
+            ]
+          },
+          {
+            "id": "row-so-7",
+            "type": "header",
+            "height": 7,
+            "cells": [
+              {
+                "id": "cell-so-7-1",
+                "formatter": "收货地址",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-so-7-2",
+                "formatter": "{customer.address}"
+              },
+              {
+                "id": "cell-so-7-3",
+                "formatter": "业务员",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-so-7-4",
+                "formatter": "{order.salesman}"
+              }
+            ]
+          }
+        ]
+      },
+      "printElementType": {
+        "type": "table",
+        "title": "表格"
+      }
+    },
+    {
+      "id": "so-13",
+      "type": "table",
+      "options": {
+        "left": 0,
+        "top": 23,
+        "width": 128,
+        "height": 30,
+        "tableMode": "dynamic",
+        "dataSource": "goods",
+        "tableColWidths": [
+          50,
+          24,
+          14,
+          16,
+          12,
+          12
+        ],
+        "tableDefaultFontSize": 8.5,
+        "tableDefaultPadding": 1,
+        "tablePagination": {
+          "enabled": true
+        },
+        "tableRows": [
+          {
+            "id": "row-so-9",
+            "type": "header",
+            "height": 8,
+            "repeatOnPage": true,
+            "cells": [
+              {
+                "id": "cell-so-9-1",
+                "formatter": "商品名称",
+                "align": "center",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-so-9-2",
+                "formatter": "规格",
+                "align": "center",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-so-9-3",
+                "formatter": "单位",
+                "align": "center",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-so-9-4",
+                "formatter": "单价",
+                "align": "center",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-so-9-5",
+                "formatter": "数量",
+                "align": "center",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-so-9-6",
+                "formatter": "金额",
+                "align": "center",
+                "fontWeight": "bold"
+              }
+            ]
+          },
+          {
+            "id": "row-so-10",
+            "type": "data",
+            "height": 8,
+            "cells": [
+              {
+                "id": "cell-so-10-1",
+                "formatter": "{goods.name}",
+                "align": "left"
+              },
+              {
+                "id": "cell-so-10-2",
+                "formatter": "{goods.spec}",
+                "align": "left"
+              },
+              {
+                "id": "cell-so-10-3",
+                "formatter": "{goods.unit}",
+                "align": "center"
+              },
+              {
+                "id": "cell-so-10-4",
+                "formatter": "{MONEY(goods.price)}",
+                "align": "right"
+              },
+              {
+                "id": "cell-so-10-5",
+                "formatter": "{goods.qty}",
+                "align": "right"
+              },
+              {
+                "id": "cell-so-10-6",
+                "formatter": "{MONEY(goods.amount)}",
+                "align": "right"
+              }
+            ]
+          },
+          {
+            "id": "row-so-11",
+            "type": "subtotal",
+            "height": 7,
+            "cells": [
+              {
+                "id": "cell-so-11-1",
+                "formatter": "本页小计",
+                "align": "left",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-so-11-2",
+                "formatter": ""
+              },
+              {
+                "id": "cell-so-11-3",
+                "formatter": ""
+              },
+              {
+                "id": "cell-so-11-4",
+                "formatter": ""
+              },
+              {
+                "id": "cell-so-11-5",
+                "formatter": "{SUM(goods.qty)}",
+                "align": "right",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-so-11-6",
+                "formatter": "{MONEY(SUM(goods.amount))}",
+                "align": "right",
+                "fontWeight": "bold"
+              }
+            ]
+          },
+          {
+            "id": "row-so-12",
+            "type": "summary",
+            "height": 7,
+            "cells": [
+              {
+                "id": "cell-so-12-1",
+                "formatter": "合计",
+                "align": "left",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-so-12-2",
+                "formatter": ""
+              },
+              {
+                "id": "cell-so-12-3",
+                "formatter": ""
+              },
+              {
+                "id": "cell-so-12-4",
+                "formatter": ""
+              },
+              {
+                "id": "cell-so-12-5",
+                "formatter": "{SUM(goods.qty)}",
+                "align": "right",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-so-12-6",
+                "formatter": "{MONEY(SUM(goods.amount))}",
+                "align": "right",
+                "fontWeight": "bold"
+              }
+            ]
+          }
+        ]
+      },
+      "printElementType": {
+        "type": "table",
+        "title": "表格"
+      }
+    },
+    {
+      "id": "so-14",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 56,
+        "width": 128,
+        "height": 6,
+        "formatter": "金额大写：{UPPER(order.total)}",
+        "fontSize": 10,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "so-15",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 63,
+        "width": 128,
+        "height": 6,
+        "formatter": "备注：{order.remark}",
+        "fontSize": 9,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "so-16",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 72,
+        "width": 42,
+        "height": 6,
+        "formatter": "制单人：{order.salesman}",
+        "fontSize": 9,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "so-17",
+      "type": "text",
+      "options": {
+        "left": 43,
+        "top": 72,
+        "width": 42,
+        "height": 6,
+        "formatter": "仓管员：{order.keeper}",
+        "fontSize": 9,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "so-18",
+      "type": "text",
+      "options": {
+        "left": 86,
+        "top": 72,
+        "width": 42,
+        "height": 6,
+        "formatter": "收货人签字：",
+        "fontSize": 9,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "supplier": {
+    "name": "鑫达五金有限公司",
+    "phone": "0571-88776655",
+    "address": "杭州市萧山区经济开发区88号"
+  },
+  "receiver": {
+    "name": "李四",
+    "phone": "13912345678",
+    "address": "杭州市余杭区文一西路998号"
+  },
+  "order": {
+    "no": "PO20260801001-B01",
+    "date": "2026-08-01",
+    "total": 1933
+  },
+  "goods": [
+    {
+      "name": "碳钢螺丝 M8",
+      "spec": "M14×10",
+      "unit": "个",
+      "qty": 100,
+      "price": 0.5,
+      "amount": 50,
+      "remark": "A级"
+    },
+    {
+      "name": "不锈钢螺母 M10",
+      "spec": "M16×11",
+      "unit": "套",
+      "qty": 117,
+      "price": 0.75,
+      "amount": 87.75,
+      "remark": ""
+    },
+    {
+      "name": "弹簧垫圈 M12",
+      "spec": "M6×12",
+      "unit": "盒",
+      "qty": 134,
+      "price": 1,
+      "amount": 134,
+      "remark": ""
+    },
+    {
+      "name": "六角螺栓 M14",
+      "spec": "M5×13",
+      "unit": "支",
+      "qty": 151,
+      "price": 1.25,
+      "amount": 188.75,
+      "remark": ""
+    },
+    {
+      "name": "内六角螺钉 M16",
+      "spec": "M20×14",
+      "unit": "袋",
+      "qty": 168,
+      "price": 1.5,
+      "amount": 252,
+      "remark": ""
+    },
+    {
+      "name": "平垫圈 M6",
+      "spec": "M4×15",
+      "unit": "件",
+      "qty": 185,
+      "price": 1.75,
+      "amount": 323.75,
+      "remark": ""
+    },
+    {
+      "name": "自攻螺钉 M5",
+      "spec": "M3×16",
+      "unit": "根",
+      "qty": 202,
+      "price": 2,
+      "amount": 404,
+      "remark": ""
+    },
+    {
+      "name": "双头螺柱 M20",
+      "spec": "M8×17",
+      "unit": "包",
+      "qty": 219,
+      "price": 2.25,
+      "amount": 492.75,
+      "remark": "A级"
+    }
+  ]
+}

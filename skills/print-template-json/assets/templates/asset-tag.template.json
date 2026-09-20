@@ -1,0 +1,198 @@
+{
+  "unit": "mm",
+  "paperSize": "LABEL_60X40",
+  "orientation": "portrait",
+  "margins": {
+    "top": 2,
+    "right": 2,
+    "bottom": 2,
+    "left": 2
+  },
+  "tiling": {
+    "enabled": true,
+    "sheetPaperSize": "A4",
+    "sheetOrientation": "portrait",
+    "sheetMargin": {
+      "top": 10,
+      "right": 10,
+      "bottom": 10,
+      "left": 10
+    },
+    "gapX": 2,
+    "gapY": 2,
+    "columns": 3
+  },
+  "header": {
+    "height": 0,
+    "elements": []
+  },
+  "footer": {
+    "height": 0,
+    "elements": []
+  },
+  "firstPageOverlay": {
+    "height": 0,
+    "elements": []
+  },
+  "watermark": {},
+  "elements": [
+    {
+      "id": "at-1",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 0,
+        "width": 56,
+        "height": 3.8,
+        "formatter": "{company.name}",
+        "fontSize": 7.5,
+        "color": "#555555",
+        "textAlign": "center",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "at-2",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 3.8,
+        "width": 56,
+        "height": 5.5,
+        "formatter": "{asset.name}",
+        "fontSize": 11,
+        "fontWeight": "bold",
+        "textAlign": "center",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "at-3",
+      "type": "qrcode",
+      "options": {
+        "left": 0,
+        "top": 10,
+        "width": 20,
+        "height": 19,
+        "formatter": "{asset.code}",
+        "qrCodeLevel": "M"
+      },
+      "printElementType": {
+        "type": "qrcode",
+        "title": "二维码"
+      }
+    },
+    {
+      "id": "at-4",
+      "type": "text",
+      "options": {
+        "left": 22,
+        "top": 10,
+        "width": 34,
+        "height": 4.2,
+        "formatter": "编号  {asset.code}",
+        "fontSize": 8,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "at-5",
+      "type": "text",
+      "options": {
+        "left": 22,
+        "top": 14.2,
+        "width": 34,
+        "height": 4.2,
+        "formatter": "型号  {asset.model}",
+        "fontSize": 8,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "at-6",
+      "type": "text",
+      "options": {
+        "left": 22,
+        "top": 18.4,
+        "width": 34,
+        "height": 4.2,
+        "formatter": "部门  {asset.dept}",
+        "fontSize": 8,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "at-7",
+      "type": "text",
+      "options": {
+        "left": 22,
+        "top": 22.6,
+        "width": 34,
+        "height": 4.2,
+        "formatter": "责任人 {asset.keeper}",
+        "fontSize": 8,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "at-8",
+      "type": "text",
+      "options": {
+        "left": 22,
+        "top": 26.8,
+        "width": 34,
+        "height": 3.6,
+        "formatter": "购置  {asset.boughtAt}",
+        "fontSize": 8,
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "at-9",
+      "type": "text",
+      "options": {
+        "left": 0,
+        "top": 30.8,
+        "width": 56,
+        "height": 2.8,
+        "formatter": "扫码查看资产详情",
+        "fontSize": 6.5,
+        "color": "#888888",
+        "textAlign": "center",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    }
+  ]
+}

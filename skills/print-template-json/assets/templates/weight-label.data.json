@@ -1,0 +1,16 @@
+{
+  "shop": {
+    "name": "鲜享生活超市 · 文一西路店",
+    "code": "HZ-0321"
+  },
+  "product": {
+    "name": "散装五常稻花香米",
+    "unitPrice": 6.9,
+    "weight": 1.236,
+    "amount": 17.06,
+    "barcode": "2201234567890",
+    "packedAt": "2026-09-20",
+    "expireAt": "2027-03-20",
+    "traceCode": "TR2609200317"
+  }
+}

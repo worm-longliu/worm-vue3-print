@@ -1,0 +1,117 @@
+{
+  "company": {
+    "name": "杭州示例智能装备有限公司"
+  },
+  "customer": {
+    "name": "宁波精工机械制造有限公司",
+    "contact": "赵工",
+    "phone": "0574-8822 6677",
+    "address": "宁波市北仑区海天路 168 号 2 号厂房"
+  },
+  "order": {
+    "no": "XSCK202609200086",
+    "date": "2026-09-20",
+    "salesman": "林越",
+    "keeper": "何斌",
+    "remark": "请按送货单核对型号后签收，外包装破损请当场拍照留存。",
+    "total": 27933
+  },
+  "goods": [
+    {
+      "name": "铝合金型材",
+      "spec": "6061-T6",
+      "unit": "米",
+      "price": 28.5,
+      "qty": 120,
+      "amount": 3420
+    },
+    {
+      "name": "不锈钢法兰",
+      "spec": "DN50",
+      "unit": "片",
+      "price": 46,
+      "qty": 60,
+      "amount": 2760
+    },
+    {
+      "name": "碳钢螺栓",
+      "spec": "M12×40",
+      "unit": "套",
+      "price": 1.2,
+      "qty": 800,
+      "amount": 960
+    },
+    {
+      "name": "橡胶密封圈",
+      "spec": "NBR50",
+      "unit": "个",
+      "price": 0.85,
+      "qty": 500,
+      "amount": 425
+    },
+    {
+      "name": "直线导轨",
+      "spec": "HGR20",
+      "unit": "根",
+      "price": 186,
+      "qty": 12,
+      "amount": 2232
+    },
+    {
+      "name": "伺服电机",
+      "spec": "750W",
+      "unit": "台",
+      "price": 1280,
+      "qty": 4,
+      "amount": 5120
+    },
+    {
+      "name": "行星减速机",
+      "spec": "PLF60",
+      "unit": "台",
+      "price": 860,
+      "qty": 4,
+      "amount": 3440
+    },
+    {
+      "name": "工业相机",
+      "spec": "2000 万像素",
+      "unit": "台",
+      "price": 2350,
+      "qty": 2,
+      "amount": 4700
+    },
+    {
+      "name": "工业镜头",
+      "spec": "25mm",
+      "unit": "个",
+      "price": 680,
+      "qty": 2,
+      "amount": 1360
+    },
+    {
+      "name": "条形光源",
+      "spec": "300mm",
+      "unit": "条",
+      "price": 158,
+      "qty": 6,
+      "amount": 948
+    },
+    {
+      "name": "同步带",
+      "spec": "5M-500",
+      "unit": "条",
+      "price": 42,
+      "qty": 20,
+      "amount": 840
+    },
+    {
+      "name": "气缸",
+      "spec": "SC63×100",
+      "unit": "只",
+      "price": 216,
+      "qty": 8,
+      "amount": 1728
+    }
+  ]
+}

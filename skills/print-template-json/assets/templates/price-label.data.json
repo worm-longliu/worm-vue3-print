@@ -1,0 +1,13 @@
+{
+  "shop": {
+    "name": "鲜享生活超市"
+  },
+  "product": {
+    "name": "东北长粒香米",
+    "spec": "5kg 装",
+    "unit": "袋",
+    "price": 49.9,
+    "oldPrice": 59.9,
+    "barcode": "6901234567892"
+  }
+}
