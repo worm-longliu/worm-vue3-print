@@ -14,6 +14,14 @@
 - 绕过方式：先把各包 `dist/`（必要时还有 `clients/print-client/out`、`demo/dist`）`mv` 到 /tmp 备份，再执行 `CODEBUDDY_SAFE_DELETE_ENABLED=0 npm run build`。删除构建垃圾（如 tsup/vitest 的 `*.bundled_*.mjs`、`vitest.config.ts.timestamp-*.mjs`）同理。
 - canvas 依赖 core 的 **dist**：改了 core 源码后必须先构建 core，否则 canvas 的测试与运行看到的还是旧的 core。
 
+## 表格「多级表头」重复语义（2026-09-20 定下的约定）
+
+- 表格是 Excel 风格行×列矩阵，**没有**独立的 columns/表头分组模型；多级表头 = 多行 `type:'header'` + 单元格 rowspan/colspan 合并。
+- 合并硬约束（`table-matrix.ts` 的 `canMergeReason`）：合并区**不能跨不同行类型**，因此 header 区的 rowspan 天然闭合在表头区内，不会跨到 data 行。
+- **重复粒度是「表头区」不是「单行」**：表头区 = 第 0 行起的连续 header 行；区内任一行 `repeatOnPage===true` → 整个表头区重复（`data-binder.ts` 的 `countRepeatHeader`）。原因：按行独立判定会把靠 rowspan 连成整体的表头切在半截上，续片丢层级。
+- 续片渲染重复表头时传 `rowLimit=repeatCount`，超界 rowspan 会被裁剪（`html-generator.ts` 的 `renderMatrixRows`），防止跨行主格吃掉数据行位置。
+- 新增 header 行（`insertRow` / `setRowType`）会继承相邻 header 行的 `repeatOnPage`；设计器开关走 `setHeaderRepeat(rows, enabled)` 作用于整个表头区。
+
 ## 文档与事实校验习惯
 
 写 CHANGELOG / Release Notes 前要核实 API 是否真的从主入口导出（例：`getOutputPaperDimensions` 只在 core 内部使用，不可写成公开导入）。
