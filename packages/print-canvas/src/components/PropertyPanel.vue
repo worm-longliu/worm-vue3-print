@@ -22,6 +22,8 @@
           <div class="property-content">
             <PositionSizeGroup v-if="filteredGroups.includes('position-size') && !isTableCellSelected" :element="element" :matched-keys="matchedKeys" :searching="searching" />
             <AppearanceGroup v-if="filteredGroups.includes('appearance')" :element="element" :is-text-type="isTextType" :matched-keys="matchedKeys" :searching="searching" />
+            <!-- 条码/二维码设置（码制、条宽、缩放模式、最大宽高等） -->
+            <CodeGroup v-if="filteredGroups.includes('code') && isCodeType" :element="element" :matched-keys="matchedKeys" :searching="searching" @change="recordHistory?.()" />
             <PropertyGroup v-if="filteredGroups.includes('binding')" title="内容" icon="Document" default-expanded group-key="binding">
               <BindingControl
                 v-for="desc in bindingDescriptors"
@@ -174,6 +176,7 @@ import { searchProperties } from '@worm-vue3-print/core/designer'
 import PropertySearch from './property/PropertySearch.vue'
 import PositionSizeGroup from './property/PositionSizeGroup.vue'
 import AppearanceGroup from './property/AppearanceGroup.vue'
+import CodeGroup from './property/CodeGroup.vue'
 import PropertyGroup from './property/PropertyGroup.vue'
 import StepperInput from './property/StepperInput.vue'
 import BindingControl from './property/BindingControl.vue'
@@ -236,6 +239,12 @@ const isTextType = computed(() => {
 const isImageType = computed(() => {
   if (!props.element) return false
   return props.element.printElementType.type === 'image'
+})
+
+/** 条码/二维码元素：属性台挂载「条码设置」分组 */
+const isCodeType = computed(() => {
+  if (!props.element) return false
+  return ['barcode', 'qrcode'].includes(props.element.printElementType.type)
 })
 
 /** 是否处于表格单元格选中态：单元格的位置与宽高由行高/列宽控制，隐藏「位置与尺寸」组 */

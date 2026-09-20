@@ -93,6 +93,7 @@ type BorderLike = { width?: number } | undefined
 
 interface FitCellLike {
   rowspan?: number
+  colspan?: number
   padding?: number
   borders?: {
     top?: BorderLike
@@ -100,6 +101,30 @@ interface FitCellLike {
     bottom?: BorderLike
     left?: BorderLike
   } | undefined
+}
+
+/**
+ * 单元格「可用内容宽度」（mm）：所跨列宽之和，扣除左右内边距与塌陷边框占位。
+ * 与 `cellFitCapMm`（高度）同一口径：table-layout:fixed + border-collapse:collapse。
+ * 条形码点对齐需要单元格的真实可用宽度，设计器画布复用同一函数。
+ * 列宽缺失（表格未配置 tableColWidths）时返回 0，调用方据此不启用点对齐。
+ */
+export function cellFitWidthMm(
+  colWidths: number[],
+  colIndex: number,
+  cell: FitCellLike | undefined,
+  defaultPadding = 1,
+): number {
+  const span = Math.max(cell?.colspan ?? 1, 1)
+  let width = 0
+  for (let i = 0; i < span; i++) {
+    width += colWidths[colIndex + i] ?? 0
+  }
+  if (width <= 0) return 0
+  const padding = cell?.padding ?? defaultPadding
+  // border-collapse: collapse 下边框居中于格线，每格实际占用自身边框的一半
+  const borderMm = (ptToMm(cell?.borders?.left?.width ?? 0) + ptToMm(cell?.borders?.right?.width ?? 0)) / 2
+  return Math.max(width - padding * 2 - borderMm, 0.5)
 }
 
 /**

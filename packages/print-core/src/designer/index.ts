@@ -10,6 +10,9 @@ export * from './types.js'
 // ─── 文字溢出显示形式的判定（与渲染端共用同一份，避免设计态/出纸两套规则） ───
 export * from '../render/text-fit.js'
 
+// ─── 条码打印点对齐（与渲染端共用同一份，设计态条宽必须等于出纸条宽） ───
+export * from '../render/barcode-dot.js'
+
 // ─── 通用工具 ───
 export * from './utils/units.js'
 export * from './utils/scale.js'

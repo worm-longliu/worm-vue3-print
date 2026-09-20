@@ -40,6 +40,21 @@ export const PROPERTY_REGISTRY: PropertyGroupDef[] = [
     ],
   },
   {
+    group: 'code',
+    groupLabel: '条码设置',
+    items: [
+      { key: 'cd-type', keywords: ['码制', '条码类型', '条形码类型', 'barcodetype', 'code128', 'ean13', 'code39', 'itf14'] },
+      { key: 'cd-dpi', keywords: ['打印机分辨率', 'dpi', '打印点', '点阵对齐', '203', '300'] },
+      { key: 'cd-bar-width', keywords: ['条宽', '条粗细', 'barwidth', '模块宽'] },
+      { key: 'cd-show-text', keywords: ['显示文本', '条码文本', '显示数字'] },
+      { key: 'cd-font-size', keywords: ['条码字号', '文本字号'] },
+      { key: 'cd-ec-level', keywords: ['纠错级别', '容错', 'qrcodelevel'] },
+      { key: 'cd-fit', keywords: ['缩放模式', '拉伸', '等比', 'fit', 'contain', 'cover'] },
+      { key: 'cd-max-width', keywords: ['最大宽度', '最大宽', 'maxwidth'] },
+      { key: 'cd-max-height', keywords: ['最大高度', '最大高', 'maxheight'] },
+    ],
+  },
+  {
     group: 'content',
     groupLabel: '内容',
     items: [

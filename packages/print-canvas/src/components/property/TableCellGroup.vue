@@ -24,6 +24,30 @@
       <div class="pd-field" v-if="isBarcodeCell"><span class="pd-label">显示文本</span>
         <input :checked="mainCell.showBarcodeText !== false" type="checkbox" class="pd-switch" @input="write(c => { c.showBarcodeText = !!($event.target as HTMLInputElement).checked })" />
       </div>
+      <div class="pd-field" v-if="isBarcodeCell && !dotAligned"><span class="pd-label">条宽（倍率）</span>
+        <StepperInput :model-value="mainCell.barWidth ?? 2"
+          :min="2"
+          :max="4"
+          :step="0.5"
+          @update:model-value="write(c => { c.barWidth = $event })" />
+      </div>
+      <p class="pd-hint" v-if="isBarcodeCell && !dotAligned">热敏/针式打印建议 3 及以上：条越粗，出纸后条宽越稳定</p>
+      <div class="pd-field" v-if="isBarcodeCell"><span class="pd-label">文本字号（相对条高，条高为 30）</span>
+        <StepperInput :model-value="mainCell.barFontSize ?? 10"
+          :min="5"
+          :max="24"
+          placeholder="默认 10"
+          @update:model-value="write(c => { c.barFontSize = $event ?? undefined })" />
+      </div>
+      <div class="pd-field" v-if="isBarcodeCell"><span class="pd-label">打印机分辨率</span>
+        <select :value="mainCell.printerDpi ? String(mainCell.printerDpi) : ''" class="pd-select" @change="onPrinterDpiChange(($event.target as HTMLSelectElement).value)">
+          <option value="">不对齐（按单元格缩放）</option>
+          <option value="203">203 dpi（8 点/mm）</option>
+          <option value="300">300 dpi（11.8 点/mm）</option>
+          <option value="600">600 dpi（23.6 点/mm）</option>
+        </select>
+      </div>
+      <p class="pd-hint" v-if="isBarcodeCell">填写后条宽吸附到整数打印点（消除出纸「条宽忽宽忽窄」）；条码尺寸按单元格可用宽高与该分辨率反算</p>
       <div class="pd-field" v-if="isQrcodeCell"><span class="pd-label">纠错级别</span>
         <select :value="mainCell.qrCodeLevel || 'M'" class="pd-select" @change="write(c => { c.qrCodeLevel = ($event.target as HTMLSelectElement).value || undefined })">
           <option value="L">L（最低，容量大）</option>
@@ -33,7 +57,8 @@
         </select>
       </div>
 
-      <div class="pd-field" v-if="isBarcodeCell || isQrcodeCell || isImageCell"><span class="pd-label">缩放模式</span>
+      <p class="pd-hint" v-if="dotAligned">条码尺寸已按整数打印点对齐，由单元格可用宽高与打印机分辨率决定；缩放模式与最大宽高此时不参与，需要它们请把「打印机分辨率」改为「不对齐」</p>
+      <div class="pd-field" v-if="(isBarcodeCell || isQrcodeCell || isImageCell) && !dotAligned"><span class="pd-label">缩放模式</span>
         <select :value="mainCell.fit || 'contain'" class="pd-select" @change="write(c => { c.fit = ($event.target as HTMLSelectElement).value as any })">
           <option value="contain">包含（保持比例）</option>
           <option value="cover">覆盖（保持比例）</option>
@@ -42,13 +67,13 @@
           <option value="scale-down">缩小（保持比例）</option>
         </select>
       </div>
-      <div class="pd-field" v-if="isBarcodeCell || isQrcodeCell || isImageCell"><span class="pd-label">最大宽度 (mm)</span>
+      <div class="pd-field" v-if="(isBarcodeCell || isQrcodeCell || isImageCell) && !dotAligned"><span class="pd-label">最大宽度 (mm)</span>
         <StepperInput :model-value="mainCell.maxWidth"
           :min="1"
           :max="200"
           placeholder="默认" @update:model-value="write(c => { c.maxWidth = $event ?? undefined })" />
       </div>
-      <div class="pd-field" v-if="isBarcodeCell || isQrcodeCell || isImageCell"><span class="pd-label">最大高度 (mm)</span>
+      <div class="pd-field" v-if="(isBarcodeCell || isQrcodeCell || isImageCell) && !dotAligned"><span class="pd-label">最大高度 (mm)</span>
         <StepperInput :model-value="mainCell.maxHeight"
           :min="1"
           :max="200"
@@ -208,6 +233,9 @@ const pendingFormatterValue = ref('')
 const isBarcodeCell = computed(() => mainCell.value.cellType === 'barcode')
 const isQrcodeCell = computed(() => mainCell.value.cellType === 'qrcode')
 const isImageCell = computed(() => mainCell.value.cellType === 'image')
+/** 条码点对齐：仅条形码单元格 + 已配打印机分辨率；此时缩放模式与最大宽高不参与 */
+const dotAligned = computed(() => isBarcodeCell.value && !!mainCell.value.printerDpi)
+
 /** 文字溢出形式仅对文本单元格有意义（码值/图片由 fit/maxWidth 控制） */
 const isTextCell = computed(() => !isBarcodeCell.value && !isQrcodeCell.value && !isImageCell.value)
 /** 未配置时：不换行→截断，否则自适应行高（与打印端同一判定） */
@@ -226,12 +254,18 @@ function onValignChange(v: string) {
   write(c => { c.valign = v as TableCell['valign'] })
 }
 
+function onPrinterDpiChange(v: string) {
+  const dpi = Number(v)
+  write(c => { c.printerDpi = dpi > 0 ? dpi : undefined })
+}
+
 function onCellTypeChange(v: string) {
   write(c => {
     c.cellType = v === 'text' ? undefined : (v as TableCellType)
     if (v !== 'barcode') {
       c.barcodeType = undefined
       c.showBarcodeText = undefined
+      c.printerDpi = undefined
     }
     if (v !== 'qrcode') c.qrCodeLevel = undefined
     // fit、maxWidth、maxHeight 对所有类型都有效，不再清除

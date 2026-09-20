@@ -148,6 +148,8 @@ export interface RenderCell {
   qrCodeLevel?: string
   /** 条形码下方是否显示文本，仅 cellType='barcode' 时生效 */
   showBarcodeText?: boolean
+  /** 打印机分辨率（点/英寸），仅 cellType='barcode' 时生效：给出后条码尺寸吸附到整数打印点 */
+  printerDpi?: number
   /** 图片缩放模式，仅 cellType='image' 时生效 */
   fit?: string
   /** 图片最大宽度（mm），仅 cellType='image' 时生效 */
@@ -193,10 +195,16 @@ export interface CodeRenderOptions {
   qrCodeLevel?: string
   /** 条形码下方是否显示文本 */
   showText?: boolean
-  /** 条码模块宽度倍率 */
+  /** 条码模块宽度倍率；启用 printerDpi 点对齐时被自动取整取代 */
   barWidth?: number
   /** 条码下方文本字号（pt） */
   fontSize?: number
+  /** 打印机分辨率（点/英寸）；给出时条码尺寸吸附到整数打印点，消除条宽取整误差 */
+  printerDpi?: number
+  /** 目标可用宽度（mm）：条形码元素框宽，点对齐据此求每模块点数 */
+  targetWidthMm?: number
+  /** 目标可用高度（mm）：条形码元素框高，点对齐据此复核 */
+  targetHeightMm?: number
 }
 
 /**

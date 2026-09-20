@@ -185,6 +185,16 @@ export interface TableCell {
   barcodeType?: string        // 条形码码制（jsbarcode 格式名），仅 cellType='barcode' 时生效
   qrCodeLevel?: string        // 二维码纠错级别 L/M/Q/H，仅 cellType='qrcode' 时生效
   showBarcodeText?: boolean   // 条形码下方是否显示文本，仅 cellType='barcode' 时生效
+  /**
+   * 打印机分辨率（点/英寸，常见 203/300/600），仅 cellType='barcode' 时生效：
+   * 给出后条形码尺寸吸附到整数打印点（框尺寸 = 单元格可用宽高），
+   * 消除热敏出纸「条宽忽宽忽窄」。缺省不启用（保持原缩放行为）。
+   */
+  printerDpi?: number
+  /** 条码模块宽度倍率（2-4），仅 cellType='barcode' 时生效；启用 printerDpi 点对齐时被自动取整取代 */
+  barWidth?: number
+  /** 条码下方文本字号（相对条高，条高为 30），仅 cellType='barcode' 时生效 */
+  barFontSize?: number
   rowspan?: number            // 默认 1
   colspan?: number            // 默认 1
   merged?: boolean            // true = 被合并覆盖的占位格
@@ -272,9 +282,19 @@ export interface ElementOptions {
   barcodeType?: string
   barWidth?: number
   barAutoWidth?: string
+  /**
+   * 打印机分辨率（点/英寸，常见 203/300/600）：给出后条形码尺寸吸附到整数打印点，
+   * 消除「条宽非整数点 → 出纸被取整忽宽忽窄」的问题。缺省不启用（保持原缩放行为）。
+   */
+  printerDpi?: number
   qrCodeLevel?: string
   src?: string
+  /** 内容缩放模式（image/barcode/qrcode）：contain | cover | fill | none | scale-down */
   fit?: string
+  /** 内容最大宽度（mm，image/barcode/qrcode）；缺省不限制 */
+  maxWidth?: number
+  /** 内容最大高度（mm，image/barcode/qrcode）；缺省不限制 */
+  maxHeight?: number
   hideTitle?: boolean
   draggable?: boolean
   axis?: string

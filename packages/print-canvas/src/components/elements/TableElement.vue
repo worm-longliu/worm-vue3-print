@@ -25,10 +25,15 @@
                 :value="cellDisplay(row, cell)"
                 :barcode-type="cell.barcodeType"
                 :qr-code-level="cell.qrCodeLevel"
-                :show-text="cell.showBarcodeText"
+                :show-text="cell.showBarcodeText !== false"
                 :fit="cell.fit"
                 :max-width="cell.maxWidth"
                 :max-height="cell.maxHeight"
+                :printer-dpi="cell.printerDpi"
+                :target-width-mm="cellBoxWidthMm(ci, cell)"
+                :target-height-mm="cellCapMm(ri, cell)"
+                :bar-width="cell.barWidth"
+                :bar-font-size="cell.barFontSize"
               />
               <CellImage
                 v-else-if="cell.cellType === 'image'"
@@ -117,7 +122,7 @@ import CellImage from './CellImage.vue'
 import { resolveBarcodeDesignValue } from '@worm-vue3-print/core/designer'
 import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
 import type { TextFit } from '@worm-vue3-print/core/designer'
-import { cellFitCapMm, resolveCellTextFit, resolveShrinkMinFontSize } from '@worm-vue3-print/core/designer'
+import { cellFitCapMm, cellFitWidthMm, resolveCellTextFit, resolveShrinkMinFontSize } from '@worm-vue3-print/core/designer'
 import { useShrinkFit } from '../../composables/useShrinkFit'
 
 const ROW_TYPE_BADGE: Record<TableRowType, string> = {
@@ -300,6 +305,11 @@ function cellBaseFontSize(cell: TableCell): number {
 /** 可用内容高度（mm）：所跨行高之和扣除内边距与边框，与打印端同一函数 */
 function cellCapMm(ri: number, cell: TableCell): number {
   return cellFitCapMm(rows.value, ri, cell, props.element.options.tableDefaultPadding ?? 1)
+}
+
+/** 可用内容宽度（mm）：所跨列宽之和扣除内边距与边框，与打印端同一函数；列宽缺失时为 0 */
+function cellBoxWidthMm(ci: number, cell: TableCell): number {
+  return cellFitWidthMm(colWidths.value, ci, cell, props.element.options.tableDefaultPadding ?? 1)
 }
 
 function cellFitStyle(cell: TableCell, ri: number): Record<string, string> {

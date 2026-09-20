@@ -253,6 +253,96 @@ describe('页眉/页脚区域元素渲染', () => {
     expect(html).not.toContain('object-fit:contain')
   })
 
+  it('条形码元素透传缩放模式与最大宽高（与单元格条码同一套自定义设置）', () => {
+    const t = makeAreaTemplate({
+      footer: {
+        height: 12,
+        elements: [makeAreaEl('barcode', {
+          testData: '12345678', fit: 'fill', maxWidth: 30, maxHeight: 10,
+        })] as any,
+      },
+    })
+    const html = generateHtml(t, singlePage, undefined, { codeRenderer: stubRenderer() })
+    // 元素条形码先给 contain 兜底，显式 fit 后写覆盖（CSS 同属性后写生效）
+    expect(html).toContain('object-fit:fill')
+    expect(html.indexOf('object-fit:fill')).toBeGreaterThan(html.indexOf('object-fit:contain'))
+    expect(html).toContain('max-width:30mm')
+    expect(html).toContain('max-height:10mm')
+  })
+
+  it('二维码元素透传缩放模式与最大宽高', () => {
+    const t = makeAreaTemplate({
+      footer: {
+        height: 12,
+        elements: [makeAreaEl('qrcode', { testData: 'qrcode-x', fit: 'contain', maxWidth: 20 })] as any,
+      },
+    })
+    const html = generateHtml(t, singlePage, undefined, { codeRenderer: stubRenderer() })
+    expect(html).toContain('object-fit:contain')
+    expect(html).toContain('max-width:20mm')
+  })
+
+  it('未设置自定义设置时条形码元素样式不含 max-width/max-height（存量模板零变化）', () => {
+    const t = makeAreaTemplate({
+      footer: {
+        height: 12,
+        elements: [makeAreaEl('barcode', { testData: '12345678' })] as any,
+      },
+    })
+    const html = generateHtml(t, singlePage, undefined, { codeRenderer: stubRenderer() })
+    expect(html).toContain('object-fit:contain')
+    expect(html).not.toContain('max-width')
+    expect(html).not.toContain('max-height')
+  })
+
+  it('条形码元素启用 printerDpi 时改为内联 <svg>（<img> 的内在尺寸会被取整到整数 CSS px）', () => {
+    let captured: CodeRenderOptions = {}
+    const t = makeAreaTemplate({
+      footer: {
+        height: 12,
+        elements: [makeAreaEl('barcode', {
+          testData: '12345678', printerDpi: 203, width: 56.4, height: 14.1,
+        })] as any,
+      },
+    })
+    const html = generateHtml(t, singlePage, undefined, { codeRenderer: stubRenderer(o => { captured = o }) })
+    // 内联 svg：只有它能让渲染器算好的 mm 尺寸精确落纸
+    expect(html).toContain('display:flex;align-items:center;justify-content:center;overflow:hidden;"><svg')
+    expect(html).not.toContain('data:image/svg+xml')
+    // 可用框与分辨率交给渲染器（点对齐据此求每模块点数）
+    expect(captured.printerDpi).toBe(203)
+    expect(captured.targetWidthMm).toBe(56.4)
+    expect(captured.targetHeightMm).toBe(14.1)
+  })
+
+  it('点对齐时不再叠加 fit / maxWidth（叠加会把对齐结果重新缩成非整数点）', () => {
+    const t = makeAreaTemplate({
+      footer: {
+        height: 12,
+        elements: [makeAreaEl('barcode', {
+          testData: '12345678', printerDpi: 203, fit: 'fill', maxWidth: 30, maxHeight: 10,
+        })] as any,
+      },
+    })
+    const html = generateHtml(t, singlePage, undefined, { codeRenderer: stubRenderer() })
+    expect(html).not.toContain('object-fit')
+    expect(html).not.toContain('max-width:30mm')
+    expect(html).not.toContain('max-height:10mm')
+  })
+
+  it('二维码元素不受 printerDpi 影响（模块数固定，尺寸仍由 fit/最大宽高决定）', () => {
+    let captured: CodeRenderOptions = {}
+    const t = makeAreaTemplate({
+      footer: {
+        height: 12,
+        elements: [makeAreaEl('qrcode', { testData: 'qrcode-x', printerDpi: 203 })] as any,
+      },
+    })
+    const html = generateHtml(t, singlePage, undefined, { codeRenderer: stubRenderer(o => { captured = o }) })
+    expect(html).toContain('data:image/svg+xml')
+    expect(captured.printerDpi).toBeUndefined()
+  })
+
   it('表格单元格条形码等比填满单元格（object-fit:contain）', () => {
     const t = makeTemplate({
       ...matrixOptions(),
@@ -289,6 +379,46 @@ describe('页眉/页脚区域元素渲染', () => {
     expect(html).toContain('<img src="data:image/svg+xml;charset=utf-8,')
     expect(html).toContain('max-width:100%;max-height:100%')
     expect(html).not.toContain('object-fit:contain')
+  })
+
+  it('表格单元格条形码启用 printerDpi：按单元格可用宽高点对齐并内联 svg', () => {
+    let captured: CodeRenderOptions = {}
+    const t = makeTemplate({ ...matrixOptions(), tableDefaultFontSize: 10 })
+    const rows = (matrixOptions()._renderRows as any[]).map(r => ({
+      ...r,
+      cells: r.cells.map((c: any, i: number) =>
+        r.type === 'header' && i === 0
+          ? { ...c, cellType: 'barcode', barcodeType: 'CODE128', content: '12345678', printerDpi: 203 }
+          : c),
+    }))
+    t.elements[0].options._renderRows = rows
+    const html = generateHtml(t, pageWith([
+      { elementId: 'tbl-1', type: 'table-slice', startRow: 0, endRow: 3 },
+    ]), undefined, { codeRenderer: stubRenderer(o => { captured = o }) })
+    expect(html).toContain('display:flex;align-items:center;justify-content:center;overflow:hidden;"><svg')
+    expect(html).not.toContain('data:image/svg+xml')
+    expect(captured.printerDpi).toBe(203)
+    // 可用框 = 单元格内容区：列宽 40 − 左右内边距 2 − 塌陷边框（0.75pt/2 ≈ 0.1323mm）
+    expect(captured.targetWidthMm).toBeCloseTo(38, 5)
+    expect(captured.targetHeightMm).toBeCloseTo(6 - 0.1323, 3)
+  })
+
+  it('表格未配置列宽时单元格点对齐不启用（可用宽度未知，不能凭空对齐）', () => {
+    let captured: CodeRenderOptions = {}
+    const t = makeTemplate({ ...matrixOptions(), tableDefaultFontSize: 10, tableColWidths: [] })
+    const rows = (matrixOptions()._renderRows as any[]).map(r => ({
+      ...r,
+      cells: r.cells.map((c: any, i: number) =>
+        r.type === 'header' && i === 0
+          ? { ...c, cellType: 'barcode', content: '12345678', printerDpi: 203 }
+          : c),
+    }))
+    t.elements[0].options._renderRows = rows
+    const html = generateHtml(t, pageWith([
+      { elementId: 'tbl-1', type: 'table-slice', startRow: 0, endRow: 3 },
+    ]), undefined, { codeRenderer: stubRenderer(o => { captured = o }) })
+    expect(html).toContain('<img src="data:image/svg+xml;charset=utf-8,')
+    expect(captured.printerDpi).toBeUndefined()
   })
 
   it('页眉文本携带字体样式并替换页码变量', () => {

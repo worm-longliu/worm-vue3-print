@@ -33,4 +33,12 @@ describe('searchProperties', () => {
     expect(r.groups).toContain('appearance')
     expect(r.itemKeys.has('ap-font-size')).toBe(true)
   })
+  it('条码设置分组已注册，可按码制/条宽/最大宽高检索', () => {
+    expect(searchProperties('码制').groups).toContain('code')
+    expect(searchProperties('条宽').itemKeys.has('cd-bar-width')).toBe(true)
+    expect(searchProperties('纠错').itemKeys.has('cd-ec-level')).toBe(true)
+    expect(searchProperties('最大宽度').itemKeys.has('cd-max-width')).toBe(true)
+    expect(searchProperties('最大高度').itemKeys.has('cd-max-height')).toBe(true)
+    expect(searchProperties('缩放模式').itemKeys.has('cd-fit')).toBe(true)
+  })
 })

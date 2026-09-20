@@ -1,11 +1,11 @@
 <template>
   <div class="print-qrcode">
-    <img v-if="dataUrl" :src="dataUrl" alt="qrcode" />
+    <img v-if="dataUrl" :src="dataUrl" alt="qrcode" :style="imgStyle" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import QRCode from 'qrcode'
 import { resolveTextBinding } from '@worm-vue3-print/core/designer'
 import type { RuntimeElement } from '@worm-vue3-print/core/designer'
@@ -18,6 +18,16 @@ const props = defineProps<{
 
 // 改用 toDataURL 渲染为 <img>：纳入统一图片加载屏障，规避 canvas 在 PDF 中偶发空白
 const dataUrl = ref('')
+
+/** 最大宽高（mm）与出图端 codeImgHtml 的 max-width/max-height 同口径 */
+const imgStyle = computed(() => {
+  const o = props.element.options
+  return {
+    objectFit: (o.fit || 'contain') as any,
+    maxWidth: o.maxWidth ? `${o.maxWidth}mm` : '100%',
+    maxHeight: o.maxHeight ? `${o.maxHeight}mm` : '100%',
+  }
+})
 
 async function render() {
   const o = props.element.options
@@ -35,7 +45,10 @@ async function render() {
 }
 
 onMounted(render)
-watch(() => [props.element.options.formatter, props.element.options.testData], render)
+watch(
+  () => [props.element.options.formatter, props.element.options.testData, props.element.options.qrCodeLevel],
+  render,
+)
 </script>
 
 <style scoped>

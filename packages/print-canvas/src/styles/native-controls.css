@@ -15,6 +15,13 @@
   font-size: 11px;
   color: var(--pd-text-muted, #909399);
 }
+/* 字段下方的说明文字（各属性分组共用） */
+.pd-hint {
+  margin: 2px 0 6px;
+  color: var(--pd-text-muted, #8b909c);
+  font-size: 12px;
+  line-height: 1.4;
+}
 .pd-input,
 .pd-select,
 .pd-color,

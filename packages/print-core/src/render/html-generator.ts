@@ -16,6 +16,7 @@ import { buildPageCss, elementPositionStyle, mm } from './css-builder.js'
 import {
   cellFitCapMm,
   cellFitKey,
+  cellFitWidthMm,
   resolveCellTextFit,
   resolveElementTextFit,
   resolveShrinkMinFontSize,
@@ -338,10 +339,21 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
     case 'barcode':
     case 'qrcode': {
       const codeValue = String(opts.formatter ?? opts.testData ?? '').trim()
-      // 条形码元素按元素框等比填满（fill）；二维码元素保持原 shrink-to-fit 行为
+      // 条形码元素默认按元素框等比填满（fill）；二维码元素保持原 shrink-to-fit 行为。
+      // 元素配置了 printerDpi 时改走整数打印点对齐（尺寸由渲染器按点反算）。
       const fill = type === 'barcode'
       return `<div class="print-element" style="${style}"${measureAttr}>
-  ${codeImgHtml(codeValue, type as 'barcode' | 'qrcode', opts, `<span>${esc(codeValue)}</span>`, fill, ctx?.codeRenderer)}
+  ${codeImgHtml(codeValue, type as 'barcode' | 'qrcode', opts, {
+        fallback: `<span>${esc(codeValue)}</span>`,
+        fill,
+        codeRenderer: ctx?.codeRenderer,
+        fit: opts.fit,
+        maxWidth: opts.maxWidth,
+        maxHeight: opts.maxHeight,
+        printerDpi: opts.printerDpi,
+        targetWidthMm: opts.width,
+        targetHeightMm: opts.height,
+      })}
 </div>`
     }
     case 'hline':
@@ -361,26 +373,51 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
   }
 }
 
+/** codeImgHtml 的可选参数（调用方按元素/单元格场景选择） */
+interface CodeImgOptions {
+  fallback: string
+  /** 元素级条形码：等比填满元素框；表格单元格与二维码保持 shrink-to-fit */
+  fill?: boolean
+  codeRenderer?: CodeRenderer
+  /** 缩放模式（单元格/元素 `fit`） */
+  fit?: string
+  /** 最大宽度（mm） */
+  maxWidth?: number
+  /** 最大高度（mm） */
+  maxHeight?: number
+  /**
+   * 打印机分辨率（点/英寸）：给出后条形码尺寸吸附到整数打印点，
+   * 此时不再按元素框缩放（否则会把刚对齐好的尺寸重新缩成非整数点），
+   * 并以内联 `<svg>` 输出以保证 mm 尺寸不被 `<img>` 的像素取整改写。
+   */
+  printerDpi?: number
+  /** 目标可用宽度（mm），点对齐用 */
+  targetWidthMm?: number
+  /** 目标可用高度（mm），点对齐用 */
+  targetHeightMm?: number
+}
+
 /**
- * 码值 → URL 编码 SVG <img>（Chromium PDF 与浏览器预览均稳定）。
+ * 码值 → 出图 HTML。
+ * 默认输出 URL 编码 SVG 的 `<img>`（Chromium PDF 与浏览器预览均稳定）；
+ * 条形码启用整数打印点对齐时改输出**内联 `<svg>`**——`<img>` 承载 SVG 时 Chromium 会把
+ * 内在尺寸取整到整数 CSS px，点对齐算出的 mm 尺寸会被改写（实测 24.7744mm 实画 24.60mm，
+ * 0.7% 偏差足以让「整数打印点」失效），内联 SVG 才按 mm 精确落纸。
  * 无渲染器、码值非法或为空时降级为文本占位。
  */
 function codeImgHtml(
   value: string,
   cellType: 'barcode' | 'qrcode',
   opts: Record<string, any>,
-  fallbackHtml: string,
-  /** 元素级条形码：等比填满元素框；表格单元格保持原 shrink-to-fit 行为 */
-  fill = false,
-  codeRenderer?: CodeRenderer,
-  /** 单元格缩放模式 */
-  fit?: string,
-  /** 单元格最大宽度（mm） */
-  maxWidth?: number,
-  /** 单元格最大高度（mm） */
-  maxHeight?: number,
+  io: CodeImgOptions,
 ): string {
-  if (!value || !codeRenderer) return fallbackHtml
+  if (!value || !io.codeRenderer) return io.fallback
+  const { fallback, fill = false, codeRenderer, fit, maxWidth, maxHeight } = io
+  // 点对齐：条形码 + 已知 dpi 与可用框；此时由 SVG 自带 mm 尺寸决定落纸尺寸
+  const dotAligned = cellType === 'barcode'
+    && typeof io.printerDpi === 'number' && io.printerDpi > 0
+    && typeof io.targetWidthMm === 'number' && io.targetWidthMm > 0
+    && typeof io.targetHeightMm === 'number' && io.targetHeightMm > 0
   try {
     const svg = codeRenderer.render(value, cellType, {
       barcodeType: opts.barcodeType,
@@ -388,15 +425,20 @@ function codeImgHtml(
       showText: opts.hideTitle !== undefined ? !opts.hideTitle : opts.showBarcodeText,
       barWidth: typeof opts.barWidth === 'number' ? opts.barWidth : undefined,
       fontSize: typeof opts.fontSize === 'number' ? opts.fontSize : undefined,
+      printerDpi: dotAligned ? io.printerDpi : undefined,
+      targetWidthMm: dotAligned ? io.targetWidthMm : undefined,
+      targetHeightMm: dotAligned ? io.targetHeightMm : undefined,
     })
+    // 点对齐：尺寸已按整数打印点算好，直接内联，不能再被任何 CSS 缩放改写
+    if (dotAligned && /^<svg[\s>]/i.test(svg)) return inlineCodeSvgHtml(svg)
     const src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
     // 构建样式
     const styleParts: string[] = []
-    if (fill) {
-      styleParts.push('width:100%', 'height:100%', 'object-fit:contain', 'display:block', 'margin:auto')
-    } else {
+    if (!fill) {
       // 默认 shrink-to-fit 行为
       styleParts.push('max-width:100%', 'max-height:100%', 'display:block', 'margin:auto')
+    } else {
+      styleParts.push('width:100%', 'height:100%', 'object-fit:contain', 'display:block', 'margin:auto')
     }
     // 应用缩放模式
     if (fit) {
@@ -412,8 +454,17 @@ function codeImgHtml(
     const style = styleParts.join(';')
     return `<img src="${src}" style="${style}" />`
   } catch {
-    return fallbackHtml
+    return fallback
   }
+}
+
+/**
+ * 内联 SVG：按自带 mm 尺寸落纸，外层 flex 负责居中与裁剪。
+ * 内联 SVG 无 object-fit，且尺寸正是点对齐结果，故不接受 fit / maxWidth / maxHeight。
+ */
+function inlineCodeSvgHtml(svg: string): string {
+  const styled = svg.replace(/<svg\b/, '<svg style="display:block"')
+  return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;">${styled}</div>`
 }
 
 /** 单元格内联样式：逐格样式 + 元素级默认值兜底 */
@@ -471,7 +522,18 @@ function renderMatrixRows(
         if (cell.cellType === 'barcode' || cell.cellType === 'qrcode') {
           // 单元格条形码按单元格等比填满（fill）；单元格二维码保持原 shrink-to-fit 行为
           const cellFill = cell.cellType === 'barcode'
-          inner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;">${codeImgHtml(cell.content, cell.cellType as 'barcode' | 'qrcode', cell, esc(cell.content), cellFill, ctx?.codeRenderer, cell.fit, cell.maxWidth, cell.maxHeight)}</div>`
+          inner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;">${codeImgHtml(cell.content, cell.cellType as 'barcode' | 'qrcode', cell, {
+            fallback: esc(cell.content),
+            fill: cellFill,
+            codeRenderer: ctx?.codeRenderer,
+            fit: cell.fit,
+            maxWidth: cell.maxWidth,
+            maxHeight: cell.maxHeight,
+            printerDpi: cell.printerDpi,
+            // 点对齐的可用框 = 单元格内容区（列宽/行高扣除内边距与塌陷边框）；列宽缺失时宽度为 0 → 不启用
+            targetWidthMm: cellFitWidthMm(opts.tableColWidths ?? [], ci, cell, defaultPadding),
+            targetHeightMm: cellFitCapMm(renderRows, r, cell, defaultPadding),
+          })}</div>`
         } else if (cell.cellType === 'image') {
           // 图片类型单元格：渲染 <img> 标签
           const fit = cell.fit || 'contain'

@@ -88,3 +88,28 @@ describe('BarcodeElement 等比填满元素框', () => {
     expect(wrapper.find('svg').attributes('preserveAspectRatio')).toBe('xMidYMid meet')
   })
 })
+
+describe('BarcodeElement 自定义设置（缩放模式 / 最大宽高）', () => {
+  it('fit 映射到 preserveAspectRatio（内联 svg 不支持 object-fit）', () => {
+    expect(mountBarcode({ fit: 'fill' }).wrapper.find('svg').attributes('preserveAspectRatio')).toBe('none')
+    expect(mountBarcode({ fit: 'cover' }).wrapper.find('svg').attributes('preserveAspectRatio')).toBe('xMidYMid slice')
+    expect(mountBarcode({ fit: 'scale-down' }).wrapper.find('svg').attributes('preserveAspectRatio')).toBe('xMidYMid meet')
+  })
+
+  it('未设置 fit 时按 contain 处理', () => {
+    expect(mountBarcode().wrapper.find('svg').attributes('preserveAspectRatio')).toBe('xMidYMid meet')
+  })
+
+  it('maxWidth / maxHeight 以 mm 约束 svg，未设置时回落 100%（与出图端同口径）', async () => {
+    const { wrapper, element } = mountBarcode()
+    const svg = wrapper.find('svg')
+    expect(svg.attributes('style')).toMatch(/max-width:\s*100%/)
+    expect(svg.attributes('style')).toMatch(/max-height:\s*100%/)
+
+    element.options.maxWidth = 30
+    element.options.maxHeight = 10
+    await nextTick()
+    expect(svg.attributes('style')).toMatch(/max-width:\s*30mm/)
+    expect(svg.attributes('style')).toMatch(/max-height:\s*10mm/)
+  })
+})

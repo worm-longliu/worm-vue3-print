@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest'
 import {
   DEFAULT_SHRINK_MIN_FONT_SIZE_PT,
   cellFitCapMm,
+  cellFitWidthMm,
   cellFitKey,
   parseCellFitKey,
   resolveCellTextFit,
@@ -70,6 +71,32 @@ describe('cellFitCapMm', () => {
 
   it('极端值兜底为 0.5mm，不返回 0/负数', () => {
     expect(cellFitCapMm([{ height: 1 }], 0, { padding: 5 })).toBe(0.5)
+  })
+})
+
+describe('cellFitWidthMm', () => {
+  const colWidths = [40, 60]
+
+  it('可用宽度 = 列宽 − 左右内边距 − 塌陷边框占位（与 cellFitCapMm 同口径）', () => {
+    expect(cellFitWidthMm(colWidths, 0, { padding: 1 })).toBeCloseTo(38, 5)
+    expect(cellFitWidthMm(colWidths, 1, { padding: 1 })).toBeCloseTo(58, 5)
+  })
+
+  it('跨列取所跨列宽之和', () => {
+    expect(cellFitWidthMm(colWidths, 0, { padding: 1, colspan: 2 })).toBeCloseTo(98, 5)
+  })
+
+  it('未设内边距时用元素级默认值', () => {
+    expect(cellFitWidthMm(colWidths, 0, {}, 2)).toBeCloseTo(36, 5)
+  })
+
+  it('列宽缺失时返回 0（调用方据此不启用点对齐）', () => {
+    expect(cellFitWidthMm([], 0, { padding: 1 })).toBe(0)
+    expect(cellFitWidthMm([40], 3, { padding: 1 })).toBe(0)
+  })
+
+  it('极端值兜底为 0.5mm，不返回 0/负数', () => {
+    expect(cellFitWidthMm([1], 0, { padding: 5 })).toBe(0.5)
   })
 })
 

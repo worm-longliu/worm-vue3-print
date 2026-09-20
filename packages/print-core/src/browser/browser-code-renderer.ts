@@ -1,24 +1,74 @@
-// print-canvas/src/render/browser-code-renderer.ts
+// print-core/src/browser/browser-code-renderer.ts
 // 浏览器侧 CodeRenderer：jsbarcode（条形码）+ qrcode（二维码矩阵拼 SVG），纯前端无服务依赖。
+//
+// 条形码出纸清晰度的三条硬约束（实测得出，勿随意回退）：
+// 1. 每模块必须是整数个打印点：非整数会被打印机/RIP 各自取整，同一逻辑条宽打成 2 点或 3 点，
+//    出纸即「条宽忽宽忽窄」。给出 printerDpi 时按整数点反算最终尺寸（见 render/barcode-dot.ts）。
+// 2. shape-rendering="crispEdges"：抗锯齿会在条边缘生成灰像素，热敏头只有黑白两态，
+//    灰边被阈值化后条宽进一步失真（实测灰像素占墨迹 11.3% → 1.7%）。二维码一直是这么设的。
+// 3. 静区不能为 0：jsbarcode 默认 10 模块，此前被写死 margin:0，EAN13/UPC/ITF14 会直接扫不出。
 
 import JsBarcode from 'jsbarcode'
 import QRCode from 'qrcode'
+import {
+  BARCODE_BAR_HEIGHT_MODULES,
+  BARCODE_MARGIN_BOTTOM_MODULES,
+  BARCODE_QUIET_ZONE_MODULES,
+  BARCODE_TEXT_FONT_SIZE_MODULES,
+  resolveBarcodeDotLayout,
+} from '../render/barcode-dot.js'
 import type { CodeRenderer, CodeRenderOptions } from '../render/types.js'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
-/** 条形码：jsbarcode 渲染到离体 SVG 元素，取 outerHTML */
+/** 读 svg 的 viewBox 宽高；缺失或非法时返回 null */
+function readViewBox(svg: SVGSVGElement): { width: number; height: number } | null {
+  const raw = svg.getAttribute('viewBox')
+  if (!raw) return null
+  const parts = raw.trim().split(/[\s,]+/).map(Number)
+  if (parts.length !== 4 || parts.some(v => !Number.isFinite(v))) return null
+  return { width: parts[2]!, height: parts[3]! }
+}
+
+/**
+ * 条形码：jsbarcode 渲染到离体 SVG 元素，取 outerHTML。
+ * 所有 jsbarcode 参数都以「模块」为单位再乘以每模块用户单位数，使条码图形与倍率无关；
+ * 落纸尺寸由 printerDpi 整数点对齐（width/height 用 mm 表达）或外部缩放决定。
+ */
 function renderBarcodeSvg(value: string, opts: CodeRenderOptions): string {
   const svg = document.createElementNS(SVG_NS, 'svg') as SVGSVGElement
+  const unitPerModule = Math.max(1, (opts.barWidth ?? 2) / 2)
   JsBarcode(svg as unknown as SVGElement, value, {
     format: (opts.barcodeType || 'CODE128') as unknown as string,
-    width: Math.max(1, (opts.barWidth ?? 2) / 2),
-    height: 30,
+    width: unitPerModule,
+    height: BARCODE_BAR_HEIGHT_MODULES * unitPerModule,
     displayValue: opts.showText !== false,
-    fontSize: opts.fontSize ?? 10,
+    fontSize: (opts.fontSize ?? BARCODE_TEXT_FONT_SIZE_MODULES) * unitPerModule,
+    // 静区只留左右：上下留白会白白吃掉元素高度（jsbarcode 的 margin 是四边通配）
     margin: 0,
-    marginBottom: 2,
+    marginLeft: BARCODE_QUIET_ZONE_MODULES * unitPerModule,
+    marginRight: BARCODE_QUIET_ZONE_MODULES * unitPerModule,
+    marginTop: 0,
+    marginBottom: BARCODE_MARGIN_BOTTOM_MODULES * unitPerModule,
   })
+
+  // 归一到「1 单位 = 1 模块」再求点对齐布局
+  const viewBox = readViewBox(svg)
+  const layout = viewBox
+    ? resolveBarcodeDotLayout({
+      unitWidth: viewBox.width / unitPerModule,
+      unitHeight: viewBox.height / unitPerModule,
+      boxWidthMm: opts.targetWidthMm ?? 0,
+      boxHeightMm: opts.targetHeightMm ?? 0,
+      dpi: opts.printerDpi,
+    })
+    : null
+  if (layout) {
+    svg.setAttribute('width', `${layout.widthMm}mm`)
+    svg.setAttribute('height', `${layout.heightMm}mm`)
+  }
+
+  svg.setAttribute('shape-rendering', 'crispEdges')
   return svg.outerHTML
 }
 
