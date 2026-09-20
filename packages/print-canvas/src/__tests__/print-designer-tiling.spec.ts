@@ -6,6 +6,7 @@ import { mount } from '@vue/test-utils'
 import PrintDesigner from '../components/PrintDesigner.vue'
 import DesignerToolbar from '../components/DesignerToolbar.vue'
 import PropertyPanel from '../components/PropertyPanel.vue'
+import PageTabs from '../components/PageTabs.vue'
 import { TILE_DEFAULTS } from '@worm-vue3-print/core'
 import type { TilingOptions } from '@worm-vue3-print/core'
 import type { TemplateData } from '@worm-vue3-print/core/designer'
@@ -107,6 +108,20 @@ describe('拼版保存闸门', () => {
     const ok = mountDesigner(tilingTemplate())
     const none = (ok.vm as unknown as { validateTemplate: () => unknown[] }).validateTemplate()
     expect(none).toEqual([])
+  })
+
+  it('开启拼版后页签增页入口禁用：拼版模板只能有一个设计页面', () => {
+    const on = mountDesigner(tilingTemplate())
+    const onTabs = on.findComponent(PageTabs)
+    expect(onTabs.props('tilingEnabled')).toBe(true)
+    expect(onTabs.find('[data-test="add-page"]').attributes('disabled')).toBeDefined()
+    expect(onTabs.find('[data-test="duplicate-page"]').attributes('disabled')).toBeDefined()
+
+    const off = mountDesigner(tilingTemplate({ enabled: false }))
+    const offTabs = off.findComponent(PageTabs)
+    expect(offTabs.props('tilingEnabled')).toBe(false)
+    expect(offTabs.find('[data-test="add-page"]').attributes('disabled')).toBeUndefined()
+    expect(offTabs.find('[data-test="duplicate-page"]').attributes('disabled')).toBeUndefined()
   })
 
   it('非法拼版配置不妨碍预览（预览是诊断路径，不被保存闸门连带拦死）', async () => {

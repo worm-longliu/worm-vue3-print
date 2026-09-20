@@ -38,6 +38,7 @@
       :pages="pages"
       :active-index="activePageIndex"
       :multi="pages.length > 1"
+      :tiling-enabled="tilingEnabled"
       @select="switchPage"
       @add="addPage"
       @duplicate="duplicatePage"
@@ -212,7 +213,7 @@ const { leftCollapsed, rightCollapsed, toggleLeft, toggleRight, dirty, markSaved
 // 设计器核心状态统一由 useDesignerState 管理
 const {
   scale, showRuler, showGrid, snapToGrid, showTableGhostBorder,
-  templateData, elements, fields,
+  templateData, elements, fields, tilingEnabled,
   selectedIds, selectedElement, select, selectElement, clearSelection, selectAll,
   previewIds, setPreview, commitPreview,
   hasClipboard, copy, paste, cutSelected,

@@ -27,6 +27,9 @@ export interface DesignerStateOptions {
   initialFields?: PrintBusinessField[]
 }
 
+/** 拼版模板只允许单页：增页入口（新增/复制）被拦截时的提示文案 */
+export const TILING_SINGLE_PAGE_TIP = '开启拼版后只能有一个设计页面'
+
 /** 创建默认模板数据 */
 export function createDefaultTemplate(): TemplateData {
   return {
@@ -126,6 +129,19 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
   const pages = ref<TemplateData[]>(resolveInitialPages(options.initialTemplate))
   const activePageIndex = ref(0)
   const templateData = ref<TemplateData>(pages.value[0] ?? toRuntimePool(createDefaultTemplate()))
+
+  /** 拼版开关：任一页开启拼版即视为拼版模板。拼版按「一张纸铺多个标签」排版，与多页面互斥 */
+  const tilingEnabled = computed(() => pages.value.some(p => p.tiling?.enabled === true))
+
+  /**
+   * 拼版模板的单页闸门：拦截新增/复制页面并提示，避免用户拼出非法多页拼版模板。
+   * 返回 true 表示已拦截，调用方应直接 return。
+   */
+  function blockPageAddIfTiling(): boolean {
+    if (!tilingEnabled.value) return false
+    alert(TILING_SINGLE_PAGE_TIP)
+    return true
+  }
 
   function flushActivePage() {
     pages.value[activePageIndex.value] = templateData.value
@@ -506,8 +522,9 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     return `页面 ${n}`
   }
 
-  /** 新增页面：继承当前页纸张，激活并定位到新页 */
+  /** 新增页面：继承当前页纸张，激活并定位到新页；开启拼版时禁止增页 */
   function addPage() {
+    if (blockPageAddIfTiling()) return
     flushActivePage()
     const base = pages.value[activePageIndex.value] ?? createDefaultTemplate()
     const np = toRuntimePool({
@@ -523,8 +540,9 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     recordHistory()
   }
 
-  /** 复制当前页：重建元素 id 避免同文档冲突，插入当前页之后并激活 */
+  /** 复制当前页：重建元素 id 避免同文档冲突，插入当前页之后并激活；开启拼版时禁止增页 */
   function duplicatePage() {
+    if (blockPageAddIfTiling()) return
     flushActivePage()
     const src = pages.value[activePageIndex.value]!
     const cp: TemplateData = JSON.parse(JSON.stringify(src))
@@ -576,7 +594,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
 
   return {
     scale, showRuler, showGrid, snapToGrid, showTableGhostBorder,
-    templateData, elements, fields,
+    templateData, elements, fields, tilingEnabled,
     pages, activePageIndex, switchPage, addPage, duplicatePage, deletePage, renamePage, movePage,
     selectedIds, selectedElements, selectedElement, select, selectElement, clearSelection, selectAll,
     previewIds, setPreview, clearPreview, commitPreview,

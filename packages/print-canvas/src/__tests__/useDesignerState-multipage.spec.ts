@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import { useDesignerState } from '../composables/useDesignerState'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { TILE_DEFAULTS } from '@worm-vue3-print/core'
+import { useDesignerState, TILING_SINGLE_PAGE_TIP } from '../composables/useDesignerState'
 import type { TemplateData } from '@worm-vue3-print/core/designer'
 
 function page(name: string, height: number): TemplateData {
@@ -142,5 +143,41 @@ describe('useDesignerState 多页面', () => {
     s.deletePage(0) // [页面 2, 页面 3, 页面 4]
     s.addPage()
     expect(s.pages.value.map(p => p.name)).toEqual(['页面 2', '页面 3', '页面 4', '页面 5'])
+  })
+})
+
+describe('拼版模板仅允许一个设计页面', () => {
+  const alertSpy = vi.fn()
+  beforeEach(() => { alertSpy.mockClear(); vi.stubGlobal('alert', alertSpy) })
+  afterEach(() => { vi.unstubAllGlobals() })
+
+  function stateWithTiling(enabled: boolean) {
+    return useDesignerState({
+      initialTemplate: { ...page('标签', 20), tiling: { ...TILE_DEFAULTS, enabled } },
+    })
+  }
+
+  it('开启拼版：新增页与复制页均被拦截，页数不变并提示单页限制', () => {
+    const s = stateWithTiling(true)
+    expect(s.tilingEnabled.value).toBe(true)
+
+    s.addPage()
+    expect(s.pages.value).toHaveLength(1)
+    s.duplicatePage()
+    expect(s.pages.value).toHaveLength(1)
+    expect(s.activePageIndex.value).toBe(0)
+
+    expect(alertSpy).toHaveBeenCalledTimes(2)
+    expect(alertSpy.mock.calls.every(c => c[0] === TILING_SINGLE_PAGE_TIP)).toBe(true)
+  })
+
+  it('关闭拼版：增页不受限制，且不弹提示', () => {
+    const s = stateWithTiling(false)
+    expect(s.tilingEnabled.value).toBe(false)
+
+    s.addPage()
+    s.duplicatePage()
+    expect(s.pages.value).toHaveLength(3)
+    expect(alertSpy).not.toHaveBeenCalled()
   })
 })

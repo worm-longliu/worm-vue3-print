@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import PageTabs from '../components/PageTabs.vue'
+import { TILING_SINGLE_PAGE_TIP } from '../composables/useDesignerState'
 
 describe('PageTabs', () => {
   beforeEach(() => { vi.useFakeTimers() })
@@ -38,6 +39,28 @@ describe('PageTabs', () => {
     expect(w.find('[data-test="delete-page"]').attributes('data-tip')).toBe('删除当前页「内容」')
     expect(w.find('[data-test="move-left"]').attributes('data-tip')).toBe('前移「内容」')
     expect(w.find('[data-test="move-right"]').attributes('data-tip')).toBe('后移「内容」')
+  })
+
+  it('开启拼版：新增/复制页按钮禁用并提示只能有一个设计页面', async () => {
+    const w = mount(PageTabs, {
+      props: { pages: [{ name: '标签' }], activeIndex: 0, multi: false, tilingEnabled: true },
+    })
+    expect(w.find('[data-test="add-page"]').attributes('disabled')).toBeDefined()
+    expect(w.find('[data-test="duplicate-page"]').attributes('disabled')).toBeDefined()
+    expect(w.find('[data-test="add-page"]').attributes('data-tip')).toBe(TILING_SINGLE_PAGE_TIP)
+    expect(w.find('[data-test="duplicate-page"]').attributes('data-tip')).toBe(TILING_SINGLE_PAGE_TIP)
+    // 禁用后点击不再派发增页事件
+    await w.find('[data-test="add-page"]').trigger('click')
+    await w.find('[data-test="duplicate-page"]').trigger('click')
+    expect(w.emitted('add')).toBeUndefined()
+    expect(w.emitted('duplicate')).toBeUndefined()
+  })
+
+  it('未开启拼版：增页按钮可用且 tooltip 为常规说明', () => {
+    const w = mount(PageTabs, { props: { pages: [{ name: '封面' }], activeIndex: 0, multi: false } })
+    expect(w.find('[data-test="add-page"]').attributes('disabled')).toBeUndefined()
+    expect(w.find('[data-test="duplicate-page"]').attributes('disabled')).toBeUndefined()
+    expect(w.find('[data-test="duplicate-page"]').attributes('data-tip')).toBe('复制当前页「封面」')
   })
 
   it('单页时删除按钮 tooltip 提示不可删除原因', () => {

@@ -24,8 +24,8 @@
       </template>
     </div>
     <div class="page-tabs-actions">
-      <button data-test="add-page" data-tip="新增页面（在当前页后追加空白页）" @click="$emit('add')">＋</button>
-      <button data-test="duplicate-page" :data-tip="`复制当前页「${activeName}」`" @click="$emit('duplicate')">⧉</button>
+      <button data-test="add-page" :data-tip="addTip" :disabled="tilingEnabled" @click="$emit('add')">＋</button>
+      <button data-test="duplicate-page" :data-tip="duplicateTip" :disabled="tilingEnabled" @click="$emit('duplicate')">⧉</button>
       <button data-test="delete-page" :data-tip="multi ? `删除当前页「${activeName}」` : '仅多页面模板可删除页面'" :disabled="!multi" @click="$emit('delete', activeIndex)">✕</button>
       <button data-test="move-left" :data-tip="`前移「${activeName}」`" :disabled="activeIndex <= 0" @click="$emit('move', activeIndex, activeIndex - 1)">←</button>
       <button data-test="move-right" :data-tip="`后移「${activeName}」`" :disabled="activeIndex >= pages.length - 1" @click="$emit('move', activeIndex, activeIndex + 1)">→</button>
@@ -38,12 +38,15 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
 import type { TemplateData } from '@worm-vue3-print/core/designer'
+import { TILING_SINGLE_PAGE_TIP } from '../composables/useDesignerState'
 
 const props = defineProps<{
   pages: TemplateData[]
   activeIndex: number
   /** 多页模式（≥2 页）才可删除；单页回落单模板 */
   multi: boolean
+  /** 已开启拼版：拼版模板只允许一个设计页面，禁用增页入口 */
+  tilingEnabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -61,6 +64,12 @@ const renameText = ref('')
 
 /** 当前激活页名：用于操作按钮 tooltip 的上下文提示 */
 const activeName = computed(() => props.pages[props.activeIndex]?.name || `页面 ${props.activeIndex + 1}`)
+
+/** 增页按钮 tooltip：拼版开启时改为「不可增页」的原因说明 */
+const addTip = computed(() =>
+  props.tilingEnabled ? TILING_SINGLE_PAGE_TIP : '新增页面（在当前页后追加空白页）')
+const duplicateTip = computed(() =>
+  props.tilingEnabled ? TILING_SINGLE_PAGE_TIP : `复制当前页「${activeName.value}」`)
 
 function startRename(i: number) {
   editingIndex.value = i

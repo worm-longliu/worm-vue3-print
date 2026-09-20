@@ -112,6 +112,9 @@ interface RenderRequest {
 配置随模板保存（`TemplateData.tiling`），三端（浏览器打印 / 服务端 PDF / 桌面客户端静默打印）行为一致，
 **服务端与客户端不需要改协议**——目标纸通过 `PreparedDocument.paperMm` 透出，各端出纸尺寸自动对齐。
 
+**与多页面互斥**：拼版是「一份数据铺 N 格」的单页语义，因此设计器侧开启拼版后只允许存在一个设计页面——
+新增页 / 复制页入口被禁用，hover 提示「开启拼版后只能有一个设计页面」；反之，多页面模式下不展示拼版配置。
+
 ```ts
 import {
   computeTileLayout, validateTiling, computeMaxColumns, tilePosition,
