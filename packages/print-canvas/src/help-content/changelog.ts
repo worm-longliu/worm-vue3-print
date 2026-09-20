@@ -14,6 +14,7 @@ export default {
 <ul>
   <li><code>ROUND(1.005, 2)</code> 此前得到 <code>1</code>（应为 <code>1.01</code>）、<code>ROUND(2.675, 2)</code> 得到 <code>2.67</code>（应为 <code>2.68</code>）——改为按十进制精确修约。</li>
   <li>页码、打印日期此前只能在花括号里单独使用（<code>{pageIndex}</code>），一旦参与运算或函数（<code>{pageIndex + 1}</code>、<code>{ADD(pageIndex,1)}</code>、<code>{DATE(printDate,'YYYY')}</code>）就会被原样印出。现在这些写法都会按所在页真实求值，页眉/页脚、表格单元格同样生效。</li>
+  <li><strong>多级表头跨页不再丢层级</strong>：表头有好几层时，翻页后第二层往下曾经整段消失（只重复了最上面一行）。现在「表头每页重复」按整个表头区生效——表头里任意一层勾了，每一页都会完整印出全部层级；新增表头行也会自动跟随同一设置，不用担心漏勾。</li>
 </ul>
 
 <h2>v1.3.0 <small>2026-09-20</small></h2>

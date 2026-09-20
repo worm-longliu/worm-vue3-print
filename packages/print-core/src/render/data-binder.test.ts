@@ -367,3 +367,54 @@ describe('bindTableData 小计行 subtotal', () => {
     expect(opts._summaryRows[0].cells[1].content).toBe('5')
   })
 })
+
+describe('多级表头重复行数解析', () => {
+  /** 两级表头：行0「基本信息」跨 2 列 + 「金额」跨 2 行；行1「姓名」「年龄」 */
+  function twoLevelHeader(repeatFlags: boolean[]) {
+    return [
+      { id: 'h0', type: 'header', height: 8, repeatOnPage: repeatFlags[0], cells: [
+        cell({ formatter: '基本信息', colspan: 2 }), cell({ formatter: '', merged: true }), cell({ formatter: '金额', rowspan: 2 }),
+      ] },
+      { id: 'h1', type: 'header', height: 8, repeatOnPage: repeatFlags[1], cells: [
+        cell({ formatter: '姓名' }), cell({ formatter: '年龄' }), cell({ formatter: '', merged: true }),
+      ] },
+      { id: 'd0', type: 'data', height: 8, cells: [
+        cell({ formatter: '{name}' }), cell({ formatter: '{age}' }), cell({ formatter: '{amt}' }),
+      ] },
+    ]
+  }
+
+  function repeatCountOf(rows: any[]): number {
+    const t = makeTemplate({ tableMode: 'dynamic', tableRows: rows, fields: [{ text: 'items', dataSource: 'items' }] })
+    return bindData(t, { items: [] }).elements[0]!.options._repeatHeaderCount
+  }
+
+  it('单行表头：行为与既有一致', () => {
+    expect(repeatCountOf(dynamicRows())).toBe(1)
+  })
+
+  it('只勾首行 → 整个表头区重复（多级表头不再被切在半截上）', () => {
+    expect(repeatCountOf(twoLevelHeader([true, false]))).toBe(2)
+  })
+
+  it('只勾第二行 → 整个表头区重复', () => {
+    expect(repeatCountOf(twoLevelHeader([false, true]))).toBe(2)
+  })
+
+  it('两行都不勾 → 不重复', () => {
+    expect(repeatCountOf(twoLevelHeader([false, false]))).toBe(0)
+  })
+
+  it('非 header 开头 → 表头区为空，不重复', () => {
+    const rows = twoLevelHeader([true, true])
+    rows.unshift({ id: 'x', type: 'data', height: 8, repeatOnPage: true, cells: [cell({ formatter: '{name}' }), cell(), cell()] })
+    expect(repeatCountOf(rows)).toBe(0)
+  })
+
+  it('脏数据：表头主格 rowspan 跨到数据行 → 收缩到最近的完整边界', () => {
+    const rows = twoLevelHeader([true, true])
+    ;(rows[0]!.cells[2] as any).rowspan = 5 // 跨出表头区（3 行中的 2 行）
+    ;(rows[1]!.cells[2] as any).rowspan = 5
+    expect(repeatCountOf(rows)).toBe(1)
+  })
+})

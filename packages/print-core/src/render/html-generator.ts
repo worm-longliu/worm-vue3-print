@@ -562,6 +562,11 @@ function renderMatrixRows(
   ctx?: RenderCtx,
   /** 所属元素 id 与行类别：自动缩小结果据此回写到对应渲染行 */
   fitOwner: { elementId: string; kind: CellFitRowKind } = { elementId: '', kind: 'b' },
+  /**
+   * 行区间上界（相对 renderRows 起始）：给出时把跨出该上界的 rowspan 裁剪到边界内。
+   * 续片重复表头用——避免历史模板里跨行主格超界后吃掉后续数据行的位置。
+   */
+  rowLimit?: number,
 ): string {
   const trs: string[] = []
   const defaultPadding = opts.tableDefaultPadding ?? 1
@@ -573,7 +578,10 @@ function renderMatrixRows(
       .map((cell, ci) => ({ cell, ci }))
       .filter(({ cell }) => !cell.merged)
       .map(({ cell, ci }) => {
-        const span = `${cell.rowspan > 1 ? ` rowspan="${cell.rowspan}"` : ''}${cell.colspan > 1 ? ` colspan="${cell.colspan}"` : ''}`
+        const rowspan = rowLimit === undefined
+          ? (cell.rowspan ?? 1)
+          : Math.max(1, Math.min(cell.rowspan ?? 1, rowLimit - r))
+        const span = `${rowspan > 1 ? ` rowspan="${rowspan}"` : ''}${cell.colspan > 1 ? ` colspan="${cell.colspan}"` : ''}`
         const colIndex = ci
         let inner: string
         if (cell.cellType === 'barcode' || cell.cellType === 'qrcode') {
@@ -679,7 +687,7 @@ function renderTableSlice(el: TemplateElement, section: PageSection, ctx?: Rende
   const repeatCount: number = opts._repeatHeaderCount ?? 0
 
   const repeatHtml = section.repeatHeader && repeatCount > 0
-    ? renderMatrixRows(renderRows, 0, repeatCount, opts, false, ctx, { elementId: el.id, kind: 'b' })
+    ? renderMatrixRows(renderRows, 0, repeatCount, opts, false, ctx, { elementId: el.id, kind: 'b' }, repeatCount)
     : ''
   const bodyHtml = renderMatrixRows(renderRows, startRow, endRow, opts, false, ctx, { elementId: el.id, kind: 'b' })
   const subtotalHtml = section.subtotal ? renderSubtotalRows(el, section, opts, ctx) : ''
@@ -764,7 +772,7 @@ function renderFlowGroup(
     const renderRows: RenderRow[] = opts._renderRows ?? []
     const repeatCount: number = opts._repeatHeaderCount ?? 0
     const repeatHtml = section.repeatHeader && repeatCount > 0
-      ? renderMatrixRows(renderRows, 0, repeatCount, opts, false, ctx, { elementId: el.id, kind: 'b' })
+      ? renderMatrixRows(renderRows, 0, repeatCount, opts, false, ctx, { elementId: el.id, kind: 'b' }, repeatCount)
       : ''
     const bodyHtml = renderMatrixRows(renderRows, startRow, endRow, opts, false, ctx, { elementId: el.id, kind: 'b' })
     const subtotalHtml = section.subtotal ? renderSubtotalRows(el, section, opts, ctx) : ''

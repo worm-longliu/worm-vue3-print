@@ -16,7 +16,8 @@
           :max="100"
           :step="0.5" @update:model-value="onHeightChange" />
       </div>
-      <div class="pd-field" v-if="row.type === 'header'"><span class="pd-label">每页顶部重复</span>
+      <div class="pd-field" v-if="row.type === 'header'">
+        <span class="pd-label" title="多级表头作为一个结构整体重复，勾选后表头区所有行都会在每页顶部重复">表头每页重复</span>
         <input :checked="row.repeatOnPage ?? false" type="checkbox" class="pd-switch" @input="onRepeatChange(!!($event.target as HTMLInputElement).checked)" />
       </div>
     </form>
@@ -26,7 +27,7 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue'
 import type { RuntimeElement, TableSelection, TableRowType } from '@worm-vue3-print/core/designer'
-import { setRowType, syncTableElementSize } from '@worm-vue3-print/core/designer'
+import { setRowType, setHeaderRepeat, syncTableElementSize } from '@worm-vue3-print/core/designer'
 import { TABLE_EDIT_KEY } from '../../composables/useTableSelection'
 import PropertyGroup from './PropertyGroup.vue'
 import StepperInput from './StepperInput.vue'
@@ -56,8 +57,9 @@ function onHeightChange(v: number | undefined) {
   ctx.recordHistory()
 }
 
+/** 作用于整个表头区：多级表头是跨行合并的结构整体，只勾单行会让续片表头断裂 */
 function onRepeatChange(v: boolean) {
-  row.value.repeatOnPage = v
+  setHeaderRepeat(props.element.options.tableRows!, v)
   ctx.recordHistory()
 }
 </script>

@@ -197,6 +197,10 @@ export function insertRow(rows: TableRow[], index: number, position: 'above' | '
     id: `row-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
     type,
     height: ref.height,
+    // 新表头行沿用相邻表头行的重复设置：漏勾会让续片只重复部分表头，多级表头结构断裂
+    ...(type === 'header'
+      ? { repeatOnPage: [rows[insertAt - 1], rows[insertAt]].find(r => r?.type === 'header')?.repeatOnPage === true }
+      : {}),
     cells: Array.from({ length: colCount }, () => createCell()),
   }
   // 处理跨越插入边界的纵向合并：主格 rowspan+1，新行对应格置 merged
@@ -321,8 +325,28 @@ export function setRowType(
     }
   }
   rows[index]!.type = type
-  if (type !== 'header') { delete rows[index]!.repeatOnPage }
+  if (type === 'header') {
+    // 多级表头作为一个结构整体重复：新表头行沿用相邻表头行的设置，避免漏勾导致续片表头断裂
+    const neighbour = [rows[index - 1], rows[index + 1]].find(r => r?.type === 'header')
+    rows[index]!.repeatOnPage = rows[index]!.repeatOnPage !== undefined
+      ? rows[index]!.repeatOnPage === true
+      : neighbour?.repeatOnPage === true
+  } else {
+    delete rows[index]!.repeatOnPage
+  }
   return null
+}
+
+/**
+ * 统一设置表头区的「每页顶部重复」。
+ * 多级表头的各行由 rowspan/colspan 连成结构整体，只勾选其中部分行会让续片表头被切在半截上，
+ * 因此该开关作用于整个表头区（第 0 行起的连续 header 行）而非单行。
+ */
+export function setHeaderRepeat(rows: TableRow[], enabled: boolean): void {
+  for (const row of rows) {
+    if (row.type !== 'header') break
+    row.repeatOnPage = enabled
+  }
 }
 
 export type BorderPreset = 'all' | 'outer' | 'inner' | 'none'

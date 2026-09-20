@@ -6,7 +6,7 @@ import {
   normalizeSelection, canMergeReason, mergeCells, splitCells,
   insertRow, deleteRow, insertCol, deleteCol, setRowType, applyBorderPreset,
   syncTableElementSize, resolveCellBorderCss, GHOST_BORDER_CSS,
-  clampResizedColumnWidth, MIN_COL_WIDTH_MM,
+  clampResizedColumnWidth, MIN_COL_WIDTH_MM, setHeaderRepeat,
 } from '../table-matrix.js'
 
 /** 构造 rows×cols 全 header 矩阵 */
@@ -297,5 +297,69 @@ describe('splitCells 保留字体', () => {
     splitCells(rows, { r1: 0, c1: 0, r2: 0, c2: 1 })
     expect(rows[0]!.cells[0]!.fontFamily).toBe('SimSun')
     expect(rows[0]!.cells[1]!.fontFamily).toBe('SimSun')
+  })
+})
+
+describe('表头区「每页重复」继承与联动', () => {
+  it('insertRow 在表头区插入的新行继承相邻表头行的 repeatOnPage', () => {
+    const rows = makeTypedRows(['header', 'data'], 2)
+    rows[0]!.repeatOnPage = true
+    insertRow(rows, 0, 'below')
+    expect(rows[1]!.type).toBe('header')
+    expect(rows[1]!.repeatOnPage).toBe(true)
+  })
+
+  it('insertRow 继承 false 时不因插入而误开启重复', () => {
+    const rows = makeTypedRows(['header', 'data'], 2)
+    rows[0]!.repeatOnPage = false
+    insertRow(rows, 0, 'below')
+    expect(rows[1]!.repeatOnPage).toBe(false)
+  })
+
+  it('insertRow 插入非 header 行时不写入 repeatOnPage', () => {
+    const rows = makeTypedRows(['header', 'data', 'summary'], 2)
+    rows[0]!.repeatOnPage = true
+    insertRow(rows, 2, 'below')
+    expect(rows[3]!.type).toBe('summary')
+    expect(rows[3]!.repeatOnPage).toBeUndefined()
+  })
+
+  it('setRowType 改为 header 时继承相邻 header 行的设置', () => {
+    const rows = makeTypedRows(['header', 'data', 'summary'], 2)
+    rows[0]!.repeatOnPage = true
+    expect(setRowType(rows, 1, 'header')).toBeNull()
+    expect(rows[1]!.repeatOnPage).toBe(true)
+  })
+
+  it('setRowType 改为非 header 时清除 repeatOnPage', () => {
+    const rows = makeTypedRows(['header', 'header'], 2)
+    rows[0]!.repeatOnPage = true
+    rows[1]!.repeatOnPage = true
+    expect(setRowType(rows, 1, 'data')).toBeNull()
+    expect(rows[1]!.repeatOnPage).toBeUndefined()
+  })
+
+  it('setRowType 保留已存在 header 行的显式设置', () => {
+    const rows = makeTypedRows(['header', 'header'], 2)
+    rows[0]!.repeatOnPage = true
+    rows[1]!.repeatOnPage = false
+    expect(setRowType(rows, 1, 'header')).toBeNull()
+    expect(rows[1]!.repeatOnPage).toBe(false)
+  })
+
+  it('setHeaderRepeat 只作用于行 0 起的连续 header 行', () => {
+    const rows = makeTypedRows(['header', 'header', 'data'], 2)
+    rows[0]!.repeatOnPage = true
+    setHeaderRepeat(rows, false)
+    expect(rows[0]!.repeatOnPage).toBe(false)
+    expect(rows[1]!.repeatOnPage).toBe(false)
+    expect(rows[2]!.repeatOnPage).toBeUndefined()
+  })
+
+  it('setHeaderRepeat 遇到非 header 行即停止', () => {
+    const rows = makeTypedRows(['header', 'data', 'header'], 2)
+    setHeaderRepeat(rows, true)
+    expect(rows[0]!.repeatOnPage).toBe(true)
+    expect(rows[2]!.repeatOnPage).toBeUndefined()
   })
 })

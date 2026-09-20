@@ -213,12 +213,55 @@ function makeRenderRow(
   }
 }
 
+/**
+ * 解析分页续片需要重复的表头行数。
+ *
+ * 重复粒度是「表头区」而不是「单行」：多级表头的各行由 rowspan/colspan 连成一个结构整体，
+ * 逐行独立判定会把表头切在半截上——首行存在 rowspan=3 的跨行主格却只重复 1 行时，
+ * 续片会丢掉下面两级表头。因此：
+ * 1. 表头区 = 从第 0 行起的连续 header 行；
+ * 2. 区内任一行 repeatOnPage 为真 → 整个表头区参与重复；
+ * 3. 重复行数按 rowspan 完整性向下对齐，保证 [0, n) 内不存在跨出 n 的主格。
+ */
 function countRepeatHeader(rows: any[]): number {
+  const headerCount = countLeadingHeaderRows(rows)
+  if (headerCount === 0) return 0
+  const enabled = rows.slice(0, headerCount).some((row: any) => row.repeatOnPage === true)
+  if (!enabled) return 0
+  return alignToRowspanBoundary(rows, headerCount)
+}
+
+/** 表头区行数：从第 0 行起的连续 header 行数量 */
+function countLeadingHeaderRows(rows: any[]): number {
   let n = 0
   for (const row of rows) {
-    if (row.type === 'header' && row.repeatOnPage === true) { n++ } else { break }
+    if (row?.type !== 'header') break
+    n++
   }
   return n
+}
+
+/** [0, n) 内的主格是否都没有跨出 n（表头区闭合时 n = max 即完整） */
+function isRowspanComplete(rows: any[], n: number): boolean {
+  for (let r = 0; r < n; r++) {
+    for (const cell of rows[r]?.cells ?? []) {
+      if (cell?.merged) continue
+      if (r + (cell?.rowspan ?? 1) > n) return false
+    }
+  }
+  return true
+}
+
+/**
+ * 把重复行数对齐到最近的 rowspan 完整边界（≤ max 向下找）。
+ * 历史模板可能存在表头主格 rowspan 跨到数据行的脏数据，此时收缩到能完整闭合的行数，
+ * 残余的超界 rowspan 由 html-generator 在续片渲染时裁剪兜底。
+ */
+function alignToRowspanBoundary(rows: any[], max: number): number {
+  for (let n = max; n >= 1; n--) {
+    if (isRowspanComplete(rows, n)) return n
+  }
+  return 1
 }
 
 /** 系统变量上下文（表达式 ctx 与 HTML 占位符替换共用，保证取值一致） */
