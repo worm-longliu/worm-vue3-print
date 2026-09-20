@@ -2,6 +2,20 @@ export default {
   id: 'changelog',
   title: '更新记录',
   content: `
+<h2>未发布</h2>
+
+<h3>新增</h3>
+<ul>
+  <li><strong>数值运算与修约</strong>：表达式新增四则函数 <code>ADD</code> / <code>SUB</code> / <code>MUL</code> / <code>DIV</code>，以及修约函数 <code>ROUND</code>（四舍五入）、<code>ROUNDUP</code>（进一）、<code>ROUNDDOWN</code>（去尾）、<code>ROUNDBANK</code>（四舍六入五成双）。位数可省略（默认两位），写负数则修约到整十/整百。表达式编辑器「函数」页新增「数值运算」分组，双击即可插入。</li>
+  <li><strong>四则运算更准</strong>：直接写 <code>{qty * price}</code> 时，数字字符串按数值参与运算、不再出现 <code>0.30000000000000004</code> 这类浮点尾巴、除以 0 不再印出 <code>Infinity</code>。</li>
+</ul>
+
+<h3>修复</h3>
+<ul>
+  <li><code>ROUND(1.005, 2)</code> 此前得到 <code>1</code>（应为 <code>1.01</code>）、<code>ROUND(2.675, 2)</code> 得到 <code>2.67</code>（应为 <code>2.68</code>）——改为按十进制精确修约。</li>
+  <li>页码、打印日期此前只能在花括号里单独使用（<code>{pageIndex}</code>），一旦参与运算或函数（<code>{pageIndex + 1}</code>、<code>{ADD(pageIndex,1)}</code>、<code>{DATE(printDate,'YYYY')}</code>）就会被原样印出。现在这些写法都会按所在页真实求值，页眉/页脚、表格单元格同样生效。</li>
+</ul>
+
 <h2>v1.3.0 <small>2026-09-20</small></h2>
 
 <h3>新增</h3>

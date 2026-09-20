@@ -24,7 +24,10 @@ export default {
 <p>使用花括号 <code>{field.path}</code> 语法绑定数据字段：</p>
 <pre><code>供应商：{supplier.name}
 日期：{order.date}
-金额：{MONEY(order.total)}</code></pre>
+金额：{MONEY(order.total)}
+合计：{ROUND(qty * price, 2)}</code></pre>
+<p>花括号内可直接写四则运算（<code>{qty * price}</code>），也可用 <code>ADD</code> / <code>SUB</code> / <code>MUL</code> / <code>DIV</code> 函数；
+需要保留几位小数时用 <code>ROUND</code>（四舍五入）、<code>ROUNDUP</code>（进一）、<code>ROUNDDOWN</code>（去尾）或 <code>ROUNDBANK</code>（四舍六入五成双）。</p>
 <p>双击元素可打开表达式编辑器配置绑定。</p>
 
 <h2>保存与预览</h2>

@@ -50,3 +50,43 @@ describe('safeEval 安全', () => {
     expect(() => safeEval('process.exit()', {})).toThrow()
   })
 })
+
+describe('四则运算与数值修约', () => {
+  const ctx = { qty: '3', price: 12.5, blank: null, rows: [{ amount: 100 }, { amount: 20 }] }
+
+  it('字段四则运算：字符串数字按数值处理', () => {
+    expect(evaluateTemplate('{qty * price}', ctx)).toBe('37.5')
+    expect(evaluateTemplate('{qty + price}', ctx)).toBe('15.5')
+  })
+
+  it('消除二进制浮点噪声', () => {
+    expect(evaluateTemplate('{0.1 + 0.2}', {})).toBe('0.3')
+    expect(evaluateTemplate('{price * qty * (1 + 0.13)}', ctx)).toBe('42.375')
+  })
+
+  it('聚合结果参与四则运算', () => {
+    expect(evaluateTemplate('{SUM(amount) * 1.13}', ctx)).toBe('135.6')
+    expect(evaluateTemplate('{ROUND(SUM(amount) * 1.13, 1)}', ctx)).toBe('135.6')
+  })
+
+  it('内置修约函数', () => {
+    expect(evaluateTemplate('{ROUND(1.005, 2)}', {})).toBe('1.01')
+    expect(evaluateTemplate('{ROUNDUP(1.001, 2)}', {})).toBe('1.01')
+    expect(evaluateTemplate('{ROUNDDOWN(1.009, 2)}', {})).toBe('1')
+    expect(evaluateTemplate('{ROUNDBANK(0.125, 2)}', {})).toBe('0.12')
+    expect(evaluateTemplate('{ROUNDBANK(0.135, 2)}', {})).toBe('0.14')
+  })
+
+  it('内置四则函数', () => {
+    expect(evaluateTemplate('{ADD(qty, 1)}', ctx)).toBe('4')
+    expect(evaluateTemplate('{SUB(qty, 1)}', ctx)).toBe('2')
+    expect(evaluateTemplate('{MUL(qty, price)}', ctx)).toBe('37.5')
+    expect(evaluateTemplate('{DIV(price, 2)}', ctx)).toBe('6.25')
+  })
+
+  it('除零与空值不印出 Infinity / NaN', () => {
+    expect(evaluateTemplate('{price / 0}', ctx)).toBe('0')
+    expect(evaluateTemplate('{DIV(price, 0)}', ctx)).toBe('0')
+    expect(evaluateTemplate('{blank + 1}', ctx)).toBe('1')
+  })
+})

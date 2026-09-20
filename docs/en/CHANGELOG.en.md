@@ -2,6 +2,30 @@
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: **numeric arithmetic and rounding in expressions**.
+  ① Arithmetic functions `ADD(a,b,…)`, `SUB(a,b,…)`, `MUL(a,b,…)`, `DIV(a,b)` sharing one numeric semantics with the `+ - * / %` operators.
+  ② Rounding functions: `ROUND(n,d)` half-up, `ROUNDUP` / `CEIL` away from zero, `ROUNDDOWN` / `FLOOR` toward zero, `ROUNDBANK` half-to-even (GB/T 8170). `d` defaults to 2; a negative `d` rounds to tens/hundreds (`-2` → hundreds). Rounding is decided on the exact decimal string, so the `toFixed` float traps do not apply; `ROUND` and `ROUNDBANK` differ only on an exact half (round up vs. round to even).
+  ③ Operators gained proper numeric semantics: numeric strings are treated as numbers, binary float noise is removed, division by zero and blanks fall back to `0`. See Changed below.
+  ④ The expression editor gained a **Numeric** function group (double-click to insert); the in-app help function table was updated.
+- `@worm-vue3-print/core`: new `numeric.ts` shared by functions and operators; the main entry now exports `addNumbers` / `subtractNumbers` / `multiplyNumbers` / `divideNumbers` / `round` / `roundUp` / `roundDown` / `roundHalfEven` for host-side reuse.
+
+### Changed
+
+- `@worm-vue3-print/core`: **behavior change** arithmetic operators (binary and unary `+` / `-`) now use numeric semantics; existing templates may render differently in these cases (all moving toward what users expect):
+  ① both sides numeric (or numeric strings) are added numerically — `'3' + 4` was `'34'`, now `7`;
+  ② binary float noise is removed — `0.1 + 0.2` was `0.30000000000000004`, now `0.3`; `12.5 * 3 * 1.13` was `42.37499999999999`, now `42.375`;
+  ③ division by zero (or an unparsable divisor) returns `0` instead of `Infinity` / `NaN`; `null` / empty string count as `0` in arithmetic and as `''` when concatenating (previously `null` was printed);
+  ④ `+` still concatenates when either side is not numeric (`name + ' Ltd.'` unchanged).
+
+### Fixed
+
+- `ROUND(n, d)` was implemented with `Number.toFixed`, producing wrong results on float boundaries: `ROUND(1.005, 2)` returned `1` (should be `1.01`) and `ROUND(2.675, 2)` returned `2.67` (should be `2.68`). Rounding is now exact in decimal.
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: system variables could not be used **inside** an expression — `{pageIndex + 1}`, `{ADD(pageIndex,1)}` and `{DATE(printDate,'YYYY')}` failed to evaluate and were printed verbatim (the template fallback for failed evaluation); only a bare `{pageIndex}` worked, via a text substitution applied after rendering. Cause: the binding-time expression context contained business data only, and page numbers are unknown until pagination. Now: ① `printDate` / `printTime` are merged into the binding context (business data of the same name wins); ② expressions referencing `pageIndex` / `totalPages` keep their source text at binding time (measurement pass measures the raw text) and are re-evaluated per page during final rendering — consistently for elements, header/footer, first-page overlay and table cells, and identically across browser preview, server-side PDF and the desktop client. **Output for existing templates is unchanged**: templates without any raw formatter take a fast path with no re-evaluation.
+
 ## [1.3.0] - 2026-09-20
 
 - `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: added **multi-page templates** — one document composed of pages with

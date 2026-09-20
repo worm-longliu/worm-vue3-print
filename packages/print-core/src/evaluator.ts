@@ -1,5 +1,14 @@
 // packages/print-core/src/evaluator.ts
 import type { ASTNode, ExprFunction } from './types.js'
+import {
+  decimalAdd,
+  decimalDivide,
+  decimalModulo,
+  decimalMultiply,
+  decimalSubtract,
+  isNumericLike,
+  toNumber,
+} from './numeric.js'
 
 const SAFE_GLOBALS: Record<string, any> = {
   Math, Number, String, Boolean, parseInt, parseFloat, isNaN,
@@ -64,11 +73,13 @@ function evalBinary(node: { op: string; left: ASTNode; right: ASTNode }, context
   const right = evaluate(node.right, context, functions)
 
   switch (node.op) {
-    case '+': return left + right
-    case '-': return left - right
-    case '*': return left * right
-    case '/': return left / right
-    case '%': return left % right
+    // 数值运算统一走十进制精确实现：消除 0.1 + 0.2 类浮点噪声、字符串数字按数值处理、除零兜底 0
+    case '+':
+      return isNumericOperands(left, right) ? decimalAdd(left, right) : concatOperands(left, right)
+    case '-': return decimalSubtract(left, right)
+    case '*': return decimalMultiply(left, right)
+    case '/': return decimalDivide(left, right)
+    case '%': return decimalModulo(left, right)
     case '<': return left < right
     case '>': return left > right
     case '<=': return left <= right
@@ -87,12 +98,35 @@ function evalBinary(node: { op: string; left: ASTNode; right: ASTNode }, context
 function evalUnary(node: { op: string; arg: ASTNode }, context: Record<string, any>, functions: Record<string, ExprFunction>): any {
   const arg = evaluate(node.arg, context, functions)
   switch (node.op) {
-    case '-': return -arg
-    case '+': return +arg
+    case '-': return decimalSubtract(0, arg)
+    case '+': return toNumber(arg)
     case '!': return !arg
     default:
       throw new Error(`未知一元运算符: ${node.op}`)
   }
+}
+
+/** 字符串拼接：null / undefined 视为空串，避免单据上印出 "null" */
+function concatOperands(left: unknown, right: unknown): string {
+  return `${left == null ? '' : String(left)}${right == null ? '' : String(right)}`
+}
+
+/**
+ * `+` 是否按数值相加：两侧都是数字（或可解析为数字的非空字符串）、
+ * 或一侧为数字另一侧为空值（null / undefined / 空串按 0）时才走数值运算；
+ * 其余情况保持字符串拼接，避免破坏 `name + '有限公司'` 一类既有写法。
+ */
+function isNumericOperands(left: unknown, right: unknown): boolean {
+  const l = operandKind(left)
+  const r = operandKind(right)
+  if (l === 'other' || r === 'other') return false
+  return l === 'num' || r === 'num'
+}
+
+function operandKind(value: unknown): 'num' | 'neutral' | 'other' {
+  if (value == null || value === '') return 'neutral'
+  if (isNumericLike(value)) return 'num'
+  return 'other'
 }
 
 function evalMember(node: { object: ASTNode; property: string; computed: boolean }, context: Record<string, any>, functions: Record<string, ExprFunction>): any {

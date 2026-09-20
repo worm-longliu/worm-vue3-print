@@ -99,3 +99,42 @@ describe('evaluate', () => {
     expect(() => evalExpr('x.y', { x: null })).toThrow('无法访问空值')
   })
 })
+
+describe('算术运算的数值语义', () => {
+  function evalExpr(input: string, ctx: Record<string, any> = {}) {
+    return evaluate(parse(tokenize(input)), ctx)
+  }
+
+  it('字符串数字按数值相加，不拼接', () => {
+    expect(evalExpr('a + b', { a: '10', b: '20' })).toBe(30)
+    expect(evalExpr('a + 1', { a: '3' })).toBe(4)
+  })
+
+  it('非数值仍保持字符串拼接', () => {
+    expect(evalExpr('name + suffix', { name: 'ACME', suffix: '有限公司' })).toBe('ACME有限公司')
+    expect(evalExpr('name + 1', { name: 'ACME' })).toBe('ACME1')
+  })
+
+  it('拼接时 null / undefined 视为空串', () => {
+    expect(evalExpr('name + blank', { name: 'ACME', blank: null })).toBe('ACME')
+    expect(evalExpr('blank + 5', { blank: null })).toBe(5)
+  })
+
+  it('消除二进制浮点误差', () => {
+    expect(evalExpr('0.1 + 0.2')).toBe(0.3)
+    expect(evalExpr('1.1 * 3')).toBe(3.3)
+    expect(evalExpr('0.07 + 0.01')).toBe(0.08)
+  })
+
+  it('除零与空值兜底为 0', () => {
+    expect(evalExpr('10 / 0')).toBe(0)
+    expect(evalExpr('10 % 0')).toBe(0)
+    expect(evalExpr('x * y', { x: null, y: 'abc' })).toBe(0)
+  })
+
+  it('一元正负号走数值化', () => {
+    expect(evalExpr('-a', { a: '5' })).toBe(-5)
+    expect(evalExpr('+a', { a: '5' })).toBe(5)
+    expect(evalExpr('-a', { a: 'abc' })).toBe(0)
+  })
+})

@@ -17,6 +17,14 @@ import {
   count,
   min,
   max,
+  addNumbers,
+  subtractNumbers,
+  multiplyNumbers,
+  divideNumbers,
+  round,
+  roundUp,
+  roundDown,
+  roundHalfEven,
 } from '../functions/index.js'
 
 /** 轻量引擎：与 TemplateEngine 同构，避免与包入口 index.ts 形成循环依赖 */
@@ -48,8 +56,19 @@ const FORMAT_FUNCTIONS: Record<string, (...args: any[]) => any> = {
   IF: ifFn,
   CONCAT: (...args: any[]) => args.filter(v => v != null).map(String).join(''),
   IFEMPTY: (v: any, d: string) => (v != null && v !== '' ? String(v) : d),
-  ROUND: (n: number, d: number) => Number(Number(n).toFixed(d)),
   LEN: (s: string) => String(s).length,
+  // 四则运算（与 +/-/*// 运算符同一套数值语义，供不方便写运算符的场景使用）
+  ADD: addNumbers,
+  SUB: subtractNumbers,
+  MUL: multiplyNumbers,
+  DIV: divideNumbers,
+  // 数值修约
+  ROUND: round,
+  ROUNDUP: roundUp,
+  CEIL: roundUp,
+  ROUNDDOWN: roundDown,
+  FLOOR: roundDown,
+  ROUNDBANK: roundHalfEven,
 }
 
 for (const [name, fn] of Object.entries(FORMAT_FUNCTIONS)) {

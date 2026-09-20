@@ -35,6 +35,26 @@ export interface RenderCtx {
   codeRenderer?: CodeRenderer
   /** 连续纸探针推导出的最终纸高（mm）；水印网格与 @page 必须同源 */
   pageHeightMm?: number
+  /** 本页页码上下文：绑定阶段页码未知，最终趟据此对引用页码的表达式求值 */
+  pageVars?: PageVars
+}
+
+/** 页码上下文：pageIndex 为 1 起的页码 */
+export interface PageVars {
+  pageIndex: number
+  totalPages: number
+  /** 业务打印数据（表达式求值上下文；批量数组取首份） */
+  data?: Record<string, any>
+}
+
+/** 页码上下文转表达式求值上下文（业务数据在前，页码变量兜底） */
+function pageVarsContext(vars: PageVars): Record<string, any> {
+  return { ...(vars.data ?? {}), pageIndex: vars.pageIndex, totalPages: vars.totalPages }
+}
+
+function pageVarsData(printData?: Record<string, any> | Record<string, any>[]): Record<string, any> {
+  if (Array.isArray(printData)) return printData[0] ?? {}
+  return printData ?? {}
 }
 
 export interface GenerateOptions {
@@ -199,32 +219,38 @@ function renderPage(
   }
   const contentWidth = paper.width - template.margins.left - template.margins.right
 
+  // 绑定阶段页码未知，引用了 pageIndex/totalPages 的表达式保留了原始表达式（options.rawFormatter）；
+  // 此处按本页页码重新求值，使 {pageIndex + 1}、{ADD(pageIndex,1)} 一类写法逐页生效。
+  const pageVars: PageVars = { pageIndex: pageNum, totalPages, data: pageVarsData(printData) }
+  const scoped = withPageNumbers(template, pageVars)
+  const pageCtx: RenderCtx = { ...ctx, pageVars }
+
   // 页眉（含页码变量替换）
   const headerHtml = renderAreaElements(
-    template.header?.elements ?? [],
+    scoped.header?.elements ?? [],
     contentWidth,
     pageNum,
     totalPages,
-    ctx,
+    pageCtx,
   )
 
   // 页脚（含页码变量替换）
   const footerHtml = renderAreaElements(
-    template.footer?.elements ?? [],
+    scoped.footer?.elements ?? [],
     contentWidth,
     pageNum,
     totalPages,
-    ctx,
+    pageCtx,
   )
 
   // 首页叠加（仅首页）
   const overlayHtml = page.pageIndex === 0
-    ? `<div class="first-page-overlay">${renderAreaElements(template.firstPageOverlay?.elements ?? [], contentWidth, undefined, undefined, ctx)}</div>`
+    ? `<div class="first-page-overlay">${renderAreaElements(scoped.firstPageOverlay?.elements ?? [], contentWidth, pageNum, totalPages, pageCtx)}</div>`
     : ''
 
   // 内容区元素
   let contentHtml = page.sections
-    .map(section => renderSection(section, template, ctx))
+    .map(section => renderSection(section, scoped, pageCtx))
     .join('\n')
   // 内容区页码变量替换（PRD：内容区元素也支持 {pageIndex}/{totalPages}）
   contentHtml = contentHtml.replace(/\{pageIndex\}/g, String(pageNum))
@@ -248,6 +274,50 @@ function renderPage(
   return `<section class="print-page${pageClass ? ` ${pageClass}` : ''}" data-page="${pageNum}">
   ${pageBody}
 </section>`
+}
+
+// ─── 页码相关的按页重算 ───
+
+/**
+ * 按本页页码重新求值引用了 pageIndex / totalPages 的元素文本（含页眉、页脚、首页叠加）。
+ * 无元素携带 rawFormatter 时原样返回（零开销，存量模板产物逐字不变）。
+ */
+function withPageNumbers(template: TemplateData, vars: PageVars): TemplateData {
+  if (!templateReferencesPageNumbers(template)) return template
+  const context = pageVarsContext(vars)
+  const mapEl = (el: TemplateElement): TemplateElement => {
+    const raw = el.options?.rawFormatter
+    if (typeof raw !== 'string') return el
+    return { ...el, options: { ...el.options, formatter: evaluateTemplate(raw, context) } }
+  }
+  const mapArea = (area: TemplateData['header']) =>
+    area ? { ...area, elements: (area.elements ?? []).map(mapEl) } : area
+  return {
+    ...template,
+    elements: template.elements.map(mapEl),
+    header: mapArea(template.header),
+    footer: mapArea(template.footer),
+    firstPageOverlay: mapArea(template.firstPageOverlay),
+  }
+}
+
+function templateReferencesPageNumbers(template: TemplateData): boolean {
+  const areas = [
+    template.elements,
+    template.header?.elements,
+    template.footer?.elements,
+    template.firstPageOverlay?.elements,
+  ]
+  return areas.some(list => (list ?? []).some(el => typeof el.options?.rawFormatter === 'string'))
+}
+
+/** 单元格文本：引用了页码的单元格按本页页码重算，其余用绑定阶段已求值的文本 */
+function resolveCellContent(cell: RenderCell, ctx?: RenderCtx): string {
+  const raw = cell.rawFormatter
+  if (typeof raw === 'string' && raw !== '' && ctx?.pageVars) {
+    return evaluateTemplate(raw, pageVarsContext(ctx.pageVars))
+  }
+  return cell.content
 }
 
 // ─── 元素渲染 ───
@@ -508,8 +578,9 @@ function renderMatrixRows(
         let inner: string
         if (cell.cellType === 'barcode' || cell.cellType === 'qrcode') {
           // 单元格码值：外框负责居中与裁剪；条形码尺寸由渲染器结算后内联，二维码走 <img>
-          inner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;">${codeImgHtml(cell.content, cell.cellType as 'barcode' | 'qrcode', cell, {
-            fallback: esc(cell.content),
+          const codeValue = resolveCellContent(cell, ctx)
+          inner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;">${codeImgHtml(codeValue, cell.cellType as 'barcode' | 'qrcode', cell, {
+            fallback: esc(codeValue),
             codeRenderer: ctx?.codeRenderer,
             fit: cell.fit,
             maxWidth: cell.maxWidth,
@@ -524,9 +595,9 @@ function renderMatrixRows(
           const fit = cell.fit || 'contain'
           const maxWidth = cell.maxWidth ? `max-width:${cell.maxWidth}mm;` : 'max-width:100%;'
           const maxHeight = cell.maxHeight ? `max-height:${cell.maxHeight}mm;` : 'max-height:100%;'
-          inner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;"><img src="${esc(cell.content)}" style="object-fit:${fit};${maxWidth}${maxHeight}display:block;" /></div>`
+          inner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;"><img src="${esc(resolveCellContent(cell, ctx))}" style="object-fit:${fit};${maxWidth}${maxHeight}display:block;" /></div>`
         } else {
-          inner = renderTextCellInner(renderRows, r, colIndex, cell, opts, fitOwner, defaultPadding)
+          inner = renderTextCellInner(renderRows, r, colIndex, cell, opts, fitOwner, defaultPadding, ctx)
         }
         return `<td${span} style="${matrixCellStyle(cell, opts)}">${inner}</td>`
       })
@@ -550,9 +621,10 @@ function renderTextCellInner(
   opts: Record<string, any>,
   fitOwner: { elementId: string; kind: CellFitRowKind },
   defaultPadding: number,
+  ctx?: RenderCtx,
 ): string {
   const fit = resolveCellTextFit(cell)
-  const text = esc(cell.content)
+  const text = esc(resolveCellContent(cell, ctx))
   if (fit === 'autoHeight') return text
   const capMm = cellFitCapMm(renderRows, rowIndex, cell, defaultPadding)
   const nowrap = cell.wordWrap === false
@@ -639,10 +711,17 @@ function renderSubtotalRows(
   const pageCtx = dataEnd > dataStartIdx
     ? dataRowCtx.slice(Math.max(dataStart - dataStartIdx, 0), dataEnd - dataStartIdx)
     : []
+  // 小计按「本页数据行」重算；若表达式同时引用页码，页码并入同一上下文（否则 rows 会被丢掉）
+  const pageVars = ctx?.pageVars ? pageVarsContext(ctx.pageVars) : {}
   const rows = templates.map(tpl => ({
     ...tpl,
     cells: tpl.cells.map(cell => cell.rawFormatter
-      ? { ...cell, content: evaluateTemplate(cell.rawFormatter, { rows: pageCtx, ...mainData }) }
+      ? {
+          ...cell,
+          content: evaluateTemplate(cell.rawFormatter, { rows: pageCtx, ...mainData, ...pageVars }),
+          // 已按本页上下文求值，清标记避免渲染时再按页码重算一次（会丢掉 rows）
+          rawFormatter: '',
+        }
       : cell),
   }))
   return renderMatrixRows(rows, 0, rows.length, opts, false, ctx, { elementId: el.id, kind: 'st' })

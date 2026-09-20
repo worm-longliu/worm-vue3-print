@@ -54,6 +54,8 @@ EPS = 0.01
 KNOWN_FUNCTIONS = {
     'MONEY', 'CONCAT', 'IF', 'FORMAT', 'SUBSTR', 'LEN', 'ROUND', 'NOW',
     'IFEMPTY', 'PAD', 'REPLACE', 'JSON', 'DATE', 'UPPER',
+    'ADD', 'SUB', 'MUL', 'DIV',
+    'ROUNDUP', 'CEIL', 'ROUNDDOWN', 'FLOOR', 'ROUNDBANK',
     'SUM', 'AVG', 'COUNT', 'MIN', 'MAX',
 }
 KNOWN_SYSTEM_VARS = {'pageIndex', 'totalPages', 'printDate', 'printTime'}

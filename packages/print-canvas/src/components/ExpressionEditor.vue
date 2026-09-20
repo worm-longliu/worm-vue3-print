@@ -96,6 +96,20 @@
               </div>
             </div>
             <div class="ee-func-group">
+              <div class="ee-func-group-title">数值运算</div>
+              <div
+                v-for="fn in filteredMathFuncs"
+                :key="fn.name"
+                class="ee-list-item"
+                @dblclick="handleFunctionDoubleClick(fn)"
+              >
+                <div class="ee-field-info">
+                  <span class="ee-item-label">{{ fn.label }}</span>
+                  <span class="ee-item-key">{{ fn.name }}()</span>
+                </div>
+              </div>
+            </div>
+            <div class="ee-func-group">
               <div class="ee-func-group-title">格式化函数</div>
               <div
                 v-for="fn in filteredFormatFuncs"
@@ -150,7 +164,9 @@
                 SUM(字段) - 求和<br>
                 AVG(字段) - 平均值<br>
                 COUNT(字段) - 计数<br>
-                IF(条件, 真值, 假值) - 条件判断
+                IF(条件, 真值, 假值) - 条件判断<br>
+                四则运算：{qty * price}、{ADD(qty, 1)}<br>
+                修约：ROUND 四舍五入 / ROUNDUP 进一 / ROUNDDOWN 去尾 / ROUNDBANK 四舍六入五成双
               </div>
             </div>
             <div class="ee-help-card ee-help-variable">
@@ -167,7 +183,8 @@
                 静态文本：供应商名称<br>
                 动态字段：{supplier.name}<br>
                 函数调用：{SUM(amount)}<br>
-                条件判断：{IF(amount>1000, "大单", "小单")}
+                条件判断：{IF(amount>1000, "大单", "小单")}<br>
+                运算并修约：{ROUND(qty * price, 2)}
               </div>
             </div>
           </div>
@@ -295,6 +312,15 @@ const filteredAggregateFuncs = computed(() => {
   )
 })
 
+// 过滤后的数值运算函数
+const filteredMathFuncs = computed(() => {
+  if (!searchText.value.trim()) return mathFunctions
+  const keyword = searchText.value.trim().toLowerCase()
+  return mathFunctions.filter(fn =>
+    fn.label.toLowerCase().includes(keyword) || fn.name.toLowerCase().includes(keyword)
+  )
+})
+
 // 过滤后的格式化函数
 const filteredFormatFuncs = computed(() => {
   if (!searchText.value.trim()) return formatFunctions
@@ -318,6 +344,17 @@ const aggregateFunctions = [
   { name: 'COUNT', label: '计数', template: 'COUNT()' },
   { name: 'MIN', label: '最小值', template: 'MIN()' },
   { name: 'MAX', label: '最大值', template: 'MAX()' },
+]
+
+const mathFunctions = [
+  { name: 'ADD', label: '相加', template: 'ADD()' },
+  { name: 'SUB', label: '相减', template: 'SUB()' },
+  { name: 'MUL', label: '相乘', template: 'MUL()' },
+  { name: 'DIV', label: '相除', template: 'DIV()' },
+  { name: 'ROUND', label: '四舍五入', template: 'ROUND()' },
+  { name: 'ROUNDUP', label: '进一法', template: 'ROUNDUP()' },
+  { name: 'ROUNDDOWN', label: '去尾法', template: 'ROUNDDOWN()' },
+  { name: 'ROUNDBANK', label: '四舍六入五成双', template: 'ROUNDBANK()' },
 ]
 
 const formatFunctions = [

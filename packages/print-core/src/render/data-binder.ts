@@ -20,7 +20,9 @@ export function bindData(
   fontBaseUrl?: string,
 ): TemplateData {
   // 数组在 pipeline 入口（normalizePrintData）已拆分为逐份单对象，不会到达这里
-  const data = printData ?? {}
+  // 系统变量并入表达式上下文：{printDate} / {DATE(printDate,'YYYY')} 等写法才能在绑定阶段求值。
+  // 业务数据优先（同名时覆盖系统变量）；页码此时尚未分页，含页码的表达式另行延迟到最终趟按页求值。
+  const data = { ...resolveSystemVariables(), ...(printData ?? {}) }
   // JSON 深拷贝：模板为可持久化的纯 JSON 结构；同时兼容浏览器侧 Vue reactive Proxy
   // （structuredClone 对 Proxy 抛 DataCloneError）。
   const bound = JSON.parse(JSON.stringify(template)) as TemplateData
@@ -62,7 +64,14 @@ function bindElement(
   const cloned = { ...el, options: { ...el.options } }
   // 对元素 formatter 求值
   if (typeof cloned.options.formatter === 'string') {
-    cloned.options.formatter = evaluateTemplate(cloned.options.formatter, data)
+    const raw = cloned.options.formatter
+    if (referencesPageNumbers(raw)) {
+      // 引用了页码的表达式（{pageIndex}、{ADD(pageIndex,1)}）：pageIndex/totalPages 要等分页后才有值，
+      // 此处保留原始表达式——测量趟按最宽文本测量，最终趟由 html-generator 按该页页码重新求值。
+      cloned.options.rawFormatter = raw
+    } else {
+      cloned.options.formatter = evaluateTemplate(raw, data)
+    }
   }
   // 图片元素 src：{字段} 表达式求值（动态传参），相对路径拼接服务端 base URL
   const isImage = cloned.type === 'image' || cloned.printElementType?.type === 'image'
@@ -122,9 +131,7 @@ function bindTableData(el: TemplateElement, data: Record<string, any>): void {
         if (dataStartIdx < 0) dataStartIdx = renderRows.length
         const ctx = itemCtx(item)
         renderRows.push(makeRenderRow(row, cell => {
-          const formatter = cell.formatter
-          if (!formatter) return ''
-          return evaluateTemplate(formatter, ctx)
+          return resolveCellText(cell, ctx)
         }))
         dataRowCtx.push(ctx)
       }
@@ -133,30 +140,18 @@ function bindTableData(el: TemplateElement, data: Record<string, any>): void {
     if (mode === 'dynamic' && row.type === 'subtotal') {
       // 小计行：不按普通行展开。占位行以整表聚合求值（保证测量高度准确），
       // 同时保留 rawFormatter，渲染阶段按「当前页数据行」重新求值。
-      const tpl = makeRenderRow(row, cell => {
-        const formatter = cell.formatter
-        if (!formatter) return ''
-        return evaluateTemplate(formatter, { rows: summaryRows, ...data })
-      }, true)
+      const tpl = makeRenderRow(row, cell => resolveCellText(cell, { rows: summaryRows, ...data }), true)
       subtotalTemplates.push(tpl)
       renderRows.push(tpl)
       continue
     }
     if (mode === 'dynamic' && row.type === 'summary') {
-      const summaryRow = makeRenderRow(row, cell => {
-        const formatter = cell.formatter
-        if (!formatter) return ''
-        return evaluateTemplate(formatter, { rows: summaryRows, ...data })
-      })
+      const summaryRow = makeRenderRow(row, cell => resolveCellText(cell, { rows: summaryRows, ...data }))
       summaryRenderRows.push(summaryRow)
       renderRows.push(summaryRow)
       continue
     }
-    renderRows.push(makeRenderRow(row, cell => {
-      const formatter = cell.formatter
-      if (!formatter) return ''
-      return evaluateTemplate(formatter, data)
-    }))
+    renderRows.push(makeRenderRow(row, cell => resolveCellText(cell, data)))
   }
 
   opts._renderRows = renderRows
@@ -169,6 +164,14 @@ function bindTableData(el: TemplateElement, data: Record<string, any>): void {
   opts._mainData = data
 }
 
+/** 单元格文本求值：引用了页码的表达式保留原文，由最终趟按页重算（元素 formatter 同理） */
+function resolveCellText(cell: any, ctx: Record<string, any>): string {
+  const formatter = cell.formatter
+  if (!formatter) return ''
+  if (referencesPageNumbers(formatter)) return formatter
+  return evaluateTemplate(formatter, ctx)
+}
+
 function makeRenderRow(
   row: any,
   resolve: (cell: any) => string,
@@ -179,7 +182,10 @@ function makeRenderRow(
     height: row.height ?? 8,
     cells: row.cells.map((cell: any): RenderCell => ({
       content: cell.merged ? '' : resolve(cell),
-      ...(keepRaw ? { rawFormatter: cell.merged ? '' : (cell.formatter ?? '') } : {}),
+      // 小计行（keepRaw）与引用页码的单元格都保留原始表达式：前者按当页数据行重算，后者按当页页码重算
+      ...((keepRaw || referencesPageNumbers(cell.formatter)) && !cell.merged
+        ? { rawFormatter: cell.formatter ?? '' }
+        : {}),
       cellType: cell.cellType,
       barcodeType: cell.barcodeType,
       qrCodeLevel: cell.qrCodeLevel,
@@ -241,6 +247,14 @@ export function resolveSystemVariables(
     pageIndex: page.pageIndex ?? 1,
     totalPages: page.totalPages ?? 1,
   }
+}
+
+/**
+ * 表达式是否引用了页码变量（pageIndex / totalPages）。
+ * 引用了就必须延迟到最终渲染趟按页求值——绑定阶段页码尚未确定。
+ */
+export function referencesPageNumbers(expr: unknown): boolean {
+  return typeof expr === 'string' && /\b(pageIndex|totalPages)\b/.test(expr)
 }
 
 export function injectSystemVariables(html: string, now: Date = new Date()): string {

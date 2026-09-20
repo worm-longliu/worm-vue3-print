@@ -37,7 +37,14 @@ export default {
     <tr><td><code>IF(cond, true, false)</code></td><td>条件判断</td><td><code>{IF(qty > 100, '大量', '少量')}</code></td></tr>
     <tr><td><code>CONCAT(str1, str2, ...)</code></td><td>字符串拼接</td><td><code>{CONCAT(name, '-', spec)}</code></td></tr>
     <tr><td><code>IFEMPTY(value, default)</code></td><td>空值默认</td><td><code>{IFEMPTY(remark, '无')}</code></td></tr>
-    <tr><td><code>ROUND(num, decimals)</code></td><td>四舍五入</td><td><code>{ROUND(price, 2)}</code></td></tr>
+    <tr><td><code>ROUND(num, decimals)</code></td><td>四舍五入（位数缺省 2）</td><td><code>{ROUND(price, 2)}</code></td></tr>
+    <tr><td><code>ROUNDUP(n, d)</code> / <code>CEIL(n, d)</code></td><td>进一法（远离零）</td><td><code>{ROUNDUP(price, 2)}</code></td></tr>
+    <tr><td><code>ROUNDDOWN(n, d)</code> / <code>FLOOR(n, d)</code></td><td>去尾法（朝零）</td><td><code>{ROUNDDOWN(price, 2)}</code></td></tr>
+    <tr><td><code>ROUNDBANK(n, d)</code></td><td>四舍六入五成双（GB/T 8170）</td><td><code>{ROUNDBANK(price, 2)}</code></td></tr>
+    <tr><td><code>ADD(a, b, ...)</code></td><td>相加（变参）</td><td><code>{ADD(qty, 1)}</code></td></tr>
+    <tr><td><code>SUB(a, b, ...)</code></td><td>相减</td><td><code>{SUB(total, discount)}</code></td></tr>
+    <tr><td><code>MUL(a, b, ...)</code></td><td>相乘（变参）</td><td><code>{MUL(qty, price)}</code></td></tr>
+    <tr><td><code>DIV(a, b)</code></td><td>相除（除数为 0 返回 0）</td><td><code>{DIV(total, qty)}</code></td></tr>
     <tr><td><code>NOW()</code></td><td>当前日期</td><td><code>{NOW()}</code></td></tr>
     <tr><td><code>SUBSTR(str, start, len)</code></td><td>子字符串</td><td><code>{SUBSTR(name, 0, 3)}</code></td></tr>
     <tr><td><code>LEN(str)</code></td><td>字符串长度</td><td><code>{LEN(name)}</code></td></tr>

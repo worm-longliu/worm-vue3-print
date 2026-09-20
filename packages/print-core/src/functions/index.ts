@@ -2,3 +2,13 @@
 export { formatMoney, formatDate, toUpperCaseAmount, ifFn } from './format.js'
 export { sum, avg, count, min, max } from './aggregate.js'
 export { systemVars, setPageIndex, setTotalPages } from './system.js'
+export {
+  addNumbers,
+  subtractNumbers,
+  multiplyNumbers,
+  divideNumbers,
+  round,
+  roundUp,
+  roundDown,
+  roundHalfEven,
+} from './math.js'

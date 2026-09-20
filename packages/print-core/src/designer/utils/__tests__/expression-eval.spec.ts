@@ -50,6 +50,16 @@ describe('EXTENDED_FUNCTIONS', () => {
   it('ROUND 四舍五入', () => {
     expect(EXTENDED_FUNCTIONS.ROUND(1.235, 2)).toBe(1.24)
   })
+  it('四则运算与修约函数（与渲染管线同一套实现）', () => {
+    expect(EXTENDED_FUNCTIONS.ADD('3', 4)).toBe(7)
+    expect(EXTENDED_FUNCTIONS.SUB(10, 1, 2)).toBe(7)
+    expect(EXTENDED_FUNCTIONS.MUL('12.5', 3)).toBe(37.5)
+    expect(EXTENDED_FUNCTIONS.DIV(10, 0)).toBe(0)
+    expect(EXTENDED_FUNCTIONS.ROUND(1.005, 2)).toBe(1.01)
+    expect(EXTENDED_FUNCTIONS.ROUNDUP(1.001, 2)).toBe(1.01)
+    expect(EXTENDED_FUNCTIONS.ROUNDDOWN(1.009, 2)).toBe(1)
+    expect(EXTENDED_FUNCTIONS.ROUNDBANK(0.125, 2)).toBe(0.12)
+  })
   it('SUBSTR 截取子串', () => {
     expect(EXTENDED_FUNCTIONS.SUBSTR('hello', 1, 3)).toBe('ell')
   })

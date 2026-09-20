@@ -147,7 +147,10 @@
 
 - 字段：`{order.no}`、`{goods.0.name}`；data 行内直接写 `{name}`（相对当前行）
 - 函数：`MONEY`（千分位两位小数）、`FORMAT`、`UPPER`（金额大写）、`DATE(v,'YYYY-MM-DD')`、
-  `IF(cond,a,b)`、`IFEMPTY(v,def)`、`CONCAT`、`SUBSTR`、`LEN`、`ROUND`、`NOW`、`PAD`、`REPLACE`、`JSON`
+  `IF(cond,a,b)`、`IFEMPTY(v,def)`、`CONCAT`、`SUBSTR`、`LEN`、`NOW`、`PAD`、`REPLACE`、`JSON`
+- 四则：`ADD(a,b,…)`、`SUB(a,b,…)`、`MUL(a,b,…)`、`DIV(a,b)`；也可直接写运算符 `{qty * price}`
+- 修约：`ROUND(n,d)` 四舍五入、`ROUNDUP/CEIL` 进一、`ROUNDDOWN/FLOOR` 去尾、`ROUNDBANK` 四舍六入五成双；
+  `d` 缺省 2，负数修约到整十/整百（`-2` → 百位）
 - 聚合（表格汇总行）：`SUM(field)`、`AVG`、`COUNT`、`MIN`、`MAX`
 - 系统变量：`{pageIndex}`、`{totalPages}`、`{printDate}`、`{printTime}`
 - 文本与表达式可混排：`'金额大写：{UPPER(order.total)} 元'`

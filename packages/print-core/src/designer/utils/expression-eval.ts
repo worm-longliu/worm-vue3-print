@@ -12,6 +12,14 @@ import {
   count,
   min,
   max,
+  addNumbers,
+  subtractNumbers,
+  multiplyNumbers,
+  divideNumbers,
+  round,
+  roundUp,
+  roundDown,
+  roundHalfEven,
 } from '../../functions/index.js'
 
 // 扩展函数库（保持原有导出）
@@ -25,7 +33,18 @@ export const EXTENDED_FUNCTIONS = {
   },
   SUBSTR: (str: string, start: number, len?: number) => String(str).slice(start, len ? start + len : undefined),
   LEN: (str: string) => String(str).length,
-  ROUND: (num: number, decimals: number) => Number(Number(num).toFixed(decimals)),
+  // 四则运算（与 +/-/*// 运算符同一套数值语义，供不方便写运算符的场景使用）
+  ADD: addNumbers,
+  SUB: subtractNumbers,
+  MUL: multiplyNumbers,
+  DIV: divideNumbers,
+  // 数值修约
+  ROUND: round,
+  ROUNDUP: roundUp,
+  CEIL: roundUp,
+  ROUNDDOWN: roundDown,
+  FLOOR: roundDown,
+  ROUNDBANK: roundHalfEven,
   NOW: () => new Date().toISOString().split('T')[0],
   IFEMPTY: (value: any, defaultVal: string) => (value != null && value !== '' ? String(value) : defaultVal),
   PAD: (value: any, len: number, char: string) => String(value).padStart(len, char),
