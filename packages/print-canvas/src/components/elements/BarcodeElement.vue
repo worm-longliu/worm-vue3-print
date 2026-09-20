@@ -11,6 +11,7 @@ import { resolveTextBinding } from '@worm-vue3-print/core/designer'
 import {
   BARCODE_BAR_HEIGHT_MODULES,
   BARCODE_MARGIN_BOTTOM_MODULES,
+  BARCODE_MODULE_WIDTH_MM,
   BARCODE_QUIET_ZONE_MODULES,
   BARCODE_TEXT_FONT_SIZE_MODULES,
   resolveBarcodeDotLayout,
@@ -47,18 +48,17 @@ const preserveAspectRatio = computed(
 /**
  * 点对齐时按整数打印点的 mm 尺寸落纸（与出图端同源）：尺寸已定死，
  * 不再叠加缩放模式与最大宽高（叠加会把刚对齐好的尺寸重新缩成非整数点）。
- * 未启用点对齐（未设 dpi 或框放不下）时沿用 100% 填框。
+ * 未启用点对齐（未设 dpi 或框不下）时按物理尺寸显示，不强制填满容器。
  */
 const svgStyle = computed(() => {
   const o = props.element.options
   if (dotSize.value) {
     return { width: dotSize.value.width, height: dotSize.value.height, maxWidth: 'none', maxHeight: 'none' }
   }
+  // 非点对齐：按物理尺寸显示，不强制填满容器，这样 barWidth 的变化才能在视觉上体现
   return {
-    width: '100%',
-    height: '100%',
-    maxWidth: o.maxWidth ? `${o.maxWidth}mm` : '100%',
-    maxHeight: o.maxHeight ? `${o.maxHeight}mm` : '100%',
+    maxWidth: 'none',
+    maxHeight: 'none',
   }
 })
 
@@ -100,6 +100,17 @@ function render() {
   dotSize.value = layout ? { width: `${layout.widthMm}mm`, height: `${layout.heightMm}mm` } : null
   // 抗锯齿会在条边缘生成灰像素，热敏头只有黑白两态 → 与出图端一致地关掉
   svgRef.value.setAttribute('shape-rendering', 'crispEdges')
+  
+  // 非点对齐模式：根据 barWidth 计算条码物理尺寸（mm），使其不被 CSS 强制拉伸
+  // barWidth 越大，条码物理尺寸越大，视觉上条越粗
+  // 物理尺寸 = viewBox 尺寸 × 基础模块宽度 × unitPerModule
+  // viewBox 已包含 unitPerModule 缩放，再乘以 unitPerModule 使物理尺寸与 barWidth 成正比
+  if (!layout && viewBox) {
+    const widthMm = viewBox.width * BARCODE_MODULE_WIDTH_MM * unitPerModule
+    const heightMm = viewBox.height * BARCODE_MODULE_WIDTH_MM * unitPerModule
+    svgRef.value.setAttribute('width', `${widthMm}mm`)
+    svgRef.value.setAttribute('height', `${heightMm}mm`)
+  }
 }
 
 /** jsbarcode 会把 viewBox 写成 "0 0 W H"；解析失败时返回 null（不启用点对齐） */
@@ -128,6 +139,6 @@ watch(
 
 <style scoped>
 .print-barcode { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-/* JsBarcode 生成的 svg 自带 viewBox，width/height 100% 时等比缩放填满容器，随元素宽高变化 */
-.print-barcode svg { width: 100%; height: 100%; }
+/* 非点对齐模式：SVG 使用固有尺寸（由 barWidth 决定），约束在容器内 */
+.print-barcode svg { max-width: 100%; max-height: 100%; }
 </style>

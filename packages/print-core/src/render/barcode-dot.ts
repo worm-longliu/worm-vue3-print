@@ -29,6 +29,12 @@ export const BARCODE_BAR_HEIGHT_MODULES = 30
 export const BARCODE_TEXT_FONT_SIZE_MODULES = 10
 /** 文本区与条码图形之间的间距（模块） */
 export const BARCODE_MARGIN_BOTTOM_MODULES = 2
+/**
+ * 基础模块宽度（mm）：barWidth=2（unitPerModule=1）时每模块的物理宽度。
+ * 用于非点对齐模式下计算条码的绝对物理尺寸，使 barWidth 的变化在屏幕上可见。
+ * 0.25mm 是热敏打印机常见最小模块宽度（203dpi 下约 2 个打印点）。
+ */
+export const BARCODE_MODULE_WIDTH_MM = 0.25
 
 export interface BarcodeDotLayout {
   /** 实际使用的打印机分辨率（点/英寸） */
@@ -63,8 +69,10 @@ export interface BarcodeDotLayoutInput {
 /**
  * 求条码的点阵对齐布局。
  *
- * 规则：每模块点数取「在可用框内能把条码完整放下」的最大整数点数——
- * 先按框宽反推，再用框高复核（高度不足时取更小者），且不低于 minDotsPerModule。
+ * 规则：
+ * - 如果指定了 minDotsPerModule（由 barWidth 决定），则直接使用它作为每模块点数，
+ *   这样 barWidth=2 和 barWidth=4 会产生不同的条宽。
+ * - 如果未指定 minDotsPerModule，则取「在可用框内能把条码完整放下」的最大整数点数。
  *
  * 返回 null 表示「这次不做点对齐」，调用方应退回原有的按框缩放路径：
  * 未给 dpi、框尺寸未知，或框小到连 minDotsPerModule 都放不下（此时强行对齐会让条码
@@ -82,8 +90,12 @@ export function resolveBarcodeDotLayout(input: BarcodeDotLayoutInput): BarcodeDo
   const dotsPerMm = dpi / MM_PER_INCH
   const fitByWidth = Math.floor((input.boxWidthMm * dotsPerMm) / unitWidth)
   const fitByHeight = Math.floor((input.boxHeightMm * dotsPerMm) / unitHeight)
-  const dotsPerModule = Math.min(fitByWidth, fitByHeight)
-  if (dotsPerModule < minDots) return null
+  const maxFitDots = Math.min(fitByWidth, fitByHeight)
+
+  // 如果指定了 minDotsPerModule（barWidth），直接使用它，而不是取最大值
+  // 这样 barWidth 的变化才能在物理尺寸上体现出来
+  const dotsPerModule = input.minDotsPerModule != null ? minDots : maxFitDots
+  if (dotsPerModule > maxFitDots) return null
 
   const widthDots = unitWidth * dotsPerModule
   const heightDots = unitHeight * dotsPerModule

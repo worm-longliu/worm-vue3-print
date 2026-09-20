@@ -109,7 +109,9 @@ function renderBarcode() {
   svgOk.value = true
 
   // 与出图端共用同一份点对齐算法：条宽吸附到整数打印点
+  // barWidth 影响每模块最少点数：barWidth=2 → 1 点/模块，barWidth=4 → 2 点/模块
   const viewBox = readViewBox(barcodeSvg.value)
+  const minDotsPerModule = Math.max(1, Math.round((props.barWidth ?? 2) / 2))
   const layout = viewBox
     ? resolveBarcodeDotLayout({
       unitWidth: viewBox.width / unitPerModule,
@@ -117,11 +119,18 @@ function renderBarcode() {
       boxWidthMm: props.targetWidthMm ?? 0,
       boxHeightMm: props.targetHeightMm ?? 0,
       dpi: props.printerDpi,
+      minDotsPerModule,
     })
     : null
   dotSize.value = layout ? { width: `${layout.widthMm}mm`, height: `${layout.heightMm}mm` } : null
   // 抗锯齿会在条边缘生成灰像素，热敏头只有黑白两态 → 与出图端一致地关掉
   barcodeSvg.value.setAttribute('shape-rendering', 'crispEdges')
+  
+  // 非点对齐模式：给 SVG 设置固有尺寸（基于 barWidth），使其不被 CSS 强制拉伸
+  if (!layout && viewBox) {
+    barcodeSvg.value.setAttribute('width', `${viewBox.width}`)
+    barcodeSvg.value.setAttribute('height', `${viewBox.height}`)
+  }
 }
 
 /** jsbarcode 会把 viewBox 写成 "0 0 W H"；解析失败时返回 null（不启用点对齐） */

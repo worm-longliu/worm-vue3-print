@@ -53,7 +53,9 @@ function renderBarcodeSvg(value: string, opts: CodeRenderOptions): string {
   })
 
   // 归一到「1 单位 = 1 模块」再求点对齐布局
+  // barWidth 影响每模块最少点数：barWidth=2 → 1 点/模块，barWidth=4 → 2 点/模块
   const viewBox = readViewBox(svg)
+  const minDotsPerModule = Math.max(1, Math.round((opts.barWidth ?? 2) / 2))
   const layout = viewBox
     ? resolveBarcodeDotLayout({
       unitWidth: viewBox.width / unitPerModule,
@@ -61,6 +63,7 @@ function renderBarcodeSvg(value: string, opts: CodeRenderOptions): string {
       boxWidthMm: opts.targetWidthMm ?? 0,
       boxHeightMm: opts.targetHeightMm ?? 0,
       dpi: opts.printerDpi,
+      minDotsPerModule,
     })
     : null
   if (layout) {
