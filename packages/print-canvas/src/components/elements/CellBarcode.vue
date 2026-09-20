@@ -16,7 +16,9 @@ import {
   BARCODE_MARGIN_BOTTOM_MODULES,
   BARCODE_QUIET_ZONE_MODULES,
   BARCODE_TEXT_FONT_SIZE_MODULES,
-  resolveBarcodeDotLayout,
+  barcodeAvailableBoxMm,
+  barcodeUnitsPerModule,
+  resolveBarcodeSize,
 } from '@worm-vue3-print/core/designer'
 
 const props = defineProps<{
@@ -47,10 +49,13 @@ const props = defineProps<{
 const barcodeSvg = ref<SVGSVGElement | null>(null)
 const svgOk = ref(false)
 const dataUrl = ref('')
-/** 点对齐后的实际尺寸（mm）；未启用或框放不下时为 null（沿用 100% 填格） */
-const dotSize = ref<{ width: string; height: string } | null>(null)
+/** 结算后的落纸尺寸（mm）；结算失败时为 null（回退等比缩放到单元格内） */
+const size = ref<{ width: string; height: string } | null>(null)
 
-/** 缩放模式 → preserveAspectRatio（内联 svg 不支持 object-fit），与出图端 object-fit 等价映射 */
+/**
+ * 缩放模式 → preserveAspectRatio（内联 svg 不支持 object-fit）。
+ * 单元格条码尺寸由条宽与打印机分辨率结算后显式给出，这里只用于二维码图片与兜底情形。
+ */
 const FIT_TO_PAR = {
   contain: 'xMidYMid meet',
   cover: 'xMidYMid slice',
@@ -64,9 +69,9 @@ const par = computed(
 )
 
 const svgStyle = computed(() => {
-  // 点对齐：尺寸已定死，不再叠加缩放与最大宽高（叠加会把对齐好的尺寸重新缩成非整数点）
-  if (dotSize.value) {
-    return { width: dotSize.value.width, height: dotSize.value.height, maxWidth: 'none', maxHeight: 'none' }
+  // 结算尺寸就是最终 mm（条宽 / 打印机 dpi / 可用框三者算出），不再叠加缩放限制，避免二次缩放
+  if (size.value) {
+    return { width: size.value.width, height: size.value.height }
   }
   return {
     maxWidth: props.maxWidth ? `${props.maxWidth}mm` : '100%',
@@ -86,9 +91,9 @@ const imgStyle = computed(() => ({
  */
 function renderBarcode() {
   svgOk.value = false
-  dotSize.value = null
+  size.value = null
   if (!barcodeSvg.value) return
-  const unitPerModule = Math.max(1, (props.barWidth ?? 2) / 2)
+  const unitPerModule = barcodeUnitsPerModule(props.barWidth)
   try {
     JsBarcode(barcodeSvg.value, props.value, {
       format: (props.barcodeType || 'CODE128') as any,
@@ -108,29 +113,22 @@ function renderBarcode() {
   }
   svgOk.value = true
 
-  // 与出图端共用同一份点对齐算法：条宽吸附到整数打印点
-  // barWidth 影响每模块最少点数：barWidth=2 → 1 点/模块，barWidth=4 → 2 点/模块
+  // 与出图端共用同一份结算算法：条宽定首选尺寸，有 dpi 时吸附到整数打印点，可用宽高不足则等比缩小
   const viewBox = readViewBox(barcodeSvg.value)
-  const minDotsPerModule = Math.max(1, Math.round((props.barWidth ?? 2) / 2))
-  const layout = viewBox
-    ? resolveBarcodeDotLayout({
+  const settled = viewBox
+    ? resolveBarcodeSize({
       unitWidth: viewBox.width / unitPerModule,
       unitHeight: viewBox.height / unitPerModule,
-      boxWidthMm: props.targetWidthMm ?? 0,
-      boxHeightMm: props.targetHeightMm ?? 0,
+      // 最大宽高并入可用框（与出图端同一助手），作为结算上限而非事后 CSS 缩放
+      boxWidthMm: barcodeAvailableBoxMm(props.targetWidthMm, props.maxWidth),
+      boxHeightMm: barcodeAvailableBoxMm(props.targetHeightMm, props.maxHeight),
       dpi: props.printerDpi,
-      minDotsPerModule,
+      barWidth: props.barWidth,
     })
     : null
-  dotSize.value = layout ? { width: `${layout.widthMm}mm`, height: `${layout.heightMm}mm` } : null
+  size.value = settled ? { width: `${settled.widthMm}mm`, height: `${settled.heightMm}mm` } : null
   // 抗锯齿会在条边缘生成灰像素，热敏头只有黑白两态 → 与出图端一致地关掉
   barcodeSvg.value.setAttribute('shape-rendering', 'crispEdges')
-  
-  // 非点对齐模式：给 SVG 设置固有尺寸（基于 barWidth），使其不被 CSS 强制拉伸
-  if (!layout && viewBox) {
-    barcodeSvg.value.setAttribute('width', `${viewBox.width}`)
-    barcodeSvg.value.setAttribute('height', `${viewBox.height}`)
-  }
 }
 
 /** jsbarcode 会把 viewBox 写成 "0 0 W H"；解析失败时返回 null（不启用点对齐） */
@@ -166,7 +164,7 @@ watch(
   () => [
     props.cellType, props.value, props.barcodeType, props.qrCodeLevel, props.showText,
     props.printerDpi, props.targetWidthMm, props.targetHeightMm,
-    props.barWidth, props.barFontSize,
+    props.barWidth, props.barFontSize, props.maxWidth, props.maxHeight,
   ],
   render,
 )
@@ -174,8 +172,8 @@ watch(
 
 <style scoped>
 .cell-barcode { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-/* JsBarcode svg 自带 viewBox，100% + preserveAspectRatio 使条码按单元格等比缩放填满 */
-.cell-barcode svg { width: 100%; height: 100%; }
+/* 条码 svg 自带 viewBox 与结算后的显式 mm 尺寸（内联 style），这里只做溢出兜底 */
+.cell-barcode svg { max-width: 100%; max-height: 100%; }
 .cell-barcode img { max-width: 100%; max-height: 100%; }
 .cell-barcode-fallback { font-style: italic; opacity: 0.6; }
 </style>

@@ -1,27 +1,30 @@
 // print-core/src/render/barcode-dot.ts
-// 条码「打印点对齐」：把条码最终尺寸吸附到打印机点阵网格上。
+// 条码「落纸尺寸」的统一算法：条宽决定首选尺寸，打印机 DPI 决定它必须落在点阵网格上，
+// 可用框不足时等比缩小。设计器画布 / 浏览器出图 / Playwright 服务端三端共用同一份，
+// 否则「设计态看到的条码」与「出纸的条码」不是同一个图形。
 //
-// 背景（实测）：元素框 56.4×14.1mm、CODE128C 79 模块时，单模块 0.318mm，在 203dpi
-// （8 点/mm）下等于 2.55 个打印点。矢量几何在 PDF 里是精确的，但打印机/RIP 只能按整点
-// 成像，非整数条宽会被各自取整（2 点或 3 点交替），再加边缘抗锯齿，出纸即「条宽忽宽忽窄、
-// 边缘发灰」。标签软件之所以清楚，是因为它把窄条宽度定为整数个打印点（如 3 点 = 0.375mm）。
+// 背景（实测）：元素框 56.4×14.1mm、CODE128C 79 模块时，把条码拉伸到填满元素框会得到
+// 单模块 0.318mm，在 203dpi（≈8 点/mm）下是 2.55 个打印点。矢量几何在 PDF 里是精确的，
+// 但打印机/RIP 只能按整点成像，非整数条宽会被各自取整（2 点或 3 点交替），再加边缘抗锯齿，
+// 出纸即「条宽忽宽忽窄、边缘发灰」。标签软件之所以清楚，是因为它把窄条宽度定为整数个打印点
+// （如 3 点 = 0.375mm）。
 //
-// 本模块只做纯计算：给定模块数与可用框（mm）、打印机分辨率（dpi），求出每模块点数与最终
-// 尺寸（mm）。只要最终尺寸恰好等于整数个打印点，整条条码（含文本）的所有边界都落在点网格上。
+// 由此定下三条规则（本次统一的核心）：
+// 1. 首选尺寸来自条宽：每模块 = 每模块用户单位数 × BARCODE_MODULE_WIDTH_MM；可用框装得下就不
+//    放大——放大到填满必然得到非整数条宽，正是要消除的现象；
+// 2. 给了 DPI 时优先适配点阵：首选尺寸吸附到「每模块整数个打印点」，DPI 的优先级高于条宽的
+//    精确毫米值（条宽 0.25mm 在 300dpi 下取 3 点 = 0.254mm）；
+// 3. 可用框放不下首选尺寸时等比缩小：有点阵时按整数点逐级缩小以保住点对齐；连 1 点/模块都
+//    放不下才退回连续等比缩放（此时已无法点对齐，宁可缩小也不让条码溢出可用框）。
 
 /** 1 英寸 = 25.4mm */
 export const MM_PER_INCH = 25.4
 
 /**
- * 条码静区（quiet zone）宽度，单位：模块。
- * jsbarcode 默认 10，此前出图端被写死为 0（左右无静区），
- * EAN13/UPC/ITF14 等码制对静区有强制要求（EAN13 左 11 / 右 7 模块），缺失会直接扫不出。
+ * 以下 jsbarcode 生成参数单位统一为「模块」（1 模块 = 窄条宽度）；调用时需乘以
+ * 每模块用户单位数（jsbarcode 的 width 选项）。设计器画布与出图端必须共用同一份。
  */
-/**
- * jsbarcode 生成参数，单位统一为「模块」（1 模块 = 窄条宽度）；调用时需乘以
- * 每模块用户单位数（jsbarcode 的 width 选项）。设计器画布与出图端必须共用同一份，
- * 否则「设计态看到的条码」与「出纸的条码」不是同一个图形。
- */
+/** 条码静区（quiet zone）宽度（模块）：EAN13/UPC/ITF14 等码制对静区有强制要求，缺失会直接扫不出 */
 export const BARCODE_QUIET_ZONE_MODULES = 10
 /** 条高（模块） */
 export const BARCODE_BAR_HEIGHT_MODULES = 30
@@ -29,87 +32,103 @@ export const BARCODE_BAR_HEIGHT_MODULES = 30
 export const BARCODE_TEXT_FONT_SIZE_MODULES = 10
 /** 文本区与条码图形之间的间距（模块） */
 export const BARCODE_MARGIN_BOTTOM_MODULES = 2
-/**
- * 基础模块宽度（mm）：barWidth=2（unitPerModule=1）时每模块的物理宽度。
- * 用于非点对齐模式下计算条码的绝对物理尺寸，使 barWidth 的变化在屏幕上可见。
- * 0.25mm 是热敏打印机常见最小模块宽度（203dpi 下约 2 个打印点）。
- */
+/** 基础模块宽度（mm）：barWidth=2（每模块用户单位数 1）时每个模块的物理宽度 */
 export const BARCODE_MODULE_WIDTH_MM = 0.25
 
-export interface BarcodeDotLayout {
-  /** 实际使用的打印机分辨率（点/英寸） */
-  dpi: number
-  /** 每模块占用的打印点数（整数） */
-  dotsPerModule: number
-  /** 条码图形最终宽度（mm），= dotsPerModule × 模块数（含左右静区） */
-  widthMm: number
-  /** 条码图形最终高度（mm），= dotsPerModule × 高度模块数 */
-  heightMm: number
-  /** 条码图形最终宽度（打印点数，整数） */
-  widthDots: number
-  /** 条码图形最终高度（打印点数，整数） */
-  heightDots: number
+/** 每模块的用户单位数：与出图端 jsbarcode 的 width 同口径（barWidth=2 → 1，barWidth=4 → 2） */
+export function barcodeUnitsPerModule(barWidth?: number): number {
+  const raw = typeof barWidth === 'number' && Number.isFinite(barWidth) ? barWidth : 2
+  return Math.max(1, raw / 2)
 }
 
-export interface BarcodeDotLayoutInput {
+/** 每模块的首选物理宽度（mm）：条宽倍率每 +1，增加 BARCODE_MODULE_WIDTH_MM / 2 */
+export function barcodePreferredModuleWidthMm(barWidth?: number): number {
+  return barcodeUnitsPerModule(barWidth) * BARCODE_MODULE_WIDTH_MM
+}
+
+export interface BarcodeSizeInput {
   /** 总宽度（模块，含左右静区） */
   unitWidth: number
-  /** 总高度（模块，条高 + 文本区 + 上下间距） */
+  /** 总高度（模块，条高 + 文本区 + 间距） */
   unitHeight: number
-  /** 可用框宽度（mm） */
+  /** 可用框宽度（mm）；≤0 视为未知（不对条码做宽度约束） */
   boxWidthMm: number
-  /** 可用框高度（mm） */
+  /** 可用框高度（mm）；≤0 视为未知 */
   boxHeightMm: number
-  /** 打印机分辨率（点/英寸）；非正数或缺失视为「不对齐」 */
+  /** 打印机分辨率（点/英寸）；非正数或缺失视为「不对齐点阵」 */
   dpi?: number
-  /** 每模块最少点数，缺省 1（热敏建议 ≥2，否则单点宽过细易糊） */
-  minDotsPerModule?: number
+  /** 条码模块宽度倍率（2-4），缺省 2 */
+  barWidth?: number
+}
+
+export interface BarcodeSize {
+  /** 结算后的每模块物理宽度（mm） */
+  moduleWidthMm: number
+  /** 条码图形最终宽度（mm） */
+  widthMm: number
+  /** 条码图形最终高度（mm） */
+  heightMm: number
+  /** 每模块占用的打印点数（整数）；未做点对齐时为 null */
+  dotsPerModule: number | null
+  /** 是否因可用框放不下首选尺寸而发生了等比缩小 */
+  scaledDown: boolean
 }
 
 /**
- * 求条码的点阵对齐布局。
- *
- * 规则：
- * - 如果指定了 minDotsPerModule（由 barWidth 决定），则直接使用它作为每模块点数，
- *   这样 barWidth=2 和 barWidth=4 会产生不同的条宽。
- * - 如果未指定 minDotsPerModule，则取「在可用框内能把条码完整放下」的最大整数点数。
- *
- * 返回 null 表示「这次不做点对齐」，调用方应退回原有的按框缩放路径：
- * 未给 dpi、框尺寸未知，或框小到连 minDotsPerModule 都放不下（此时强行对齐会让条码
- * 溢出元素框，比缩放着印更糟）。
+ * 可用框（mm）并入最大宽高，得到结算尺寸的最终上限：
+ * - 可用框未知（≤0）时，最大宽高即上限；
+ * - 两者都未知时返回 0，交给 resolveBarcodeSize 的「不约束」分支。
+ * 调用侧（画布 / 出图）共用一份，避免「最大宽高在一端生效、在另一端不生效」。
  */
-export function resolveBarcodeDotLayout(input: BarcodeDotLayoutInput): BarcodeDotLayout | null {
-  const dpi = input.dpi
-  if (!dpi || !Number.isFinite(dpi) || dpi <= 0) return null
-  if (!(input.boxWidthMm > 0) || !(input.boxHeightMm > 0)) return null
-
-  const unitWidth = Math.max(1, Math.ceil(input.unitWidth))
-  const unitHeight = Math.max(1, Math.ceil(input.unitHeight))
-  const minDots = Math.max(1, Math.floor(input.minDotsPerModule ?? 1))
-
-  const dotsPerMm = dpi / MM_PER_INCH
-  const fitByWidth = Math.floor((input.boxWidthMm * dotsPerMm) / unitWidth)
-  const fitByHeight = Math.floor((input.boxHeightMm * dotsPerMm) / unitHeight)
-  const maxFitDots = Math.min(fitByWidth, fitByHeight)
-
-  // 如果指定了 minDotsPerModule（barWidth），直接使用它，而不是取最大值
-  // 这样 barWidth 的变化才能在物理尺寸上体现出来
-  const dotsPerModule = input.minDotsPerModule != null ? minDots : maxFitDots
-  if (dotsPerModule > maxFitDots) return null
-
-  const widthDots = unitWidth * dotsPerModule
-  const heightDots = unitHeight * dotsPerModule
-  return {
-    dpi,
-    dotsPerModule,
-    widthDots,
-    heightDots,
-    widthMm: (widthDots * MM_PER_INCH) / dpi,
-    heightMm: (heightDots * MM_PER_INCH) / dpi,
-  }
+export function barcodeAvailableBoxMm(boxMm: number | undefined, maxMm: number | undefined): number {
+  const box = typeof boxMm === 'number' && boxMm > 0 ? boxMm : Number.POSITIVE_INFINITY
+  const limit = typeof maxMm === 'number' && maxMm > 0 ? Math.min(box, maxMm) : box
+  return Number.isFinite(limit) ? limit : 0
 }
 
-/** mm → 打印点数（浮点，便于诊断输出） */
-export function millimetersToDots(mm: number, dpi: number): number {
-  return (mm * dpi) / MM_PER_INCH
+/**
+ * 求条码的落纸尺寸。
+ *
+ * 缩放是等比的：成品宽高始终等于各自的模块数乘以同一个每模块宽度，
+ * 所以「宽度不足」时高度同比缩小，条码不会被拉变形。
+ */
+export function resolveBarcodeSize(input: BarcodeSizeInput): BarcodeSize {
+  const unitWidth = Math.max(1, Math.ceil(input.unitWidth))
+  const unitHeight = Math.max(1, Math.ceil(input.unitHeight))
+  const preferredModuleMm = barcodePreferredModuleWidthMm(input.barWidth)
+  // 可用框折算出的每模块上限：宽高各算一次取小者，即等比缩放下能放下的最大值
+  const maxModuleMm = Math.min(
+    input.boxWidthMm > 0 ? input.boxWidthMm / unitWidth : Number.POSITIVE_INFINITY,
+    input.boxHeightMm > 0 ? input.boxHeightMm / unitHeight : Number.POSITIVE_INFINITY,
+  )
+
+  const dpi = input.dpi
+  if (typeof dpi === 'number' && Number.isFinite(dpi) && dpi > 0) {
+    const dotsPerMm = dpi / MM_PER_INCH
+    // DPI 优先：首选条宽换算成打印点后取整，落在点阵网格上
+    const preferredDots = Math.max(1, Math.round(preferredModuleMm * dotsPerMm))
+    // 可用框允许的最大整数点数；< 1 表示连 1 点/模块都放不下，点对齐不可行
+    const maxDots = Math.floor(maxModuleMm * dotsPerMm)
+    if (maxDots >= 1) {
+      const dotsPerModule = Math.min(preferredDots, maxDots)
+      const moduleWidthMm = dotsPerModule / dotsPerMm
+      return {
+        moduleWidthMm,
+        widthMm: unitWidth * moduleWidthMm,
+        heightMm: unitHeight * moduleWidthMm,
+        dotsPerModule,
+        scaledDown: dotsPerModule < preferredDots,
+      }
+    }
+    // 连 1 点/模块都放不下 → 落到下方：放弃点对齐，按框等比缩放（比让条码溢出可用框更好）
+  }
+
+  const moduleWidthMm = Math.min(preferredModuleMm, maxModuleMm)
+  return {
+    moduleWidthMm,
+    widthMm: unitWidth * moduleWidthMm,
+    heightMm: unitHeight * moduleWidthMm,
+    dotsPerModule: null,
+    scaledDown: moduleWidthMm < preferredModuleMm,
+  }
 }

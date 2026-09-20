@@ -27,10 +27,23 @@ function makeElement(options: Partial<RuntimeElement['options']> = {}): RuntimeE
 
 function mountBarcode(options: Partial<RuntimeElement['options']> = {}) {
   const element = reactive(makeElement(options))
+  // jsbarcode 真实实现在此被桩掉：按其入参补一个成比例的 viewBox，才能走到尺寸结算逻辑
+  // （真实 jsbarcode 会以「模块 × 每模块用户单位数」为画布，即 99×44 模块再乘 opts.width）
+  vi.mocked(JsBarcode).mockImplementation((svg: any, _value: string, opts: any) => {
+    const unit = Number(opts?.width) || 1
+    svg.setAttribute?.('viewBox', `0 0 ${99 * unit} ${44 * unit}`)
+    return svg
+  })
   const wrapper = mount(BarcodeElement, {
     props: { element, designMode: true },
   })
   return { wrapper, element }
+}
+
+/** 取 svg style 里的宽/高（mm） */
+function mmOf(wrapper: ReturnType<typeof mount>, prop: 'width' | 'height'): number {
+  const style = wrapper.find('svg').attributes('style') ?? ''
+  return Number(new RegExp(`(?:^|;)\\s*${prop}:\\s*([\\d.]+)mm`).exec(style)?.[1])
 }
 
 describe('BarcodeElement 宽/高/条码设置变更即时重渲染', () => {
@@ -89,27 +102,43 @@ describe('BarcodeElement 等比填满元素框', () => {
   })
 })
 
-describe('BarcodeElement 自定义设置（缩放模式 / 最大宽高）', () => {
-  it('fit 映射到 preserveAspectRatio（内联 svg 不支持 object-fit）', () => {
-    expect(mountBarcode({ fit: 'fill' }).wrapper.find('svg').attributes('preserveAspectRatio')).toBe('none')
-    expect(mountBarcode({ fit: 'cover' }).wrapper.find('svg').attributes('preserveAspectRatio')).toBe('xMidYMid slice')
-    expect(mountBarcode({ fit: 'scale-down' }).wrapper.find('svg').attributes('preserveAspectRatio')).toBe('xMidYMid meet')
+/** 挂载并等 DOM 刷新：尺寸在 onMounted 结算，需下一次 tick 才落到 style */
+async function mountSettled(options: Partial<RuntimeElement['options']> = {}) {
+  const { wrapper, element } = mountBarcode(options)
+  await nextTick()
+  return { wrapper, element }
+}
+
+describe('BarcodeElement 按条宽 / 打印机 dpi 结算尺寸', () => {
+  it('未设 dpi：尺寸 = 模块数 × 条宽（宽度足够时不放大填满）', async () => {
+    const { wrapper } = await mountSettled()
+    // 99×44 模块 × 0.25mm（barWidth=2），元素框 56.4×14.1mm 装得下
+    expect(mmOf(wrapper, 'width')).toBeCloseTo(99 * 0.25, 6)
+    expect(mmOf(wrapper, 'height')).toBeCloseTo(44 * 0.25, 6)
   })
 
-  it('未设置 fit 时按 contain 处理', () => {
-    expect(mountBarcode().wrapper.find('svg').attributes('preserveAspectRatio')).toBe('xMidYMid meet')
+  it('元素框放不下时等比缩小（宽高比不变、不溢出）', async () => {
+    const { wrapper } = await mountSettled({ barWidth: 4, height: 8 })
+    expect(mmOf(wrapper, 'height')).toBeLessThanOrEqual(8)
+    expect(mmOf(wrapper, 'width') / mmOf(wrapper, 'height')).toBeCloseTo(99 / 44, 6)
   })
 
-  it('maxWidth / maxHeight 以 mm 约束 svg，未设置时回落 100%（与出图端同口径）', async () => {
+  it('设置 dpi：尺寸吸附到整数打印点（dpi 优先于条宽的毫米值）', async () => {
+    const { wrapper } = await mountSettled({ printerDpi: 203 })
+    const widthDots = (mmOf(wrapper, 'width') * 203) / 25.4
+    // DOM 序列化把 mm 截断到 6 位小数（≈1nm），折算回点的偏差远小于一个打印点
+    expect(Math.abs(widthDots - Math.round(widthDots))).toBeLessThan(1e-5)
+    // 203dpi 下 0.25mm ≈ 2 点
+    expect(mmOf(wrapper, 'width')).toBeCloseTo((99 * 2 * 25.4) / 203, 6)
+  })
+
+  it('最大宽高并入可用框参与结算，而不是事后 CSS 缩放', async () => {
     const { wrapper, element } = mountBarcode()
-    const svg = wrapper.find('svg')
-    expect(svg.attributes('style')).toMatch(/max-width:\s*100%/)
-    expect(svg.attributes('style')).toMatch(/max-height:\s*100%/)
-
     element.options.maxWidth = 30
     element.options.maxHeight = 10
     await nextTick()
-    expect(svg.attributes('style')).toMatch(/max-width:\s*30mm/)
-    expect(svg.attributes('style')).toMatch(/max-height:\s*10mm/)
+    expect(mmOf(wrapper, 'width')).toBeLessThanOrEqual(30)
+    expect(mmOf(wrapper, 'height')).toBeLessThanOrEqual(10)
+    expect(wrapper.find('svg').attributes('style')).not.toMatch(/max-width/)
   })
 })

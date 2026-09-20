@@ -15,7 +15,8 @@ import {
   BARCODE_MARGIN_BOTTOM_MODULES,
   BARCODE_QUIET_ZONE_MODULES,
   BARCODE_TEXT_FONT_SIZE_MODULES,
-  resolveBarcodeDotLayout,
+  barcodeUnitsPerModule,
+  resolveBarcodeSize,
 } from '../render/barcode-dot.js'
 import type { CodeRenderer, CodeRenderOptions } from '../render/types.js'
 
@@ -33,11 +34,12 @@ function readViewBox(svg: SVGSVGElement): { width: number; height: number } | nu
 /**
  * 条形码：jsbarcode 渲染到离体 SVG 元素，取 outerHTML。
  * 所有 jsbarcode 参数都以「模块」为单位再乘以每模块用户单位数，使条码图形与倍率无关；
- * 落纸尺寸由 printerDpi 整数点对齐（width/height 用 mm 表达）或外部缩放决定。
+ * 落纸尺寸由统一的结算算法给出（见 render/barcode-dot.ts）：条宽定首选尺寸、
+ * 有 printerDpi 时吸附到整数打印点、可用框放不下则等比缩小，故这里总是写成 mm。
  */
 function renderBarcodeSvg(value: string, opts: CodeRenderOptions): string {
   const svg = document.createElementNS(SVG_NS, 'svg') as SVGSVGElement
-  const unitPerModule = Math.max(1, (opts.barWidth ?? 2) / 2)
+  const unitPerModule = barcodeUnitsPerModule(opts.barWidth)
   JsBarcode(svg as unknown as SVGElement, value, {
     format: (opts.barcodeType || 'CODE128') as unknown as string,
     width: unitPerModule,
@@ -52,23 +54,20 @@ function renderBarcodeSvg(value: string, opts: CodeRenderOptions): string {
     marginBottom: BARCODE_MARGIN_BOTTOM_MODULES * unitPerModule,
   })
 
-  // 归一到「1 单位 = 1 模块」再求点对齐布局
-  // barWidth 影响每模块最少点数：barWidth=2 → 1 点/模块，barWidth=4 → 2 点/模块
+  // 归一到「1 单位 = 1 模块」再求落纸尺寸：条宽定首选、DPI 定点阵、框不够就等比缩小
   const viewBox = readViewBox(svg)
-  const minDotsPerModule = Math.max(1, Math.round((opts.barWidth ?? 2) / 2))
-  const layout = viewBox
-    ? resolveBarcodeDotLayout({
+  if (viewBox) {
+    const size = resolveBarcodeSize({
       unitWidth: viewBox.width / unitPerModule,
       unitHeight: viewBox.height / unitPerModule,
       boxWidthMm: opts.targetWidthMm ?? 0,
       boxHeightMm: opts.targetHeightMm ?? 0,
       dpi: opts.printerDpi,
-      minDotsPerModule,
+      barWidth: opts.barWidth,
     })
-    : null
-  if (layout) {
-    svg.setAttribute('width', `${layout.widthMm}mm`)
-    svg.setAttribute('height', `${layout.heightMm}mm`)
+    // 尺寸不取整：mm 数值一旦被四舍五入，折算回打印点就不再是整数，点对齐随之失效
+    svg.setAttribute('width', `${size.widthMm}mm`)
+    svg.setAttribute('height', `${size.heightMm}mm`)
   }
 
   svg.setAttribute('shape-rendering', 'crispEdges')

@@ -11,10 +11,11 @@ import { resolveTextBinding } from '@worm-vue3-print/core/designer'
 import {
   BARCODE_BAR_HEIGHT_MODULES,
   BARCODE_MARGIN_BOTTOM_MODULES,
-  BARCODE_MODULE_WIDTH_MM,
   BARCODE_QUIET_ZONE_MODULES,
   BARCODE_TEXT_FONT_SIZE_MODULES,
-  resolveBarcodeDotLayout,
+  barcodeAvailableBoxMm,
+  barcodeUnitsPerModule,
+  resolveBarcodeSize,
 } from '@worm-vue3-print/core/designer'
 import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 
@@ -25,13 +26,13 @@ const props = defineProps<{
 }>()
 
 const svgRef = ref<SVGSVGElement | null>(null)
-/** 点对齐后的实际尺寸（mm）；未启用打印机 dpi 时为 null（沿用 100% 填框） */
-const dotSize = ref<{ width: string; height: string } | null>(null)
+/** 结算后的落纸尺寸（mm）：与出图端同源（条宽定首选 → DPI 吸附 → 框不够等比缩小） */
+const size = ref<{ width: string; height: string } | null>(null)
 
 /**
- * 缩放模式 → preserveAspectRatio（内联 svg 不支持 object-fit）：
- * 出图端是 `<img>` 上的 object-fit，这里用等比映射保持一致。
- * `none`（原始尺寸）出图端按 SVG 固有尺寸居中，设计态退化为 meet，仅此一项不严格等价。
+ * 缩放模式 → preserveAspectRatio（内联 svg 不支持 object-fit）。
+ * 条码尺寸由条宽与打印机分辨率结算，不再被拉伸填满元素框，故这里只作兜底：
+ * 结算尺寸缺失（viewBox 解析失败等极端情形）时才让 CSS 接管等比适配。
  */
 const FIT_TO_PAR = {
   contain: 'xMidYMid meet',
@@ -46,27 +47,20 @@ const preserveAspectRatio = computed(
 )
 
 /**
- * 点对齐时按整数打印点的 mm 尺寸落纸（与出图端同源）：尺寸已定死，
- * 不再叠加缩放模式与最大宽高（叠加会把刚对齐好的尺寸重新缩成非整数点）。
- * 未启用点对齐（未设 dpi 或框不下）时按物理尺寸显示，不强制填满容器。
+ * 显式给出结算后的 mm 尺寸（与出图端同一份算法），未结算成功时回退等比缩放到元素框内。
  */
 const svgStyle = computed(() => {
-  const o = props.element.options
-  if (dotSize.value) {
-    return { width: dotSize.value.width, height: dotSize.value.height, maxWidth: 'none', maxHeight: 'none' }
+  if (size.value) {
+    return { width: size.value.width, height: size.value.height }
   }
-  // 非点对齐：按物理尺寸显示，不强制填满容器，这样 barWidth 的变化才能在视觉上体现
-  return {
-    maxWidth: 'none',
-    maxHeight: 'none',
-  }
+  return { maxWidth: '100%', maxHeight: '100%' }
 })
 
 function render() {
   if (!svgRef.value) return
   const o = props.element.options
   const value = (props.designMode ? (o.testData || o.formatter) : resolveTextBinding(o, props.data)) || '条码'
-  const unitPerModule = Math.max(1, (o.barWidth ?? 2) / 2)
+  const unitPerModule = barcodeUnitsPerModule(o.barWidth)
   try {
     JsBarcode(svgRef.value, value, {
       format: (o.barcodeType || 'CODE128') as any,
@@ -82,35 +76,26 @@ function render() {
       marginBottom: BARCODE_MARGIN_BOTTOM_MODULES * unitPerModule,
     })
   } catch {
-    dotSize.value = null
+    size.value = null
     return /* 码值不符合码制：保留空白 svg */
   }
 
-  // 与出图端共用同一份点对齐算法：条宽吸附到整数打印点
+  // 与出图端共用同一份结算算法：条宽定首选尺寸，有 dpi 时吸附到整数打印点，框不够则等比缩小
   const viewBox = readViewBox(svgRef.value)
-  const layout = viewBox
-    ? resolveBarcodeDotLayout({
+  const settled = viewBox
+    ? resolveBarcodeSize({
       unitWidth: viewBox.width / unitPerModule,
       unitHeight: viewBox.height / unitPerModule,
-      boxWidthMm: o.width || 0,
-      boxHeightMm: o.height || 0,
+      // 最大宽高并入可用框：与出图端一致地作为结算上限，而不是事后用 CSS 再缩一次
+      boxWidthMm: barcodeAvailableBoxMm(o.width, o.maxWidth),
+      boxHeightMm: barcodeAvailableBoxMm(o.height, o.maxHeight),
       dpi: o.printerDpi,
+      barWidth: o.barWidth,
     })
     : null
-  dotSize.value = layout ? { width: `${layout.widthMm}mm`, height: `${layout.heightMm}mm` } : null
+  size.value = settled ? { width: `${settled.widthMm}mm`, height: `${settled.heightMm}mm` } : null
   // 抗锯齿会在条边缘生成灰像素，热敏头只有黑白两态 → 与出图端一致地关掉
   svgRef.value.setAttribute('shape-rendering', 'crispEdges')
-  
-  // 非点对齐模式：根据 barWidth 计算条码物理尺寸（mm），使其不被 CSS 强制拉伸
-  // barWidth 越大，条码物理尺寸越大，视觉上条越粗
-  // 物理尺寸 = viewBox 尺寸 × 基础模块宽度 × unitPerModule
-  // viewBox 已包含 unitPerModule 缩放，再乘以 unitPerModule 使物理尺寸与 barWidth 成正比
-  if (!layout && viewBox) {
-    const widthMm = viewBox.width * BARCODE_MODULE_WIDTH_MM * unitPerModule
-    const heightMm = viewBox.height * BARCODE_MODULE_WIDTH_MM * unitPerModule
-    svgRef.value.setAttribute('width', `${widthMm}mm`)
-    svgRef.value.setAttribute('height', `${heightMm}mm`)
-  }
 }
 
 /** jsbarcode 会把 viewBox 写成 "0 0 W H"；解析失败时返回 null（不启用点对齐） */
@@ -132,6 +117,8 @@ watch(
     props.element.options.printerDpi,
     props.element.options.hideTitle,
     props.element.options.fontSize,
+    props.element.options.maxWidth,
+    props.element.options.maxHeight,
   ],
   render,
 )

@@ -75,14 +75,39 @@ describe('browserCodeRenderer 条形码打印质量（热敏出纸清晰度）',
     expect(heightMm).toBeLessThanOrEqual(14.1)
   })
 
-  it('未提供 printerDpi 时保留 jsbarcode 的 px 尺寸（不写 mm，行为不变）', () => {
-    expect(browserCodeRenderer.render('12345678', 'barcode', {})).not.toMatch(/width="[\d.]+mm"/)
+  it('未设 printerDpi 时按条宽折算 mm 尺寸（99×44 模块 × 0.25mm）', () => {
+    const svg = browserCodeRenderer.render('12345678', 'barcode', {})
+    expect(svg).toMatch(/width="24.75mm"/)
+    expect(svg).toMatch(/height="11mm"/)
   })
 
-  it('可用框放不下整数点布局时退回像素尺寸（不为对齐而让条码溢出元素框）', () => {
-    expect(browserCodeRenderer.render('12345678', 'barcode', {
+  it('条宽加倍 → 尺寸同比加倍（barWidth 是尺寸的第一来源）', () => {
+    const thin = browserCodeRenderer.render('12345678', 'barcode', {})
+    const thick = browserCodeRenderer.render('12345678', 'barcode', { barWidth: 4 })
+    const w = (s: string) => Number(/width="([\d.]+)mm"/.exec(s)?.[1])
+    expect(w(thick)).toBeCloseTo(w(thin) * 2, 9)
+  })
+
+  it('可用框放不下首选尺寸时等比缩小到框内（宁可缩小，也不让条码溢出元素框）', () => {
+    const svg = browserCodeRenderer.render('12345678', 'barcode', {
       printerDpi: 203, targetWidthMm: 56.4, targetHeightMm: 0.5,
-    })).not.toMatch(/width="[\d.]+mm"/)
+    })
+    const widthMm = Number(/width="([\d.]+)mm"/.exec(svg)?.[1])
+    const heightMm = Number(/height="([\d.]+)mm"/.exec(svg)?.[1])
+    expect(heightMm).toBeCloseTo(0.5, 6)
+    // 等比：宽高比保持 99:44
+    expect(widthMm / heightMm).toBeCloseTo(99 / 44, 6)
+  })
+
+  it('打印机分辨率下可用宽度不足：按整数点逐级缩小，始终保持点对齐', () => {
+    const svg = browserCodeRenderer.render('12345678', 'barcode', {
+      printerDpi: 203, targetWidthMm: 15, targetHeightMm: 14.1,
+    })
+    const widthMm = Number(/width="([\d.]+)mm"/.exec(svg)?.[1])
+    const heightMm = Number(/height="([\d.]+)mm"/.exec(svg)?.[1])
+    expect(widthMm).toBeLessThanOrEqual(15)
+    expect((widthMm * 203) / 25.4).toBeCloseTo(Math.round((widthMm * 203) / 25.4), 6)
+    expect((heightMm * 203) / 25.4).toBeCloseTo(Math.round((heightMm * 203) / 25.4), 6)
   })
 })
 

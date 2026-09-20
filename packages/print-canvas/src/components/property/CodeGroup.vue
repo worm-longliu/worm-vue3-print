@@ -15,21 +15,23 @@
         </div>
         <div class="pd-field" v-show="showItem('cd-dpi')"><span class="pd-label">打印机分辨率</span>
           <select class="pd-select" :value="dpiValue" @change="onDpiChange">
-            <option value="">不对齐（按元素框缩放）</option>
+            <option value="">不指定（按条宽渲染）</option>
             <option value="203">203 dpi（8 点/mm）</option>
             <option value="300">300 dpi（11.8 点/mm）</option>
             <option value="600">600 dpi（23.6 点/mm）</option>
           </select>
         </div>
-        <p class="pd-hint" v-show="showItem('cd-dpi')">填写后条宽吸附到整数打印点（消除出纸「条宽忽宽忽窄」）；条码尺寸按元素框宽高与该分辨率反算，元素框宽度此时真正生效</p>
-        <div class="pd-field" v-if="!dotAligned" v-show="showItem('cd-bar-width')"><span class="pd-label">条宽（倍率）</span>
+        <p class="pd-hint" v-show="showItem('cd-dpi')">填写后条宽吸附到整数打印点（消除出纸「条宽忽宽忽窄」）：条码先按条宽渲染，可用宽度够就原样落纸，不够才整体等比缩小</p>
+        <div class="pd-field" v-show="showItem('cd-bar-width')"><span class="pd-label">条宽（倍率）</span>
           <StepperInput :model-value="element.options.barWidth ?? 2"
             :min="2"
             :max="4"
             :step="0.5"
             @update:model-value="element.options.barWidth = $event; emitChange()" />
         </div>
-        <p class="pd-hint" v-else v-show="showItem('cd-bar-width')">条宽已由打印机分辨率自动对齐到整数打印点，无需手工调整</p>
+        <p class="pd-hint" v-show="showItem('cd-bar-width')">{{ dotAligned
+          ? '已设置打印机分辨率：条宽会被吸附到最近的整数打印点（DPI 优先于毫米值），元素框放不下时整体等比缩小'
+          : '热敏/针式打印建议 3 及以上：决定条码的落纸尺寸，条越粗出纸后条宽越稳定' }}</p>
         <div class="pd-field" v-show="showItem('cd-show-text')"><span class="pd-label">显示文本</span>
           <input :checked="element.options.hideTitle !== true" type="checkbox" class="pd-switch"
             @input="element.options.hideTitle = ($event.target as HTMLInputElement).checked ? undefined : true; emitChange()" />
@@ -56,8 +58,8 @@
       </template>
 
       <h3 class="pd-divider">自定义设置</h3>
-      <p class="pd-hint" v-if="dotAligned">条码尺寸已按整数打印点对齐，由元素框与打印机分辨率决定；缩放模式与最大宽高此时不参与，需要它们请把「打印机分辨率」改为「不对齐」</p>
-      <div class="pd-field" v-if="!dotAligned" v-show="showItem('cd-fit')"><span class="pd-label">缩放模式</span>
+      <p class="pd-hint" v-if="isBarcode">条码尺寸由「条宽」与「打印机分辨率」结算：宽度足够时按条宽原样落纸，不足时整体等比缩小；拉伸会把条宽变成非整数，故条形码不提供缩放模式，可用「最大宽高」限制上限</p>
+      <div class="pd-field" v-if="!isBarcode" v-show="showItem('cd-fit')"><span class="pd-label">缩放模式</span>
         <select class="pd-select" :value="element.options.fit || 'contain'" @change="onFitChange">
           <option value="contain">包含（保持比例）</option>
           <option value="cover">覆盖（保持比例）</option>
@@ -66,14 +68,14 @@
           <option value="scale-down">缩小（保持比例）</option>
         </select>
       </div>
-      <div class="pd-field" v-if="!dotAligned" v-show="showItem('cd-max-width')"><span class="pd-label">最大宽度 (mm)</span>
+      <div class="pd-field" v-show="showItem('cd-max-width')"><span class="pd-label">最大宽度 (mm)</span>
         <StepperInput :model-value="element.options.maxWidth"
           :min="1"
           :max="200"
           placeholder="默认"
           @update:model-value="element.options.maxWidth = $event ?? undefined; emitChange()" />
       </div>
-      <div class="pd-field" v-if="!dotAligned" v-show="showItem('cd-max-height')"><span class="pd-label">最大高度 (mm)</span>
+      <div class="pd-field" v-show="showItem('cd-max-height')"><span class="pd-label">最大高度 (mm)</span>
         <StepperInput :model-value="element.options.maxHeight"
           :min="1"
           :max="200"

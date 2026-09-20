@@ -48,7 +48,9 @@ describe('renderHtmlPages', () => {
       ],
     } as unknown as TemplateData
     const result = await renderHtmlPages(codeTemplate, {})
-    expect(result.html).toContain('data:image/svg+xml')
+    // 条形码按结算尺寸内联 SVG（<img> 会把 mm 内在尺寸取整到 CSS px）
+    expect(result.html).toContain('<svg')
+    expect(result.html).not.toContain('data:image/svg+xml')
     expect(result.html).not.toContain('<span>123456789012</span>')
   })
 })

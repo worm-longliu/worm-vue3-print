@@ -87,7 +87,9 @@ describe('prepareDocument', () => {
     }
     const result = await prepareDocument(job, runtime)
     expect(fake.calls.filter(call => call === 'evaluate:renderCodes')).toHaveLength(1)
-    expect(result.html).toContain('data:image/svg+xml')
+    // 条形码按结算尺寸内联 SVG（尺寸需精确到 mm，不能走 <img> 的像素取整）
+    expect(result.html).toContain('<svg')
+    expect(result.html).not.toContain('data:image/svg+xml')
     expect(result.html).not.toContain('<span>12345678</span>')
   })
 })

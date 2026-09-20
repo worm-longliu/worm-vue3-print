@@ -187,11 +187,12 @@ export interface TableCell {
   showBarcodeText?: boolean   // 条形码下方是否显示文本，仅 cellType='barcode' 时生效
   /**
    * 打印机分辨率（点/英寸，常见 203/300/600），仅 cellType='barcode' 时生效：
-   * 给出后条形码尺寸吸附到整数打印点（框尺寸 = 单元格可用宽高），
-   * 消除热敏出纸「条宽忽宽忽窄」。缺省不启用（保持原缩放行为）。
+   * 条形码尺寸由「条宽 → dpi → 等比缩小」结算（见 render/barcode-dot.ts），
+   * 给出本字段时首选尺寸吸附到整数打印点（dpi 优先于条宽的精确毫米值），
+   * 单元格可用宽高不足则整体等比缩小，消除热敏出纸「条宽忽宽忽窄」。
    */
   printerDpi?: number
-  /** 条码模块宽度倍率（2-4），仅 cellType='barcode' 时生效；启用 printerDpi 点对齐时被自动取整取代 */
+  /** 条码模块宽度倍率（2-4），仅 cellType='barcode' 时生效：每模块首选宽度 = 倍率/2 × 0.25mm */
   barWidth?: number
   /** 条码下方文本字号（相对条高，条高为 30），仅 cellType='barcode' 时生效 */
   barFontSize?: number
@@ -283,13 +284,14 @@ export interface ElementOptions {
   barWidth?: number
   barAutoWidth?: string
   /**
-   * 打印机分辨率（点/英寸，常见 203/300/600）：给出后条形码尺寸吸附到整数打印点，
-   * 消除「条宽非整数点 → 出纸被取整忽宽忽窄」的问题。缺省不启用（保持原缩放行为）。
+   * 打印机分辨率（点/英寸，常见 203/300/600）：条形码尺寸由「条宽 → dpi → 等比缩小」结算
+   * （见 render/barcode-dot.ts），给出本字段时首选尺寸吸附到整数打印点，dpi 优先于条宽的
+   * 精确毫米值；可用框放不下则整体等比缩小。缺省不启用（按条宽的毫米值落纸）。
    */
   printerDpi?: number
   qrCodeLevel?: string
   src?: string
-  /** 内容缩放模式（image/barcode/qrcode）：contain | cover | fill | none | scale-down */
+  /** 内容缩放模式（image/qrcode）：contain | cover | fill | none | scale-down。条形码不接受拉伸——尺寸已由结算确定 */
   fit?: string
   /** 内容最大宽度（mm，image/barcode/qrcode）；缺省不限制 */
   maxWidth?: number

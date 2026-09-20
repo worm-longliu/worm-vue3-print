@@ -36,7 +36,7 @@ function mountGroup(element: RuntimeElement) {
   })
 }
 
-/** 单元格分组内的下拉顺序：单元格类型（radio，非 select）→ 码制 → 打印机分辨率 → 缩放模式 */
+/** 单元格分组内的下拉顺序：单元格类型（radio，非 select）→ 码制 → 打印机分辨率 → 边框样式 */
 function selects(w: ReturnType<typeof mountGroup>) {
   return w.findAll('select')
 }
@@ -60,16 +60,16 @@ describe('TableCellGroup 条形码单元格打印机分辨率', () => {
     expect(element.options.tableRows![0]!.cells[0]!.printerDpi).toBeUndefined()
   })
 
-  it('启用 dpi 后移除缩放模式与最大宽高（点对齐时它们不参与）', () => {
+  it('条形码单元格不提供缩放模式，最大宽高作为结算上限始终可用', () => {
     const manual = mountGroup(makeElement({ cellType: 'barcode' }))
     const aligned = mountGroup(makeElement({ cellType: 'barcode', printerDpi: 203 }))
-    // 下拉：码制 / 打印机分辨率 / 缩放模式 / 边框样式 → 点对齐后缩放模式被移除
-    expect(selects(manual)).toHaveLength(4)
+    // 下拉：码制 / 打印机分辨率 / 边框样式 → 与是否设置 dpi 无关（条形码无缩放模式）
+    expect(selects(manual)).toHaveLength(3)
     expect(selects(aligned)).toHaveLength(3)
-    // 最大宽度/最大高度字段一并移除（提示文案里只有「最大宽高」四字，不含字段名）
+    // 最大宽度/最大高度并入可用框参与结算，两种模式下都保留
     expect(manual.text()).toContain('最大宽度')
-    expect(aligned.text()).not.toContain('最大宽度')
-    expect(aligned.text()).toContain('缩放模式与最大宽高此时不参与')
+    expect(aligned.text()).toContain('最大宽度')
+    expect(aligned.text()).toContain('可用「最大宽高」限制上限')
   })
 
   it('非条形码单元格没有打印机分辨率（二维码模块数固定，图片无关）', () => {

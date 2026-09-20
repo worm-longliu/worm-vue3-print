@@ -65,16 +65,14 @@ describe('CodeGroup 条形码元素：码制与自定义设置', () => {
     expect(element.options.barWidth).toBe(3)
   })
 
-  it('自定义设置：缩放模式与最大宽高写入 options', async () => {
+  it('自定义设置：最大宽高写入 options（条形码不提供缩放模式，尺寸由条宽与 dpi 结算）', async () => {
     const element = makeElement('barcode', {})
     const w = mountCodeGroup(element)
-    // select 顺序：码制 / 打印机分辨率 / 缩放模式
-    const fit = w.findAll('select')[2]!
-    expect(value(fit)).toBe('contain')
+    // 下拉只有码制与打印机分辨率：拉伸会把条宽拉成非整数，故条形码没有缩放模式字段
+    expect(w.findAll('select')).toHaveLength(2)
+    expect(w.findAll('.pd-label').map(n => n.text())).not.toContain('缩放模式')
 
-    await fit.setValue('fill')
-    expect(element.options.fit).toBe('fill')
-
+    // 数字输入顺序：条宽 / 文本字号 / 最大宽度 / 最大高度
     const numbers = w.findAll('input[type="number"]')
     await numbers[2]!.setValue('30')
     await numbers[2]!.trigger('change')
@@ -106,28 +104,24 @@ describe('CodeGroup 打印机分辨率（条宽点对齐）', () => {
     expect(element.options.printerDpi).toBeUndefined()
   })
 
-  it('启用 dpi 后隐藏手工条宽倍率，改为提示条宽自动对齐', () => {
+  it('条宽始终可调：它是落纸尺寸的第一来源，dpi 在此基础上吸附整数点', () => {
     const manual = mountCodeGroup(makeElement('barcode', {}))
-    expect(manual.text()).toContain('条宽（倍率）')
-
     const aligned = mountCodeGroup(makeElement('barcode', { printerDpi: 203 }))
-    expect(aligned.text()).not.toContain('条宽（倍率）')
-    expect(aligned.text()).toContain('自动对齐到整数打印点')
+    expect(manual.text()).toContain('条宽（倍率）')
+    expect(aligned.text()).toContain('条宽（倍率）')
+    expect(aligned.text()).toContain('吸附到最近的整数打印点')
   })
 
-  it('启用 dpi 后移除缩放模式与最大宽高（点对齐时它们不参与，需先切回不对齐）', () => {
+  it('最大宽高始终可用：作为结算上限参与，而非事后 CSS 缩放', () => {
     const manual = mountCodeGroup(makeElement('barcode', {}))
     const aligned = mountCodeGroup(makeElement('barcode', { printerDpi: 203 }))
-
-    // 下拉：码制 / 打印机分辨率 / 缩放模式 → 点对齐后缩放模式被移除
-    expect(manual.findAll('select')).toHaveLength(3)
+    // 下拉：码制 / 打印机分辨率（条形码无缩放模式）
+    expect(manual.findAll('select')).toHaveLength(2)
     expect(aligned.findAll('select')).toHaveLength(2)
-
-    // 数字输入：条宽 / 文本字号 / 最大宽度 / 最大高度 → 点对齐后只剩文本字号
+    // 数字输入：条宽 / 文本字号 / 最大宽度 / 最大高度 → 与是否点对齐无关
     expect(manual.findAll('input[type="number"]')).toHaveLength(4)
-    expect(aligned.findAll('input[type="number"]')).toHaveLength(1)
-
-    expect(aligned.text()).toContain('缩放模式与最大宽高此时不参与')
+    expect(aligned.findAll('input[type="number"]')).toHaveLength(4)
+    expect(aligned.text()).toContain('可用「最大宽高」限制上限')
   })
 
   it('二维码不受 dpi 影响，仍显示缩放模式与最大宽高', () => {
