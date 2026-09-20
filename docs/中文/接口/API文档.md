@@ -60,6 +60,10 @@ import {
   WATERMARK_DEFAULTS, WATERMARK_DENSITY_PRESETS, PX_PER_MM, MM_PER_PX,
   isWatermarkVisible, resolveWatermarkText, formatTimestamp,
   resolveWatermarkLayout, renderWatermarkTileSvg, renderWatermarkLayerHtml,
+  // 多页面模板（一份文档多个版式）
+  normalizeTemplate, isMultiPageTemplate, mergeFontDeclarations, composeMultiPageDocument,
+  // 批量打印（printData 数组）
+  normalizePrintData, MAX_BATCH_COPIES, composeBatchHtml,
 } from '@worm-vue3-print/core'
 ```
 
@@ -78,6 +82,12 @@ import {
 | `cellFitCapMm(rows, rowIndex, cell, defaultPadding?)` | 单元格可用内容高度（mm）：所跨行高 − 内边距 − 塌陷边框 |
 | `cellFitKey(...)` / `parseCellFitKey(key)` | 单元格自动缩小结果的键（`元素id#行类别#行:列`）构造与解析 |
 | `applyTextFitSizes(template, fits)` | 把测量趟求得的自动缩小字号回写绑定后的模板（元素 `_fitFontSize` / 单元格 `fittedFontSize`） |
+| `normalizeTemplate(templateJson)` | 多页面归一化：单模板 → `[t]`，wrapper → 各页 + 统一校验（至少 1 页 / 各页纸张一致 / 不支持连续纸与拼版），失败抛中文错误；`PrintJob`、`RenderRequest` 与 `renderHtmlPages` 都可直接收联合类型，调用方一般无需显式调用 |
+| `isMultiPageTemplate(templateJson)` | 是否含 `pages` 数组（与 `normalizeTemplate` 判据一致，便于宿主分支处理） |
+| `mergeFontDeclarations(pages)` | 合并多个页面模板的字体声明，按 `family` 去重、保留首个 |
+| `composeMultiPageDocument(copies)` | 把多页面模板的多份（或多份 × 多页）产物拼为一个 HTML 文档 |
+| `normalizePrintData(raw)` / `MAX_BATCH_COPIES` | 打印数据归一（对象 → single，非空对象数组 → batch）与批量份数上限 **500** |
+| `composeBatchHtml(copies)` | 把同一模板的多份单份产物合并为一个 HTML 文档（份间强制分页；连续纸走命名页） |
 
 打印管线命名空间（`print/`，主入口通过 `export *` 转出）：
 
@@ -93,18 +103,72 @@ import {
 | 类型 | `PrintJob`、`PreparedDocument`、`RenderPdfResult`、`PageDriver`、`PrintRuntime`、`PrintSession`、`RawMeasurement`、`PdfTargetSpec`、`ScreenshotTargetSpec`、`PaperMm`、`ViewportPx`、`CodeSpec`、`PrintFailureCode` |
 
 主要数据类型（主入口导出）：`PrintTemplateData`、`PrintTemplateElement`、`PaperSize`、`PageLayout`、
-`PageSection`、`MeasuredElement`、`RenderRow`、`RenderCell`、`RenderRequest`、
+`PageSection`、`MeasuredElement`、`RenderRow`、`RenderCell`、`RenderRequest`、`MultiPageTemplateData`、
+`MultiPageCopyInput`、`MultiPageDocument`、`BatchCopyInput`、`PrintDataInput`、
 `CodeRenderer`、`CodeRenderOptions`。
 
 ```ts
 interface RenderRequest {
-  templateJson: PrintTemplateData
-  printData?: Record<string, any>
+  templateJson: PrintTemplateData | MultiPageTemplateData
+  printData?: Record<string, any> | Record<string, any>[] // 数组=批量多份，合并为一个文档
   baseUrl?: string                              // 相对图片基址
   paperOverride?: { width?: number; height?: number } // mm
   paperHeightMm?: number                        // 连续纸逃生门
 }
 ```
+
+### 多页面模板（一份文档多个版式）
+
+`MultiPageTemplateData` 描述「多个**版式不同**的页面按固定顺序组成一份文档」，全部绑定同一份数据
+（如封面 + 正文 + 条款）。此前一个 job 只能描述单页版式，多页只能来自内容溢出切片。
+
+```ts
+interface MultiPageTemplateData {
+  version?: 1                     // 缺省 1
+  pages: TemplateData[]           // 按打印顺序排列；每项都是一份完整的单页模板
+}
+```
+
+```ts
+import {
+  normalizeTemplate, isMultiPageTemplate, mergeFontDeclarations, composeMultiPageDocument,
+} from '@worm-vue3-print/core'
+```
+
+| API | 说明 |
+|---|---|
+| `normalizeTemplate(templateJson)` | 归一化：单模板 → `[t]`；wrapper → 校验后的 `pages`。**只有 ≥2 页才启用多页面语义**（1 页按单模板处理） |
+| `isMultiPageTemplate(templateJson)` | 类型守卫：是否含 `pages` 数组 |
+| `mergeFontDeclarations(pages)` | 各页 `fonts` 声明按 `family` 去重合并（保留首个），生成一份 `@font-face` |
+| `composeMultiPageDocument(copies)` | 把「多份 × 多页」的绑定产物拼成一个 HTML 文档；批量时自动追加份间强制分页 CSS |
+
+渲染语义：
+
+- 每个页面模板各自跑一遍完整的「绑定 → 测量 → 分页」，共用同一份数据；
+- 每个页面模板**必定从新的一页开始**（无需额外分页元素），整份文档**一次出图**；
+- `{pageIndex}` / `{totalPages}` 在**份内全局连续**（按前序模板页数累计 `pageOffset`）；`firstPageOverlay` 在每个模板自己的首页叠加（单模板时与旧语义等价）；
+- `PreparedDocument.pageCount` = 份内全部模板页数之和，`paperMm` 取首页（各页纸张已强制一致）；
+- 多页面 × 批量（数组数据）时：每份 = 一份完整的多页文档，页码每份重置。
+
+三条校验（失败抛中文错误，消息带页面名）：`pages` 至少 1 页、各页纸张尺寸（含方向）必须一致、**不支持连续纸与标签拼版**。
+
+> 单模板产物与旧版**逐字一致**：CSS 被拆成 `buildBasePageCss()`（与模板无关）+ `buildPageGeometryCss(template, '.mt-N')`（各页几何），
+> 单模板仍走同一入口输出，由护栏测试锁死，存量模板零迁移。
+
+### 批量打印（printData 数组）
+
+`printData`（`PrintDataInput`）传**对象数组**即批量：数组长度 = 份数，多份由管线合并为一个文档，份间强制分页
+（此前只能由宿主页自行拼接 HTML）。
+
+| API | 说明 |
+|---|---|
+| `normalizePrintData(raw)` | 归一为 `{ mode: 'single' \| 'batch' }`；空数组或含非对象项抛错（后者给出 1 基项序号） |
+| `MAX_BATCH_COPIES` | 份数上限 **500**，超出抛错 |
+| `composeBatchHtml(copies)` | 纯字符串合并器（入参 `BatchCopyInput[]`）：固定纸共用 `@page` + 份间分页，连续纸走命名页（各份高度可不同） |
+
+产物：`PreparedDocument.copies` 为份数，批量时另有每份的物理纸张尺寸 `copyPaperMm`。
+渲染服务 PDF/截图接口与桌面客户端 `print` 协议同样接受数组并按同一上限校验；浏览器适配器的
+`renderHtmlPages(template, printData)` 也支持数组。
 
 ### 拼版打印（多行多列）
 
@@ -186,8 +250,8 @@ import type { BrowserRenderResult, BrowserRenderOptions } from '@worm-vue3-print
 
 ```ts
 renderHtmlPages(
-  template,                 // PrintTemplateData（兼容设计器 TemplateData）
-  printData?,               // 对象或对象数组
+  template,                 // PrintTemplateData | MultiPageTemplateData（多页面模板）
+  printData?,               // 对象=单份；对象数组=批量多份，合并为一个文档
   baseUrl?,                 // 相对图片基址
   codeRenderer?,            // 传入则沿用（覆盖语义），不传由 runtime 自建
   options?: { paperHeightMm?: number },
@@ -199,6 +263,7 @@ interface BrowserRenderResult {
   pageLayouts: PageLayout[]
   paperMm: { width: number; height: number }
   continuous: boolean
+  copies: number            // 份数：对象数据=1；数组=数组长度
 }
 ```
 
@@ -334,7 +399,9 @@ interface PrintOptions {
 ### `POST /render/pdf`
 
 - 请求头：`X-Render-Key: <RENDER_API_KEY>`（默认 `dev-render-key`）
-- 请求体：`RenderRequest`（`{ templateJson, printData?, baseUrl?, paperOverride?, paperHeightMm? }`）
+- 请求体：`RenderRequest`（`{ templateJson, printData?, baseUrl?, paperOverride?, paperHeightMm? }`）。
+  `templateJson` 支持**多页面模板**（`{ version: 1, pages: [...] }`）；`printData` 传数组即**批量**，
+  多份合并为一个 PDF、份间强制分页（上限 500 份）。多页面模板的三条校验（纸张一致 / 禁止连续纸 / 禁止拼版）由 core 抛出，映射为 `INVALID_REQUEST`
 - 成功：`200 application/pdf`，Body 为 PDF 二进制
 - 失败：`{ code, message }`，code：`UNAUTHORIZED`(401)、`INVALID_REQUEST`(400)、
   `RENDER_TIMEOUT`(504)、`RENDER_FAILED`(500)
@@ -343,5 +410,6 @@ interface PrintOptions {
 ### `POST /render/screenshot`
 
 请求/鉴权同上；成功返回 `200 image/png`（单页截图，不分页），失败 code 为 `SCREENSHOT_FAILED`。
+`templateJson` 同样支持多页面模板；多页面模板的截图会按真实分页渲染整份文档后全页截图。
 
 环境变量：`PORT`（默认 3001）、`RENDER_API_KEY`、`PLAYWRIGHT_CHROME_PATH`。

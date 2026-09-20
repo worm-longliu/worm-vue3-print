@@ -2,8 +2,55 @@
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.3.0] - 2026-09-20
 
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: added **multi-page templates** — one document composed of pages with
+  **different layouts** in a fixed order, all bound to **the same data record** (cover page, then body, then terms).
+  A template used to describe a single page layout only: several pages came either from content-overflow slicing or from
+  concatenating copies of the same template, never from combining distinct layouts inside one document.
+  ① Model: new wrapper `MultiPageTemplateData` (`{ version?: 1, pages: TemplateData[] }`); `RenderRequest.templateJson`
+  and `PrintJob.templateJson` now accept `TemplateData | MultiPageTemplateData`; `TemplateData` gained an optional
+  `name` (page name — shown on the tab and used in error messages, ignored by the renderer).
+  ② New `print/multi-template.ts`, exported from the main entry: `normalizeTemplate` (normalize + validate),
+  `isMultiPageTemplate`, `mergeFontDeclarations` (font declarations of all pages merged and deduped by family),
+  `composeMultiPageDocument`.
+  ③ Rendering: each page template runs its own full **bind → measure → paginate** round over the same data; "the next
+  template starts on a new page" follows from every template emitting whole `.print-page` elements, so no extra
+  break rule is needed; `{pageIndex}` / `{totalPages}` are **global within the copy** (accumulated `pageOffset`);
+  `firstPageOverlay` now applies to **each template's own first page** (identical behavior for single templates);
+  `pageCount` is the sum of all pages and the entire document renders **in one pass**. CSS was split accordingly into
+  `buildBasePageCss()` plus per-page `buildPageGeometryCss(template, '.mt-N')`, and the **single-template output stays
+  identical**, pinned by a guard test.
+  ④ `normalizeTemplate` throws three validations shared by the designer (save/preview) and the render service: at least
+  one page; identical paper size including orientation; **no continuous paper and no label tiling** (both conflict with
+  "always start on a new page"). Errors carry the page name, e.g. `多页面模板不支持标签拼版（第 2 页「条款」）`.
+- `@worm-vue3-print/canvas`: multi-page design. New **page bar** (`PageTabs`) supporting add, duplicate, delete, move
+  left/right, **double-click rename** and click-to-switch, each action button carrying a contextual hover hint; deleting
+  down to one page silently falls back to single-template mode. Paper settings (size / orientation / custom width and
+  height) bind to the active page but are **written to every page on change** (multi-page requires one paper size, and
+  only one paper control is exposed), while margins, header/footer, first-page overlay, watermark and content elements
+  remain per page. In multi-page mode the tiling config is hidden and continuous paper is disabled — a second line of
+  defense behind the renderer's own check. `getTemplateJson()` returns a bare `TemplateData` for one page and the
+  wrapper for two or more; `initialTemplate` accepts either shape; save and preview run the same `normalizeTemplate`
+  validation and surface the error in the UI.
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: added **page rotation** (`TemplateData.outputRotation`, one of
+  `0 / 90 / 180 / 270`, property panel "内容旋转角度", default `0`) for "design landscape, print portrait": at 90/270 the
+  output paper swaps width and height (`PreparedDocument.paperMm` follows it) and the page content is rotated wholesale to fill it
+  — **no scaling, no cropping**; 0/180 keep the paper as-is. The final render wraps each page in an angle-specific rotor
+  class (the measurement pass does not), with identical behavior in browser preview, render service and desktop client.
+- `@worm-vue3-print/core`: the pipeline now supports **batch printing** — pass `printData` as an array of objects and the
+  copies are composed into one document (hosts used to concatenate HTML themselves). All copies share one pipeline setup
+  and are force-separated (`.print-copy` plus copy-break CSS; continuous paper uses named pages with a per-copy height).
+  `PreparedDocument` gained `copies` and per-copy `copyPaperMm`. New helpers: `composeBatchHtml` (`BatchCopyInput`),
+  `normalizePrintData` and `MAX_BATCH_COPIES` (**500 copies maximum**; an empty array or non-object items throw with a
+  1-based item index). The render service PDF endpoint and the desktop client `print` protocol accept arrays
+  under the same limit (the screenshot endpoint accepts them as well but keeps its existing behavior of rendering
+  only the first item), and browser preview reports how many copies were rendered.
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: added the **design background** (`TemplateData.designBackground`:
+  `src` plus `rotation` in 90° steps) for tracing preprinted forms. It is visible **on the design canvas only** and is
+  ignored by preview, server PDF and silent print. Hosts supply the uploader via `uploadDesignBackground` (it must return
+  a fully resolvable image URL and is never prefixed with `baseUrl`) or via the `UPLOAD_DESIGN_BACKGROUND_KEY`
+  injection key.
 - `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: switching the paper size to a **label paper** (80×60 / 60×40 / 40×30mm)
   now applies a "the whole sheet is the content area" layout by default — all four margins go to zero and the header/footer
   heights go to zero (elements already placed in the header/footer are kept; raising the height restores them). The default is
@@ -121,6 +168,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - `@worm-vue3-print/canvas`: `WatermarkConfig` and `CanvasPaper` reuse the core watermark module, so design, preview, and print render identically.
 - `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: Added **label tiling** (template `tiling` config) — small label templates no longer need "one sheet per label". When enabled, copies are laid out in a column × row grid onto a target sheet (default A4 portrait, 10mm sheet margins, 2mm gutters, manual column count, rows derived from the sheet), and a single copy goes through the same path (one cell = one sheet). Core gained `print/tiling.ts` (`computeTileLayout`: sheet/column/label-height validation and row-column derivation; continuous paper cannot be tiled) and `print/tile-compose.ts` (grid HTML composition). With tiling on, `renderPdf` reports `pageCount` as the **actual number of sheets** (the preview's page count and the desktop client's job history share that meaning) and `paperMm` as the target sheet size. The designer gained a tiling panel (toggle, target sheet and orientation, custom size, sheet margins, gutters, columns) showing the live grid and capacity; if any label's content bottom exceeds its content area, tiling fails loudly instead of clipping silently. `@worm-vue3-print/render` gained an end-to-end tiling integration test (real Chromium, asserting sheet count and cell coordinates).
 - `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: Added new paper presets — **dot-matrix paper** (`DOT_FULL` 241×279.4mm, `DOT_HALF` 241×139.7mm, `DOT_THIRD` 241×93.1mm), **label paper** (`LABEL_80X60` / `LABEL_60X40` / `LABEL_40X30`), and **thermal receipt paper** (`THERMAL_57` / `THERMAL_80` / `THERMAL_110`, continuous: width comes from the preset and can be overridden with `customWidth` (e.g. 58mm rolls), height is still derived from content, orientation forced to portrait). `PaperSize`, `PAPER_DIMENSIONS` and `PAPER_PRESETS` were extended accordingly, and `isContinuousPaperSize(paperSize)` reports continuous paper (receipt sizes and `CONTINUOUS`); the tiling target-sheet dropdown still excludes continuous paper. The designer's "paper size" dropdown is now grouped (common / dot-matrix / label / receipt / continuous) with Chinese names and dimensions.
+- `@worm-vue3-print/canvas`: Multi-page design APIs — `useDesignerState` and the `PrintDesigner` instance expose `pages` / `activePageIndex` / `switchPage` / `addPage` / `duplicatePage` / `deletePage` / `renamePage` / `movePage`; undo history and selection handling were lifted from one page to per-page convergence (page operations clear the active selection).
+- demo: Added a **sample template gallery** (`src/samples/`) with seven static-data samples (purchase receipt, scale label, price tag, shipping label, retail receipt, asset label, sales delivery note). "Load sample" is now a grouped picker dialog with cards drawn from element coordinates; selecting one loads its template, field tree and print data, taking batch data from the sample when present and deriving it safely otherwise.
+- Added the in-repo skill `skills/print-template-json` for **authoring print templates from shorthand JSON**: SKILL.md defines the workflow, `scripts/build_template.py` expands shorthand (box / size / align / code / cols / rows …) into a full `TemplateData` (backfilling the skeleton, element ids, `printElementType` and merged-cell placeholders), and `scripts/validate_template.py` checks the result against the pipeline's hard rules before printing (out-of-bounds, the 2mm safety margin, column/row sums, cells per row, tiling column cap, no tiling on continuous paper, balanced braces and a function whitelist). `assets/templates/` ships seven ready-made templates with their data.
 
 ### Changed
 
@@ -129,6 +179,8 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - Added a root `.npmrc` so Playwright browsers are not downloaded during dependency installation; install Chromium on demand via `npx playwright install chromium` locally/in CI (the Docker image uses the Chromium bundled in the base image). The Docker build context is now the repository root (`docker build -f services/print-render/Dockerfile .`).
 - demo (`demo/`): Added server-side PDF printing. The top bar shows render-service health, and the "Server PDF" button calls the render microservice through the Vite dev proxy (`/render-api/*`, with `X-Render-Key` injected at the proxy layer), sending the current canvas JSON plus demo data for two-pass server rendering and opening the PDF in a new tab.
 - `@worm-vue3-print/canvas`: **breaking change** removed the built-in "Load default layout" toolbar button and the `load-default-template` prop — loading/resetting a template is host business. The host renders its own entry point and assigns a new `TemplateData` to `initial-template` to reload the canvas (the designer watches the reference and records one history entry, so undo works). Hosts that still pass `load-default-template` will have it ignored and must migrate to the above.
+- demo: Multi-page support — import/load/save all handle `MultiPageTemplateData` (what you save is what you get back), and preview plus batch data render the whole multi-page document per copy.
+- `@worm-vue3-print/render`: The request type was widened to the union and the multi-page logic stays in core; added an end-to-end integration test (real Chromium asserting PDF page count, identical paper size per page and the page boundary that proves "the next template starts on a new page").
 
 ### Fixed
 
@@ -137,6 +189,14 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - `@worm-vue3-print/core`: Fixed watermarks being magnified ~3x, offset, and tiled incorrectly when printing to paper. The watermark used to be a CSS tile-repeated background (`background-image` + `background-repeat`), which Chromium compiles into a PDF tiling pattern; PDF viewers render it correctly, but the print path RIP ignores the pattern matrix (the enclosing form had a CTM of 3.125 = 300dpi÷96px, matching the measured magnification). Watermarks are now explicit vector tiles: `resolveWatermarkLayout` computes the tile grid for the final paper size (including the probed continuous-paper height) and emits one inline `<svg>` per tile, restoring the designed geometry on paper (68.8mm × 47.6mm at default A4 density). `buildWatermarkSvgDataUrl` was removed to prevent regressions back to the tile-repeated background approach.
 - Print client: Fixed the printed page orientation not matching the browser/server preview (landscape pages came out portrait). The print command did not declare a paper size, so CUPS used the queue default sheet (usually portrait A4) and `pdftopdf` rotated landscape pages by 90° (the resulting PDF carried `/Rotate 90`). The client now sends an explicit `-o media=…` (host-provided driver paper form → matched standard size → `Custom.<width>x<height>` in points). Verified: the same landscape A4 page went from `/Rotate 90` back to `/Rotate 0`, and portrait pages are unaffected.
 - `@worm-vue3-print/core`: Fixed a **blank first page** on small-paper templates (e.g. an 80×60mm custom sheet with 10mm margins and 38mm of content). Two root causes: ① `finishPage()` pushed the current page unconditionally, so when the very first element/unit did not fit it emitted an empty sheet and pushed all content to the next page. Empty pages are no longer emitted — the content stays on the page at its designed coordinates. `PageLayout.overflow` now records "content bottom exceeds the content area and would be clipped by the sheet", judged against the physical content height rather than the pagination budget's 2mm safety margin (content sitting close to the paper edge is still valid layout), so the tiling check ("each label must be exactly 1 page") keeps blocking only genuinely over-tall content. ② The DOM executor measured element height with `offsetHeight` (integer px, rounded up): 38mm was read as 144px = 38.1mm, which crossed the 38mm budget (40mm content area minus the 2mm safety margin) and made fitting content look oversized. It now reads `getBoundingClientRect().height` for true sub-pixel height (table row heights included).
+- `@worm-vue3-print/canvas`: Fixed drifting page names and duplicate names on new pages in multi-page templates. The first page (created by the default template or loaded by the host) stored no `name`, so tabs fell back to "页面 N" computed from the index; moving a page shifted the fallback and clashed with the names already persisted. Unnamed pages now get a fixed default name at load, and `addPage` picks the first unused one (so adding after deleting can no longer collide).
+- `@worm-vue3-print/core`: Fixed missing **page breaks between copies** in multi-page batch printing. Each copy was wrapped in `.print-copy`, but the composed CSS omitted the copy-break rule, so the last `.print-page` of a copy matched `:last-child` (`break-after: auto`) and two copies ran together. `COPY_BREAK_CSS` is now exported and appended when batching, and a render integration test asserts "2 copies × 3 pages = 6 pages".
+- `@worm-vue3-print/core`: The browser adapter `renderHtmlPages` (`@worm-vue3-print/core/browser`) now accepts `TemplateData | MultiPageTemplateData` (and an array `printData`), so multi-page templates can be rendered in the browser directly.
+
+### Known limitations
+
+- Page rotation in multi-page documents takes the **first page's** `outputRotation`. Paper dimensions are already forced equal, but the angle is not part of that consistency check yet; per-page rotation is left as a future extension.
+- Multi-page templates do not support continuous paper or label tiling, nor data-driven conditional pages (for example appending a terms page only when an amount exceeds a threshold).
 
 ## [1.2.2] - 2026-09-11
 

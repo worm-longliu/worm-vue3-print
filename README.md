@@ -122,7 +122,7 @@ npm install @worm-vue3-print/canvas
 npm install @worm-vue3-print/client
 ```
 
-> core / canvas 当前版本：`1.2.2`；静默打印 SDK（`@worm-vue3-print/client`）当前版本：`0.1.0`。
+> core / canvas 当前版本：`1.3.0`；静默打印 SDK（`@worm-vue3-print/client`）当前版本：`0.1.0`。
 
 ## 更新
 

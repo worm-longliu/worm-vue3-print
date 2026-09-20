@@ -2,8 +2,18 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
-## [Unreleased]
+## [1.3.0] - 2026-09-20
 
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`：新增**多页面模板**——一份文书由多篇**版式不同**的页面按固定顺序组成，全部绑定**同一份数据**（如「封面 + 正文 + 条款」）。此前一份模板只能描述单页版式，多页只能来自内容溢出切片或同模板多份拼接，无法在同一份文档里组合不同版式。
+  ① 数据模型：新增 wrapper 类型 `MultiPageTemplateData`（`{ version?: 1, pages: TemplateData[] }`），`RenderRequest.templateJson` 与 `PrintJob.templateJson` 放宽为 `TemplateData | MultiPageTemplateData`；`TemplateData` 新增可选 `name`（页面名，页签显示与错误上下文用，渲染端忽略）。
+  ② 新增 `print/multi-template.ts`（主出口导出）：`normalizeTemplate`（归一化 + 统一校验）、`isMultiPageTemplate`、`mergeFontDeclarations`（各页声明的字体按族名去重合并）、`composeMultiPageDocument`（多页面拼接为单文档）。
+  ③ 渲染语义：每个页面模板**各自独立跑一遍完整的「绑定 → 测量 → 分页」**，共用同一份数据；「下一模板必须新开一页」由各自产出的整页 `.print-page` 天然保证，无需额外分页指令；页码 `{pageIndex}` / `{totalPages}` 在**份内全局连续**（按前序模板页数累计 `pageOffset`）；`firstPageOverlay` 的生效条件由「文档第 1 页」改为「**各模板自身的首页**」（单模板时两者等价，行为不变）；`pageCount` 为份内全部模板页数之和，整份文档**一次出图**（单次 `page.pdf()`）。
+  ④ CSS 随之作用域化拆分为 `buildBasePageCss()`（模板无关部分）+ `buildPageGeometryCss(template, '.mt-N')`（各页几何）；**单模板产物与旧版逐字一致**，由护栏测试锁死，存量模板零迁移。
+  ⑤ 三条硬校验由 `normalizeTemplate` 统一抛出，设计器保存/预览、render 服务共用：至少 1 页；各页纸张尺寸（含方向）必须一致；**不支持连续纸与标签拼版**（二者与「必须新开一页」语义冲突）。错误信息带页面名，如 `多页面模板不支持标签拼版（第 2 页「条款」）`。
+- `@worm-vue3-print/canvas`：多页面设计能力。新增**页面栏**（`PageTabs`），支持新增、复制、删除、前移/后移、**双击重命名**、点击切换，操作按钮带上下文悬浮提示；删到只剩一页时自动回落单模板模式。纸张设置（纸型/方向/自定义尺寸）绑定当前页但**改一次即写入所有页**（多页面要求纸张一致，UI 只暴露一份纸张设置），页边距、页眉页脚、首页叠加、水印与内容元素则按页各自独立；多页模式下隐藏拼版配置、禁用连续纸纸型（与渲染端校验互为双保险）；`getTemplateJson()` 单页输出裸 `TemplateData`、≥2 页输出 wrapper，`initialTemplate` prop 放宽为联合类型并在载入时归一化；保存/预览前用 core 的 `normalizeTemplate` 同款校验，错误在 UI 内直接提示。
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`：新增**页面内容旋转角度**（`TemplateData.outputRotation`，取值 `0 / 90 / 180 / 270`，属性面板「内容旋转角度」，缺省 `0`）——解决「横版设计、竖版出纸」：90/270 时出纸纸张宽高互换（`PreparedDocument.paperMm` 随之改变），页面内容整体旋转填满出纸版面，**不缩放、不裁切**；0/180 纸张不变。最终渲染层按角度追加 rotor 类包裹页面（测量趟不包裹，避免两次结果不一致）。单页与预览/服务端/客户端三端同源。
+- `@worm-vue3-print/core`：打印管线支持**批量打印**——`printData` 传对象数组即按数组长度拼出同一个文档的多份副本（此前只能宿主页自己做 HTML 拼接）：同模板多份共用一次渲染管线，份间强制分页（`.print-copy` + 份间分页 CSS；连续纸走命名页，各份高度可不同）；`PreparedDocument` 新增 `copies` 与批量时每份的物理纸张尺寸 `copyPaperMm`。新增纯字符串合并器 `composeBatchHtml`（单份产物类型 `BatchCopyInput`）与 `normalizePrintData` / `MAX_BATCH_COPIES`（**上限 500 份**，空数组或含非对象项直接报错并给出 1 基项序号）。`@worm-vue3-print/render` 的 PDF 接口与桌面客户端 `print` 协议同步接受数组并按同一上限校验（截图接口同样接受数组，但按既有语义**只渲染首条**），浏览器预览回传渲染份数。
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`：新增**设计背景（定位底图）**——`TemplateData.designBackground`（`src` + `rotation`，90° 步进），页面属性支持上传、旋转、移除；**只在设计画布显示**用于套打对位，预览、服务端 PDF 与静默打印一律忽略（不产出）。宿主通过 `uploadDesignBackground` 适配器提供上传实现（须返回完整可访问图片路径，不参与 `baseUrl` 拼接），也可由深层注入键 `UPLOAD_DESIGN_BACKGROUND_KEY` 提供。
 - `@worm-vue3-print/core` / `@worm-vue3-print/canvas`：纸张尺寸切到**标签纸**（80×60 / 60×40 / 40×30mm）时，默认套用「整张纸都给内容区」的版面——四边页边距归零、页眉页脚高度归零（页眉页脚里已有的元素保留，把高度改回即可恢复）。该默认值**只在切换纸型时套用一次**，之后用户仍可在「页边距」「三区高度」里自行改回；存量标签纸模板打开时不会被改写。core 新增 `isLabelPaperSize` / `labelPaperDefaults` 两个纯函数，宿主与自建设计器可复用同一口径。
 - `@worm-vue3-print/core` / `@worm-vue3-print/canvas`：**行为变更** 条形码（**元素**与**表格单元格**）不再拉伸填满可用框，改为同一套「条宽 → 打印机 dpi → 等比缩小」结算（`render/barcode-dot.ts` 的 `resolveBarcodeSize`）：
   ① **首选尺寸来自条宽**：每模块 `barWidth/2 × 0.25mm`，可用框装得下就按原样落纸、不再放大——放大到填满必然得到非整数条宽，正是出纸「忽宽忽窄」的根因；
@@ -44,6 +54,9 @@
 - `@worm-vue3-print/client`：新增浏览器预渲染直提交通道——协议消息 `print.submitHtml` 与 SDK 方法 `PrintClient.printHtml(rendered, options, templateName)`。宿主页用 `@worm-vue3-print/core/browser` 的 `renderHtmlPages` 在浏览器内完成两遍渲染，把最终 HTML（含纸张/方向/边距/连续纸高度）直送客户端静默出纸，客户端不再执行模板渲染；旧 `print`（客户端内渲染）链路保留兼容。
 - 打印客户端：`print.submitHtml` 入站校验（HTML 非空、≤20MB、`paperMm` 毫米正数、`continuous`/`pageCount` 类型），纸张/方向/边距覆盖项一律以 `INVALID_REQUEST` 拒绝；打印引擎重构为「准备（渲染或直取 HTML）→ 出纸」双路共用流程。
 - demo：「客户端静默打印」改为浏览器侧渲染后经 `printHtml` 提交（新增 `src/browser-render.ts` 封装）。
+- 新增仓库内技能 `skills/print-template-json`：**用简写 JSON 生成打印模板**。SKILL.md 定义工作流，`scripts/build_template.py` 把简写（box / size / align / code / cols / rows …）展开为完整 `TemplateData`（自动补骨架、元素 id、`printElementType`、表格合并占位格），`scripts/validate_template.py` 按管线硬规则出纸前校验（越界、2mm 安全余量、列宽行高和、每行列数、拼版列数上限、连续纸禁拼版、表达式花括号配对与函数白名单），`assets/templates/` 附 7 份成品模板与数据。
+- demo：新增**示例模板库**（`src/samples/`）——7 份静态数据示例（采购收货单、称签、价签、快递面单、零售小票、资产标签、销售出库单），「加载示例」改为分组选择弹窗，卡片缩略图按元素坐标等比绘制；选中即载入模板、字段树与打印数据，批量数据按示例自带或安全派生。
+- `@worm-vue3-print/canvas`：设计器多页面 API——`useDesignerState` 与 `PrintDesigner` 实例暴露 `pages` / `activePageIndex` / `switchPage` / `addPage` / `duplicatePage` / `deletePage` / `renamePage` / `movePage`；撤销历史与选区管理由单页扩展为按页收敛（页操作即清空当前页选区）。
 
 - `@worm-vue3-print/core`：新增同构水印模块（`render/watermark.ts`）——`generateHtml` 在每页最底层输出 `.watermark-layer`（**显式矢量瓦片**，逐块 `<svg class="watermark-tile">`），设计模板、浏览器预览、服务端 PDF、静默打印四端水印渲染完全一致。
 - `@worm-vue3-print/core`：`WatermarkOptions` 新增 `tileWidth`/`tileHeight`（瓦片尺寸，控制水印密度，默认 260×180）；导出 `WATERMARK_DEFAULTS`、`WATERMARK_DENSITY_PRESETS`、`PX_PER_MM`、`MM_PER_PX`、`isWatermarkVisible`、`resolveWatermarkText`、`formatTimestamp`、`resolveWatermarkLayout`、`renderWatermarkTileSvg`、`renderWatermarkLayerHtml`。
@@ -60,6 +73,9 @@
 - 打印客户端：修复静默打印「PDF 生成超时 → 后续任务全部 BUSY」——`webContents.printToPDF` 已移除回调重载（回调永不触发、Promise 拒绝被静默吞掉），且 `PrintToPDFOptions.pageSize` 单位是**英寸**而非微米（误传微米会得到 210000×297000 英寸纸张，Electron 44 直接生成失败）。改用 Promise + 超时兜底（`src/main/pdf-generator.ts`）、纸张微米→英寸换算、显式零边距与 `printBackground: true`；生成失败/超时统一以 `PRINT_FAILED` 返回并释放串行锁，客户端静默打印产物与服务端 PDF 的水印、纸张尺寸一致。
 - 打印客户端：出纸链路文档同步为「HTML → printToPDF → 系统打印命令」（`clients/print-client/README.md`、`docs/中文/指南/静默打印.md`、静默打印技能参考）。
 - `@worm-vue3-print/core`：修复小纸张模板输出**空白第一页**（如 80×60mm 自定义纸、边距 10mm、内容高 38mm）。两处根因：① 分页引擎 `finishPage()` 无条件把当前页入列，首个元素/单元判定放不下时会产出一张空纸、内容整体下移一页；现在空页不入列，内容按设计坐标留在本页；同时在 `PageLayout.overflow` 标记「内容底部超出内容区会被纸面裁掉」（按物理边界判定，不看分页预算里的 2mm 安全余量——贴着纸边排仍是合法排版），拼版「每份恰好 1 页」校验据此继续阻断真正超高的内容。② DOM 执行器测量元素高度用 `offsetHeight`（整数 px，向上取整），38mm 被读成 144px = 38.1mm，恰好越过 40mm 内容区扣除 2mm 安全余量后的 38mm 预算，把「放得下」误判为「放不下」；现改用 `getBoundingClientRect().height` 取亚像素真实高度（表格行高同理）。
+- `@worm-vue3-print/canvas`：修复多页面模板**页面重排后页签名漂移、新增页重名**——首页（默认模板创建或宿主载入）没有存储 `name`，页签只能按位置回退显示「页面 N」，页面前移/后移后索引变化导致名字整体漂移，与已固化的页名冲突；现在初始化时给无名页补存固定默认名，`addPage` 改取第一个未占用的名字（删页后再新增也不会重名）。
+- `@worm-vue3-print/core`：修复多页面模板**批量打印时份间分页失效**——批量拼接时每份虽已包 `.print-copy`，但 CSS 拼接漏了份间强制分页规则，每份最后一个 `.print-page` 命中 `:last-child`（`break-after: auto`），两份会连着排；现复用 `COPY_BREAK_CSS` 并在批量时追加（已导出该常量），render 集成用例验证「2 份 × 3 页 = 6 页」。
+- `@worm-vue3-print/core`：浏览器适配器 `renderHtmlPages`（`@worm-vue3-print/core/browser`）入参类型放宽为 `TemplateData | MultiPageTemplateData`，浏览器侧可直接提交多页面模板。
 
 ### 变更
 
@@ -68,6 +84,13 @@
 - 新增根 `.npmrc`：Playwright 浏览器不随依赖安装自动下载，本地/CI 按需执行 `npx playwright install chromium`，Docker 镜像使用基础镜像内置 Chromium；Docker 构建上下文改为仓库根（`docker build -f services/print-render/Dockerfile .`）。
 - demo（`demo/`）新增服务端 PDF 打印：顶栏显示渲染服务在线状态，「服务端 PDF」按钮经 Vite dev 代理（`/render-api/*`，代理层注入 `X-Render-Key`）调用 render 微服务，取当前画布 JSON + 示例数据两遍渲染出 PDF 并新标签页打开。
 - `@worm-vue3-print/canvas`：**破坏性变更** 删除设计器内置的「加载默认布局」按钮与 `load-default-template` prop——模板加载/重置属于宿主业务。宿主在自有页面区域渲染入口，把新的 `TemplateData` 赋给 `initial-template` 即可重载画布（设计器按引用变化监听并记录一次历史，撤销可回退）。原注入 `load-default-template` 的宿主该 prop 会被忽略，需改为上述写法。
+- demo：适配多页面模板——载入/导入/保存接受并处理 `MultiPageTemplateData`（存什么返回什么），预览与批量数据源按整份多页文档渲染。
+- `@worm-vue3-print/render`：多页面模板端到端集成测试（真实 Chromium 校验 PDF 页数、各页纸张一致、「下一模板新开一页」的页边界），请求类型放宽为联合类型后逻辑全部落在 core 校验。
+
+### 已知限制
+
+- 多页面模板出纸时「内容旋转角度」取**首页**的 `outputRotation`（各页纸张尺寸已强制一致，但角度尚未纳入一致性校验）；每页独立旋转角度留作后续扩展。
+- 多页面模板不支持连续纸与标签拼版，也不支持数据驱动的条件包含页（如金额超阈值才追加条款页）。
 
 ## [1.2.2] - 2026-09-11
 

@@ -19,7 +19,7 @@ version: 1.2.0
 | 服务端 PDF / 截图微服务 | monorepo 内 `services/print-render`（private 服务包，workspace 软链 core，**不发布 npm**） | 按 [服务端渲染](references/server-render.md) 部署 |
 | 工位电脑无打印对话框静默出纸（小票/标签/针式多联/批量） | `@worm-vue3-print/client` + 桌面打印客户端（Electron） | NPM 包（SDK）+ [静默打印](references/silent-print.md) |
 
-生产项目优先 NPM 包；当前已发布版本为 **1.2.2**。只有用户明确要改/调试库源码、消费未发布代码，或项目本身就在本 monorepo 中，才用源码安装。安装细节见 [安装方式](references/installation.md)。
+生产项目优先 NPM 包；当前已发布版本为 **1.3.0**。只有用户明确要改/调试库源码、消费未发布代码，或项目本身就在本 monorepo 中，才用源码安装。安装细节见 [安装方式](references/installation.md)。
 
 ## 2. 先让用户选打印链路（关键决策）
 

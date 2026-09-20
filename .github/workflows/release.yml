@@ -64,7 +64,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      # 顺带自动创建 GitHub 发行版（正文见 .release/，无需手工建）
+      # 顺带自动创建 GitHub 发行版（正文见 .github/release/notes.md，无需手工建）
       - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
