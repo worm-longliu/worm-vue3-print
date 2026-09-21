@@ -28,6 +28,13 @@
 - 静默打印浏览器端 SDK 在 core 子路径 **`@worm-vue3-print/core/client`**（源码 `packages/print-core/src/client/`），不存在独立 `@worm-vue3-print/client` 包（0.1.0 从未发布，旧目录 `packages/print-client-sdk` 已删）。
 - demo 线上预览：GitHub Pages `https://worm-longliu.github.io/worm-vue3-print/`，工作流 `.github/workflows/pages.yml`；EdgeOne 读根 `edgeone.json`。
 
+## 打标签与 Release 正文的顺序（硬约束）
+
+- release.yml 会 `checkout` 到**标签所指的提交**再读 `.github/release/notes.md`（`body_path`）。所以顺序必须是：写正文 → 提交 → 打标签 → 推送；先打标签再补正文会取到旧内容，只能删标签重打。
+- git 身份曾在本机被改成 `Task Timer (worm) <worm@localhost>`（历史一直是 `worm <1432263953@qq.com>`）；已在**仓库级** config 改回。提交 / 打标签前先 `git config user.name` 确认，否则会带错身份进远端。
+- 修正已推送提交的身份：`git config` 改回后 `GIT_SEQUENCE_EDITOR=true git rebase -i <基线> --exec 'git commit --amend --no-edit --reset-author'`，再 `git tag -d` 重打，最后 `git push --force-with-lease <remote> master`。
+- 推 Gitee（`origin`）时偶发 `unable to get credential storage lock in 1000 ms` —— 只是凭据锁竞争，实际往往已推成功，用 `git ls-remote origin master` 核对而不是盲重试。
+
 ## 文档与事实校验习惯
 
 写 CHANGELOG / Release Notes 前要核实 API 是否真的从主入口导出（例：`getOutputPaperDimensions` 只在 core 内部使用，不可写成公开导入）。
