@@ -5,6 +5,7 @@
       <span class="demo-logo">打印模板设计器 Demo</span>
       <span class="demo-badge">模板 ID：{{ TEMPLATE_ID }}</span>
       <span class="demo-badge">业务类型：{{ currentSample ? currentSample.name : '空白模板' }}</span>
+      <button type="button" class="demo-print-btn" @click="customDialogVisible = true">自定义字段与数据</button>
       <button type="button" class="demo-print-btn" @click="onLoadSample">加载示例</button>
       <button type="button" class="demo-print-btn" @click="onExportTemplate">导出模板</button>
       <button type="button" class="demo-print-btn" @click="fileInputRef?.click()">导入模板</button>
@@ -74,6 +75,15 @@
       @select="applySample"
       @close="galleryVisible = false"
     />
+
+    <!-- 自定义字段与数据：直接粘贴 JSON，调整后即时生效，便于验证打印效果 -->
+    <CustomDataDialog
+      :open="customDialogVisible"
+      :fields="fields"
+      :data="activeSampleData"
+      @apply="onApplyCustomData"
+      @close="customDialogVisible = false"
+    />
   </div>
 </template>
 
@@ -89,6 +99,7 @@ import type { PrintBusinessField, TemplateData, MultiPageTemplateData } from '@w
 import type { PrintFontDeclaration } from '@worm-vue3-print/core'
 import PrintOutputDialog from './components/PrintOutputDialog.vue'
 import TemplateGalleryDialog from './components/TemplateGalleryDialog.vue'
+import CustomDataDialog from './components/CustomDataDialog.vue'
 import type { SampleTemplate } from './samples'
 import { COMPREHENSIVE_SHOWCASE_SAMPLE } from './samples/comprehensive-showcase'
 import {
@@ -106,7 +117,8 @@ const RENDER_BASE_URL = (import.meta.env.VITE_RENDER_BASE_URL as string | undefi
  * 出图端必须能访问该地址——render 服务跑在宿主机时站点 origin 即可；
  * 跑在 Docker 里改成 http://host.docker.internal:9303，生产改成字体 CDN 域名。
  */
-const FONT_BASE_URL = (import.meta.env.VITE_FONT_BASE_URL as string | undefined) || window.location.origin
+// 部署到 GitHub Pages 等子路径站点时，字体在 BASE_URL 下而非域名根路径
+const FONT_BASE_URL = (import.meta.env.VITE_FONT_BASE_URL as string | undefined) || `${window.location.origin}${import.meta.env.BASE_URL}`.replace(/\/$/, '')
 
 /** 打印输出弹窗开关 */
 const printDialogVisible = ref(false)
@@ -117,6 +129,9 @@ const fields = ref<PrintBusinessField[]>(PURCHASE_RECEIPT_FIELDS)
 
 /** 示例模板库弹窗开关 */
 const galleryVisible = ref(false)
+
+/** 自定义字段与数据弹窗开关 */
+const customDialogVisible = ref(false)
 /**
  * 当前画布加载的示例（清空/导入后为 null）。
  * 用 shallowRef：静态数据与批量派生都要求拿到原始对象——
@@ -135,7 +150,21 @@ function applySample(sample: SampleTemplate) {
   fields.value = [...sample.fields]
   activeSampleData.value = sample.data
   currentSample.value = sample
+  customDataActive.value = false
   galleryVisible.value = false
+}
+
+/**
+ * 应用自定义字段与数据：字段树与单份打印数据即刻生效。
+ * customDataActive 置 true：批量打印不再使用示例自带的 batchData，
+ * 改为从用户提交的数据派生，避免批量数据与自定义内容脱节。
+ */
+const customDataActive = ref(false)
+function onApplyCustomData(payload: { fields: PrintBusinessField[]; data: Record<string, any> }) {
+  fields.value = [...payload.fields]
+  activeSampleData.value = payload.data
+  customDataActive.value = true
+  customDialogVisible.value = false
 }
 
 /**
@@ -289,11 +318,13 @@ const htmlPreviewRef = ref<InstanceType<typeof PrintHtmlPreview> | null>(null)
 /** 批量打印开关：开启后三条打印链路统一传数组，关闭则传单对象 */
 const batchEnabled = ref(false)
 /**
- * 批量数据：优先用示例自带的静态批量数据（一枚一条的标签场景），
- * 否则由当前单份数据派生（派生函数内部深拷贝，不污染示例数据）。
+ * 批量数据：未应用自定义数据时优先用示例自带的静态批量数据（一枚一条的标签场景），
+ * 否则（自定义数据生效或无批量数据）由当前单份数据派生（派生函数内部深拷贝，不污染原数据）。
  */
 const batchDataList = computed<Record<string, any>[]>(
-  () => currentSample.value?.batchData ?? deriveBatchData(activeSampleData.value),
+  () => !customDataActive.value && currentSample.value?.batchData
+    ? currentSample.value.batchData
+    : deriveBatchData(activeSampleData.value),
 )
 /** 当前生效的打印数据：对象=单份，数组=批量，浏览器/客户端/服务端三端共用同一数据源 */
 const activePrintData = computed<Record<string, any> | Record<string, any>[]>(() =>

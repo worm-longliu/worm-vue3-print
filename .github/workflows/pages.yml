@@ -1,0 +1,59 @@
+name: Deploy Demo to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+    # 仅在 demo、被 alias 直接编译的包源码或本工作流变更时部署
+    paths:
+      - demo/**
+      - packages/print-core/src/**
+      - packages/print-canvas/src/**
+      - packages/print-client-sdk/src/**
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+# 允许同仓库的并发部署互相取消
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          # demo 有独立的 package-lock.json，缓存以 demo 为目标
+          cache: npm
+          cache-dependency-path: demo/package-lock.json
+      # demo 独立安装依赖；file: 指向的包目录已随 checkout 存在
+      - name: 安装 demo 依赖
+        run: npm ci
+        working-directory: demo
+      # 子路径部署：仓库名为 worm-vue3-print，站点根为 /worm-vue3-print/
+      - name: 构建 demo
+        run: npm run build -- --base=/worm-vue3-print/
+        working-directory: demo
+      - name: 配置 Pages
+        uses: actions/configure-pages@v5
+      - name: 上传构建产物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: demo/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

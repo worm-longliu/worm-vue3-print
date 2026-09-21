@@ -15,8 +15,8 @@
       "qty": 12,
       "price": 399,
       "amount": 4788,
-      "barcode": "6901234567891",
-      "qrcode": "https://example.com/item/6901234567891"
+      "barcode": "6900000000001",
+      "qrcode": "https://example.com/item/6900000000001"
     },
     {
       "seq": 2,
@@ -27,8 +27,8 @@
       "qty": 8,
       "price": 259,
       "amount": 2072,
-      "barcode": "6902345678902",
-      "qrcode": "https://example.com/item/6902345678902"
+      "barcode": "6900000000002",
+      "qrcode": "https://example.com/item/6900000000002"
     },
     {
       "seq": 3,
@@ -39,8 +39,8 @@
       "qty": 20,
       "price": 89,
       "amount": 1780,
-      "barcode": "6903456789013",
-      "qrcode": "https://example.com/item/6903456789013"
+      "barcode": "6900000000003",
+      "qrcode": "https://example.com/item/6900000000003"
     },
     {
       "seq": 4,
@@ -51,8 +51,200 @@
       "qty": 30,
       "price": 79,
       "amount": 2370,
-      "barcode": "6904567890124",
-      "qrcode": "https://example.com/item/6904567890124"
+      "barcode": "6900000000004",
+      "qrcode": "https://example.com/item/6900000000004"
+    },
+    {
+      "seq": 5,
+      "image": "http://localhost:9303/images/goods-1.png",
+      "name": "27 英寸 4K 显示器",
+      "spec": "MN-27U / IPS",
+      "unit": "台",
+      "qty": 6,
+      "price": 1299,
+      "amount": 7794,
+      "barcode": "6900000000005",
+      "qrcode": "https://example.com/item/6900000000005"
+    },
+    {
+      "seq": 6,
+      "image": "http://localhost:9303/images/goods-2.png",
+      "name": "Type-C 扩展坞",
+      "spec": "DK-09 / 九合一",
+      "unit": "个",
+      "qty": 15,
+      "price": 169,
+      "amount": 2535,
+      "barcode": "6900000000006",
+      "qrcode": "https://example.com/item/6900000000006"
+    },
+    {
+      "seq": 7,
+      "image": "http://localhost:9303/images/goods-3.png",
+      "name": "便携充电宝",
+      "spec": "PB-20K / 20000mAh",
+      "unit": "个",
+      "qty": 18,
+      "price": 129,
+      "amount": 2322,
+      "barcode": "6900000000007",
+      "qrcode": "https://example.com/item/6900000000007"
+    },
+    {
+      "seq": 8,
+      "image": "http://localhost:9303/images/goods-4.png",
+      "name": "高清网络摄像头",
+      "spec": "CAM-1080 / 自动对焦",
+      "unit": "个",
+      "qty": 10,
+      "price": 199,
+      "amount": 1990,
+      "barcode": "6900000000008",
+      "qrcode": "https://example.com/item/6900000000008"
+    },
+    {
+      "seq": 9,
+      "image": "http://localhost:9303/images/goods-1.png",
+      "name": "桌面立体声音箱",
+      "spec": "SP-S5 / 蓝牙 5.3",
+      "unit": "对",
+      "qty": 12,
+      "price": 159,
+      "amount": 1908,
+      "barcode": "6900000000009",
+      "qrcode": "https://example.com/item/6900000000009"
+    },
+    {
+      "seq": 10,
+      "image": "http://localhost:9303/images/goods-2.png",
+      "name": "无线充电板",
+      "spec": "WC-15 / 15W 快充",
+      "unit": "个",
+      "qty": 25,
+      "price": 69,
+      "amount": 1725,
+      "barcode": "6900000000010",
+      "qrcode": "https://example.com/item/6900000000010"
+    },
+    {
+      "seq": 11,
+      "image": "http://localhost:9303/images/goods-3.png",
+      "name": "M.2 固态硬盘盒",
+      "spec": "EN-NV3 / USB3.2",
+      "unit": "个",
+      "qty": 16,
+      "price": 75,
+      "amount": 1200,
+      "barcode": "6900000000011",
+      "qrcode": "https://example.com/item/6900000000011"
+    },
+    {
+      "seq": 12,
+      "image": "http://localhost:9303/images/goods-4.png",
+      "name": "铝合金笔记本支架",
+      "spec": "ST-AL / 六档可调",
+      "unit": "个",
+      "qty": 22,
+      "price": 59,
+      "amount": 1298,
+      "barcode": "6900000000012",
+      "qrcode": "https://example.com/item/6900000000012"
+    },
+    {
+      "seq": 13,
+      "image": "http://localhost:9303/images/goods-1.png",
+      "name": "USB-C 数据线（2 米）",
+      "spec": "CB-C2 / 100W",
+      "unit": "条",
+      "qty": 40,
+      "price": 29,
+      "amount": 1160,
+      "barcode": "6900000000013",
+      "qrcode": "https://example.com/item/6900000000013"
+    },
+    {
+      "seq": 14,
+      "image": "http://localhost:9303/images/goods-2.png",
+      "name": "磁吸防蓝光窥膜",
+      "spec": "PF-14 / 14 英寸",
+      "unit": "片",
+      "qty": 14,
+      "price": 49,
+      "amount": 686,
+      "barcode": "6900000000014",
+      "qrcode": "https://example.com/item/6900000000014"
+    },
+    {
+      "seq": 15,
+      "image": "http://localhost:9303/images/goods-3.png",
+      "name": "无线演示翻页笔",
+      "spec": "PP-R2 / 红光",
+      "unit": "支",
+      "qty": 18,
+      "price": 89,
+      "amount": 1602,
+      "barcode": "6900000000015",
+      "qrcode": "https://example.com/item/6900000000015"
+    },
+    {
+      "seq": 16,
+      "image": "http://localhost:9303/images/goods-4.png",
+      "name": "移动硬盘（1TB）",
+      "spec": "HD-1T / 2.5 英寸",
+      "unit": "块",
+      "qty": 10,
+      "price": 369,
+      "amount": 3690,
+      "barcode": "6900000000016",
+      "qrcode": "https://example.com/item/6900000000016"
+    },
+    {
+      "seq": 17,
+      "image": "http://localhost:9303/images/goods-1.png",
+      "name": "USB 电容麦克风",
+      "spec": "MIC-C / 心形指向",
+      "unit": "套",
+      "qty": 8,
+      "price": 299,
+      "amount": 2392,
+      "barcode": "6900000000017",
+      "qrcode": "https://example.com/item/6900000000017"
+    },
+    {
+      "seq": 18,
+      "image": "http://localhost:9303/images/goods-2.png",
+      "name": "平板触控笔",
+      "spec": "PEN-T / 防误触磁吸",
+      "unit": "支",
+      "qty": 12,
+      "price": 219,
+      "amount": 2628,
+      "barcode": "6900000000018",
+      "qrcode": "https://example.com/item/6900000000018"
+    },
+    {
+      "seq": 19,
+      "image": "http://localhost:9303/images/goods-3.png",
+      "name": "桌面理线器套装",
+      "spec": "CX-06 / 硅胶 6 件",
+      "unit": "套",
+      "qty": 30,
+      "price": 19,
+      "amount": 570,
+      "barcode": "6900000000019",
+      "qrcode": "https://example.com/item/6900000000019"
+    },
+    {
+      "seq": 20,
+      "image": "http://localhost:9303/images/goods-4.png",
+      "name": "WiFi6 千兆路由器",
+      "spec": "RT-AX6 / 3000M",
+      "unit": "台",
+      "qty": 9,
+      "price": 329,
+      "amount": 2961,
+      "barcode": "6900000000020",
+      "qrcode": "https://example.com/item/6900000000020"
     }
   ]
 }

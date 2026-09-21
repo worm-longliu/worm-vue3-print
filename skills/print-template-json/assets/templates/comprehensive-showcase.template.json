@@ -20,6 +20,29 @@
     "height": 0,
     "elements": []
   },
+  "fonts": [
+    {
+      "family": "Ma Shan Zheng",
+      "label": "马善政毛笔楷书",
+      "files": [
+        { "weight": 400, "url": "/fonts/MaShanZheng-Regular.ttf" }
+      ]
+    },
+    {
+      "family": "ZCOOL KuaiLe",
+      "label": "站酷快乐体",
+      "files": [
+        { "weight": 400, "url": "/fonts/ZCOOLKuaiLe-Regular.ttf" }
+      ]
+    },
+    {
+      "family": "ZCOOL QingKe HuangYou",
+      "label": "站酷庆科黄油体",
+      "files": [
+        { "weight": 400, "url": "/fonts/ZCOOLQingKeHuangYou-Regular.ttf" }
+      ]
+    }
+  ],
   "elements": [
     {
       "id": "el1",
@@ -41,11 +64,68 @@
       }
     },
     {
+      "id": "font1",
+      "type": "text",
+      "options": {
+        "left": 0.0,
+        "top": 12.0,
+        "width": 92.3,
+        "height": 8.0,
+        "formatter": "马善政毛笔楷书",
+        "fontFamily": "Ma Shan Zheng",
+        "fontSize": 15,
+        "textAlign": "center",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "font2",
+      "type": "text",
+      "options": {
+        "left": 92.3,
+        "top": 12.0,
+        "width": 92.3,
+        "height": 8.0,
+        "formatter": "站酷快乐体",
+        "fontFamily": "ZCOOL KuaiLe",
+        "fontSize": 15,
+        "textAlign": "center",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "font3",
+      "type": "text",
+      "options": {
+        "left": 184.7,
+        "top": 12.0,
+        "width": 92.3,
+        "height": 8.0,
+        "formatter": "站酷庆科黄油体",
+        "fontFamily": "ZCOOL QingKe HuangYou",
+        "fontSize": 15,
+        "textAlign": "center",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
       "id": "infoTable",
       "type": "table",
       "options": {
         "left": 0.0,
-        "top": 12.0,
+        "top": 22.0,
         "width": 277.0,
         "height": 16.0,
         "tableDefaultFontSize": 9,
@@ -135,7 +215,7 @@
       "type": "table",
       "options": {
         "left": 0.0,
-        "top": 31.0,
+        "top": 41.0,
         "width": 277.0,
         "height": 53.0,
         "dataSource": "items",
@@ -453,10 +533,10 @@
       "type": "text",
       "options": {
         "left": 0.0,
-        "top": 171.0,
+        "top": 96.0,
         "width": 277.0,
         "height": 5.0,
-        "formatter": "说明：本模板综合验证 A4 横向纸张、多级表头（跨列分组 + 跨行合并）以及表格内图片、条形码、二维码三种内容类型的同页混排。",
+        "formatter": "说明：本模板综合验证 A4 横向纸张、三款字体（同页直显字体名）、多级表头（跨列分组 + 跨行合并，跨页时每页自动重复）以及表格内图片、条形码、二维码三种内容类型的同页混排；20 条明细跨多页展示。",
         "fontSize": 8,
         "color": "#888888",
         "verticalAlign": "middle"
