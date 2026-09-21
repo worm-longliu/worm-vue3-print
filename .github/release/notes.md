@@ -1,4 +1,4 @@
-## v1.3.0（2026-09-20） · Release Notes
+## v1.3.1（2026-09-21） · Release Notes
 
 语言导航：**[简体中文](#简体中文)** ｜ **[English](#english)**
 
@@ -6,150 +6,122 @@
 
 <a id="简体中文"></a>
 
-## v1.3.0（2026-09-20）—— 简体中文
+## v1.3.1（2026-09-21）—— 简体中文
 
-自 `v1.2.2` 以来的第一个特性版本：174 次提交、332 个文件、约 5.7 万行新增。核心变化是一份模板终于能描述**多页不同版式**的整份文书，同时把出纸链路里几个「设计稿清楚、实物出问题」的老毛病一次性补掉：条码不再被拉伸、条码可以按打印机点阵对齐、矢量水印不会再被放大、分页不再把层叠组合拆散。
+自 `v1.3.0` 以来的维护性版本：20 次提交、99 个文件、约 3800 行新增。三件主干事情：**表达式终于能算数**（四则与修约函数族 + 运算符数值语义）、**静默打印 SDK 收进 core 不再单独发包**、**多级表头跨页不再丢层级**；另外把 demo 做成了可以直接在线打开体验的样子（GitHub Pages / EdgeOne Pages）。
+
+> 版本号定为 `1.3.1`，但本版本包含两项**行为变更**（算术运算符语义、静默打印 SDK 导入路径），升级前请先读「破坏性变更」与「行为变更」两节。
 
 ### 安装与升级
 
 ```bash
-npm install @worm-vue3-print/core@^1.3.0 @worm-vue3-print/canvas@^1.3.0
+npm install @worm-vue3-print/core@^1.3.1 @worm-vue3-print/canvas@^1.3.1
 ```
 
-发布到 npm 的只有 `core`（渲染引擎与表达式系统）与 `canvas`（Vue 3 设计器）两个包。渲染服务 `services/print-render`、桌面客户端 `clients/print-client`、浏览器 SDK `@worm-vue3-print/client` 在仓库内同仓维护，不发布 npm。
+发布到 npm 的仍然只有 `core`（渲染引擎与表达式系统）与 `canvas`（Vue 3 设计器）两个包。渲染服务 `services/print-render` 与桌面客户端 `clients/print-client` 在仓库内同仓维护，不发布 npm；浏览器端 SDK 现由 `@worm-vue3-print/core/client` 子路径提供，同样不需要单独安装。
 
 ### 新增能力
 
-**模板能力（core + canvas）**
+**表达式：数值运算与修约（core + canvas）**
 
-- **多页面模板**：新增 wrapper 类型 `MultiPageTemplateData`（`{ version?: 1, pages: TemplateData[] }`），一份模板可由多篇版式不同的页面按固定顺序组成（如「封面 + 正文 + 条款」），全部绑定同一份数据。此前一份模板只能描述单页版式，多页只能来自内容溢出切片或同模板多份拼接。配套导出 `normalizeTemplate` / `isMultiPageTemplate` / `mergeFontDeclarations` / `composeMultiPageDocument`；各页各自跑完「绑定 → 测量 → 分页」，页码 `{pageIndex}`/`{totalPages}` 份内全局连续，整份文档一次 `page.pdf()` 出图。**单模板产物与旧版逐字一致**，由护栏测试锁死，存量模板零迁移。
-- **页面内容旋转角度** `TemplateData.outputRotation`（0 / 90 / 180 / 270）：解决「横版设计、竖版出纸」，90/270 时出纸纸张宽高互换、内容整体旋转填满版面，不缩放不裁切。
-- **批量打印**：`printData` 传对象数组即拼出同一模板的多份副本，份间强制分页，上限 `MAX_BATCH_COPIES` = 500 份。
-- **设计背景（套打底图）** `designBackground`（`src` + `rotation`）：只在设计画布显示用于精确套打对位，预览、服务端 PDF、静默打印一律不产出。
-- **标签拼版** `tiling`：把小尺寸标签按「列 × 行」铺进 A4 等目标纸，行数自动推导，不再「一张纸打一个标签」。
-- **新的纸张预设**：针式打印纸（241×279.4 全等分 / 二等分 / 三等分）、标签纸（80×60 / 60×40 / 40×30mm）、热敏小票纸（57 / 80 / 110mm，连续纸）。
-- **文字溢出三种形式** `textFit`：`clip` 截断、`shrink` 自动缩小（下限可调）、`autoHeight` 自适应行高；设计态字号即出纸字号。
-- **模板级字体声明**：`PrintDesigner` 的 `fonts` prop 写进模板 JSON 的 `fonts` 字段，三端据此出图；字体 URL 支持独立的 `fontBaseUrl`，与图片 `baseUrl` 解耦。
-- **分页：元素堆叠与显式编组同页**：纵向重叠元素按并查集聚为「堆叠单元」只占用一次版面、整组换页；`groupId` 相同的成员强绑定同页，不再被拆散。
+- **四则函数**：`ADD(a,b,…)`、`SUB(a,b,…)`、`MUL(a,b,…)`、`DIV(a,b)`，与运算符 `+ - * / %` 共用同一套数值语义——不便写运算符的场景（如在属性值里拼表达式）可直接调函数。
+- **修约函数**：`ROUND(n,d)` 四舍五入、`ROUNDUP` / `CEIL` 进一法（远离零）、`ROUNDDOWN` / `FLOOR` 去尾法（朝零）、`ROUNDBANK` 四舍六入五成双（GB/T 8170）。`d` 缺省 2，传负数则修约到整十 / 整百（`-2` → 百位）。修约按十进制字符串精确判定，不存在 `toFixed` 的浮点舍入陷阱；`ROUND` 与 `ROUNDBANK` 只在「恰好一半」时不同（前者进位、后者凑偶）。
+- **纯函数可直接复用**：core 主入口导出 `addNumbers` / `subtractNumbers` / `multiplyNumbers` / `divideNumbers` / `round` / `roundUp` / `roundDown` / `roundHalfEven`（底层模块 `numeric.ts` 由函数与运算符共用），宿主自有逻辑不必再自己实现一遍。
+- **设计器侧同步**：表达式编辑器「函数」页新增「数值运算」分组，四则与修约函数双击即可插入；帮助面板内置函数表同步补充。
 
-**出纸确定性（core）**
+**示例与在线预览（demo）**
 
-- **条形码打印点对齐** `printerDpi`（203 / 300 / 600）：把条码最终尺寸吸附到打印机点阵网格，修复热敏机出纸「条宽忽宽忽窄、边缘发灰」；元素与表格单元格同口径支持。
-- **同构水印**：改为显式矢量瓦片（`<svg class="watermark-tile">`），设计器、浏览器预览、服务端 PDF、静默打印四端一致；水印表达式支持 `{printDate}` / `{printTime}` / `{pageIndex}` / `{totalPages}` 系统变量。
-- **打印管线三端同源**：新增 driver 契约 + 共享 DOM 宿主 runtime + IIFE 执行器产物与 `@worm-vue3-print/core/node` 出口，浏览器、服务端、桌面客户端共用同一份测量、分页、连续纸推导、码制渲染与出图规格。
-
-**桌面与服务端**
-
-- 桌面客户端 `print-client` 完成可用形态：回环 WebSocket 服务与访问控制、串行打印引擎、打印机服务、分级日志与 JSONL 任务记录、配置窗口、macOS/Windows 安装包目标，以及「保留生成的 PDF」排查开关。
-- `@worm-vue3-print/client` SDK 新增 `PrintClient.printHtml()` —— 浏览器侧渲染完直送客户端静默出纸，旧 `print` 链路保留兼容。
-- 渲染微服务 `@worm-vue3-print/render` 并入本 monorepo（私有服务包，不发布 npm），通过 workspace 软链消费 core。
-
-**工具与生态**
-
-- 新增仓库内技能 `skills/print-template-json`：用简写 JSON 生成并出纸前校验打印模板（附 7 份成品模板与数据）。
-- demo 新增示例模板库（采购收货单、称签、价签、快递面单、零售小票、资产标签、销售出库单），「加载示例」改为分组选择弹窗。
+- **综合示例模板**：A4 横向、多级表头、表格单元格内图片 / 条形码 / 二维码混排，进入页面即自动载入；同时纳入示例库与 `skills/print-template-json` 技能资源。
+- **「自定义字段与数据」弹窗**：直接在页面上增删打印数据字段、编辑多份打印数据，批量打印逻辑同步适配。
+- **静态托管在线预览**：新增 `edgeone.json`（EdgeOne Pages）与 `.github/workflows/pages.yml`（GitHub Pages，推送 master 自动构建部署）——预览地址 **https://worm-longliu.github.io/worm-vue3-print/**。字体基址与示例图片路径改用 `import.meta.env.BASE_URL` 与当前站点 origin，去掉 localhost 硬编码，适配子路径部署。
+- 打印预览弹框改为全屏（内容区占满视口），移除「点击空白处关闭」，新增 Esc 关闭。
 
 ### 破坏性变更（升级需要处理）
 
-1. **移除字体查询能力**（含服务端与桌面客户端）：删除 `PrintDesigner` 的 `serverFonts` / `clientFonts` / `loadFonts` props 与「查询字体」按钮，删除 render 的 `GET /fonts` 与 `X-Font-Warnings` 响应头、SDK 的 `PrintClient.listFonts()` 与 `fonts.list` 协议，以及 core 的 `readSystemFonts` / `mergeFontSources` / `findMissingFonts`。字体可用性改由模板 `fonts` 声明 + `@font-face` 决定 → 迁移：用 `fonts` prop 声明字体，注意字体站点必须返回 `Access-Control-Allow-Origin`。
-2. **移除设计器内置「加载默认布局」**与 `load-default-template` prop：模板加载/重置归属宿主业务 → 迁移：把新的 `TemplateData` 赋给 `initial-template` 引用即可重载画布（会记录一次历史，撤销可回退）。
+1. **静默打印浏览器端 SDK 并入 core，不再单独发包**：原 `@worm-vue3-print/client` 迁移为 core 的子路径 `@worm-vue3-print/core/client`。
+   → 迁移：把 `import { PrintClient } from '@worm-vue3-print/client'` 改为 `from '@worm-vue3-print/core/client'`。
+   原包 `0.1.0` **从未发布到 npm**，因此 npm 上不存在可安装版本，实际影响面仅限仓库内引用与文档；`PrintClient`、`WsTransport`、`WormPrintError`、`MESSAGE_TYPES` 等全部导出符号与能力保持不变，SDK 零运行时依赖（仅浏览器 WebSocket），core 不新增依赖。`packages/print-client-sdk` 目录已删除，桌面客户端（Electron）内部引用同步改走 core。
 
 ### 行为变更（同一份模板出纸效果会变）
 
-- **条形码不再拉伸填满可用框**，改为「条宽 → 打印机 dpi → 等比缩小」结算。缺省条宽下条码会变小（约为元素框的一半），这是有意为之——调大 `barWidth` 即可加大条码，换来的是出纸条宽稳定；因此条形码不再提供「缩放模式」，需要上限请用「最大宽高」。
-- **表格单元格的 `fontFamily` 现在真正生效**：此前该字段被静默丢弃，修复后同一份旧模板的呈现会变化；同时修复含空格族名（如 `Microsoft YaHei`）不生效的问题。
-- `@worm-vue3-print/render`：连续纸模板按内容推导纸高（此前固定 80×297mm）；条码/二维码渲染基线切为 `jsbarcode`/`qrcode`，与浏览器预览一致，服务端不再依赖 `bwip-js`。
-- `print-client`：测量就绪等待 3s → 5s；删除渲染 worker 与 IPC 桥，改由主进程装配 core 管线与 Electron driver（协议与出纸行为不变）。
+- **算术运算符（四则与一元正负号）改为数值语义**，都是朝「符合直觉」的方向修：
+  ① 两侧都是数字或数字字符串时按数值运算——`'3' + 4` 由 `'34'` 变为 `7`，`{qty + price}` 不再拼出 `312.5`；
+  ② 消除二进制浮点噪声——`0.1 + 0.2` 由 `0.30000000000000004` 变为 `0.3`，`12.5 * 3 * 1.13` 由 `42.37499999999999` 变为 `42.375`；
+  ③ 除数为 0 或无法解析为数字时返回 `0`，不再输出 `Infinity` / `NaN`；`null` / 空串参与算术按 0、拼接时按空串（此前拼接会印出 `null`）；
+  ④ 任一侧不是数字时 `+` 仍保持字符串拼接（`name + '有限公司'` 行为不变）。
+- **修约结果修正**：`ROUND(1.005, 2)` 由 `1` 变为 `1.01`、`ROUND(2.675, 2)` 由 `2.67` 变为 `2.68`。旧模板若恰好踩在这类浮点边界上，金额/数量会有一分钱级别的差异。
+- **多级表头「每页重复」改为按整个表头区生效**：表头区（第 0 行起的连续标题行）内任一行勾选，整区都会重复；插入标题行、把行改为标题行时自动继承相邻标题行的设置。属性面板开关更名为「表头每页重复」。单行表头行为不变，存量单行表头模板产物逐字一致。
 
 ### 关键修复
 
-- **水印经真实打印机出纸被放大约 3 倍、位移、平铺错乱**：根因是 CSS 平铺背景被 Chromium 编译成 PDF tiling pattern，而 RIP 忽略图案矩阵（CTM 3.125 = 300dpi÷96px，与实测放大倍数吻合）。改为显式矢量瓦片后出纸几何回到设计值。
-- **横向页面被静默打成纵向**：出纸命令未声明纸张，CUPS 按队列默认纸张处理、`pdftopdf` 把横向页旋转 90°。现在显式下发 `-o media=…`。
-- **一次 PDF 生成超时导致后续任务全部 BUSY**：`printToPDF` 回调重载已移除，且 `pageSize` 单位是英寸而非微米（误传微米会得到 21 万 × 29.7 万英寸纸张）。改用 Promise + 超时兜底，失败/超时统一返回 `PRINT_FAILED` 并释放串行锁。
-- **小纸张模板输出空白第一页**（如 80×60mm）：分页引擎无条件入列空页 + DOM 执行器用 `offsetHeight`（整数 px 向上取整）测量，两处根因都已修掉。
-- 多页面模板：页签名漂移与新增页重名；批量打印时份间分页失效（复用 `COPY_BREAK_CSS`）。
-- `renderHtmlPages` 入参放宽为 `TemplateData | MultiPageTemplateData`，浏览器侧可直接提交多页面模板。
+- **系统变量无法在表达式内参与运算或函数调用**：`{pageIndex + 1}`、`{ADD(pageIndex,1)}`、`{DATE(printDate,'YYYY')}` 求值失败后被当作原文印出（模板求值失败的降级行为），只有「整个花括号就是一个变量」的 `{pageIndex}` 能出结果。根因是绑定阶段的表达式上下文里只有业务数据，而页码要等分页后才有值。现改为：`printDate` / `printTime` 在数据绑定时并入上下文；引用 `pageIndex` / `totalPages` 的表达式在绑定阶段保留原始文本（测量趟按原文测量），最终渲染时按所在页页码重新求值——元素、页眉/页脚、首页叠加与表格单元格四者一致，三端（浏览器预览 / 服务端 PDF / 桌面客户端）同源。**存量模板产物不变**：无 rawFormatter 的模板走快速路径，不做任何重算。
+- **多级表头分页续片会丢掉下面几级表头**：多级表头各行由 `rowspan` / `colspan` 连成一个结构整体，而重复此前按行独立判定——只勾首行时续片只重复首行，第二级及以后整段丢失，首行的跨行主格还会越界吃掉数据行的位置。现按表头区整体重复，重复行数按 `rowspan` 完整性对齐到最近的闭合边界，跨出表头区的主格在续片渲染时裁剪到边界内。
 
 ### 已知限制
 
-- 多页面模板出纸时「内容旋转角度」取**首页**的 `outputRotation`（各页纸张尺寸已强制一致，角度尚未纳入一致性校验）。
-- 多页面模板不支持连续纸与标签拼版，也不支持数据驱动的条件包含页。
-- 桌面客户端协议接受 `color` 与 `pageRanges`，但 PDF → 系统打印链路从未应用这两个参数。
-- render 的截图接口对 `printData` 数组只渲染首条（PDF 接口全量渲染），语义不同。
+- 多级表头的重复粒度是「表头区」而非「单行」：区内任一行勾选即整区重复，暂不支持只重复区内某一行。
+- 多页面模板出纸时「内容旋转角度」取首页的 `outputRotation`（1.3.0 遗留，角度尚未纳入一致性校验）。
+- render 的截图接口对 `printData` 数组只渲染首条，PDF 接口才全量渲染。
 
 ---
 
 <a id="english"></a>
 
-## v1.3.0 (2026-09-20) — English
+## v1.3.1 (2026-09-21) — English
 
-First feature release since `v1.2.2`: 174 commits, 332 files, ~57k added lines. The headline change is that a single template can now describe a **whole document made of differently laid-out pages**, alongside fixes to the "looks right on screen, wrong on paper" class of problems: barcodes are no longer stretched, can be snapped to the printer's dot grid, vector watermarks are no longer upscaled, and stacked or grouped elements are no longer split across pages.
+Maintenance release since `v1.3.0`: 20 commits, 99 files, ~3.8k added lines. Three headline items: **expressions can finally do arithmetic** (four-operation and rounding function families, plus numeric semantics for the operators), **the silent-print browser SDK moved into core** and is no longer published separately, and **multi-level table headers no longer lose their lower levels across pages**. The demo also became something you can just open online (GitHub Pages / EdgeOne Pages).
+
+> The version is `1.3.1`, but this release contains two **behavior changes** (arithmetic operator semantics and the SDK import path). Read "Breaking changes" and "Behavior changes" before upgrading.
 
 ### Install / upgrade
 
 ```bash
-npm install @worm-vue3-print/core@^1.3.0 @worm-vue3-print/canvas@^1.3.0
+npm install @worm-vue3-print/core@^1.3.1 @worm-vue3-print/canvas@^1.3.1
 ```
 
-Only `core` (engine + expression pipeline) and `canvas` (Vue 3 designer) are published to npm. The render service (`services/print-render`), desktop client (`clients/print-client`) and browser SDK (`@worm-vue3-print/client`) live in this repo and are not published.
+Only `core` (engine + expression pipeline) and `canvas` (Vue 3 designer) are published to npm. The render service (`services/print-render`) and desktop client (`clients/print-client`) remain in-repo and unpublished; the browser SDK now ships as the `@worm-vue3-print/core/client` subpath, so there is nothing extra to install.
 
 ### Added
 
-**Template capabilities (core + canvas)**
+**Expressions: numeric arithmetic and rounding (core + canvas)**
 
-- **Multi-page templates**: new wrapper type `MultiPageTemplateData` (`{ version?: 1, pages: TemplateData[] }`) — one document composed of several pages with different layouts (cover + body + terms), all bound to the same data. Previously one template could only describe a single page layout. Exports `normalizeTemplate`, `isMultiPageTemplate`, `mergeFontDeclarations`, `composeMultiPageDocument`. Each page runs the full bind → measure → paginate pass; `{pageIndex}`/`{totalPages}` are continuous across the whole copy; the document is rasterized in a single `page.pdf()`. **Single-template output is byte-identical to the previous version**, locked down by guard tests — no migration needed.
-- **Page content rotation** `TemplateData.outputRotation` (0 / 90 / 180 / 270): design in landscape, print in portrait. At 90/270 the output paper swaps width and height and the content is rotated to fill it — no scaling, no cropping.
-- **Batch printing**: pass an array to `printData` to compose multiple copies of the same template with forced page breaks between copies; limit `MAX_BATCH_COPIES` = 500.
-- **Design background** `designBackground` (`src` + `rotation`): a registration/overlay image shown only on the design canvas; never emitted to preview, server-side PDF or silent print.
-- **Label tiling** `tiling`: lay small labels out on A4 (or another target sheet) in columns × rows instead of one label per sheet.
-- **New paper presets**: dot-matrix sheets (241×279.4 / half / third), label stock (80×60 / 60×40 / 40×30 mm), receipt rolls (57 / 80 / 110 mm, continuous).
-- **Three text overflow modes** `textFit`: `clip`, `shrink` (auto-reduce to a configurable floor), `autoHeight`. What you see in the designer is what prints.
-- **Template-level font declarations**: the `fonts` prop of `PrintDesigner` is written to the template JSON's `fonts` field and honored by all three renderers; font URLs resolve against an independent `fontBaseUrl`, decoupled from the image `baseUrl`.
-- **Pagination: element stacking and group keeping**: vertically overlapping elements are unioned into a "stacking unit" that consumes layout once and page-breaks as a whole; elements sharing `groupId` stay on the same page.
+- **Arithmetic functions** `ADD(a,b,…)`, `SUB(a,b,…)`, `MUL(a,b,…)`, `DIV(a,b)` sharing one numeric semantics with the `+ - * / %` operators — handy where operators are awkward to write.
+- **Rounding functions**: `ROUND(n,d)` half-up, `ROUNDUP` / `CEIL` away from zero, `ROUNDDOWN` / `FLOOR` toward zero, `ROUNDBANK` half-to-even (GB/T 8170). `d` defaults to 2; a negative `d` rounds to tens/hundreds (`-2` → hundreds). Rounding is decided on the exact decimal string, so the `toFixed` float traps do not apply; `ROUND` and `ROUNDBANK` differ only on an exact half.
+- **Reusable pure functions**: the core entry point exports `addNumbers` / `subtractNumbers` / `multiplyNumbers` / `divideNumbers` / `round` / `roundUp` / `roundDown` / `roundHalfEven` (backed by `numeric.ts`, shared by both functions and operators), so host code does not have to reimplement them.
+- **Designer parity**: the expression editor gained a **Numeric** function group (double-click to insert) and the in-app help function table was updated.
 
-**Output determinism (core)**
+**Samples & online preview (demo)**
 
-- **Barcode dot-grid alignment** `printerDpi` (203 / 300 / 600): the final barcode size is snapped to the printer's dot grid, fixing "modules randomly wide or narrow, edges gray" on thermal printers — supported for both elements and table cells.
-- **Isomorphic watermarks**: rendered as explicit vector tiles (`<svg class="watermark-tile">`) so designer, browser preview, server PDF and silent print agree; watermark expressions support `{printDate}` / `{printTime}` / `{pageIndex}` / `{totalPages}`.
-- **One print pipeline, three targets**: driver contract + shared DOM host runtime + IIFE executor bundle and a `@worm-vue3-print/core/node` export. Browser, server and desktop share the same measurement, pagination, continuous-paper derivation, code rendering and output specs.
-
-**Desktop & server**
-
-- `print-client` reaches a usable state: loopback WebSocket service with access control, serial print engine, printer service, leveled logging and JSONL job history, settings window, macOS/Windows packaging targets, and a "keep generated PDF" troubleshooting switch.
-- `@worm-vue3-print/client` SDK adds `PrintClient.printHtml()` — render in the browser and hand the final HTML to the client for silent printing; the legacy `print` path stays for compatibility.
-- The render microservice `@worm-vue3-print/render` moved into this monorepo as a private workspace package and consumes core through a workspace link.
-
-**Tooling & ecosystem**
-
-- New in-repo skill `skills/print-template-json`: author templates from shorthand JSON and validate them before printing (7 sample templates included).
-- The demo ships a sample template library (purchase receipt, scale label, price tag, shipping label, retail receipt, asset tag, sales delivery note) behind a grouped picker.
+- **Comprehensive showcase sample template**: A4 landscape, multi-level table header, images / barcodes / QR codes rendered inside table cells; it loads automatically on mount and is registered in the sample library and in the `skills/print-template-json` assets.
+- **Custom fields & data dialog**: add or remove print-data fields and edit the data of several copies right on the page; batch printing follows the same data.
+- **Static hosting for the online preview**: new `edgeone.json` (EdgeOne Pages) and `.github/workflows/pages.yml` (GitHub Pages, builds and deploys on every push to master) — preview at **https://worm-longliu.github.io/worm-vue3-print/**. Font base URL and sample images now use `import.meta.env.BASE_URL` / the current site origin instead of a hardcoded `localhost`, so sub-path deployments work.
+- The print preview dialog is now full-screen (content fills the viewport); click-outside-to-close was removed and Esc closes it.
 
 ### Breaking changes (action required)
 
-1. **System font discovery removed** (server and desktop): `PrintDesigner` loses `serverFonts` / `clientFonts` / `loadFonts` props and the "Query fonts" button; render loses `GET /fonts` and the `X-Font-Warnings` header; the SDK loses `PrintClient.listFonts()` and the `fonts.list` protocol; core loses `readSystemFonts` / `mergeFontSources` / `findMissingFonts`. Font availability is now fully determined by the template's `fonts` declarations and `@font-face` → migrate to the `fonts` prop, and make sure font CDNs return `Access-Control-Allow-Origin`.
-2. **The designer's built-in "Load default layout" was removed**, along with the `load-default-template` prop — loading and resetting a template is the host application's job → assign a new `TemplateData` to `initial-template` to reload the canvas (it records one history entry, so undo works).
+1. **The silent-print browser SDK was merged into core and is no longer published separately**: `@worm-vue3-print/client` becomes the core subpath `@worm-vue3-print/core/client`.
+   → Migrate: change `import { PrintClient } from '@worm-vue3-print/client'` to `from '@worm-vue3-print/core/client'`.
+   Version `0.1.0` was **never published to npm**, so there is no installed package to migrate from — the impact is limited to in-repo imports and docs. All exports and capabilities (`PrintClient`, `WsTransport`, `WormPrintError`, `MESSAGE_TYPES`, …) are unchanged; the SDK still has zero runtime dependencies (browser WebSocket only) and core gains none. The `packages/print-client-sdk` directory was removed and the Electron desktop client now imports from core.
 
 ### Behavior changes (existing templates will print differently)
 
-- **Barcodes are no longer stretched** to fill their box; size comes from module width → printer dpi → proportional shrink. With the default module width barcodes become smaller (roughly half the element box) — intentional: raise `barWidth` to enlarge, and get stable module widths in return. "Scale mode" was removed; use "max width/height" instead.
-- **Table cell `fontFamily` now actually applies** — it used to be silently dropped, so existing templates will render differently; font family names containing spaces (e.g. `Microsoft YaHei`) now work too.
-- `@worm-vue3-print/render`: continuous-paper templates derive their height from content (previously hard-coded 80×297 mm); barcode/QR rendering switched to `jsbarcode`/`qrcode` to match browser preview, dropping the `bwip-js` dependency.
-- `print-client`: measurement readiness wait raised from 3s to 5s; the render worker and IPC bridge were replaced by the core pipeline plus an Electron driver (protocol and output behavior unchanged).
+- **Arithmetic operators (binary and unary `+` / `-`) now use numeric semantics** — all moving toward what users expect:
+  ① both sides numeric (or numeric strings) are added numerically — `'3' + 4` was `'34'`, now `7`; `{qty + price}` no longer concatenates into `312.5`;
+  ② binary float noise is removed — `0.1 + 0.2` was `0.30000000000000004`, now `0.3`; `12.5 * 3 * 1.13` was `42.37499999999999`, now `42.375`;
+  ③ division by zero (or an unparsable divisor) returns `0` instead of `Infinity` / `NaN`; `null` / empty string count as `0` in arithmetic and as `''` when concatenating (previously `null` was printed);
+  ④ `+` still concatenates when either side is not numeric (`name + ' Ltd.'` unchanged).
+- **Rounding results corrected**: `ROUND(1.005, 2)` was `1`, now `1.01`; `ROUND(2.675, 2)` was `2.67`, now `2.68`. Templates that happened to sit on such float boundaries may shift by a cent in amounts or quantities.
+- **"Repeat on every page" for multi-level headers now applies to the whole header zone**: checking any row in the header zone (the consecutive header rows starting at row 0) repeats the entire zone, and inserting a header row or changing a row type to header inherits the neighbouring header row's setting. The property-panel switch is renamed "表头每页重复". Single-row headers behave exactly as before and existing single-row-header templates render byte-identically.
 
 ### Notable fixes
 
-- **Watermarks printed 3× too large, offset and tiled incorrectly**: CSS repeating backgrounds were compiled by Chromium into a PDF tiling pattern whose pattern matrix the RIP ignores (CTM 3.125 = 300dpi÷96px, matching the observed scale). Explicit vector tiles restore design geometry.
-- **Landscape pages silently printed as portrait**: no paper was declared, so CUPS used the queue default and `pdftopdf` rotated the page 90°. `-o media=…` is now passed explicitly.
-- **One PDF generation timeout poisoned every following job with BUSY**: the `printToPDF` callback overload no longer exists, and `pageSize` is in inches, not microns (passing microns yields a 210000×297000 inch page). Now promise-based with timeout, returning `PRINT_FAILED` and releasing the serial lock.
-- **Blank first page on small paper** (e.g. 80×60 mm): caused by the pagination engine queueing empty pages plus `offsetHeight` (integer px, rounded up) being used for measurement.
-- Multi-page templates: drifting page names and duplicate names for new pages; missing page break between batch copies (now reuses `COPY_BREAK_CSS`).
-- `renderHtmlPages` now accepts `TemplateData | MultiPageTemplateData`, so the browser can submit multi-page templates directly.
+- **System variables could not be used inside an expression**: `{pageIndex + 1}`, `{ADD(pageIndex,1)}` and `{DATE(printDate,'YYYY')}` failed to evaluate and were printed verbatim (the fallback for failed evaluation); only a bare `{pageIndex}` worked. Cause: the binding-time expression context contained business data only, and page numbers are unknown until pagination. Now `printDate` / `printTime` are merged into the binding context, and expressions referencing `pageIndex` / `totalPages` keep their source text at binding time (the measurement pass measures the raw text) and are re-evaluated per page during final rendering — consistently for elements, header/footer, first-page overlay and table cells, and identically across browser preview, server-side PDF and the desktop client. **Output for existing templates is unchanged**: templates without any raw formatter take a fast path with no re-evaluation.
+- **Multi-level table headers lost every level below the first on continuation pages**: the rows form a single structure through `rowspan` / `colspan`, but repeating was decided per row — with only the first row checked, continuation pages repeated just that row, and the row-spanning master cell could overrun and swallow the position of the data rows. The whole header zone now repeats, the repeat count is aligned to the nearest `rowspan`-closed boundary, and a master cell overrunning the zone is clamped during continuation rendering.
 
 ### Known limitations
 
-- For multi-page templates the **content rotation angle is taken from the first page** (paper sizes are forced equal across pages; rotation is not part of the consistency check yet).
-- Multi-page templates do not support continuous paper or label tiling, nor data-driven conditional pages.
-- The desktop client protocol accepts `color` and `pageRanges`, but the PDF → system print path never applied them.
+- Multi-level header repetition is scoped to the **header zone**, not to individual rows: checking any row repeats the whole zone; repeating a single row within a zone is not supported.
+- For multi-page templates the **content rotation angle is taken from the first page** (carried over from 1.3.0; rotation is not part of the consistency check yet).
 - The render service screenshot endpoint renders only the first item of a `printData` array, while the PDF endpoint renders them all.
 
 ---
