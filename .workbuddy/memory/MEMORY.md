@@ -22,6 +22,12 @@
 - 续片渲染重复表头时传 `rowLimit=repeatCount`，超界 rowspan 会被裁剪（`html-generator.ts` 的 `renderMatrixRows`），防止跨行主格吃掉数据行位置。
 - 新增 header 行（`insertRow` / `setRowType`）会继承相邻 header 行的 `repeatOnPage`；设计器开关走 `setHeaderRepeat(rows, enabled)` 作用于整个表头区。
 
+## 包结构现状（2026-09-21 起）
+
+- 发布到 npm 的包只有两个：`core`、`canvas`。
+- 静默打印浏览器端 SDK 在 core 子路径 **`@worm-vue3-print/core/client`**（源码 `packages/print-core/src/client/`），不存在独立 `@worm-vue3-print/client` 包（0.1.0 从未发布，旧目录 `packages/print-client-sdk` 已删）。
+- demo 线上预览：GitHub Pages `https://worm-longliu.github.io/worm-vue3-print/`，工作流 `.github/workflows/pages.yml`；EdgeOne 读根 `edgeone.json`。
+
 ## 文档与事实校验习惯
 
 写 CHANGELOG / Release Notes 前要核实 API 是否真的从主入口导出（例：`getOutputPaperDimensions` 只在 core 内部使用，不可写成公开导入）。
