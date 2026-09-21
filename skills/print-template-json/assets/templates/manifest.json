@@ -880,5 +880,30 @@
         "sortOrder": 20
       }
     ]
+  },
+  {
+    "id": "comprehensive-showcase",
+    "name": "综合示例模板",
+    "group": "单据",
+    "paper": "A4 横向 · 277mm 版心",
+    "desc": "A4 横向综合样板：多级表头（跨列分组 + 跨行合并），明细行同表展示商品图片、条形码与二维码。",
+    "fields": [
+      { "id": "cs-1", "fieldKey": "doc", "fieldLabel": "单据信息", "fieldType": "string", "sortOrder": 1 },
+      { "id": "cs-2", "fieldKey": "doc.no", "fieldLabel": "单据编号", "fieldType": "string", "sortOrder": 2 },
+      { "id": "cs-3", "fieldKey": "doc.date", "fieldLabel": "单据日期", "fieldType": "date", "sortOrder": 3 },
+      { "id": "cs-4", "fieldKey": "doc.warehouse", "fieldLabel": "收货仓库", "fieldType": "string", "sortOrder": 4 },
+      { "id": "cs-5", "fieldKey": "doc.keeper", "fieldLabel": "制单人", "fieldType": "string", "sortOrder": 5 },
+      { "id": "cs-6", "fieldKey": "items", "fieldLabel": "商品明细", "fieldType": "list", "sortOrder": 6 },
+      { "id": "cs-7", "fieldKey": "items.seq", "fieldLabel": "序号", "fieldType": "number", "sortOrder": 7 },
+      { "id": "cs-8", "fieldKey": "items.image", "fieldLabel": "商品图片", "fieldType": "string", "sortOrder": 8 },
+      { "id": "cs-9", "fieldKey": "items.name", "fieldLabel": "商品名称", "fieldType": "string", "sortOrder": 9 },
+      { "id": "cs-10", "fieldKey": "items.spec", "fieldLabel": "规格型号", "fieldType": "string", "sortOrder": 10 },
+      { "id": "cs-11", "fieldKey": "items.unit", "fieldLabel": "单位", "fieldType": "string", "sortOrder": 11 },
+      { "id": "cs-12", "fieldKey": "items.qty", "fieldLabel": "数量", "fieldType": "number", "sortOrder": 12 },
+      { "id": "cs-13", "fieldKey": "items.price", "fieldLabel": "单价", "fieldType": "number", "sortOrder": 13 },
+      { "id": "cs-14", "fieldKey": "items.amount", "fieldLabel": "金额", "fieldType": "number", "sortOrder": 14 },
+      { "id": "cs-15", "fieldKey": "items.barcode", "fieldLabel": "条形码", "fieldType": "string", "sortOrder": 15 },
+      { "id": "cs-16", "fieldKey": "items.qrcode", "fieldLabel": "二维码", "fieldType": "string", "sortOrder": 16 }
+    ]
   }
 ]

@@ -1,0 +1,14 @@
+{
+  "installCommand": "npm ci --prefix demo",
+  "buildCommand": "npm run build --prefix demo",
+  "outputDirectory": "demo/dist",
+  "nodeVersion": "22.11.0",
+  "headers": [
+    {
+      "source": "/assets/*",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
+}

@@ -92,8 +92,8 @@ agent_created: true
 
 - `references/template-schema.md` — 完整字段规范：纸张表、元素选项、表格模型、拼版几何、表达式函数
 - `references/layout-recipes.md` — 五类场景版式配方 + 10 条避坑清单
-- `assets/templates/` — 7 份可直接导入的成品模板（含配套 `.data.json` 与 `manifest.json`）：
-  采购收货单、销售出库单、快递电子面单、称签打印、价签打印（拼版）、资产/设备标签（拼版）、零售小票。
+- `assets/templates/` — 8 份可直接导入的成品模板（含配套 `.data.json` 与 `manifest.json`）：
+  采购收货单、销售出库单、快递电子面单、综合示例模板、称签打印、价签打印（拼版）、资产/设备标签（拼版）、零售小票。
   新需求与某份相近时，复制改名后微调比从零排更快。
 
 ## 校验输出解读

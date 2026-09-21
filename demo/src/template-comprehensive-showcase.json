@@ -1,0 +1,470 @@
+{
+  "unit": "mm",
+  "paperSize": "A4",
+  "orientation": "landscape",
+  "margins": {
+    "top": 10.0,
+    "right": 10.0,
+    "bottom": 10.0,
+    "left": 10.0
+  },
+  "header": {
+    "height": 0.0,
+    "elements": []
+  },
+  "footer": {
+    "height": 0.0,
+    "elements": []
+  },
+  "firstPageOverlay": {
+    "height": 0,
+    "elements": []
+  },
+  "elements": [
+    {
+      "id": "el1",
+      "type": "text",
+      "options": {
+        "left": 0.0,
+        "top": 0.0,
+        "width": 277.0,
+        "height": 10.0,
+        "formatter": "商品综合信息表",
+        "fontSize": 18,
+        "fontWeight": "bold",
+        "textAlign": "center",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    },
+    {
+      "id": "infoTable",
+      "type": "table",
+      "options": {
+        "left": 0.0,
+        "top": 12.0,
+        "width": 277.0,
+        "height": 16.0,
+        "tableDefaultFontSize": 9,
+        "tableDefaultPadding": 1.2,
+        "tableColWidths": [
+          22.0,
+          116.5,
+          22.0,
+          116.5
+        ],
+        "tableRows": [
+          {
+            "id": "r1",
+            "type": "header",
+            "height": 8.0,
+            "cells": [
+              {
+                "id": "c1",
+                "formatter": "单据编号",
+                "align": "center",
+                "valign": "middle",
+                "backgroundColor": "#f0f3f8",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "c2",
+                "formatter": "{doc.no}",
+                "valign": "middle"
+              },
+              {
+                "id": "c3",
+                "formatter": "单据日期",
+                "align": "center",
+                "valign": "middle",
+                "backgroundColor": "#f0f3f8",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "c4",
+                "formatter": "{doc.date}",
+                "valign": "middle"
+              }
+            ]
+          },
+          {
+            "id": "r2",
+            "type": "header",
+            "height": 8.0,
+            "cells": [
+              {
+                "id": "c5",
+                "formatter": "收货仓库",
+                "align": "center",
+                "valign": "middle",
+                "backgroundColor": "#f0f3f8",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "c6",
+                "formatter": "{doc.warehouse}",
+                "valign": "middle"
+              },
+              {
+                "id": "c7",
+                "formatter": "制 单 人",
+                "align": "center",
+                "valign": "middle",
+                "backgroundColor": "#f0f3f8",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "c8",
+                "formatter": "{doc.keeper}",
+                "valign": "middle"
+              }
+            ]
+          }
+        ]
+      },
+      "printElementType": {
+        "type": "table",
+        "title": "表格"
+      }
+    },
+    {
+      "id": "goodsTable",
+      "type": "table",
+      "options": {
+        "left": 0.0,
+        "top": 31.0,
+        "width": 277.0,
+        "height": 53.0,
+        "dataSource": "items",
+        "tableDefaultFontSize": 9,
+        "tableDefaultPadding": 1,
+        "tableColWidths": [
+          8.0,
+          28.0,
+          48.0,
+          36.0,
+          12.0,
+          18.0,
+          22.0,
+          26.0,
+          51.0,
+          28.0
+        ],
+        "tableRows": [
+          {
+            "id": "r1",
+            "type": "header",
+            "height": 8.0,
+            "cells": [
+              {
+                "id": "c9",
+                "formatter": "序号",
+                "rowspan": 2,
+                "align": "center",
+                "valign": "middle",
+                "fontWeight": "bold",
+                "backgroundColor": "#eef2f7"
+              },
+              {
+                "id": "c10",
+                "formatter": "基础信息",
+                "colspan": 3,
+                "align": "center",
+                "valign": "middle",
+                "fontWeight": "bold",
+                "backgroundColor": "#eef2f7"
+              },
+              {
+                "id": "c11",
+                "merged": true
+              },
+              {
+                "id": "c12",
+                "merged": true
+              },
+              {
+                "id": "c13",
+                "formatter": "单位",
+                "rowspan": 2,
+                "align": "center",
+                "valign": "middle",
+                "fontWeight": "bold",
+                "backgroundColor": "#eef2f7"
+              },
+              {
+                "id": "c14",
+                "formatter": "金额信息",
+                "colspan": 3,
+                "align": "center",
+                "valign": "middle",
+                "fontWeight": "bold",
+                "backgroundColor": "#eef2f7"
+              },
+              {
+                "id": "c15",
+                "merged": true
+              },
+              {
+                "id": "c16",
+                "merged": true
+              },
+              {
+                "id": "c17",
+                "formatter": "编码标识",
+                "colspan": 2,
+                "align": "center",
+                "valign": "middle",
+                "fontWeight": "bold",
+                "backgroundColor": "#eef2f7"
+              },
+              {
+                "id": "c18",
+                "merged": true
+              }
+            ],
+            "repeatOnPage": true
+          },
+          {
+            "id": "r2",
+            "type": "header",
+            "height": 8.0,
+            "cells": [
+              {
+                "id": "c19",
+                "merged": true
+              },
+              {
+                "id": "c20",
+                "formatter": "商品图片",
+                "align": "center",
+                "valign": "middle",
+                "fontWeight": "bold",
+                "backgroundColor": "#f6f8fb"
+              },
+              {
+                "id": "c21",
+                "formatter": "商品名称",
+                "align": "center",
+                "valign": "middle",
+                "fontWeight": "bold",
+                "backgroundColor": "#f6f8fb"
+              },
+              {
+                "id": "c22",
+                "formatter": "规格型号",
+                "align": "center",
+                "valign": "middle",
+                "fontWeight": "bold",
+                "backgroundColor": "#f6f8fb"
+              },
+              {
+                "id": "c23",
+                "formatter": "数量",
+                "align": "center",
+                "valign": "middle",
+                "fontWeight": "bold",
+                "backgroundColor": "#f6f8fb"
+              },
+              {
+                "id": "c24",
+                "formatter": "单价",
+                "align": "center",
+                "valign": "middle",
+                "fontWeight": "bold",
+                "backgroundColor": "#f6f8fb"
+              },
+              {
+                "id": "c25",
+                "formatter": "金额",
+                "align": "center",
+                "valign": "middle",
+                "fontWeight": "bold",
+                "backgroundColor": "#f6f8fb"
+              },
+              {
+                "id": "c26",
+                "formatter": "条形码",
+                "align": "center",
+                "valign": "middle",
+                "fontWeight": "bold",
+                "backgroundColor": "#f6f8fb"
+              },
+              {
+                "id": "c27",
+                "formatter": "二维码",
+                "align": "center",
+                "valign": "middle",
+                "fontWeight": "bold",
+                "backgroundColor": "#f6f8fb"
+              },
+              {
+                "id": "c28",
+                "merged": true
+              }
+            ],
+            "repeatOnPage": true
+          },
+          {
+            "id": "r3",
+            "type": "data",
+            "height": 28.0,
+            "cells": [
+              {
+                "id": "c29",
+                "formatter": "{seq}",
+                "align": "center",
+                "valign": "middle"
+              },
+              {
+                "id": "c30",
+                "cellType": "image",
+                "formatter": "{image}",
+                "align": "center",
+                "valign": "middle"
+              },
+              {
+                "id": "c31",
+                "formatter": "{name}",
+                "align": "left",
+                "valign": "middle"
+              },
+              {
+                "id": "c32",
+                "formatter": "{spec}",
+                "align": "left",
+                "valign": "middle",
+                "color": "#555555"
+              },
+              {
+                "id": "c33",
+                "formatter": "{unit}",
+                "align": "center",
+                "valign": "middle"
+              },
+              {
+                "id": "c34",
+                "formatter": "{qty}",
+                "align": "center",
+                "valign": "middle"
+              },
+              {
+                "id": "c35",
+                "formatter": "{MONEY(price)}",
+                "align": "right",
+                "valign": "middle"
+              },
+              {
+                "id": "c36",
+                "formatter": "{MONEY(amount)}",
+                "align": "right",
+                "valign": "middle"
+              },
+              {
+                "id": "c37",
+                "cellType": "barcode",
+                "formatter": "{barcode}",
+                "barcodeType": "code128",
+                "barWidth": 2,
+                "printerDpi": 203,
+                "showBarcodeText": false,
+                "align": "center",
+                "valign": "middle"
+              },
+              {
+                "id": "c38",
+                "cellType": "qrcode",
+                "formatter": "{qrcode}",
+                "qrCodeLevel": "M",
+                "align": "center",
+                "valign": "middle"
+              }
+            ]
+          },
+          {
+            "id": "r4",
+            "type": "summary",
+            "height": 9.0,
+            "cells": [
+              {
+                "id": "c39",
+                "formatter": "合计",
+                "colspan": 7,
+                "align": "right",
+                "valign": "middle",
+                "fontWeight": "bold",
+                "backgroundColor": "#f6f8fb"
+              },
+              {
+                "id": "c40",
+                "merged": true
+              },
+              {
+                "id": "c41",
+                "merged": true
+              },
+              {
+                "id": "c42",
+                "merged": true
+              },
+              {
+                "id": "c43",
+                "merged": true
+              },
+              {
+                "id": "c44",
+                "merged": true
+              },
+              {
+                "id": "c45",
+                "merged": true
+              },
+              {
+                "id": "c46",
+                "formatter": "{MONEY(SUM(amount))}",
+                "align": "right",
+                "valign": "middle",
+                "fontWeight": "bold",
+                "backgroundColor": "#f6f8fb"
+              },
+              {
+                "id": "c47",
+                "formatter": "",
+                "backgroundColor": "#f6f8fb"
+              },
+              {
+                "id": "c48",
+                "formatter": "",
+                "backgroundColor": "#f6f8fb"
+              }
+            ]
+          }
+        ]
+      },
+      "printElementType": {
+        "type": "table",
+        "title": "表格"
+      }
+    },
+    {
+      "id": "el4",
+      "type": "text",
+      "options": {
+        "left": 0.0,
+        "top": 171.0,
+        "width": 277.0,
+        "height": 5.0,
+        "formatter": "说明：本模板综合验证 A4 横向纸张、多级表头（跨列分组 + 跨行合并）以及表格内图片、条形码、二维码三种内容类型的同页混排。",
+        "fontSize": 8,
+        "color": "#888888",
+        "verticalAlign": "middle"
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    }
+  ]
+}

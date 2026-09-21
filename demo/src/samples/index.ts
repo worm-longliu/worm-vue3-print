@@ -14,6 +14,7 @@ import { WEIGHT_LABEL_SAMPLE } from './weight-label'
 import { PRICE_LABEL_SAMPLE } from './price-label'
 import { ASSET_TAG_SAMPLE } from './asset-tag'
 import { THERMAL_RECEIPT_SAMPLE } from './thermal-receipt'
+import { COMPREHENSIVE_SHOWCASE_SAMPLE } from './comprehensive-showcase'
 
 export type { SampleTemplate, SampleGroup }
 
@@ -22,6 +23,7 @@ export const SAMPLE_TEMPLATES: SampleTemplate[] = [
   PURCHASE_RECEIPT_SAMPLE,
   SALES_OUTBOUND_SAMPLE,
   EXPRESS_WAYBILL_SAMPLE,
+  COMPREHENSIVE_SHOWCASE_SAMPLE,
   WEIGHT_LABEL_SAMPLE,
   PRICE_LABEL_SAMPLE,
   ASSET_TAG_SAMPLE,

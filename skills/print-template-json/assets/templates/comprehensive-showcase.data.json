@@ -1,0 +1,58 @@
+{
+  "doc": {
+    "no": "ZH-20260921-008",
+    "date": "2026-09-21",
+    "warehouse": "华东一号仓（杭州）",
+    "keeper": "陈明"
+  },
+  "items": [
+    {
+      "seq": 1,
+      "image": "http://localhost:9303/images/goods-1.png",
+      "name": "蓝牙降噪头戴耳机",
+      "spec": "WH-900 / 曜石黑",
+      "unit": "副",
+      "qty": 12,
+      "price": 399,
+      "amount": 4788,
+      "barcode": "6901234567891",
+      "qrcode": "https://example.com/item/6901234567891"
+    },
+    {
+      "seq": 2,
+      "image": "http://localhost:9303/images/goods-2.png",
+      "name": "机械键盘（青轴）",
+      "spec": "KB-104 / RGB 背光",
+      "unit": "把",
+      "qty": 8,
+      "price": 259,
+      "amount": 2072,
+      "barcode": "6902345678902",
+      "qrcode": "https://example.com/item/6902345678902"
+    },
+    {
+      "seq": 3,
+      "image": "http://localhost:9303/images/goods-3.png",
+      "name": "无线双模鼠标",
+      "spec": "M-620 / 2.4G+蓝牙",
+      "unit": "个",
+      "qty": 20,
+      "price": 89,
+      "amount": 1780,
+      "barcode": "6903456789013",
+      "qrcode": "https://example.com/item/6903456789013"
+    },
+    {
+      "seq": 4,
+      "image": "http://localhost:9303/images/goods-4.png",
+      "name": "高速 U 盘",
+      "spec": "U3-128G / USB3.2",
+      "unit": "个",
+      "qty": 30,
+      "price": 79,
+      "amount": 2370,
+      "barcode": "6904567890124",
+      "qrcode": "https://example.com/item/6904567890124"
+    }
+  ]
+}

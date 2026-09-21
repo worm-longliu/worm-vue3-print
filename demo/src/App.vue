@@ -5,7 +5,7 @@
       <span class="demo-logo">打印模板设计器 Demo</span>
       <span class="demo-badge">模板 ID：{{ TEMPLATE_ID }}</span>
       <span class="demo-badge">业务类型：{{ currentSample ? currentSample.name : '空白模板' }}</span>
-      <button type="button" class="demo-print-btn" @click="onLoadDefaultLayout">加载默认布局</button>
+      <button type="button" class="demo-print-btn" @click="onLoadSample">加载示例</button>
       <button type="button" class="demo-print-btn" @click="onExportTemplate">导出模板</button>
       <button type="button" class="demo-print-btn" @click="fileInputRef?.click()">导入模板</button>
       <button type="button" class="demo-print-btn" @click="onClearTemplate">清空</button>
@@ -34,7 +34,7 @@
 
     <!-- 设计器预览：由设计器自带「预览」触发，仅演示控件原生单份预览，不承载批量能力 -->
     <Teleport to="body">
-      <div v-if="previewVisible" class="preview-mask" @click.self="previewVisible = false">
+      <div v-if="previewVisible" class="preview-mask">
         <div class="preview-panel">
           <div class="preview-head">
             <span class="preview-title">打印预览</span>
@@ -46,6 +46,7 @@
           </div>
           <PrintHtmlPreview
             ref="htmlPreviewRef"
+            class="preview-body"
             :template-json="previewTemplateJson"
             :print-data="activePrintData"
             :base-url="RENDER_BASE_URL"
@@ -66,7 +67,7 @@
       @close="printDialogVisible = false"
     />
 
-    <!-- 示例模板库：点击「加载默认布局」唤出，选中后覆盖当前画布 -->
+    <!-- 示例模板库：点击「加载示例」唤出，选中后覆盖当前画布 -->
     <TemplateGalleryDialog
       :open="galleryVisible"
       :current-id="currentSample?.id"
@@ -77,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, shallowRef, computed } from 'vue'
+import { ref, shallowRef, computed, watch, onMounted } from 'vue'
 import {
   PrintDesigner,
   PrintHtmlPreview,
@@ -89,6 +90,7 @@ import type { PrintFontDeclaration } from '@worm-vue3-print/core'
 import PrintOutputDialog from './components/PrintOutputDialog.vue'
 import TemplateGalleryDialog from './components/TemplateGalleryDialog.vue'
 import type { SampleTemplate } from './samples'
+import { COMPREHENSIVE_SHOWCASE_SAMPLE } from './samples/comprehensive-showcase'
 import {
   TEMPLATE_ID,
   TEMPLATE_NAME,
@@ -96,8 +98,8 @@ import {
 } from './business'
 import { deriveBatchData } from './batch-data'
 
-/** 相对路径图片（/docfiles/...）拼接基址：浏览器预览与服务端渲染保持一致 */
-const RENDER_BASE_URL = 'http://localhost:10103'
+/** 相对路径图片（/docfiles/...）拼接基址：浏览器预览与打印保持一致，默认取当前站点 origin */
+const RENDER_BASE_URL = (import.meta.env.VITE_RENDER_BASE_URL as string | undefined) || window.location.origin
 
 /**
  * 相对路径字体基址：demo 的字体挂在 Vite 站点（public/fonts），与图片域（RENDER_BASE_URL）不同。
@@ -109,7 +111,7 @@ const FONT_BASE_URL = (import.meta.env.VITE_FONT_BASE_URL as string | undefined)
 /** 打印输出弹窗开关 */
 const printDialogVisible = ref(false)
 
-// 页面默认空白；点击「加载默认布局」从示例模板库中选择一份载入
+// 页面初始为空白模板；挂载后自动载入综合示例模板，点击「加载示例」可从示例库另选
 const templateData = ref<TemplateData | MultiPageTemplateData>(createDefaultTemplate())
 const fields = ref<PrintBusinessField[]>(PURCHASE_RECEIPT_FIELDS)
 
@@ -150,21 +152,21 @@ const DESIGNER_FONTS: PrintFontDeclaration[] = [
     family: 'Ma Shan Zheng',
     label: '马善政毛笔楷书',
     files: [
-      { weight: 400, url: 'http://localhost:9303/fonts/MaShanZheng-Regular.ttf' },
+      { weight: 400, url: `${FONT_BASE_URL}/fonts/MaShanZheng-Regular.ttf` },
     ],
   },
   {
     family: 'ZCOOL KuaiLe',
     label: '站酷快乐体',
     files: [
-      { weight: 400, url: 'http://localhost:9303/fonts/ZCOOLKuaiLe-Regular.ttf' },
+      { weight: 400, url: `${FONT_BASE_URL}/fonts/ZCOOLKuaiLe-Regular.ttf` },
     ],
   },
   {
     family: 'ZCOOL QingKe HuangYou',
     label: '站酷庆科黄油体',
     files: [
-      { weight: 400, url: 'http://localhost:9303/fonts/ZCOOLQingKeHuangYou-Regular.ttf' },
+      { weight: 400, url: `${FONT_BASE_URL}/fonts/ZCOOLQingKeHuangYou-Regular.ttf` },
     ],
   },
 ]
@@ -310,14 +312,32 @@ function printPreview() {
   htmlPreviewRef.value?.print()
 }
 
+// 全屏预览没有可点击的遮罩空白区，改用 Esc 关闭：打开时绑定、关闭时解绑
+function onPreviewKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') previewVisible.value = false
+}
+watch(previewVisible, visible => {
+  if (visible) {
+    window.addEventListener('keydown', onPreviewKeydown)
+  } else {
+    window.removeEventListener('keydown', onPreviewKeydown)
+  }
+})
+
 /**
- * 加载默认布局：弹出示例模板库，由用户选择一份（采购收货单 / 称签 / 价签 / 面单 / 小票 …）。
+ * 加载示例：弹出示例模板库，由用户选择一份（采购收货单 / 称签 / 价签 / 面单 / 小票 …）。
  * 真实宿主可在此按业务类型拉取服务端默认模板；用新对象回写 `initialTemplate` 引用，
  * 设计器监听到变化后重载画布并记录一次历史（撤销可回退）。
  */
-function onLoadDefaultLayout() {
+function onLoadSample() {
   galleryVisible.value = true
 }
+
+// 进入页面自动载入综合示例模板
+onMounted(() => {
+  applySample(COMPREHENSIVE_SHOWCASE_SAMPLE)
+})
+
 </script>
 
 <style>
@@ -429,22 +449,17 @@ body,
   min-height: 0;
 }
 
-/* ── 预览弹层 ── */
+/* ── 预览弹层（全屏，便于看清整页细节） ── */
 .preview-mask {
   position: fixed;
   inset: 0;
-  background: rgba(23, 32, 60, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: #fff;
   z-index: 9999;
 }
 .preview-panel {
-  width: min(920px, 92vw);
-  height: min(820px, 92vh);
+  width: 100vw;
+  height: 100vh;
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 26px 60px rgba(23, 32, 60, 0.28);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -456,6 +471,11 @@ body,
   padding: 10px 14px;
   border-bottom: 1px solid #e9ecf2;
   flex-shrink: 0;
+}
+/* PrintHtmlPreview 根节点：占满头部之外的剩余高度，内部 iframe 自行滚动 */
+.preview-body {
+  flex: 1;
+  min-height: 0;
 }
 .preview-title {
   font-size: 14px;
