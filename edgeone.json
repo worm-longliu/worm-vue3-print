@@ -1,5 +1,5 @@
 {
-  "installCommand": "npm ci --prefix demo",
+  "installCommand": "npm ci --prefix demo && ln -sfn demo/node_modules node_modules",
   "buildCommand": "npm run build --prefix demo",
   "outputDirectory": "demo/dist",
   "nodeVersion": "22.11.0",
