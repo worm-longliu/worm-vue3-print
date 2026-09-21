@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           # demo 有独立的 package-lock.json，缓存以 demo 为目标
           cache: npm
           cache-dependency-path: demo/package-lock.json
