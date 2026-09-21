@@ -52,3 +52,13 @@ npm run build       # 生产构建
 与 `web` 宿主一致：设计器/核心包走 monorepo 源码消费（`vite.config.ts` 中 alias
 指向 `packages/print-canvas/src`、`packages/print-core/src`，由 Vite 直接编译包内
 `.vue/.ts`）；包内 `jsbarcode / qrcode / dompurify / sortablejs` 等依赖由宿主声明。
+
+## 线上部署
+
+demo 为纯静态站点，可直接托管到 [EdgeOne Pages](https://edgeone.cloud.tencent.com/pages)：
+导入 Git 仓库后保持根目录为仓库根，平台读取仓库根的 `edgeone.json` 自动完成安装、
+构建（输出 `demo/dist`）与发布，推送代码即自动重新部署。
+
+## 致谢
+
+特别感谢 EdgeOne 为本站点提供 CDN 加速与安全防护。
