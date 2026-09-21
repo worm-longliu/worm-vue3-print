@@ -47,6 +47,9 @@ jobs:
         working-directory: demo
       - name: 配置 Pages
         uses: actions/configure-pages@v5
+        with:
+          # 仓库未启用 Pages 时自动启用（source 设为 GitHub Actions）
+          enablement: true
       - name: 上传构建产物
         uses: actions/upload-pages-artifact@v3
         with:
