@@ -2,12 +2,13 @@ export default {
   id: 'changelog',
   title: '更新记录',
   content: `
-<h2>未发布</h2>
+<h2>v1.3.1 <small>2026-09-21</small></h2>
 
 <h3>新增</h3>
 <ul>
   <li><strong>数值运算与修约</strong>：表达式新增四则函数 <code>ADD</code> / <code>SUB</code> / <code>MUL</code> / <code>DIV</code>，以及修约函数 <code>ROUND</code>（四舍五入）、<code>ROUNDUP</code>（进一）、<code>ROUNDDOWN</code>（去尾）、<code>ROUNDBANK</code>（四舍六入五成双）。位数可省略（默认两位），写负数则修约到整十/整百。表达式编辑器「函数」页新增「数值运算」分组，双击即可插入。</li>
   <li><strong>四则运算更准</strong>：直接写 <code>{qty * price}</code> 时，数字字符串按数值参与运算、不再出现 <code>0.30000000000000004</code> 这类浮点尾巴、除以 0 不再印出 <code>Infinity</code>。</li>
+  <li><strong>在线示例更好上手</strong>：示例库新增「综合示例模板」（多级表头 + 表格内图片 / 条形码 / 二维码混排），进入页面即自动载入；新增「自定义字段与数据」弹窗，可直接在页面上增删字段、编辑多份打印数据。在线预览已支持静态托管，可直接打开网页体验。</li>
 </ul>
 
 <h3>变更</h3>

@@ -2,7 +2,7 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
-## [未发布]
+## [1.3.1] - 2026-09-21
 
 ### 新增
 
@@ -12,6 +12,9 @@
   ③ 运算符补齐数值语义：字符串数字按数值参与运算、消除二进制浮点噪声、除零与空值兜底。详见下条「变更」。
   ④ 设计器表达式编辑器「函数」页新增「数值运算」分组，四则与修约函数可双击插入；帮助面板内置函数表同步补充。
 - `@worm-vue3-print/core`：新增底层数值模块（`numeric.ts`），函数与运算符共用；主入口导出 `addNumbers` / `subtractNumbers` / `multiplyNumbers` / `divideNumbers` / `round` / `roundUp` / `roundDown` / `roundHalfEven`，宿主自有逻辑可复用。
+- demo：新增**综合示例模板**（A4 横向、多级表头、表格单元格内图片 / 条形码 / 二维码混排），纳入示例库与 `print-template-json` 技能资源；顶栏「加载默认布局」改为「加载示例」，进入页面即自动载入该模板。
+- demo：新增**「自定义字段与数据」弹窗**——直接在页面上增删打印数据字段、编辑多份打印数据，批量打印同步适配。
+- demo：支持**静态托管在线预览**——新增 `edgeone.json`（EdgeOne Pages）与 `.github/workflows/pages.yml`（GitHub Pages，推送 master 自动构建部署，预览地址见 README）；字体基址与示例图片路径改用 `import.meta.env.BASE_URL` 与当前站点 origin，去掉 localhost 硬编码，适配子路径部署。
 
 ### 变更
 
@@ -21,6 +24,7 @@
   ② 消除二进制浮点噪声——`0.1 + 0.2` 由 `0.30000000000000004` 变为 `0.3`，`12.5 * 3 * 1.13` 由 `42.37499999999999` 变为 `42.375`；
   ③ 除数为 0 或无法解析为数字时返回 `0`，不再输出 `Infinity` / `NaN`；`null` / 空串参与算术按 0、拼接时按空串（此前拼接会印出 `null`）；
   ④ 任一侧不是数字时 `+` 仍保持字符串拼接（`name + '有限公司'` 行为不变）。
+- demo：打印预览弹框改为**全屏**（内容区占满视口），移除「点击空白处关闭」，新增 Esc 关闭。
 
 ### 修复
 

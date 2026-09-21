@@ -124,7 +124,7 @@ npm install @worm-vue3-print/canvas
 
 静默打印浏览器端 SDK 随 core 提供，无需单独安装，从 `@worm-vue3-print/core/client` 导入（需配合本机运行的桌面打印客户端）。
 
-> core / canvas 当前版本：`1.3.0`。
+> core / canvas 当前版本：`1.3.1`。
 
 ## 更新
 

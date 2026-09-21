@@ -2,7 +2,7 @@
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.3.1] - 2026-09-21
 
 ### Added
 
@@ -12,6 +12,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
   ③ Operators gained proper numeric semantics: numeric strings are treated as numbers, binary float noise is removed, division by zero and blanks fall back to `0`. See Changed below.
   ④ The expression editor gained a **Numeric** function group (double-click to insert); the in-app help function table was updated.
 - `@worm-vue3-print/core`: new `numeric.ts` shared by functions and operators; the main entry now exports `addNumbers` / `subtractNumbers` / `multiplyNumbers` / `divideNumbers` / `round` / `roundUp` / `roundDown` / `roundHalfEven` for host-side reuse.
+- demo: new **comprehensive showcase sample template** (A4 landscape, multi-level table header, images / barcodes / QR codes rendered inside table cells), registered in the sample library and in the `print-template-json` skill assets; the toolbar button "load default layout" became "load sample" and the showcase template loads automatically on mount.
+- demo: new **custom fields & data dialog** — add or remove print-data fields and edit the data of several copies right on the page; batch printing follows the same data.
+- demo: **static hosting for the online preview** — added `edgeone.json` (EdgeOne Pages) and `.github/workflows/pages.yml` (GitHub Pages; builds and deploys on every push to master, see README for the URL). Font base URL and sample image paths now use `import.meta.env.BASE_URL` / the current site origin instead of a hardcoded `localhost`, so sub-path deployments work.
 
 ### Changed
 
@@ -21,6 +24,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
   ② binary float noise is removed — `0.1 + 0.2` was `0.30000000000000004`, now `0.3`; `12.5 * 3 * 1.13` was `42.37499999999999`, now `42.375`;
   ③ division by zero (or an unparsable divisor) returns `0` instead of `Infinity` / `NaN`; `null` / empty string count as `0` in arithmetic and as `''` when concatenating (previously `null` was printed);
   ④ `+` still concatenates when either side is not numeric (`name + ' Ltd.'` unchanged).
+- demo: the print preview dialog is now **full-screen** (content fills the viewport); click-outside-to-close was removed and Esc now closes it.
 
 ### Fixed
 
