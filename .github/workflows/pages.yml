@@ -37,6 +37,10 @@ jobs:
       - name: 安装 demo 依赖
         run: npm ci
         working-directory: demo
+      # alias 直接编译的包源码在 packages/ 下（demo 目录之外），
+      # 裸包名解析会沿目录向上找 node_modules，软链到 demo 的依赖树
+      - name: 软链根 node_modules
+        run: ln -s "$PWD/demo/node_modules" "$PWD/node_modules"
       # 子路径部署：仓库名为 worm-vue3-print，站点根为 /worm-vue3-print/
       - name: 构建 demo
         run: npm run build -- --base=/worm-vue3-print/
