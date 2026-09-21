@@ -34,9 +34,8 @@ GitHub Pages：**https://worm-longliu.github.io/worm-vue3-print/**
 ```
 worm-vue3-print/
 ├── packages/                  # 可发布的 npm 包（npm workspaces，发布到 npm）
-│   ├── print-core/            # @worm-vue3-print/core   模板表达式引擎 + 同构渲染管线
+│   ├── print-core/            # @worm-vue3-print/core   模板表达式引擎 + 同构渲染管线（含浏览器端静默打印 SDK 子路径 /client）
 │   ├── print-canvas/          # @worm-vue3-print/canvas Vue 3 可视化设计器画布
-│   └── print-client-sdk/      # @worm-vue3-print/client 浏览器端静默打印 SDK
 ├── clients/
 │   └── print-client/          # @worm-vue3-print/print-client Electron 静默打印桌面客户端（private，不发布 npm）
 ├── services/
@@ -63,9 +62,8 @@ worm-vue3-print/
 
 | 目录 / 文件 | 功能说明 |
 |---|---|
-| `packages/print-core` | 核心包（`@worm-vue3-print/core`）：表达式引擎（lexer / parser / evaluator）、`template-parser`、数据绑定 / 分页 / HTML 生成（`render`）、设计器内核与浏览器适配（`designer` / `browser`，含连续纸探针与 `browserCodeRenderer`）。纯 TypeScript，无 Vue、无宿主依赖 |
+| `packages/print-core` | 核心包（`@worm-vue3-print/core`）：表达式引擎（lexer / parser / evaluator）、`template-parser`、数据绑定 / 分页 / HTML 生成（`render`）、设计器内核与浏览器适配（`designer` / `browser`，含连续纸探针与 `browserCodeRenderer`）；浏览器端静默打印 SDK 位于子路径 `/client`（传输层 / 协议与错误码 / 打印门面）。纯 TypeScript，无 Vue、无宿主依赖 |
 | `packages/print-canvas` | 设计器画布（`@worm-vue3-print/canvas`）：Vue 3 组件（`components`）、组合式函数（`composables`）、内置帮助内容（`help-content`）、原生控件样式（`styles`）。含 `PrintDesigner`、`PrintHtmlPreview` |
-| `packages/print-client-sdk` | 静默打印 SDK（`@worm-vue3-print/client`）：框架无关的浏览器端 TS，含传输层（`transport`，WS 端口探测/重连/超时）、协议与错误码（`protocol`）、客户端门面（`print-client`） |
 | `clients/print-client` | 静默打印桌面客户端（Electron，private）：主进程 WS 服务 / 打印引擎 / 打印机服务 / 配置与任务记录（`src/main`）、配置窗口 Vue 3 界面（`src/renderer`）、隐藏渲染 worker（`src/worker`）、沙箱 IPC 桥（`src/preload`）、IPC 通道契约（`src/shared`）；含 electron-builder 打包配置与真机冒烟脚本（`scripts/`） |
 | `services/print-render` | 服务端渲染微服务（private）：基于 Playwright 的 PDF / 截图渲染（`driver-playwright` / `pdf-render` / `browser-pool` / `server`），workspace 软链依赖 core，与浏览器预览、桌面客户端共用同一份打印管线 |
 | `demo` | 演示项目：设计器接入（`App.vue`）、静默打印集成、渲染客户端封装（`render-client.ts`）、业务字段（`business.ts`）、内置模板 JSON（`template-purchase-receipt.json`） |
@@ -78,9 +76,8 @@ worm-vue3-print/
 
 | 包 | 说明 |
 |----|------|
-| `@worm-vue3-print/core` | 模板表达式引擎与同构渲染管线（数据绑定 / HTML 生成 / 分页，含连续纸探针推导），纯 TypeScript，无 Vue、无宿主依赖，浏览器与 Node 均可运行 |
+| `@worm-vue3-print/core` | 模板表达式引擎与同构渲染管线（数据绑定 / HTML 生成 / 分页，含连续纸探针推导），纯 TypeScript，无 Vue、无宿主依赖，浏览器与 Node 均可运行；浏览器端静默打印 SDK 经子路径 `@worm-vue3-print/core/client` 提供 |
 | `@worm-vue3-print/canvas` | Vue 3 可视化设计器画布（原生控件，无 Element Plus；含 `PrintDesigner`、`PrintHtmlPreview` 组件） |
-| `@worm-vue3-print/client` | 浏览器端静默打印 SDK（WebSocket 端口探测 / 重连 / 超时 / 鉴权 / 打印门面），框架无关 |
 | `@worm-vue3-print/print-client` | 跨平台静默打印桌面客户端（Electron，回环 WebSocket + core 同构渲染 + `webContents.print` 静默出纸），位于 `clients/print-client` |
 
 ## 功能特性
@@ -123,12 +120,11 @@ npm install @worm-vue3-print/core
 
 # 安装设计器画布（Vue 3 可视化设计器 + 预览组件）
 npm install @worm-vue3-print/canvas
-
-# 安装静默打印浏览器端 SDK（需配合本机运行的桌面打印客户端）
-npm install @worm-vue3-print/client
 ```
 
-> core / canvas 当前版本：`1.3.0`；静默打印 SDK（`@worm-vue3-print/client`）当前版本：`0.1.0`。
+静默打印浏览器端 SDK 随 core 提供，无需单独安装，从 `@worm-vue3-print/core/client` 导入（需配合本机运行的桌面打印客户端）。
+
+> core / canvas 当前版本：`1.3.0`。
 
 ## 更新
 
@@ -137,15 +133,15 @@ npm install @worm-vue3-print/client
 npm outdated
 
 # 更新到最新版本
-npm update @worm-vue3-print/core @worm-vue3-print/canvas @worm-vue3-print/client
+npm update @worm-vue3-print/core @worm-vue3-print/canvas
 
 # 或直接安装最新版
-npm install @worm-vue3-print/core@latest @worm-vue3-print/canvas@latest @worm-vue3-print/client@latest
+npm install @worm-vue3-print/core@latest @worm-vue3-print/canvas@latest
 ```
 
 其他包管理器：
-- yarn: `yarn upgrade @worm-vue3-print/core @worm-vue3-print/canvas @worm-vue3-print/client`
-- pnpm: `pnpm update @worm-vue3-print/core @worm-vue3-print/canvas @worm-vue3-print/client`
+- yarn: `yarn upgrade @worm-vue3-print/core @worm-vue3-print/canvas`
+- pnpm: `pnpm update @worm-vue3-print/core @worm-vue3-print/canvas`
 
 ## 快速使用
 
@@ -245,7 +241,7 @@ function onLoadDefaultLayout() {
 
 - **桌面打印客户端**（`clients/print-client`，Electron）：部署在业务工位电脑上，在隐藏窗口内复用 `core/browser` 同构渲染模板，
   再调用 `webContents.print({ silent: true })` 直接出纸——无系统打印对话框、不依赖浏览器插件。
-- **浏览器端 SDK**（`@worm-vue3-print/client`）：浏览器页面通过 WebSocket（默认从 `127.0.0.1:17521` 起端口探测，占用则 +1）
+- **浏览器端 SDK**（core 子路径 `@worm-vue3-print/core/client`，无需单独安装）：浏览器页面通过 WebSocket（默认从 `127.0.0.1:17521` 起端口探测，占用则 +1）
   连接本机运行的客户端，完成端口探测 / 自动重连 / 打印机枚举 / 静默打印。
 
 ### 安装并运行客户端
@@ -263,7 +259,7 @@ npm run pack:client:dir
 ### 宿主侧接入（浏览器端 SDK）
 
 ```ts
-import { PrintClient, WormPrintError } from '@worm-vue3-print/client'
+import { PrintClient, WormPrintError } from '@worm-vue3-print/core/client'
 
 const client = new PrintClient()
 client.onStatusChange((s) => console.log('客户端状态：', s)) // 'disconnected' | 'connecting' | 'connected'
@@ -281,7 +277,7 @@ client.pair(token)                            // 安全配对：客户端开启�
 ```
 
 - 断线自动指数退避重连；失败抛 `WormPrintError`，按 `err.code` 分支处理（`PRINTER_NOT_FOUND`、`BUSY`、`PRINT_FAILED` 等）。
-- SDK 完整接口见 [`packages/print-client-sdk/README.md`](packages/print-client-sdk/README.md)；
+- SDK 完整接口见 [静默打印指南](docs/中文/指南/静默打印.md)；
   客户端原理、协议与打包见 [`clients/print-client/README.md`](clients/print-client/README.md)。
 
 ## 渲染服务

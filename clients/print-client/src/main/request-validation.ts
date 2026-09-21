@@ -1,5 +1,5 @@
 // print.submit / print.submitHtml payload 校验：边界在进入打印引擎前收敛，错误一律 INVALID_REQUEST。
-import type { PrintOptions } from '@worm-vue3-print/client'
+import type { PrintOptions } from '@worm-vue3-print/core/client'
 import { MAX_BATCH_COPIES } from '@worm-vue3-print/core'
 import { ProtocolFailure } from './protocol-error.js'
 

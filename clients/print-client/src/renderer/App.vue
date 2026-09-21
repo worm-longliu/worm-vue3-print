@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import type { AppConfig } from '../main/config.js'
-import type { PrinterInfo } from '@worm-vue3-print/client'
+import type { PrinterInfo } from '@worm-vue3-print/core/client'
 import type { JobRecord } from '../main/job-history.js'
 import type { LogEntry } from '../main/logger.js'
 

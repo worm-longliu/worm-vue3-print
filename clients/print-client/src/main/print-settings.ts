@@ -1,4 +1,4 @@
-import type { PrintOptions } from '@worm-vue3-print/client'
+import type { PrintOptions } from '@worm-vue3-print/core/client'
 
 /** 出纸链路真正消费的设置；纸张几何由 core 的 pdf 规格决定 */
 export interface PrintJobSettings {

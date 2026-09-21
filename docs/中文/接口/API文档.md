@@ -2,9 +2,8 @@
 
 本页按包列出公开 API。所有签名以当前源码为准，类型细节可对照包内 `.ts` 源码与 d.ts。
 
-- [`@worm-vue3-print/core`](#worm-vue3-printcore)：主入口（引擎 + 渲染）、`/browser`、`/designer` 子路径
+- [`@worm-vue3-print/core`](#worm-vue3-printcore)：主入口（引擎 + 渲染）、`/browser`、`/designer`、`/client`（静默打印 SDK）子路径
 - [`@worm-vue3-print/canvas`](#worm-vue3-printcanvas)：Vue 3 组件
-- [`@worm-vue3-print/client`](#worm-vue3-printclient)：静默打印 SDK
 - [render 微服务 HTTP 接口](#render-微服务-http-接口)
 
 ---
@@ -328,18 +327,18 @@ Props：`templateJson`（模板对象）、`printData`（对象或数组）、`b
 
 ---
 
-## @worm-vue3-print/client
+## `@worm-vue3-print/core/client`
 
-框架无关的静默打印浏览器端 SDK，通过 WebSocket 连接本机 Electron 客户端
+框架无关的静默打印浏览器端 SDK，core 的子路径导出（无需单独安装），通过 WebSocket 连接本机 Electron 客户端
 （默认端口 `17521`，占用则向后探测）。
 
 ```ts
-import { PrintClient, WsTransport, WormPrintError, MESSAGE_TYPES, DEFAULT_PORT } from '@worm-vue3-print/client'
+import { PrintClient, WsTransport, WormPrintError, MESSAGE_TYPES, DEFAULT_PORT } from '@worm-vue3-print/core/client'
 import type {
   PrintClientOptions, TransportOptions, TransportStatus,
   PrinterInfo, PrintOptions, RenderedHtmlPages,
   HelloResponsePayload, PrintSubmitResponsePayload,
-} from '@worm-vue3-print/client'
+} from '@worm-vue3-print/core/client'
 ```
 
 ### `PrintClient`

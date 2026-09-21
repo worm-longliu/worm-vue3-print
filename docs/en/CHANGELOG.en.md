@@ -15,6 +15,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Changed
 
+- **The silent-print browser SDK was merged into core and is no longer published separately**: the former standalone package `@worm-vue3-print/client` (`0.1.0`, never published to npm) is now a subpath export `@worm-vue3-print/core/client`; change `import { PrintClient } from '@worm-vue3-print/client'` to `from '@worm-vue3-print/core/client'`. The SDK has zero runtime dependencies (browser WebSocket only), so core gains no new dependency; all exports and capabilities (`PrintClient`, `WsTransport`, `WormPrintError`, `MESSAGE_TYPES`, etc.) remain unchanged. The `packages/print-client-sdk` directory was removed; the Electron desktop client now imports it from core.
 - `@worm-vue3-print/core`: **behavior change** arithmetic operators (binary and unary `+` / `-`) now use numeric semantics; existing templates may render differently in these cases (all moving toward what users expect):
   ① both sides numeric (or numeric strings) are added numerically — `'3' + 4` was `'34'`, now `7`;
   ② binary float noise is removed — `0.1 + 0.2` was `0.30000000000000004`, now `0.3`; `12.5 * 3 * 1.13` was `42.37499999999999`, now `42.375`;

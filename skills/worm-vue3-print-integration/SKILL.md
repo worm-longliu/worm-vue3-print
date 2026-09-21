@@ -17,7 +17,7 @@ version: 1.2.0
 | 需要未发布修复、调试库源码、修改/回传补丁 | `core`，按需 `canvas` | 源码安装 |
 | 外部宿主要直接消费 monorepo 中的 `.vue/.ts` | 两者按需 | 源码 + Vite 别名 |
 | 服务端 PDF / 截图微服务 | monorepo 内 `services/print-render`（private 服务包，workspace 软链 core，**不发布 npm**） | 按 [服务端渲染](references/server-render.md) 部署 |
-| 工位电脑无打印对话框静默出纸（小票/标签/针式多联/批量） | `@worm-vue3-print/client` + 桌面打印客户端（Electron） | NPM 包（SDK）+ [静默打印](references/silent-print.md) |
+| 工位电脑无打印对话框静默出纸（小票/标签/针式多联/批量） | `@worm-vue3-print/core/client` + 桌面打印客户端（Electron） | core 子路径（无需另装 SDK）+ [静默打印](references/silent-print.md) |
 
 生产项目优先 NPM 包；当前已发布版本为 **1.3.0**。只有用户明确要改/调试库源码、消费未发布代码，或项目本身就在本 monorepo 中，才用源码安装。安装细节见 [安装方式](references/installation.md)。
 
@@ -115,6 +115,6 @@ version: 1.2.0
 - 常用导出：`PrintDesigner`、`PrintHtmlPreview`、`createDefaultTemplate`、`DEFAULT_DEMO_DATA`/`getDemoData`（均来自 `@worm-vue3-print/canvas`；后两者由 `core/designer` 转出）。
 - 模板 JSON 不含名称、业务类型、备注等宿主元信息，元信息由宿主自行持久化。
 - 服务端 PDF/截图由独立微服务 `services/print-render` 承担；`core` 只提供同构渲染管线。接入方业务仓库不要虚构 `/render/pdf` 的实现。
-- 静默打印客户端是 monorepo 内 `clients/print-client`（Electron，private，不发布 npm），浏览器侧 SDK 为独立包 `@worm-vue3-print/client`（当前 `0.1.0`，与 core/canvas 版本号不同步）；协议消息类型与错误码定义在 SDK 包内，客户端经 workspace 依赖复用，两端永不漂移。
+- 静默打印客户端是 monorepo 内 `clients/print-client`（Electron，private，不发布 npm），浏览器侧 SDK 为 core 子路径 `@worm-vue3-print/core/client`（无需单独安装）；协议消息类型与错误码定义在该子路径内，客户端经 workspace 依赖复用，两端永不漂移。
 - 客户端仅绑定 `127.0.0.1`、单任务串行：并发任务返回 `BUSY`，由宿主端排队重试，客户端不做离线队列与失败补打。
 - 连续纸（模板 `paperSize: 'CONTINUOUS'`）模板无需传纸高，出纸高度由客户端按渲染内容自动推导；普通纸始终使用模板纸张，`print.paperSize`/`paperName` 仅作覆盖项。

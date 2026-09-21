@@ -1,5 +1,5 @@
 // 协议消息分发：type → 业务处理。未知消息按协议返回 INVALID_REQUEST。
-import { MESSAGE_TYPES } from '@worm-vue3-print/client'
+import { MESSAGE_TYPES } from '@worm-vue3-print/core/client'
 import type { PrinterService } from './printer-service.js'
 import type { PrintEngine } from './print-engine.js'
 import { ProtocolFailure } from './protocol-error.js'

@@ -13,7 +13,7 @@ import {
 } from '@worm-vue3-print/core'
 import { loadExecutorBundle } from '@worm-vue3-print/core/node'
 import type { PrintJob, PrintRuntime, PrintTemplateData } from '@worm-vue3-print/core'
-import type { PrintOptions } from '@worm-vue3-print/client'
+import type { PrintOptions } from '@worm-vue3-print/core/client'
 import type { Logger } from './logger.js'
 import type { JobHistoryStore, JobRecord } from './job-history.js'
 import type { PrinterService } from './printer-service.js'

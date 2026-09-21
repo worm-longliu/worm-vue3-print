@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { APP_ID, MESSAGE_TYPES } from '@worm-vue3-print/client'
+import { APP_ID, MESSAGE_TYPES } from '@worm-vue3-print/core/client'
 import { makeMessageHandler } from './protocol-handler.js'
 
 function makeDeps() {

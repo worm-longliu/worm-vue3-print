@@ -1,7 +1,7 @@
 // 仅绑定回环地址的 WebSocket 服务：端口递增、握手鉴权、JSON 协议帧分发。
 import { WebSocketServer, WebSocket } from 'ws'
 import type { AddressInfo } from 'node:net'
-import type { ServerErrorCode } from '@worm-vue3-print/client'
+import type { ServerErrorCode } from '@worm-vue3-print/core/client'
 import type { Logger } from './logger.js'
 import { ProtocolFailure } from './protocol-error.js'
 

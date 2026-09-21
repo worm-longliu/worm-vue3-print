@@ -1,7 +1,7 @@
 // 应用入口：单实例 → 加载配置/日志 → 渲染池 → 打印引擎 → 回环 WS 服务 → 托盘驻留。
 import { app } from 'electron'
 import { join } from 'node:path'
-import { APP_ID } from '@worm-vue3-print/client'
+import { APP_ID } from '@worm-vue3-print/core/client'
 import { ConfigStore, generatePairingToken } from './config.js'
 import { Logger } from './logger.js'
 import { JobHistoryStore } from './job-history.js'

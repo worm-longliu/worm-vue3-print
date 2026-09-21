@@ -48,9 +48,8 @@
 
 - **worm-vue3-print**：Vue 3 可视化打印模板设计器 + 模板表达式引擎 + 同构渲染管线的开源 monorepo（npm workspaces，工作区为 `packages/*`、`services/*`、`clients/*`）。
 - 工作区包：
-  - `packages/print-core`（`@worm-vue3-print/core`）：模板表达式引擎、同构渲染管线与框架无关的设计器内核（纯 TypeScript，无 Vue/React 依赖）。根入口导出引擎与渲染能力，`/designer`、`/browser` 为子路径导出。
+  - `packages/print-core`（`@worm-vue3-print/core`）：模板表达式引擎、同构渲染管线与框架无关的设计器内核（纯 TypeScript，无 Vue/React 依赖）。根入口导出引擎与渲染能力，`/designer`、`/browser`、`/client`（静默打印浏览器端 SDK）为子路径导出。
   - `packages/print-canvas`（`@worm-vue3-print/canvas`）：Vue 3 可视化设计器画布（原生控件，不依赖 Element Plus 等 UI 组件库，无宿主业务依赖）。
-  - `packages/print-client-sdk`（`@worm-vue3-print/client`）：静默打印桌面客户端的浏览器端 SDK（WebSocket 连接、打印机枚举、静默打印）。
   - `services/print-render`（`@worm-vue3-print/render`）：基于 Playwright（Headless Chromium）的 PDF/截图打印渲染微服务，Docker 部署。
   - `clients/print-client`（`@worm-vue3-print/print-client`）：跨平台静默打印桌面客户端（Electron，本地 WebSocket + core 同构渲染）。
 - 其他目录：`demo`（Vite 集成示例）、`docs`（中英文档）、`skills`（集成技能）、`.release`（发布相关）。

@@ -9,12 +9,52 @@
     "left": 10.0
   },
   "header": {
-    "height": 0.0,
-    "elements": []
+    "height": 10.0,
+    "elements": [
+      {
+        "id": "el1",
+        "type": "text",
+        "options": {
+          "left": 0.0,
+          "top": 0.0,
+          "width": 277.0,
+          "height": 10.0,
+          "formatter": "商品综合信息表",
+          "fontSize": 18,
+          "fontWeight": "bold",
+          "textAlign": "center",
+          "verticalAlign": "middle"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      }
+    ]
   },
   "footer": {
-    "height": 0.0,
-    "elements": []
+    "height": 8.0,
+    "elements": [
+      {
+        "id": "foot1",
+        "type": "text",
+        "options": {
+          "left": 0.0,
+          "top": 0.0,
+          "width": 277.0,
+          "height": 8.0,
+          "formatter": "第 {ADD(pageIndex,1)} 页 / 共 {ADD(totalPages,1)} 页（起始页码自定义为 2）",
+          "fontSize": 10,
+          "textAlign": "center",
+          "verticalAlign": "middle",
+          "color": "#666666"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      }
+    ]
   },
   "firstPageOverlay": {
     "height": 0,
@@ -45,30 +85,11 @@
   ],
   "elements": [
     {
-      "id": "el1",
-      "type": "text",
-      "options": {
-        "left": 0.0,
-        "top": 0.0,
-        "width": 277.0,
-        "height": 10.0,
-        "formatter": "商品综合信息表",
-        "fontSize": 18,
-        "fontWeight": "bold",
-        "textAlign": "center",
-        "verticalAlign": "middle"
-      },
-      "printElementType": {
-        "type": "text",
-        "title": "文本"
-      }
-    },
-    {
       "id": "font1",
       "type": "text",
       "options": {
         "left": 0.0,
-        "top": 12.0,
+        "top": 2.0,
         "width": 92.3,
         "height": 8.0,
         "formatter": "马善政毛笔楷书",
@@ -87,7 +108,7 @@
       "type": "text",
       "options": {
         "left": 92.3,
-        "top": 12.0,
+        "top": 2.0,
         "width": 92.3,
         "height": 8.0,
         "formatter": "站酷快乐体",
@@ -106,7 +127,7 @@
       "type": "text",
       "options": {
         "left": 184.7,
-        "top": 12.0,
+        "top": 2.0,
         "width": 92.3,
         "height": 8.0,
         "formatter": "站酷庆科黄油体",
@@ -125,7 +146,7 @@
       "type": "table",
       "options": {
         "left": 0.0,
-        "top": 22.0,
+        "top": 12.0,
         "width": 277.0,
         "height": 16.0,
         "tableDefaultFontSize": 9,
@@ -215,7 +236,7 @@
       "type": "table",
       "options": {
         "left": 0.0,
-        "top": 41.0,
+        "top": 31.0,
         "width": 277.0,
         "height": 53.0,
         "dataSource": "items",
@@ -533,10 +554,10 @@
       "type": "text",
       "options": {
         "left": 0.0,
-        "top": 96.0,
+        "top": 86.0,
         "width": 277.0,
         "height": 5.0,
-        "formatter": "说明：本模板综合验证 A4 横向纸张、三款字体（同页直显字体名）、多级表头（跨列分组 + 跨行合并，跨页时每页自动重复）以及表格内图片、条形码、二维码三种内容类型的同页混排；20 条明细跨多页展示。",
+        "formatter": "说明：本模板综合验证 A4 横向纸张、页眉标题、页脚自定义起始页码（ADD+1）、三款字体（同页直显字体名）、多级表头（跨列分组 + 跨行合并，跨页时每页自动重复）以及表格内图片、条形码、二维码三种内容类型的同页混排；20 条明细跨多页展示。",
         "fontSize": 8,
         "color": "#888888",
         "verticalAlign": "middle"

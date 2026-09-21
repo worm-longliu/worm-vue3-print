@@ -20,11 +20,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 npm install                 # 根目录安装并链接 workspace
 npm run build               # 全量构建（顺序 core→client→render→canvas→print-client）
-npm test                    # 全量测试（core、canvas、client-sdk、print-client，不含 render 集成测试）
+npm test                    # 全量测试（core、canvas、print-client，不含 render 集成测试）
 
-npm run build -w @worm-vue3-print/core      # 单独构建某包（包名：core / canvas / client / render / print-client）
+npm run build -w @worm-vue3-print/core      # 单独构建某包（包名：core / canvas / render / print-client）
 npm run test  -w @worm-vue3-print/canvas    # canvas 全部 *.spec.ts
-npm run typecheck -w @worm-vue3-print/client         # 仅 client-sdk 与 print-client 有 typecheck
+npm run typecheck -w @worm-vue3-print/print-client  # 仅 print-client 有 typecheck
 npm run lint:print-architecture             # 架构守卫（见下），改 render/client 前后必跑
 npm run parity:cross-end                    # 三端渲染像素/参数一致性校验
 
@@ -60,7 +60,7 @@ npm workspaces monorepo，依赖方向单向：**`core`（纯逻辑）→ `canva
 
 - `services/print-render`（Express + Playwright）：`driver-playwright.ts` 是唯一允许调用 `page.pdf`/透传出图参数的地方；workspace 软链消费 core 的 dist 与 IIFE。
 - `clients/print-client`（electron-vite）：`src/main`（WS 服务/打印引擎/打印机服务）、`src/worker`（隐藏渲染窗口）、`src/preload`（沙箱 IPC）、`src/shared`（IPC 契约）。
-- `packages/print-client-sdk`：浏览器侧 WS 门面（127.0.0.1:17521 起端口探测、退避重连、错误码 `WormPrintError`）。
+- `packages/print-core/src/client`：浏览器侧 WS 门面（core 子路径 `@worm-vue3-print/core/client`；127.0.0.1:17521 起端口探测、退避重连、错误码 `WormPrintError`）。
 - `scripts/check-print-architecture.mjs` 是架构守卫：render 与 electron 源码中出现直接 DOM 测量（`offsetHeight` 等）、纸高推导函数、直接 import 码制库、硬编码出图参数即失败（driver 白名单除外）。
 
 ### 测试约定

@@ -1,6 +1,6 @@
 // 打印机枚举与选择：Electron getPrintersAsync 结果归一化为协议结构。
 // Electron API 通过构造函数注入，本文件除 fetchRaw 外均为纯逻辑，可在 Node 环境单测。
-import type { PrinterInfo } from '@worm-vue3-print/client'
+import type { PrinterInfo } from '@worm-vue3-print/core/client'
 import { ProtocolFailure } from './protocol-error.js'
 
 export interface RawPrinter {

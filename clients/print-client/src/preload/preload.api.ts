@@ -2,7 +2,7 @@
 import type { AppConfig, LogLevel } from '../main/config.js'
 import type { LogEntry } from '../main/logger.js'
 import type { JobRecord } from '../main/job-history.js'
-import type { PrinterInfo } from '@worm-vue3-print/client'
+import type { PrinterInfo } from '@worm-vue3-print/core/client'
 
 declare global {
   interface Window {

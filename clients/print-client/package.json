@@ -15,7 +15,6 @@
     "pack:dir": "electron-vite build && electron-builder --dir"
   },
   "dependencies": {
-    "@worm-vue3-print/client": "*",
     "@worm-vue3-print/core": "*",
     "ws": "^8.18.0"
   },

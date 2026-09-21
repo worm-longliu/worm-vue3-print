@@ -15,7 +15,7 @@
                 ┌──────────── 浏览器侧渲染 / 出纸 ──────────┐    print-render 微服务
                 │ 链路 A：PrintHtmlPreview → print()        │    （ Playwright 两遍渲染 → PDF ）
                 │ 链路 B：同源代理 → 渲染服务 PDF/截图       │
-                │ 链路 C：@worm-vue3-print/client           │
+                │ 链路 C：@worm-vue3-print/core/client      │
                 │         → WebSocket 127.0.0.1            │
                 └──────────────┬───────────────────────────┘
                                ▼
@@ -25,7 +25,7 @@
 
 - 链路 A（浏览器打印）：后端只返回数据包，前端 `PrintHtmlPreview` 渲染并调浏览器打印。零额外基础设施。
 - 链路 B（服务端 PDF）：后端把同一数据包转发给 `print-render` 微服务，拿回 PDF 字节流。用于电子存档、下载、批量。需要部署微服务，见 [服务端渲染](server-render.md)。
-- 链路 C（桌面客户端静默打印）：后端数据包与链路 A 完全一致；前端经 `@worm-vue3-print/client` 直连本机运行客户端，由客户端复用 `core/browser` 渲染并 `webContents.print` 静默出纸（无打印对话框）。适用收银小票、热敏/标签、针式多联、批量无感出纸。见 [静默打印](silent-print.md)。
+- 链路 C（桌面客户端静默打印）：后端数据包与链路 A 完全一致；前端经 core 子路径 `@worm-vue3-print/core/client` 直连本机运行客户端，由客户端复用 `core/browser` 渲染并 `webContents.print` 静默出纸（无打印对话框）。适用收银小票、热敏/标签、针式多联、批量无感出纸。见 [静默打印](silent-print.md)。
 - 三者可并存：预览弹窗里「打印」走 A，「下载 PDF」按需走 B，工位出纸按钮走 C。
 
 ## 2. 数据库：模板表（必须自建）
@@ -246,4 +246,4 @@ async function handlePrint() {
 3. fields 先用前端常量跑通字段树，再接后端（推荐注解反射）。
 4. 做渲染数据组装功能 + 业务打印按钮 + 预览弹窗，用一份真实单据数据跑通链路 A。
 5. 需要电子存档 PDF 时，部署 `print-render` 并在后端加链路 B 的 PDF/截图代理功能与「下载 PDF」按钮。
-6. 需要工位静默出纸时，分发并安装桌面打印客户端，前端接入 `@worm-vue3-print/client` 加「静默打印」按钮走链路 C。
+6. 需要工位静默出纸时，分发并安装桌面打印客户端，前端经 `@worm-vue3-print/core/client` 加「静默打印」按钮走链路 C。

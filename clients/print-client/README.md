@@ -1,12 +1,12 @@
 # @worm-vue3-print/print-client
 
-worm-vue3-print 跨平台（Windows / Linux / macOS）静默打印桌面客户端。宿主 Web 系统通过浏览器端 SDK（`@worm-vue3-print/client`）连接本机运行的本客户端，复用 `@worm-vue3-print/core` 的同构渲染管线，在隐藏窗口里渲染出最终 HTML，再用 Electron `printToPDF` 生成 PDF 并交给系统打印命令静默出纸——无浏览器打印对话框、不依赖浏览器插件。
+worm-vue3-print 跨平台（Windows / Linux / macOS）静默打印桌面客户端。宿主 Web 系统通过浏览器端 SDK（core 子路径 `@worm-vue3-print/core/client`）连接本机运行的本客户端，复用 `@worm-vue3-print/core` 的同构渲染管线，在隐藏窗口里渲染出最终 HTML，再用 Electron `printToPDF` 生成 PDF 并交给系统打印命令静默出纸——无浏览器打印对话框、不依赖浏览器插件。
 
 ## 架构
 
 ```
 宿主 Web 页面
-   │  @worm-vue3-print/client（SDK：端口探测/重连/超时）
+   │  @worm-vue3-print/core/client（SDK：端口探测/重连/超时）
    ▼  WebSocket（仅绑定 127.0.0.1）
 WsServer（回环服务：握手鉴权 → 协议帧分发）
    ▼

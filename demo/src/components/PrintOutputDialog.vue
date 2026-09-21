@@ -63,8 +63,8 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { PrintClient, WormPrintError } from '@worm-vue3-print/client'
-import type { PrinterInfo } from '@worm-vue3-print/client'
+import { PrintClient, WormPrintError } from '@worm-vue3-print/core/client'
+import type { PrinterInfo } from '@worm-vue3-print/core/client'
 import type { MultiPageTemplateData, PrintTemplateData } from '@worm-vue3-print/core'
 import {
   checkRenderHealth,

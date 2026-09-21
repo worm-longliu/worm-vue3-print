@@ -10,6 +10,11 @@ export default {
   <li><strong>四则运算更准</strong>：直接写 <code>{qty * price}</code> 时，数字字符串按数值参与运算、不再出现 <code>0.30000000000000004</code> 这类浮点尾巴、除以 0 不再印出 <code>Infinity</code>。</li>
 </ul>
 
+<h3>变更</h3>
+<ul>
+  <li><strong>静默打印 SDK 并入 core</strong>：原 <code>@worm-vue3-print/client</code> 不再单独安装，改为从 <code>@worm-vue3-print/core/client</code> 导入；<code>PrintClient</code> 等能力保持不变，core 也不会因此增加依赖。</li>
+</ul>
+
 <h3>修复</h3>
 <ul>
   <li><code>ROUND(1.005, 2)</code> 此前得到 <code>1</code>（应为 <code>1.01</code>）、<code>ROUND(2.675, 2)</code> 得到 <code>2.67</code>（应为 <code>2.68</code>）——改为按十进制精确修约。</li>

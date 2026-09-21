@@ -2,7 +2,7 @@
 // 在页面内完成两遍渲染（测量 → 分页 → 最终 HTML），产物直送打印客户端，客户端不再渲染。
 import { renderHtmlPages, browserCodeRenderer } from '@worm-vue3-print/core/browser'
 import type { MultiPageTemplateData, PrintTemplateData } from '@worm-vue3-print/core'
-import type { RenderedHtmlPages } from '@worm-vue3-print/client'
+import type { RenderedHtmlPages } from '@worm-vue3-print/core/client'
 
 /**
  * 在当前浏览器页面内渲染模板，返回可直接提交给 PrintClient.printHtml 的结果。

@@ -5,7 +5,7 @@
 ```
 宿主 Web 页面
    │  @worm-vue3-print/core/browser（renderHtmlPages 两遍渲染 + 连续纸纸长推导）
-   │  @worm-vue3-print/client（SDK：端口探测/重连/超时/鉴权）
+   │  @worm-vue3-print/core/client（SDK：端口探测/重连/超时/鉴权）
    ▼  WebSocket（仅绑定 127.0.0.1）
 桌面打印客户端（Electron，clients/print-client）
    ├─ WsServer  握手鉴权 → 协议帧分发
@@ -20,20 +20,20 @@
 ## 1. 前置条件
 
 1. 工位电脑已安装并运行**桌面打印客户端**（详见第 5 节打包与分发）。客户端仅监听回环地址，浏览器必须与客户端在同一台电脑。
-2. 浏览器侧安装 SDK：
+2. 浏览器侧 SDK 随 core 提供，无需单独安装（需已安装 `@worm-vue3-print/core`）。
 
-```bash
-npm install @worm-vue3-print/client
+SDK 为 core 的子路径导入，框架无关（纯 TypeScript，无 Vue/React 依赖）：
+
+```ts
+import { PrintClient } from '@worm-vue3-print/core/client'
 ```
-
-SDK 框架无关（纯 TypeScript，无 Vue/React 依赖），当前版本 `0.1.0`。
 
 ## 2. 浏览器侧接入
 
 ### 连接、枚举、打印
 
 ```ts
-import { PrintClient, WormPrintError } from '@worm-vue3-print/client'
+import { PrintClient, WormPrintError } from '@worm-vue3-print/core/client'
 
 const client = new PrintClient()
 client.onStatusChange((s) => {

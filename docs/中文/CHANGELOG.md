@@ -15,6 +15,7 @@
 
 ### 变更
 
+- **静默打印浏览器端 SDK 并入 core，不再单独发布**：原独立包 `@worm-vue3-print/client`（`0.1.0`，从未发布到 npm）迁移为 `@worm-vue3-print/core` 的子路径导出 `@worm-vue3-print/core/client`，导入方式由 `import { PrintClient } from '@worm-vue3-print/client'` 改为 `from '@worm-vue3-print/core/client'`。SDK 零运行时依赖（仅用浏览器 WebSocket），core 不新增依赖；`PrintClient`、`WsTransport`、`WormPrintError`、`MESSAGE_TYPES` 等全部导出符号与能力保持不变。`packages/print-client-sdk` 目录删除；桌面客户端（Electron）内部引用同步改走 core。
 - `@worm-vue3-print/core`：**行为变更** 算术运算符（四则与一元正负号）改为数值语义，存量模板在以下场景结果会变（都是朝「符合直觉」的方向修）：
   ① 两侧都是数字或数字字符串时按数值运算——`'3' + 4` 由 `'34'` 变为 `7`，`{qty + price}` 不再拼出 `312.5`；
   ② 消除二进制浮点噪声——`0.1 + 0.2` 由 `0.30000000000000004` 变为 `0.3`，`12.5 * 3 * 1.13` 由 `42.37499999999999` 变为 `42.375`；

@@ -25,11 +25,7 @@ npm install @worm-vue3-print/core@^1.3.0 @worm-vue3-print/canvas@^1.3.0
 
 ### 静默打印浏览器端 SDK
 
-需要无打印对话框的静默出纸时，单独安装 SDK（版本号独立，当前 `0.1.0`），需另配本机运行的桌面打印客户端：
-
-```bash
-npm install @worm-vue3-print/client
-```
+需要无打印对话框的静默出纸时，SDK 随 core 提供，无需单独安装（从子路径 `@worm-vue3-print/core/client` 导入），需另配本机运行的桌面打印客户端。
 
 接入与客户端部署见 [静默打印](silent-print.md)。
 
