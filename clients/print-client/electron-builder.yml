@@ -9,7 +9,7 @@ directories:
 files:
   - out/**/*
   - package.json
-# workspace 依赖（@worm-vue3-print/core、@worm-vue3-print/client）与 ws
+# workspace 依赖（@worm-vue3-print/core）与 ws
 # 由 electron-builder 从各自 dist 收集进 asar；打包脚本会先构建它们。
 asar: true
 mac:
