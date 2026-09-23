@@ -373,8 +373,6 @@ onMounted(() => {
 
 <style>
 /* 设计器内部控件基于原生样式，需全局引入一次 */
-@import '@worm-vue3-print/canvas/native-controls.css';
-
 html,
 body,
 #app {
