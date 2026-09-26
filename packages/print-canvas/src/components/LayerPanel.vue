@@ -15,16 +15,16 @@
     </div>
     <div class="layer-actions" v-if="sortedLayers.length > 0">
       <button type="button" class="pd-button small" @click="$emit('move-layer', 'top')" title="置顶">
-        ⤒
+        <ArrowUpToLine :size="14" />
       </button>
       <button type="button" class="pd-button small" @click="$emit('move-layer', 'up')" title="上移">
-        ↑
+        <ArrowUp :size="14" />
       </button>
       <button type="button" class="pd-button small" @click="$emit('move-layer', 'down')" title="下移">
-        ↓
+        <ArrowDown :size="14" />
       </button>
       <button type="button" class="pd-button small" @click="$emit('move-layer', 'bottom')" title="置底">
-        ⤓
+        <ArrowDownToLine :size="14" />
       </button>
     </div>
   </div>
@@ -32,6 +32,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { ArrowUpToLine, ArrowUp, ArrowDown, ArrowDownToLine } from 'lucide-vue-next'
 import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 
 const props = defineProps<{

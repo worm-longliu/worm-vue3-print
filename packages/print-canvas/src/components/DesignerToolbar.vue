@@ -17,19 +17,19 @@
     </div>
     <!-- 编辑 -->
     <div class="tb-group">
-      <button class="tb-btn tb-icon" :disabled="!canUndo" @click="$emit('undo')" data-tip="撤销">↶</button>
-      <button class="tb-btn tb-icon" :disabled="!canRedo" @click="$emit('redo')" data-tip="重做">↷</button>
+      <button class="tb-btn tb-icon" :disabled="!canUndo" @click="$emit('undo')" data-tip="撤销"><Undo2 :size="15" /></button>
+      <button class="tb-btn tb-icon" :disabled="!canRedo" @click="$emit('redo')" data-tip="重做"><Redo2 :size="15" /></button>
     </div>
     <!-- 对齐分布(多选) -->
     <div class="tb-group" v-if="hasMultiSelection">
-      <button class="tb-btn tb-icon" @click="$emit('align', 'left')" title="左对齐">⇤</button>
-      <button class="tb-btn tb-icon" @click="$emit('align', 'right')" title="右对齐">⇥</button>
-      <button class="tb-btn tb-icon" @click="$emit('align', 'top')" title="顶对齐">⇡</button>
-      <button class="tb-btn tb-icon" @click="$emit('align', 'bottom')" title="底对齐">⇣</button>
-      <button class="tb-btn tb-icon" @click="$emit('align', 'vertical')" title="水平居中">↔</button>
-      <button class="tb-btn tb-icon" @click="$emit('align', 'horizontal')" title="垂直居中">↕</button>
-      <button class="tb-btn tb-icon" @click="$emit('align', 'distributeHor')" title="水平分布">⇔</button>
-      <button class="tb-btn tb-icon" @click="$emit('align', 'distributeVer')" title="垂直分布">⇕</button>
+      <button class="tb-btn tb-icon" @click="$emit('align', 'left')" data-tip="左对齐"><AlignStartVertical :size="15" /></button>
+      <button class="tb-btn tb-icon" @click="$emit('align', 'right')" data-tip="右对齐"><AlignEndVertical :size="15" /></button>
+      <button class="tb-btn tb-icon" @click="$emit('align', 'top')" data-tip="顶对齐"><AlignStartHorizontal :size="15" /></button>
+      <button class="tb-btn tb-icon" @click="$emit('align', 'bottom')" data-tip="底对齐"><AlignEndHorizontal :size="15" /></button>
+      <button class="tb-btn tb-icon" @click="$emit('align', 'vertical')" data-tip="水平居中"><AlignCenterVertical :size="15" /></button>
+      <button class="tb-btn tb-icon" @click="$emit('align', 'horizontal')" data-tip="垂直居中"><AlignCenterHorizontal :size="15" /></button>
+      <button class="tb-btn tb-icon" @click="$emit('align', 'distributeHor')" data-tip="水平分布"><AlignHorizontalSpaceBetween :size="15" /></button>
+      <button class="tb-btn tb-icon" @click="$emit('align', 'distributeVer')" data-tip="垂直分布"><AlignVerticalSpaceBetween :size="15" /></button>
     </div>
     <!-- 组合 -->
     <div class="tb-group" v-if="hasMultiSelection">
@@ -40,10 +40,10 @@
     </div>
     <!-- 层级 -->
     <div class="tb-group" v-if="hasSelection">
-      <button class="tb-btn tb-icon" @click="$emit('move-layer', 'top')" data-tip="置顶">⤒</button>
-      <button class="tb-btn tb-icon" @click="$emit('move-layer', 'up')" data-tip="上移一层">↑</button>
-      <button class="tb-btn tb-icon" @click="$emit('move-layer', 'down')" data-tip="下移一层">↓</button>
-      <button class="tb-btn tb-icon" @click="$emit('move-layer', 'bottom')" data-tip="置底">⤓</button>
+      <button class="tb-btn tb-icon" @click="$emit('move-layer', 'top')" data-tip="置顶"><ArrowUpToLine :size="15" /></button>
+      <button class="tb-btn tb-icon" @click="$emit('move-layer', 'up')" data-tip="上移一层"><ArrowUp :size="15" /></button>
+      <button class="tb-btn tb-icon" @click="$emit('move-layer', 'down')" data-tip="下移一层"><ArrowDown :size="15" /></button>
+      <button class="tb-btn tb-icon" @click="$emit('move-layer', 'bottom')" data-tip="置底"><ArrowDownToLine :size="15" /></button>
     </div>
     <!-- 视图 -->
     <div class="tb-group">
@@ -59,10 +59,10 @@
       <button class="tb-btn" :class="{ on: snapToGrid }" data-tip="开启/关闭元素吸附到网格" @click="$emit('toggle-snap')">
         <span class="dot" /> 吸附
       </button>
-      <button class="tb-btn tb-icon" @click="$emit('fit-window')" data-tip="适应窗口">⤢</button>
-      <button class="tb-btn tb-icon" @click="$emit('zoom', -10)" data-tip="缩小">−</button>
+      <button class="tb-btn tb-icon" @click="$emit('fit-window')" data-tip="适应窗口"><Maximize :size="15" /></button>
+      <button class="tb-btn tb-icon" @click="$emit('zoom', -10)" data-tip="缩小"><ZoomOut :size="15" /></button>
       <span class="tb-zoom">{{ scale }}%</span>
-      <button class="tb-btn tb-icon" @click="$emit('zoom', 10)" data-tip="放大">＋</button>
+      <button class="tb-btn tb-icon" @click="$emit('zoom', 10)" data-tip="放大"><ZoomIn :size="15" /></button>
     </div>
     <!-- 操作 -->
     <div class="tb-spacer" />
@@ -70,8 +70,8 @@
       <HelpButton @click="$emit('help')" />
     </div>
     <div class="tb-group">
-      <button class="tb-btn" @click="$emit('add-overlay-element')">首页专属</button>
-      <button class="tb-btn" :class="{ warn: overlayVisible }" @click="$emit('toggle-overlay')">叠层对比</button>
+      <button class="tb-btn" data-tip="添加一个仅在首页叠加显示的页眉/页脚元素" @click="$emit('add-overlay-element')">首页专属</button>
+      <button class="tb-btn" :class="{ warn: overlayVisible }" data-tip="叠加显示渲染截图，与设计稿对比效果" @click="$emit('toggle-overlay')">叠层对比</button>
     </div>
     <div class="tb-group">
       <button class="btn-secondary" @click="$emit('preview')">预览</button>
@@ -81,6 +81,25 @@
 </template>
 
 <script setup lang="ts">
+import {
+  Undo2,
+  Redo2,
+  AlignStartVertical,
+  AlignEndVertical,
+  AlignStartHorizontal,
+  AlignEndHorizontal,
+  AlignCenterVertical,
+  AlignCenterHorizontal,
+  AlignHorizontalSpaceBetween,
+  AlignVerticalSpaceBetween,
+  ArrowUpToLine,
+  ArrowUp,
+  ArrowDown,
+  ArrowDownToLine,
+  Maximize,
+  ZoomOut,
+  ZoomIn,
+} from 'lucide-vue-next'
 import HelpButton from './HelpButton.vue'
 
 const scale = defineModel<number>('scale', { default: 100 })

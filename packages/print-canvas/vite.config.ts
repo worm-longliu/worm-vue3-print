@@ -24,6 +24,8 @@ export default defineConfig({
         'jsbarcode',
         'qrcode',
         'sortablejs',
+        // lucide 图标按需命名导入，外置后由宿主 bundler tree-shaking
+        'lucide-vue-next',
       ],
     },
     sourcemap: true,

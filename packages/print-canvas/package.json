@@ -37,6 +37,7 @@
     "@worm-vue3-print/core": "^1.0.0",
     "dompurify": "^3.4.12",
     "jsbarcode": "^3.12.3",
+    "lucide-vue-next": "^0.577.0",
     "qrcode": "^1.5.4",
     "sortablejs": "^1.15.7"
   },
