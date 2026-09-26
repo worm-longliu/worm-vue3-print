@@ -592,3 +592,46 @@ describe('空白页防御：当前页尚无内容时换页不产出空页', () =
     expect(pages[0].overflow).toBe(true)
   })
 })
+
+describe('换页流式光标：表格后续页的编组不叠压表格（回归）', () => {
+  it('次片从页顶起排，显式编组锚点贴切片实占底部，组内相对偏移保持', () => {
+    // 8 行×50 + 重复表头 50：页1 片 rows0-5（250）；页2 片 rows5-8（150 + 表头 50 = 200），剩余 75
+    // 编组 g1：a top500 h10、b top520 h20 → 并集 40 ≤ 75 → 落页2，起点 = 200（修复前为 0，叠压表格）
+    const table = makeTable(8, 1)
+    const tpl = makeFreeTemplate([
+      table,
+      freeEl('a', 500, 10, { groupId: 'g1' }),
+      freeEl('b', 520, 20, { groupId: 'g1' }),
+    ])
+    const measured = new Map([...measure(Array(8).fill(50), 1), ...measureFree([['a', 10], ['b', 20]])])
+    const pages = paginate(tpl, measured)
+    expect(pages).toHaveLength(2)
+    const second = pages[1].sections
+    expect(second.find(s => s.elementId === 'tbl-1')!.renderTop).toBe(0)
+    const topOf = (id: string) => second.find(s => s.elementId === id)!.renderTop
+    expect(topOf('a')).toBe(200)
+    expect(topOf('b')).toBe(220)
+  })
+
+  it('两个编组单元先后放置按流式光标顺排，互不叠压', () => {
+    const table = makeTable(8, 1)
+    const tpl = makeFreeTemplate([
+      table,
+      freeEl('a', 500, 10, { groupId: 'g1' }),
+      freeEl('b', 520, 20, { groupId: 'g1' }),
+      freeEl('c', 600, 10, { groupId: 'g2' }),
+      freeEl('d', 610, 15, { groupId: 'g2' }),
+    ])
+    const measured = new Map([
+      ...measure(Array(8).fill(50), 1),
+      ...measureFree([['a', 10], ['b', 20], ['c', 10], ['d', 15]]),
+    ])
+    const pages = paginate(tpl, measured)
+    const second = pages[1].sections
+    const topOf = (id: string) => second.find(s => s.elementId === id)!.renderTop
+    // g1 起点 200（高 40）→ g2 起点 240（并集 25 也 ≤ 剩余 35）
+    expect(topOf('a')).toBe(200)
+    expect(topOf('c')).toBe(240)
+    expect(topOf('d')).toBe(250)
+  })
+})

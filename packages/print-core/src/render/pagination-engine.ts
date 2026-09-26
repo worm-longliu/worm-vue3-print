@@ -278,7 +278,16 @@ export function paginate(
 
   /** 本节在本页内容区内的定位 top：未换页用元素设计 top，换页后从页顶开始 */
   function sectionTop(el: TemplateElement): number {
-    return pageBroken ? 0 : (el.options?.top ?? 0)
+    return pageBroken ? pageCursorTop() : (el.options?.top ?? 0)
+  }
+
+  /**
+   * 换页后的流式光标：当前页已放置内容的底部。
+   * remaining 逐段扣减，fullPageHeight() − remaining 即已占深度；空页/新页首段为 0。
+   * 修复：此前换页后各段一律锚在 0，表格切片之后的元素/编组会叠压在表格上。
+   */
+  function pageCursorTop(): number {
+    return Math.max(0, fullPageHeight() - remaining)
   }
 
   /** 获取当前页完整可用高度 */
@@ -394,7 +403,7 @@ export function paginate(
 
     if (elHeight <= remaining) {
       // 放得下
-      const top = pageBroken ? 0 : (el.options?.top ?? 0)
+      const top = pageBroken ? pageCursorTop() : (el.options?.top ?? 0)
       noteOverflow(top + elHeight)
       currentPage.push({ elementId: el.id, type: 'element', renderTop: sectionTop(el) })
       remaining -= elHeight
@@ -423,8 +432,10 @@ export function paginate(
     }
 
     // 放不下，整体移到下一页（空页时不换页，仅按物理边界记录裁切风险）
-    const top = pageBroken ? 0 : (el.options?.top ?? 0)
-    finishPage(top + elHeight > contentHeight)
+    // 先换页再取落位光标：新页/空页均为 0，与 finishPage 的空页防御一致
+    finishPage()
+    const top = pageBroken ? pageCursorTop() : (el.options?.top ?? 0)
+    if (top + elHeight > contentHeight) overflowOnCurrent = true
     currentPage.push({ elementId: el.id, type: 'element', renderTop: sectionTop(el) })
     remaining -= elHeight
     return idx + 1
@@ -447,8 +458,8 @@ export function paginate(
     const unitHeight = Math.max(maxBottom - minTop, 0)
 
     const place = (): void => {
-      // 首页（未换页）保持设计坐标；换页后整组平移到内容区顶部，组内相对偏移不变
-      const offset = pageBroken ? -minTop : 0
+      // 首页（未换页）保持设计坐标；换页后整组平移：组顶贴当前页已占底部，组内相对偏移不变
+      const offset = pageBroken ? pageCursorTop() - minTop : 0
       noteOverflow(minTop + offset + unitHeight)
       for (const m of members) {
         currentPage.push({
@@ -544,6 +555,8 @@ export function paginate(
     const groups = buildRowGroups(bodyRows, rowCount)
     let sliceStart = 0
     let firstSlice = true
+    // 片起点须在行组预算逐段扣减前捕获（循环内 remaining 会被本片自己的行组消耗）
+    let sliceTop = sectionTop(el)
 
     for (const g of groups) {
       const gh = bodyHeights.slice(g.start, g.end).reduce((s, h) => s + h, 0)
@@ -558,12 +571,13 @@ export function paginate(
           elementId: el.id, type: 'table-slice', startRow: sliceStart, endRow: g.start,
           subtotal: subtotalH > 0,
           ...(!firstSlice && repeatCount > 0 ? { repeatHeader: true } : {}),
-          renderTop: sectionTop(el),
+          renderTop: sliceTop,
         })
         firstSlice = false
         sliceStart = g.start
       }
       finishPage()
+      sliceTop = sectionTop(el)
       // 首片本身包含物理表头行（行 0 起），换页时不扣 repeatH；非首片先扣重复表头段
       if (!firstSlice) remaining -= repeatH
       remaining -= gh // 组高于整页时允许溢出（可能为负）
@@ -575,7 +589,7 @@ export function paginate(
         elementId: el.id, type: 'table-slice', startRow: sliceStart, endRow: rowCount,
         subtotal: subtotalH > 0,
         ...(!firstSlice && repeatCount > 0 ? { repeatHeader: true } : {}),
-        renderTop: sectionTop(el),
+        renderTop: sliceTop,
       })
     }
 
