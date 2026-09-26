@@ -1,0 +1,82 @@
+{
+  "title": "worm-vue3-print 打印模板设计器全流程教学",
+  "voice": "zh-CN-YunxiNeural",
+  "video": { "width": 1920, "height": 1440, "fps": 30 },
+  "baseUrl": "http://localhost:9303",
+  "scenes": [
+    {
+      "name": "开场与总览",
+      "voiceover": "大家好，欢迎观看 worm-vue3-print 打印模板设计器的教学演示。打开页面后，画布已经自动载入了一份综合示例模板，顶部的徽章会显示当前的业务类型。接下来，我们完整走一遍从设计到导出的流程。",
+      "steps": [
+        { "do": "assert", "selector": ".designer-container" },
+        { "do": "highlight", "selector": ".demo-topbar", "ms": 2600, "s": 1 },
+        { "do": "highlight", "selector": ".demo-badge", "ms": 2200, "s": 1 }
+      ]
+    },
+    {
+      "name": "界面布局",
+      "voiceover": "设计器采用经典的三栏布局。左侧是素材台，包含元素、字段和图层三个页签。中间是画布，纸张上的页眉、内容和页脚三个区域一目了然。右侧是属性台，用来调整元素与页面的全部参数。顶部工具栏则提供撤销、对齐、缩放等常用操作。",
+      "steps": [
+        { "do": "highlight", "selector": ".left-panel", "ms": 2800, "s": 1 },
+        { "do": "highlight", "selector": ".canvas-area", "ms": 2800, "s": 2 },
+        { "do": "highlight", "selector": ".property-panel", "ms": 2800, "s": 3 },
+        { "do": "highlight", "selector": ".designer-toolbar", "ms": 2600, "s": 4 }
+      ]
+    },
+    {
+      "name": "示例模板库",
+      "voiceover": "点击顶栏的加载示例按钮，会弹出示例模板库。这里按单据、标签、小票分类，预置了多套真实业务模板。我们从列表中选择一张销售出库单，单击选中它。再点击底部的使用该模板，画布就会立即切换为出库单版式，明细区正是一张表格。",
+      "steps": [
+        { "do": "click", "selector": ".demo-topbar button:has-text(\"加载示例\")", "s": 0 },
+        { "do": "assert", "selector": ".gallery-panel" },
+        { "do": "highlight", "selector": ".gallery-tab:has-text(\"单据\")", "ms": 1600, "s": 1 },
+        { "do": "click", "selector": ".sample-card:has(.sample-name:text-is(\"销售出库单\"))", "s": 2 },
+        { "do": "click", "selector": ".gallery-panel button:has-text(\"使用该模板\")", "s": 3 },
+        { "do": "assert", "selector": ".demo-badge:has-text(\"销售出库单\")" }
+      ]
+    },
+    {
+      "name": "添加与编辑元素",
+      "voiceover": "设计新模板时，从素材台的元素页签，把卡片拖拽到纸张上即可添加元素。我们把一个文本元素拖到纸张下方，然后选中它。此时右侧属性台会展开位置与尺寸、外观等分组，可以精确调整坐标、字号和颜色。",
+      "steps": [
+        { "do": "dragCard", "card": "文本", "target": ".hiprint-printPaper", "yRatio": 0.9, "s": 1 },
+        { "do": "assert", "selector": ".print-element.type-text >> nth=-1" },
+        { "do": "click", "selector": ".print-element.type-text >> nth=-1" },
+        { "do": "highlight", "selector": ".property-panel .property-group:has(.group-title:text-is(\"位置与尺寸\"))", "ms": 2400, "s": 2 },
+        { "do": "highlight", "selector": ".property-panel .property-group:has(.group-title:text-is(\"外观\"))", "ms": 2400, "s": 2 }
+      ]
+    },
+    {
+      "name": "字段与表格",
+      "voiceover": "切换到字段页签，可以看到当前打印数据对应的字段树，把字段拖到文本或表格上，就完成了数据绑定。再选中画布中的表格元素，右侧会出现表格设置与分页配置，支持表头重复、行高等精细控制。",
+      "steps": [
+        { "do": "click", "selector": ".left-panel .pd-tab:has-text(\"字段\")", "s": 0 },
+        { "do": "highlight", "selector": ".field-tree-panel", "ms": 2200 },
+        { "do": "click", "selector": ".left-panel .pd-tab:has-text(\"元素\")" },
+        { "do": "click", "selector": ".print-element.type-table >> nth=0", "s": 1 },
+        { "do": "highlight", "selector": ".property-panel .property-group:has(.group-title:text-is(\"表格设置\"))", "ms": 2600 }
+      ]
+    },
+    {
+      "name": "预览分页",
+      "voiceover": "点击工具栏的预览按钮，无需保存即可查看真实的打印效果。预览弹窗会显示总页数，多页模板可以逐页检查分页是否符合预期。确认无误后，点击关闭返回设计。",
+      "steps": [
+        { "do": "click", "selector": ".designer-toolbar button.btn-secondary:has-text(\"预览\")", "s": 0 },
+        { "do": "assert", "selector": ".preview-mask" },
+        { "do": "waitForPreview" },
+        { "do": "highlight", "selector": ".preview-subtitle", "ms": 2000, "s": 1 },
+        { "do": "previewScroll", "y": 560 },
+        { "do": "previewScroll", "y": 560 },
+        { "do": "click", "selector": ".preview-panel button:has-text(\"关闭\")", "s": 2 }
+      ]
+    },
+    {
+      "name": "导出与结尾",
+      "voiceover": "最后点击顶栏的导出模板，当前画布的模板 JSON 会直接下载到本地，可以再导入到其他项目中复用。至此，我们完成了加载示例、拖拽编辑、字段绑定、预览分页和模板导出的全流程。感谢观看，我们下期再见。",
+      "steps": [
+        { "do": "download", "selector": ".demo-topbar button:has-text(\"导出模板\")", "saveAs": "exported-template.json", "s": 0 },
+        { "do": "highlight", "selector": ".designer-container", "ms": 2600, "s": 1 }
+      ]
+    }
+  ]
+}

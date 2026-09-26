@@ -7,7 +7,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "typecheck": "vue-tsc --noEmit -p tsconfig.json"
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
+    "video:voice": "node video/voiceover.mjs",
+    "video:cover": "node video/cover.mjs",
+    "video:record": "node video/record.mjs",
+    "video:compose": "node video/compose.mjs",
+    "video:check": "node video/check-sync.mjs",
+    "video": "npm run video:voice && npm run video:cover && npm run video:record && npm run video:compose"
   },
   "dependencies": {
     "@worm-vue3-print/canvas": "file:../packages/print-canvas",
@@ -19,9 +25,12 @@
     "vue": "^3.5.24"
   },
   "devDependencies": {
+    "@ffmpeg-installer/darwin-x64": "^4.1.0",
+    "@ffprobe-installer/darwin-x64": "^5.1.0",
     "@types/qrcode": "^1.5.6",
     "@types/sortablejs": "^1.15.9",
     "@vitejs/plugin-vue": "^6.0.1",
+    "playwright": "^1.63.0",
     "typescript": "~5.9.3",
     "vite": "^7.2.5",
     "vue-tsc": "^3.1.4"

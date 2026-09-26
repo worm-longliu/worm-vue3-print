@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>视频封面 · worm-vue3-print</title>
+<style>
+  :root {
+    --paper: #F2F1EC;
+    --dot: #DFDDD2;
+    --ink: #1B1C18;
+    --cyan: #009CDE;
+    --magenta: #E6007E;
+    --yellow: #F5C400;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1440px; overflow: hidden; }
+  body {
+    position: relative;
+    background:
+      radial-gradient(var(--dot) 2.6px, transparent 2.6px) 0 0 / 48px 48px,
+      var(--paper);
+    color: var(--ink);
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  }
+
+  /* ── 裁切线（四角） ─────────────────────────── */
+  .crop { position: absolute; width: 96px; height: 96px; }
+  .crop::before, .crop::after { content: ""; position: absolute; background: var(--ink); }
+  .crop::before { width: 96px; height: 5px; top: 50%; margin-top: -2.5px; }
+  .crop::after { width: 5px; height: 96px; left: 50%; margin-left: -2.5px; }
+  .crop.tl { top: 68px; left: 68px; clip-path: inset(50% 50% 0 0); }
+  .crop.tr { top: 68px; right: 68px; clip-path: inset(50% 0 0 50%); }
+  .crop.bl { bottom: 68px; left: 68px; clip-path: inset(0 50% 50% 0); }
+  .crop.br { bottom: 68px; right: 68px; clip-path: inset(0 0 50% 50%); }
+
+  /* ── 顶部毫米刻度尺 ─────────────────────────── */
+  .ruler {
+    position: absolute; top: 120px; left: 164px; right: 164px; height: 46px;
+    border-bottom: 3px solid var(--ink);
+    background:
+      repeating-linear-gradient(90deg, var(--ink) 0 2px, transparent 2px 24px) bottom / 100% 14px no-repeat,
+      repeating-linear-gradient(90deg, var(--ink) 0 3px, transparent 3px 120px) bottom / 100% 26px no-repeat;
+  }
+  .ruler span {
+    position: absolute; bottom: 32px; transform: translateX(-50%);
+    font: 500 20px/1 Menlo, monospace; letter-spacing: 1px;
+  }
+
+  /* ── 规矩线十字（registration mark） ────────── */
+  .reg { position: absolute; width: 64px; height: 64px; }
+  .reg::before {
+    content: ""; position: absolute; inset: 0; border: 3.5px solid var(--ink); border-radius: 50%;
+  }
+  .reg::after {
+    content: ""; position: absolute; inset: -14px 50%; width: 3px; margin-left: -1.5px; background: var(--ink);
+  }
+  .reg .h {
+    position: absolute; inset: 50% -14px auto -14px; height: 3px; margin-top: -1.5px; background: var(--ink);
+  }
+  .reg.tr { top: 214px; right: 210px; }
+  .reg.bl { bottom: 250px; left: 210px; transform: scale(0.72); }
+
+  /* ── 主视觉（左对齐，光心略偏上） ────────────── */
+  .stage {
+    position: absolute; left: 236px; right: 236px; top: 452px;
+  }
+  .subtitle {
+    font-size: 58px; font-weight: 600; letter-spacing: 14px;
+  }
+  .rule {
+    width: 168px; height: 10px; background: var(--ink); margin: 44px 0 40px;
+  }
+  .hero {
+    position: relative; font: 700 162px/1.04 Menlo, "SF Mono", monospace; letter-spacing: -4px;
+    white-space: nowrap;
+  }
+  .hero .plate { position: absolute; inset: 0; mix-blend-mode: multiply; }
+  .hero .c { color: var(--cyan); transform: translate(-9px, -7px); }
+  .hero .m { color: var(--magenta); transform: translate(9px, 7px); }
+  .hero .k { position: relative; }
+  .chapters {
+    margin-top: 66px; display: flex; align-items: center; gap: 30px;
+    font-size: 33px; font-weight: 500; letter-spacing: 4px;
+  }
+  .chapters i { font-style: normal; width: 14px; height: 14px; background: var(--ink); }
+  .chapters i.y { background: var(--yellow); }
+
+  /* ── 底部：校色条 + 版本打刻章 ───────────────── */
+  .strip { position: absolute; left: 236px; bottom: 176px; display: flex; align-items: flex-end; gap: 6px; }
+  .strip b { display: block; width: 88px; height: 44px; }
+  .strip .ramp { display: flex; }
+  .strip .ramp u { width: 22px; height: 44px; text-decoration: none; }
+  .strip-label {
+    position: absolute; left: 236px; bottom: 232px;
+    font: 500 19px/1 Menlo, monospace; letter-spacing: 3px;
+  }
+  .stamp {
+    position: absolute; right: 236px; bottom: 168px;
+    border: 4px solid var(--ink); padding: 22px 30px 24px;
+    font: 500 26px/1.7 Menlo, monospace; letter-spacing: 2px; text-align: right;
+  }
+  .stamp em { font-style: normal; opacity: 0.55; margin-right: 18px; font-size: 21px; }
+</style>
+</head>
+<body>
+  <div class="crop tl"></div><div class="crop tr"></div><div class="crop bl"></div><div class="crop br"></div>
+
+  <div class="ruler" id="ruler"></div>
+
+  <div class="reg tr"><span class="h"></span></div>
+  <div class="reg bl"><span class="h"></span></div>
+
+  <div class="stage">
+    <div class="subtitle" id="subtitle">打印模板设计器全流程教学</div>
+    <div class="rule"></div>
+    <div class="hero">
+      <span class="plate c" aria-hidden="true">worm-vue3-print</span>
+      <span class="plate m" aria-hidden="true">worm-vue3-print</span>
+      <span class="k">worm-vue3-print</span>
+    </div>
+    <div class="chapters">
+      <span>版式设计</span><i></i><span>字段绑定</span><i class="y"></i><span>分页预览</span><i></i><span>模板导出</span>
+    </div>
+  </div>
+
+  <div class="strip-label">CMYK CALIBRATION</div>
+  <div class="strip">
+    <b style="background:var(--cyan)"></b>
+    <b style="background:var(--magenta)"></b>
+    <b style="background:var(--yellow)"></b>
+    <b style="background:var(--ink)"></b>
+    <div class="ramp">
+      <u style="background:#1B1C18"></u><u style="background:#4A4B46"></u><u style="background:#797A73"></u>
+      <u style="background:#A8A9A1"></u><u style="background:#D7D7CF"></u><u style="background:#FFFFFF;outline:2px solid var(--ink);outline-offset:-2px"></u>
+    </div>
+  </div>
+
+  <div class="stamp">
+    <div><em>版本</em><span id="version">v0.0.0</span></div>
+    <div><em>日期</em><span id="date">0000-00-00</span></div>
+    <div><em>规格</em><span>1920 × 1440</span></div>
+  </div>
+
+<script>
+  const q = new URLSearchParams(location.search);
+  if (q.get('subtitle')) document.getElementById('subtitle').textContent = q.get('subtitle');
+  if (q.get('version')) document.getElementById('version').textContent = q.get('version');
+  if (q.get('date')) document.getElementById('date').textContent = q.get('date');
+  const ruler = document.getElementById('ruler');
+  for (let mm = 0; mm <= 640; mm += 80) {
+    const s = document.createElement('span');
+    s.style.left = (mm / 640 * 100) + '%';
+    s.textContent = mm;
+    ruler.appendChild(s);
+  }
+</script>
+</body>
+</html>
