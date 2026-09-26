@@ -2,6 +2,29 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [1.3.2] - 2026-09-26
+
+### 新增
+
+- demo：新增**「分页极限测试」多页示例**（组合 + 表格的极端版式，用于复现与验证换页后的元素放置），纳入示例库；`SampleThumb` 缩略图兼容多页模板 wrapper。
+
+### 变更
+
+- `@worm-vue3-print/canvas`：设计台图标全面换为 **lucide 按需引入**（工具栏 / 图层面板共 17 个图标，统一补齐 tooltip），组合 / 取消组合改用 `Group` / `Ungroup` 专属图标。
+- `@worm-vue3-print/canvas`：**组合与多选交互口径修正**：① 取消组合入口在任一选中元素属于组时即显示（旧「单选才显示」对整组多选是死分支）；② 元素拖拽起点不再重复发送 select，Ctrl/⌘ 逐个加选生效，画布与图层面板均可多选；③ 图层面板底部新增独立一行的组合 / 取消组合按钮，支持 Ctrl/⌘ 加选；④ 画布右键菜单移除此前并不生效的「编组/取消编组」入口，组合入口统一为：工具栏按钮、图层面板底部按钮、快捷键 `Ctrl+G` / `Ctrl+Shift+G`；⑤ 帮助文档补充框选规则（从空白区起拖：左上→右下=相交命中、右下→左上=完全包围命中）、组合强制同页与超高裁切警示，用户可见文案统一为「组合 / 取消组合」。
+
+### 修复
+
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`：**表格下方跟随元素的打印间距被拉大**。表格设计底部（`tableDesignBottom`）旧口径只取 `tableRows` 行高之和（min-height 语义），忽略设计器实测回写的 `options.height`——当行内容把表格撑高时，跟随偏移多算出「实测高 − 行高和」的虚假间距（实测模板最大达 3.77mm）。现改为 `top + max(options.height, Σ行高)`：以画布视觉底部为基准，行高之和保留为物理下界，避免脏数据把跟随元素反向叠压表格。**行为变更**：存量模板中「行内容把表格撑高」的模板，表下跟随元素的出纸间距会收回到与设计台所见一致；在设计器保存过的模板属纯修复，三端（浏览器预览 / 服务端 PDF / 桌面客户端）同源生效。
+- `@worm-vue3-print/core`：**分页换页后区块一律锚 0，导致末页组合元素叠压表格**。换页后表格续片、组合、普通元素原本都从新页顶部 0 开始放置，应顺排的元素互相叠在一起。现改为流式光标（`pageCursorTop`）顺排放置，且表格切片起点在行组扣预算前提前捕获，保证跨页续片后跟随元素正确接排；并补充分页引擎极限回归测试（组合整组不拆分、多区块叠页场景）。
+- demo：移除对 `@worm-vue3-print/canvas/native-controls.css` 的错误全局引入（该样式文件已不存在）。
+
+### 维护
+
+- `@worm-vue3-print/canvas`：修复测试间歇性 `localStorage` 未定义——新增全局 vitest setup 兜底。
+- 仓库脚本：根 `package.json` 清理对已删除工作区 `@worm-vue3-print/client` 的残留引用。
+- 文档：补充 Electron 客户端依赖 core **dist 子路径**（`@worm-vue3-print/core/client`）的构建约定——新增或改动 core 子入口后必须重建 core 的 dist。
+
 ## [1.3.1] - 2026-09-21
 
 ### 新增

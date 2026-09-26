@@ -2,6 +2,29 @@
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [1.3.2] - 2026-09-26
+
+### Added
+
+- demo: new **"pagination stress test" multi-page sample** (groups + tables in an extreme layout, used to reproduce and verify element placement after page breaks), registered in the sample library; `SampleThumb` thumbnails now support multi-page template wrappers.
+
+### Changed
+
+- `@worm-vue3-print/canvas`: designer icons fully migrated to **on-demand lucide imports** (17 icons across the toolbar / layer panel, tooltips completed); group / ungroup now use the dedicated `Group` / `Ungroup` icons.
+- `@worm-vue3-print/canvas`: **grouping & multi-select interaction fixes**: ① the ungroup entry shows whenever any selected element belongs to a group (the old "single selection only" check was a dead branch for whole-group selections); ② drag start on an element no longer re-emits `select`, so Ctrl/⌘ click-to-add works — multi-select is now available on both the canvas and the layer panel; ③ the layer panel gained its own bottom row with group / ungroup buttons and supports Ctrl/⌘ add-select; ④ the (previously non-functional) "编组/取消编组" items were removed from the canvas context menu — grouping entries are now exactly: toolbar button, layer-panel bottom buttons, `Ctrl+G` / `Ctrl+Shift+G`; ⑤ the in-app help documents the marquee rules (drag from empty space: top-left → bottom-right = intersect hit, bottom-right → top-left = full-enclose hit), the whole-group-on-one-page rule and the over-height clipping warning; all user-facing wording standardized to "组合 / 取消组合".
+
+### Fixed
+
+- `@worm-vue3-print/core` / `@worm-vue3-print/canvas`: **the print gap below a table was stretched for following elements**. The table design bottom (`tableDesignBottom`) used to be the sum of `tableRows` heights only (min-height semantics), ignoring the measured `options.height` written back by the designer — when row content grew the table taller, followers got an extra phantom gap of "measured height − row-height sum" (up to 3.77 mm on a real template). It is now `top + max(options.height, Σ row heights)`: anchored at the visual bottom seen on the canvas, with the row-height sum kept as a physical lower bound so dirty data cannot push followers back onto the table. **Behavior change**: existing templates whose tables grow taller than their row-height sum get the follower spacing pulled back to what the designer shows; templates saved in the designer are pure fixes. Identical across browser preview, server-side PDF and the desktop client.
+- `@worm-vue3-print/core`: **blocks all anchored at 0 after a page break, so last-page groups overlapped the table**. The table continuation slice, groups and plain elements each used to start at the top of the new page instead of flowing after one another. Placement now follows a streaming cursor (`pageCursorTop`), and the table slice start is captured before row-group budgeting, so followers re-flow correctly after a continuation; regression tests for the extreme pagination cases (indivisible groups, stacked blocks) were added.
+- demo: removed a wrong global import of `@worm-vue3-print/canvas/native-controls.css` (the file no longer exists).
+
+### Maintenance
+
+- `@worm-vue3-print/canvas`: fixed intermittent `localStorage is not defined` in tests via a global vitest setup fallback.
+- Repo scripts: removed the leftover reference to the deleted `@worm-vue3-print/client` workspace from the root `package.json`.
+- Docs: recorded the build convention that the Electron client consumes core's **dist subpath** (`@worm-vue3-print/core/client`) — core's dist must be rebuilt whenever a subpath entry is added or changed.
+
 ## [1.3.1] - 2026-09-21
 
 ### Added
