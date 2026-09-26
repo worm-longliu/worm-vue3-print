@@ -10,7 +10,7 @@
       :show-grid="showGrid"
       :snap-to-grid="snapToGrid"
       :show-table-ghost-border="showTableGhostBorder"
-      :selected-element-has-group="selectedElement?.options.groupId ? true : false"
+      :selected-element-has-group="selectedHasGroup"
       :overlay-visible="overlayVisible"
       :show-help="showHelp !== false"
       v-model:scale="scale"
@@ -56,6 +56,8 @@
         :collapsed="leftCollapsed"
         @select="onSelectElement"
         @move-layer="onMoveLayer"
+        @group="onGroup"
+        @ungroup="onUngroup"
         @toggle-visible="onToggleVisible"
         @toggle-locked="onToggleLocked"
         @toggle-collapse="toggleLeft"
@@ -74,7 +76,6 @@
         :overlay-visible="overlayVisible"
         :screenshot-url="screenshotUrl"
         :overlay-opacity="overlayOpacity"
-        :selected-element-has-group="selectedElement?.options.groupId ? true : false"
         @select="onSelectElement"
         @drop-element="onDropElement"
         @drop-field="onDropField"
@@ -94,8 +95,6 @@
         @delete="onDeleteElement"
         @move-layer="onMoveLayer"
         @coordinate="onCoordinate"
-        @group="onGroup"
-        @ungroup="onUngroup"
         @add-guide="addGuide"
         @guide-move="moveGuide"
         @guide-remove="removeGuide"
@@ -214,7 +213,7 @@ const { leftCollapsed, rightCollapsed, toggleLeft, toggleRight, dirty, markSaved
 const {
   scale, showRuler, showGrid, snapToGrid, showTableGhostBorder,
   templateData, elements, fields, tilingEnabled,
-  selectedIds, selectedElement, select, selectElement, clearSelection, selectAll,
+  selectedIds, selectedElement, selectedElements, select, selectElement, clearSelection, selectAll,
   previewIds, setPreview, commitPreview,
   hasClipboard, copy, paste, cutSelected,
   canUndo, canRedo, undo: onUndo, redo: onRedo,
@@ -234,6 +233,9 @@ const {
 
 // 未保存信号：任何元素/模板数据变化点亮
 watch([elements, templateData], () => { dirty.value = true }, { deep: true })
+
+// 任一选中元素带组即显示「取消组合」：点选组成员会整组扩展为多选，首个元素未必含组
+const selectedHasGroup = computed(() => selectedElements.value.some(e => !!e.options.groupId))
 
 const { guides, addGuide, moveGuide, removeGuide } = useGuides(templateData, recordHistory)
 

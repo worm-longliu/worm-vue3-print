@@ -32,11 +32,9 @@
       <button class="tb-btn tb-icon" @click="$emit('align', 'distributeVer')" data-tip="垂直分布"><AlignVerticalSpaceBetween :size="15" /></button>
     </div>
     <!-- 组合 -->
-    <div class="tb-group" v-if="hasMultiSelection">
-      <button class="tb-btn" @click="$emit('group')" title="组合">组合</button>
-    </div>
-    <div class="tb-group" v-if="!hasMultiSelection && selectedElementHasGroup">
-      <button class="tb-btn" @click="$emit('ungroup')" title="取消组合">取消组合</button>
+    <div class="tb-group" v-if="hasMultiSelection || selectedElementHasGroup">
+      <button v-if="hasMultiSelection" class="tb-btn tb-icon" @click="$emit('group')" data-tip="组合 (Ctrl+G)"><GroupIcon :size="15" /></button>
+      <button v-if="selectedElementHasGroup" class="tb-btn tb-icon" @click="$emit('ungroup')" data-tip="取消组合 (Ctrl+Shift+G)"><UngroupIcon :size="15" /></button>
     </div>
     <!-- 层级 -->
     <div class="tb-group" v-if="hasSelection">
@@ -99,6 +97,8 @@ import {
   Maximize,
   ZoomOut,
   ZoomIn,
+  Group as GroupIcon,
+  Ungroup as UngroupIcon,
 } from 'lucide-vue-next'
 import HelpButton from './HelpButton.vue'
 

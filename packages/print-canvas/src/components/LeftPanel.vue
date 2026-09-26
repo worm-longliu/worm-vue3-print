@@ -43,6 +43,8 @@
             :selected-ids="selectedIds"
             @select="(id: string, m: boolean) => $emit('select', id, m)"
             @move-layer="(d: string) => $emit('move-layer', d)"
+            @group="$emit('group')"
+            @ungroup="$emit('ungroup')"
             @toggle-visible="(id: string) => $emit('toggle-visible', id)"
             @toggle-locked="(id: string) => $emit('toggle-locked', id)"
           />
@@ -68,6 +70,8 @@ defineProps<{
 const emit = defineEmits<{
   select: [id: string, multiple: boolean]
   'move-layer': [direction: string]
+  group: []
+  ungroup: []
   'toggle-visible': [id: string]
   'toggle-locked': [id: string]
   'field-drag': [field: PrintBusinessField]

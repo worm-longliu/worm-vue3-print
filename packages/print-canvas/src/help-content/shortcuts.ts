@@ -12,6 +12,8 @@ export default {
     <tr><td><code>Ctrl + V</code></td><td>粘贴元素（偏移 10mm）</td></tr>
     <tr><td><code>Ctrl + D</code></td><td>原地复制（偏移 5mm, 5mm）</td></tr>
     <tr><td><code>Ctrl + A</code></td><td>全选元素</td></tr>
+    <tr><td><code>Ctrl / ⌘ + 点击</code></td><td>在画布或图层面板中逐个加选/取消选择元素</td></tr>
+    <tr><td><code>空白处拖拽框选</code></td><td>左上→右下为相交命中；右下→左上为完全包围才命中</td></tr>
     <tr><td><code>Delete / Backspace</code></td><td>删除选中元素</td></tr>
     <tr><td><code>Ctrl + Z</code></td><td>撤销</td></tr>
     <tr><td><code>Ctrl + Shift + Z</code> / <code>Ctrl + Y</code></td><td>重做</td></tr>
@@ -61,7 +63,7 @@ export default {
     <tr><th>快捷键</th><th>功能</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>Ctrl + G</code></td><td>组合选中元素</td></tr>
+    <tr><td><code>Ctrl + G</code></td><td>组合选中元素（打印时整组强制同页）</td></tr>
     <tr><td><code>Ctrl + Shift + G</code></td><td>取消组合</td></tr>
   </tbody>
 </table>

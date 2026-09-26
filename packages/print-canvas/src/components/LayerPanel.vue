@@ -6,7 +6,7 @@
       :key="layer.id"
       class="layer-item"
       :class="{ active: selectedIds.has(layer.id) }"
-      @click="$emit('select', layer.id, false)"
+      @click="$emit('select', layer.id, $event.ctrlKey || $event.metaKey)"
     >
       <span class="layer-icon">{{ layerIcon(layer) }}</span>
       <span class="layer-name">{{ layerName(layer) }}</span>
@@ -27,12 +27,20 @@
         <ArrowDownToLine :size="14" />
       </button>
     </div>
+    <div class="layer-actions" v-if="canGroup || canUngroup">
+      <button type="button" class="pd-button small" v-if="canGroup" @click="$emit('group')" title="组合 (Ctrl+G)">
+        <GroupIcon :size="14" />
+      </button>
+      <button type="button" class="pd-button small" v-if="canUngroup" @click="$emit('ungroup')" title="取消组合 (Ctrl+Shift+G)">
+        <UngroupIcon :size="14" />
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ArrowUpToLine, ArrowUp, ArrowDown, ArrowDownToLine } from 'lucide-vue-next'
+import { ArrowUpToLine, ArrowUp, ArrowDown, ArrowDownToLine, Group as GroupIcon, Ungroup as UngroupIcon } from 'lucide-vue-next'
 import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 
 const props = defineProps<{
@@ -43,7 +51,13 @@ const props = defineProps<{
 defineEmits<{
   select: [id: string, multiple: boolean]
   'move-layer': [direction: string]
+  group: []
+  ungroup: []
 }>()
+
+const selectedElements = computed(() => props.elements.filter(e => props.selectedIds.has(e.id)))
+const canGroup = computed(() => selectedElements.value.length >= 2)
+const canUngroup = computed(() => selectedElements.value.some(e => !!e.options.groupId))
 
 const sortedLayers = computed(() =>
   [...props.elements].sort((a, b) => (b.options.zIndex ?? 0) - (a.options.zIndex ?? 0))

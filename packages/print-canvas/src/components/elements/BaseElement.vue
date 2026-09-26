@@ -208,7 +208,8 @@ const dragConfig = reactive<DragOptions>({
     // 记录拖拽起始坐标（用于计算 transform 偏移量）
     dragStartLeft = props.element.options.left
     dragStartTop = props.element.options.top
-    emit('select', props.element.id, false)
+    // 选中由模板 mousedown 处理器统一负责；此处不得重复 emit，
+    // 否则会把 Ctrl+点击刚加入的多选重置为单选
     emit('drag-start')
   },
   onStop: () => {

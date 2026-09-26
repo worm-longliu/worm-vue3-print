@@ -104,9 +104,6 @@
         <div class="context-menu-item" @click="emitAction('move-layer', 'up')">上移</div>
         <div class="context-menu-item" @click="emitAction('move-layer', 'down')">下移</div>
         <div class="context-menu-item" @click="emitAction('move-layer', 'bottom')">置底</div>
-        <div class="context-menu-sep" />
-        <div class="context-menu-item" @click="emitAction('group')">编组 Ctrl+G</div>
-        <div class="context-menu-item" :class="{ disabled: !selectedElementHasGroup }" @click="emitAction('ungroup')">取消编组 Ctrl+Shift+G</div>
       </template>
       <template v-else>
         <div class="context-menu-item" :class="{ disabled: !hasClipboard }" @click="handlePaste">粘贴</div>
@@ -139,7 +136,6 @@ const props = withDefaults(defineProps<{
   overlayVisible?: boolean
   screenshotUrl?: string
   overlayOpacity?: number
-  selectedElementHasGroup?: boolean
   /** 是否显示视口固定标尺，默认开启 */
   showRuler?: boolean
 }>(), {
@@ -165,8 +161,6 @@ const emit = defineEmits<{
   'cut': []
   'delete': []
   'move-layer': [direction: string]
-  group: []
-  ungroup: []
   'coordinate': [pos: { x: number; y: number } | null]
   'add-guide': [type: 'vertical' | 'horizontal', positionMm: number]
   'guide-move': [id: string, positionMm: number]
@@ -549,8 +543,6 @@ function emitAction(action: string, arg?: string) {
   else if (action === 'paste') emit('paste')
   else if (action === 'delete') emit('delete')
   else if (action === 'move-layer') emit('move-layer', arg!)
-  else if (action === 'group') emit('group')
-  else if (action === 'ungroup' && props.selectedElementHasGroup) emit('ungroup')
 }
 
 onMounted(() => {
