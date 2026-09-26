@@ -30,6 +30,12 @@ const STAGE_H = 108
 /** pt → mm */
 const PT_TO_MM = 0.3528
 
+/** 多页 wrapper（{ pages: [...] }）归一化：缩略图按首页版式绘制 */
+const base = computed<TemplateData>(() => {
+  const t = props.template as TemplateData & { pages?: TemplateData[] }
+  return t.pages?.length ? t.pages[0] : t
+})
+
 interface ThumbItem {
   id: string
   type: string
@@ -52,7 +58,7 @@ function resolveText(formatter: string | undefined, data: Record<string, any> | 
 
 /** 纸张尺寸（mm）：连续纸按内容底部推算一个可视高度 */
 const paperMm = computed(() => {
-  const t = props.template
+  const t = base.value
   const dim = getPaperDimensions(t)
   if (!isContinuousPaperSize(t.paperSize)) return dim
   const bottom = (t.elements ?? []).reduce((max, e) => {
@@ -92,7 +98,7 @@ function tableGridLines(o: ElementOptions): Record<string, string>[] {
 }
 
 const items = computed<ThumbItem[]>(() => {
-  const t = props.template
+  const t = base.value
   const k = scale.value
   const ml = t.margins.left
   const mt = t.margins.top

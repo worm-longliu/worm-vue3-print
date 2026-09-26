@@ -1,0 +1,600 @@
+{
+  "pages": [
+    {
+      "unit": "mm",
+      "paperSize": "A4",
+      "orientation": "portrait",
+      "margins": {
+        "top": 10.0,
+        "right": 10.0,
+        "bottom": 10.0,
+        "left": 10.0
+      },
+      "header": {
+        "height": 0.0,
+        "elements": []
+      },
+      "footer": {
+        "height": 0.0,
+        "elements": []
+      },
+      "firstPageOverlay": {
+        "height": 0,
+        "elements": []
+      },
+      "elements": [
+        {
+          "id": "el1",
+          "type": "text",
+          "options": {
+            "left": 0.0,
+            "top": 0.0,
+            "width": 190.0,
+            "height": 7.0,
+            "formatter": "第 1 页极限：末页组合应紧跟表格底部顺排，不得叠压表格",
+            "fontSize": 11,
+            "fontWeight": "bold"
+          },
+          "printElementType": {
+            "type": "text",
+            "title": "文本"
+          }
+        },
+        {
+          "id": "el2",
+          "type": "table",
+          "options": {
+            "left": 0.0,
+            "top": 10.0,
+            "width": 190.0,
+            "height": 32.0,
+            "dataSource": "items",
+            "tableDefaultFontSize": 9,
+            "tableColWidths": [
+              10.0,
+              100.0,
+              20.0,
+              30.0,
+              30.0
+            ],
+            "tableRows": [
+              {
+                "id": "r1",
+                "type": "header",
+                "height": 8.0,
+                "cells": [
+                  {
+                    "id": "c1",
+                    "formatter": "序",
+                    "align": "center"
+                  },
+                  {
+                    "id": "c2",
+                    "formatter": "品名",
+                    "align": "center"
+                  },
+                  {
+                    "id": "c3",
+                    "formatter": "数量",
+                    "align": "center"
+                  },
+                  {
+                    "id": "c4",
+                    "formatter": "单价",
+                    "align": "center"
+                  },
+                  {
+                    "id": "c5",
+                    "formatter": "金额",
+                    "align": "center"
+                  }
+                ],
+                "repeatOnPage": true
+              },
+              {
+                "id": "r2",
+                "type": "data",
+                "height": 24.0,
+                "cells": [
+                  {
+                    "id": "c6",
+                    "formatter": "{seq}",
+                    "align": "center"
+                  },
+                  {
+                    "id": "c7",
+                    "formatter": "{name}"
+                  },
+                  {
+                    "id": "c8",
+                    "formatter": "{qty}",
+                    "align": "center"
+                  },
+                  {
+                    "id": "c9",
+                    "formatter": "{MONEY(price)}",
+                    "align": "right"
+                  },
+                  {
+                    "id": "c10",
+                    "formatter": "{MONEY(amount)}",
+                    "align": "right"
+                  }
+                ]
+              }
+            ]
+          },
+          "printElementType": {
+            "type": "table",
+            "title": "表格"
+          }
+        },
+        {
+          "id": "el3",
+          "type": "barcode",
+          "options": {
+            "left": 0,
+            "top": 46,
+            "width": 60,
+            "height": 14,
+            "title": "条形码",
+            "testData": "EDGE-CASE-01",
+            "barcodeType": "code128",
+            "barWidth": 2,
+            "printerDpi": 203,
+            "groupId": "g-edge"
+          },
+          "printElementType": {
+            "type": "barcode",
+            "title": "条形码"
+          }
+        },
+        {
+          "id": "el4",
+          "type": "qrcode",
+          "options": {
+            "left": 70,
+            "top": 46,
+            "width": 24,
+            "height": 24,
+            "title": "二维码",
+            "testData": "edge",
+            "groupId": "g-edge"
+          },
+          "printElementType": {
+            "type": "qrcode",
+            "title": "二维码"
+          }
+        },
+        {
+          "id": "el5",
+          "type": "text",
+          "options": {
+            "left": 0,
+            "top": 76,
+            "width": 190,
+            "height": 6,
+            "formatter": "↑ 本行（独立元素）应贴组合底部，三者互不叠压",
+            "fontSize": 9,
+            "groupId": "solo-edge"
+          },
+          "printElementType": {
+            "type": "text",
+            "title": "文本"
+          }
+        }
+      ]
+    },
+    {
+      "unit": "mm",
+      "paperSize": "A4",
+      "orientation": "portrait",
+      "margins": {
+        "top": 10.0,
+        "right": 10.0,
+        "bottom": 10.0,
+        "left": 10.0
+      },
+      "header": {
+        "height": 60.0,
+        "elements": []
+      },
+      "footer": {
+        "height": 0.0,
+        "elements": []
+      },
+      "firstPageOverlay": {
+        "height": 0,
+        "elements": []
+      },
+      "elements": [
+        {
+          "id": "el1",
+          "type": "text",
+          "options": {
+            "left": 0.0,
+            "top": 0.0,
+            "width": 190.0,
+            "height": 12.0,
+            "formatter": "第 2 页极限：60mm 页眉预算 215，组并集 205 > 标题后剩余 203 → 整组完整移入第 2 页（不拆分）",
+            "fontSize": 11,
+            "fontWeight": "bold"
+          },
+          "printElementType": {
+            "type": "text",
+            "title": "文本"
+          }
+        },
+        {
+          "id": "el2",
+          "type": "rect",
+          "options": {
+            "left": 0,
+            "top": 12,
+            "width": 190,
+            "height": 115,
+            "borderWidth": 0.4,
+            "borderStyle": "solid",
+            "borderColor": "#165DFF",
+            "groupId": "g-huge"
+          },
+          "printElementType": {
+            "type": "rect",
+            "title": "矩形"
+          }
+        },
+        {
+          "id": "el3",
+          "type": "text",
+          "options": {
+            "left": 0,
+            "top": 127,
+            "width": 190,
+            "height": 90,
+            "formatter": "本段与上方矩形同组（并集 205mm）。首页剩余不足时整组完整移入第 2 页：两成员必须同时出现且相对间距不变，任何「一半留上一页」即为回归。",
+            "fontSize": 10,
+            "groupId": "g-huge"
+          },
+          "printElementType": {
+            "type": "text",
+            "title": "文本"
+          }
+        }
+      ]
+    },
+    {
+      "unit": "mm",
+      "paperSize": "A4",
+      "orientation": "portrait",
+      "margins": {
+        "top": 10.0,
+        "right": 10.0,
+        "bottom": 10.0,
+        "left": 10.0
+      },
+      "header": {
+        "height": 0.0,
+        "elements": []
+      },
+      "footer": {
+        "height": 0.0,
+        "elements": []
+      },
+      "firstPageOverlay": {
+        "height": 0,
+        "elements": []
+      },
+      "elements": [
+        {
+          "id": "el1",
+          "type": "text",
+          "options": {
+            "left": 0.0,
+            "top": 0.0,
+            "width": 190.0,
+            "height": 7.0,
+            "formatter": "第 3 页极限：50mm 超高明细行 × 跨页重复表头（每页表头 12mm 重复占位）",
+            "fontSize": 11,
+            "fontWeight": "bold"
+          },
+          "printElementType": {
+            "type": "text",
+            "title": "文本"
+          }
+        },
+        {
+          "id": "el2",
+          "type": "table",
+          "options": {
+            "left": 0.0,
+            "top": 10.0,
+            "width": 190.0,
+            "height": 62.0,
+            "dataSource": "items",
+            "tableDefaultFontSize": 10,
+            "tableColWidths": [
+              10.0,
+              100.0,
+              20.0,
+              30.0,
+              30.0
+            ],
+            "tableRows": [
+              {
+                "id": "r1",
+                "type": "header",
+                "height": 12.0,
+                "cells": [
+                  {
+                    "id": "c1",
+                    "formatter": "序",
+                    "align": "center"
+                  },
+                  {
+                    "id": "c2",
+                    "formatter": "品名",
+                    "align": "center"
+                  },
+                  {
+                    "id": "c3",
+                    "formatter": "数量",
+                    "align": "center"
+                  },
+                  {
+                    "id": "c4",
+                    "formatter": "单价",
+                    "align": "center"
+                  },
+                  {
+                    "id": "c5",
+                    "formatter": "金额",
+                    "align": "center"
+                  }
+                ],
+                "repeatOnPage": true
+              },
+              {
+                "id": "r2",
+                "type": "data",
+                "height": 50.0,
+                "cells": [
+                  {
+                    "id": "c6",
+                    "formatter": "{seq}",
+                    "align": "center"
+                  },
+                  {
+                    "id": "c7",
+                    "formatter": "{name}"
+                  },
+                  {
+                    "id": "c8",
+                    "formatter": "{qty}",
+                    "align": "center"
+                  },
+                  {
+                    "id": "c9",
+                    "formatter": "{MONEY(price)}",
+                    "align": "right"
+                  },
+                  {
+                    "id": "c10",
+                    "formatter": "{MONEY(amount)}",
+                    "align": "right"
+                  }
+                ]
+              }
+            ]
+          },
+          "printElementType": {
+            "type": "table",
+            "title": "表格"
+          }
+        }
+      ]
+    },
+    {
+      "unit": "mm",
+      "paperSize": "A4",
+      "orientation": "portrait",
+      "margins": {
+        "top": 10.0,
+        "right": 10.0,
+        "bottom": 10.0,
+        "left": 10.0
+      },
+      "header": {
+        "height": 0.0,
+        "elements": []
+      },
+      "footer": {
+        "height": 0.0,
+        "elements": []
+      },
+      "firstPageOverlay": {
+        "height": 0,
+        "elements": []
+      },
+      "elements": [
+        {
+          "id": "el1",
+          "type": "text",
+          "options": {
+            "left": 0.0,
+            "top": 0.0,
+            "width": 190.0,
+            "height": 7.0,
+            "formatter": "第 4 页极限：并排堆叠簇按并集扣高一次 + 内容贴满 275mm 预算线",
+            "fontSize": 11,
+            "fontWeight": "bold"
+          },
+          "printElementType": {
+            "type": "text",
+            "title": "文本"
+          }
+        },
+        {
+          "id": "el2",
+          "type": "rect",
+          "options": {
+            "left": 0.0,
+            "top": 10.0,
+            "width": 90.0,
+            "height": 200.0,
+            "borderWidth": 0.4,
+            "borderColor": "#f56c6c"
+          },
+          "printElementType": {
+            "type": "rect",
+            "title": "矩形"
+          }
+        },
+        {
+          "id": "el3",
+          "type": "rect",
+          "options": {
+            "left": 100.0,
+            "top": 60.0,
+            "width": 80.0,
+            "height": 120.0,
+            "borderWidth": 0.4,
+            "borderColor": "#67c23a"
+          },
+          "printElementType": {
+            "type": "rect",
+            "title": "矩形"
+          }
+        },
+        {
+          "id": "el4",
+          "type": "text",
+          "options": {
+            "left": 0.0,
+            "top": 215.0,
+            "width": 190.0,
+            "height": 55.0,
+            "formatter": "两矩形纵向区间相交，构成隐式堆叠簇：换页时整簇同页、只按并集(10→210)扣一次版面预算。",
+            "fontSize": 10
+          },
+          "printElementType": {
+            "type": "text",
+            "title": "文本"
+          }
+        },
+        {
+          "id": "el5",
+          "type": "text",
+          "options": {
+            "left": 0.0,
+            "top": 271.0,
+            "width": 190.0,
+            "height": 4.0,
+            "formatter": "贴底行：到此累计 275mm 恰好用满预算（超出即整体换页）",
+            "fontSize": 8,
+            "color": "#888888"
+          },
+          "printElementType": {
+            "type": "text",
+            "title": "文本"
+          }
+        }
+      ]
+    },
+    {
+      "unit": "mm",
+      "paperSize": "A4",
+      "orientation": "portrait",
+      "margins": {
+        "top": 10.0,
+        "right": 10.0,
+        "bottom": 10.0,
+        "left": 10.0
+      },
+      "header": {
+        "height": 30.0,
+        "elements": []
+      },
+      "footer": {
+        "height": 0.0,
+        "elements": []
+      },
+      "firstPageOverlay": {
+        "height": 0,
+        "elements": []
+      },
+      "elements": [
+        {
+          "id": "el1",
+          "type": "text",
+          "options": {
+            "left": 0.0,
+            "top": 0.0,
+            "width": 190.0,
+            "height": 7.0,
+            "formatter": "第 5 页极限：30mm 页眉 + keepWithNext 绑定对——标签与色块(合计110)放不下必须整体移页",
+            "fontSize": 11,
+            "fontWeight": "bold"
+          },
+          "printElementType": {
+            "type": "text",
+            "title": "文本"
+          }
+        },
+        {
+          "id": "el2",
+          "type": "text",
+          "options": {
+            "left": 0.0,
+            "top": 7.0,
+            "width": 190.0,
+            "height": 140.0,
+            "formatter": "填充文本占 140mm：页眉 30 后预算 245，本行+标题后剩余 98；绑定对（30+69=99）差 1mm 放不下 → 必须整体移入第 2 页。",
+            "fontSize": 10
+          },
+          "printElementType": {
+            "type": "text",
+            "title": "文本"
+          }
+        },
+        {
+          "id": "el3",
+          "type": "text",
+          "options": {
+            "left": 0,
+            "top": 147,
+            "width": 190,
+            "height": 30,
+            "formatter": "标签（keepWithNext=绑定下方色块，两元素区间相切不重叠）",
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "pagination": {
+              "pageable": true,
+              "keepWithNext": true
+            }
+          },
+          "printElementType": {
+            "type": "text",
+            "title": "文本"
+          }
+        },
+        {
+          "id": "el4",
+          "type": "rect",
+          "options": {
+            "left": 0,
+            "top": 177,
+            "width": 190,
+            "height": 69,
+            "borderWidth": 0.4,
+            "borderStyle": "solid",
+            "borderColor": "#165DFF"
+          },
+          "printElementType": {
+            "type": "rect",
+            "title": "矩形"
+          }
+        }
+      ]
+    }
+  ]
+}
