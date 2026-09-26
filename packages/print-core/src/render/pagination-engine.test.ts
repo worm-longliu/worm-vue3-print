@@ -1,7 +1,37 @@
 // print-render/src/pagination-engine.test.ts
 import { describe, it, expect } from 'vitest'
-import { paginate } from './pagination-engine.js'
+import { paginate, tableDesignBottom } from './pagination-engine.js'
 import type { TemplateData, MeasuredElement } from './types.js'
+
+describe('tableDesignBottom：表格设计底部 = top + max(options.height, Σ 行高)', () => {
+  it('实测回写高度 > 行高之和：以视觉底部为准（紧贴元素偏移归 0）', () => {
+    // 复现 bug：goodsTable top=31，行高和 42，实测回写 45.77 → 旧口径误报底部 73，多算 3.77mm 间距
+    const el: any = {
+      type: 'table',
+      options: {
+        top: 31,
+        height: 45.77,
+        tableRows: [
+          { height: 8 }, { height: 8 }, { height: 8 }, { height: 9 }, { height: 9 },
+        ],
+      },
+    }
+    expect(tableDesignBottom(el)).toBeCloseTo(31 + 45.77, 6)
+  })
+
+  it('options.height 缺失/小于行高之和：以行高之和为物理下界，避免跟随元素负偏移叠压', () => {
+    const rows = [{ height: 8 }, { height: 8 }, { height: 8 }]
+    const missing: any = { type: 'table', options: { top: 10, tableRows: rows } }
+    const underestimated: any = { type: 'table', options: { top: 10, height: 5, tableRows: rows } }
+    expect(tableDesignBottom(missing)).toBeCloseTo(10 + 24, 6)
+    expect(tableDesignBottom(underestimated)).toBeCloseTo(10 + 24, 6)
+  })
+
+  it('无 tableRows：回退 options.height', () => {
+    const el: any = { type: 'table', options: { top: 4, height: 16 } }
+    expect(tableDesignBottom(el)).toBeCloseTo(20, 6)
+  })
+})
 
 /** A4 竖版，边距 10，无页眉页脚 → contentHeight 277，可用 275（扣 2mm 安全余量） */
 function makeTemplate(tableEl: Record<string, any>): TemplateData {

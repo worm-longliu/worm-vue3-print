@@ -29,17 +29,19 @@ function isTableEl(el: TemplateElement): boolean {
 
 /**
  * 表格设计底部（mm）= 设计 top + 设计高度。
- * 设计高度优先取 tableRows 设计行高之和（设计意图，不受渲染数据量影响），
- * 缺失时回退 options.height。
+ * 设计高度取 max(options.height, tableRows 行高之和)：
+ * - options.height 是设计器实测回写的渲染高度（用户在画布上所见并据此对齐下方元素的底部），
+ *   为相对布局偏移的忠实基准；
+ * - tableRows 行高之和是 min-height 语义下表格实际渲染的物理下界，
+ *   当 options.height 缺失或被低估时兜底，避免跟随元素偏移算成负值反向叠压表格。
  */
 export function tableDesignBottom(el: TemplateElement): number {
   const opts = el.options ?? {}
   const top = opts.top ?? 0
   const rows: Array<{ height?: number }> = opts.tableRows ?? []
-  if (rows.length > 0) {
-    return top + rows.reduce((s, r) => s + (r.height ?? 0), 0)
-  }
-  return top + (opts.height ?? 0)
+  const rowSum = rows.reduce((s, r) => s + (r.height ?? 0), 0)
+  const designHeight = Math.max(opts.height ?? 0, rowSum)
+  return top + designHeight
 }
 
 /**
