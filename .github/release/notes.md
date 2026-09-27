@@ -1,4 +1,4 @@
-## v1.3.2（2026-09-26） · Release Notes
+## v1.3.3（2026-09-27） · Release Notes
 
 语言导航：**[简体中文](#简体中文)** ｜ **[English](#english)**
 
@@ -6,91 +6,111 @@
 
 <a id="简体中文"></a>
 
-## v1.3.2（2026-09-26）—— 简体中文
+## v1.3.3（2026-09-27）—— 简体中文
 
-自 `v1.3.1` 以来的修复性版本：11 次提交、34 个文件、约 1500 行新增。三件主干事情：**出纸版式修正**（表格下方跟随元素的虚假间距、换页后区块叠压）、**设计台组合与多选交互修正**、**工具栏 / 图层面板图标全面焕新**。
+自 `v1.3.2` 以来的功能版本：5 次提交、37 个文件、约 3750 行新增。三件主干事情：**元素级边框体系落地**（画布与出纸同口径、支持逐边）、**设计器格式工具栏与格式刷**（仿 Word / WPS）、**demo 教学视频流水线**。
 
-> 版本号定为 `1.3.2`，但本版本包含一项**行为变更**（表格设计底部口径），升级前请先读「行为变更」一节。
+> 版本号取 `1.3.3`（补丁位），但本版本包含**新增可选字段**与一项**出纸行为变更**（元素级边框开始生效）。严格按语义化版本更接近 `1.4.0`；若下游用 `^1.3.x` 自动升级且不希望吃到该行为变更，请临时锁到 `~1.3.2`。
 
 ### 安装与升级
 
 ```bash
-npm install @worm-vue3-print/core@^1.3.2 @worm-vue3-print/canvas@^1.3.2
+npm install @worm-vue3-print/core@^1.3.3 @worm-vue3-print/canvas@^1.3.3
 ```
 
 发布到 npm 的仍然只有 `core`（渲染引擎与表达式系统）与 `canvas`（Vue 3 设计器）两个包。渲染服务 `services/print-render` 与桌面客户端 `clients/print-client` 在仓库内同仓维护，不发布 npm。
 
-### 关键修复
+### 元素级边框（core）
 
-- **表格下方跟随元素的打印间距被拉大**：表格设计底部旧口径只取行高之和（min-height 语义），忽略设计器实测回写的表高——当行内容把表格撑高时，下方跟随元素（合计行、签名栏等）在纸上多出一段「实测高 − 行高和」的虚假间距（实测模板最大达 3.77 mm），而设计台上看着正常。现改为 `top + max(实测表高, Σ行高)`：以画布视觉底部为基准，行高之和保留为物理下界，避免脏数据把跟随元素反向叠压表格。三端（浏览器预览 / 服务端 PDF / 桌面客户端）同源生效。
-- **分页换页后区块叠压**：换页后表格续片、组合、普通元素此前一律从新页顶部 0 开始放置，末页的组合元素会与表格续排内容叠在一起。现改为流式光标顺排放置，且表格切片起点在行组扣预算前提前捕获，跨页续排后跟随元素正确接排。补充分页引擎极限回归测试（组合整组不拆分、多区块叠页场景）。
+- **统一判定口径**：新增 `render/element-border`（`resolveElementBorder` / `ELEMENT_BORDER_SIDES` / `acceptsElementBorder`），设计器画布与出纸调用同一函数，边框所见即所得；经 `/designer` 子路径导出供设计器复用。口径为 **px**（表格单元格边框仍是 pt），`box-sizing: border-box`，加边框不改变元素几何。
+- **全量生效**：文本、长文本、图片、条形码、二维码、HTML、页码等元素都可携带边框。`rect` / `oval` / `hline` / `vline`（用 border 画自身本体）与 `table`（走单元格边框）排除在外，避免双重边框。
+- **支持逐边**：`ElementOptions` 新增可选字段 `borders`（`top` / `right` / `bottom` / `left`），在整圈 `borderWidth` / `borderStyle` / `borderColor` 之上逐边覆盖；未设整圈时只有这些边生效。
+- **不凭空长边框**：宽度未设、≤0 或非法值一律视为无边框，不兜底成默认边框。
 
-### 设计台交互与视觉（canvas）
+### 格式工具栏与格式刷（canvas）
 
-- **组合与多选修正**：① 取消组合入口在任一选中元素属于组时即显示；② 元素拖拽起点不再吞掉多选，Ctrl/⌘ 逐个加选在画布与图层面板均可用；③ 图层面板底部新增独立的组合 / 取消组合按钮行；④ 右键菜单移除此前并不生效的编组入口，组合入口统一为工具栏按钮、图层面板按钮与 `Ctrl+G` / `Ctrl+Shift+G`；⑤ 帮助文档补充框选方向语义（左上→右下=相交命中、右下→左上=完全包围命中）、组合强制同页与超高裁切警示，用户可见文案统一为「组合 / 取消组合」。
-- **图标焕新**：工具栏 / 图层面板共 17 个图标改为 lucide 按需引入并统一补齐悬停提示，组合 / 取消组合使用专属 `Group` / `Ungroup` 图标。
+- **格式工具栏**（仿 Word / WPS）：字体、字号、加粗 / 下划线 / 删除线、文字颜色、背景颜色、水平与垂直对齐、边框（预设「所有 / 外侧 / 内部 / 无」+ 上下左右逐边开关 + 线型 / 线宽 / 颜色），一次作用于全部选中元素或表格单元格；多选样式不一致时以「混合」占位显示。
+- **合并进顶部单行**：原第二行格式工具栏并入顶部工具栏，对齐 / 边框（格式工具栏）与排列 / 视图（顶部工具栏）收进下拉分组；过去随选中状态显隐的分组改为**常驻 + 置灰**，禁用按钮悬停提示会说明原因。
+- **格式刷**：从单个源元素捕获格式快照，单击刷一次、双击连续刷、`Esc` 或清空选中退出，待刷态下画布全域显示「复制」光标。写入按目标类型过滤（文本样式只落文本 / 长文本，元素级边框只落在可携带边框的类型，背景色全类型通用），分边边框深拷贝不与源共享引用，框选多目标一次提交只记一次历史。
 
-### 新增示例（demo）
+### demo 教学视频流水线
 
-- **「分页极限测试」多页示例**：组合 + 表格的极端版式，用于复现与验证换页后的元素放置；缩略图组件兼容多页模板。
+- `npm run video` 串起 Playwright 录制 → edge-tts 配音 → ffmpeg 合成，含打样单风格片头封面（3s 片头并同步字幕偏移）、16:9 1920×1080 画面。
+- `VIDEO_SCRIPT` 切换剧本（工具栏 / 表达式 / 组合教学），录制器支持 `dblclick` / `key` / `type` / `reload` / `countAssert` 等步骤与跨平台 `Mod` 修饰键；`npm run video:check` 校验字幕与配音同步。
 
 ### 行为变更（存量模板出纸效果会变）
 
-- **表格设计底部口径**：行内容把表格撑高的存量模板，表格下方跟随元素的出纸间距会收回到与设计台所见一致（即修复本身）。在设计器里保存过的模板属纯修复；手写 JSON 且 `options.height` 被高估的模板，在设计器打开一次即自动纠正。
+- **元素级边框开始生效**：以前给文本、图片等非形状元素写入过 `borderWidth` / `borderStyle` / `borderColor` 的模板，画布与纸上都不显示边框，升级后会真的画出边框。不需要请把宽度改成 0 或选「无」。矩形 / 椭圆 / 线条 / 表格不受影响。
+- **设计器 DOM 结构变化**：格式工具栏不再是独立第二行，部分按钮收进下拉。宿主若对设计器内部 DOM / 类名写了选择器依赖（自动化测试、样式覆盖），需重新核对。
 
-### 维护
+### 兼容性与迁移
 
-- canvas 测试新增全局 setup，修复间歇性 `localStorage` 未定义；根脚本清理已删除工作区 `@worm-vue3-print/client` 的残留引用；demo 移除失效的 `native-controls.css` 引入；文档补充 Electron 客户端依赖 core dist 子路径（`@worm-vue3-print/core/client`）的构建约定——改动 core 子入口后必须重建 core 的 dist。
+- 模板 JSON 向后兼容：`borders` 为新增可选字段，旧模板不写即维持原状，无需迁移脚本。
+- 三端同源：浏览器预览、服务端 PDF（print-render）、桌面客户端（print-client）共用 core 渲染管线，边框表现一致。
+
+### 质量
+
+- 新增/补充测试：canvas 51 个文件 389 项、core 61 个文件 814 项全部通过；覆盖元素级边框判定与出纸、格式工具栏读写与混合态、格式刷捕获 / 过滤 / 深拷贝 / 连续刷 / 历史计数。
 
 ### 已知限制
 
-- 组合强制同页：组内元素合计高度超过单页可用高度时整组会被裁切，帮助面板已有警示，暂不支持自动拆组。
-- render 的截图接口对 `printData` 数组只渲染首条，PDF 接口才全量渲染。
+- 格式刷源只能是**单个**元素（多选时按钮置灰），且表格单元格上下文下不可用；单元格的批量样式请用格式工具栏。
+- 元素级边框宽度为 px，单元格边框为 pt，两套口径并存（沿用历史设计），面板标签已分别标注。
 
 ---
 
 <a id="english"></a>
 
-## v1.3.2 (2026-09-26) — English
+## v1.3.3 (2026-09-27) — English
 
-Fix-oriented release since `v1.3.1`: 11 commits, 34 files, ~1.5k added lines. Three headline items: **print-layout fixes** (phantom gap under tables, blocks stacking on top of each other after a page break), **grouping & multi-select interaction fixes in the designer**, and a **full icon refresh** of the toolbar / layer panel.
+Feature release since `v1.3.2`: 5 commits, 37 files, ~3.75k added lines. Three headline items: **element-level borders land end to end** (one basis for canvas and paper, per-side support), **a format toolbar plus format painter in the designer** (Word / WPS style), and the **demo teaching-video pipeline**.
 
-> The version is `1.3.2`, but this release contains one **behavior change** (the table design-bottom basis). Read "Behavior changes" before upgrading.
+> The version is `1.3.3` (patch), but it adds an **optional schema field** and contains one **print behavior change** (element-level borders now actually render). Semantically this is closer to `1.4.0`; if you consume `^1.3.x` and want to avoid the behavior change for now, pin to `~1.3.2`.
 
 ### Install / upgrade
 
 ```bash
-npm install @worm-vue3-print/core@^1.3.2 @worm-vue3-print/canvas@^1.3.2
+npm install @worm-vue3-print/core@^1.3.3 @worm-vue3-print/canvas@^1.3.3
 ```
 
 Only `core` (engine + expression pipeline) and `canvas` (Vue 3 designer) are published to npm. The render service (`services/print-render`) and desktop client (`clients/print-client`) remain in-repo and unpublished.
 
-### Notable fixes
+### Element-level borders (core)
 
-- **The print gap below a table was stretched for following elements**: the table design bottom used to be the sum of row heights only (min-height semantics), ignoring the measured height written back by the designer — when row content grew the table taller, followers (total rows, signature lines, …) got an extra phantom gap of "measured height − row-height sum" on paper (up to 3.77 mm on a real template) while the canvas looked fine. It is now `top + max(measured height, Σ row heights)`: anchored at the visual bottom seen on the canvas, with the row-height sum kept as a physical lower bound so dirty data cannot push followers back onto the table. Identical across browser preview, server-side PDF and the desktop client.
-- **Blocks no longer stack after a page break**: the table continuation slice, groups and plain elements all used to anchor at offset 0 of the new page, so last-page groups overlapped the table. Placement now follows a streaming cursor, and the table slice start is captured before row-group budgeting, so followers re-flow correctly after a continuation. Extreme-case regression tests (indivisible groups, stacked blocks) were added to the pagination engine.
+- **One source of truth**: new `render/element-border` (`resolveElementBorder` / `ELEMENT_BORDER_SIDES` / `acceptsElementBorder`) — the canvas and the print pipeline call the same function, so what you see is what prints; re-exported through `/designer` for the designer. Units are **px** (table cell borders remain pt) with `box-sizing: border-box`, so adding a border never changes element geometry.
+- **Applies to every element type**: text, long text, image, barcode, QR code, HTML and page number can all carry a border now. `rect` / `oval` / `hline` / `vline` (they draw themselves with a border) and `table` (cell borders) are excluded to avoid double borders.
+- **Per side**: `ElementOptions` gained the optional `borders` field (`top` / `right` / `bottom` / `left`) which overrides the whole-loop `borderWidth` / `borderStyle` / `borderColor` edge by edge; with no whole loop set, only those sides render.
+- **No phantom borders**: a missing, ≤0 or invalid width means "no border" — it never falls back to a default.
 
-### Designer interaction & visuals (canvas)
+### Format toolbar & format painter (canvas)
 
-- **Grouping & multi-select fixes**: ① ungroup shows whenever any selected element belongs to a group; ② drag start no longer swallows the selection, Ctrl/⌘ click-to-add works on both the canvas and the layer panel; ③ the layer panel gained its own bottom row with group / ungroup buttons; ④ the (previously non-functional) context-menu entries were removed — grouping is now exactly toolbar button, layer-panel buttons, `Ctrl+G` / `Ctrl+Shift+G`; ⑤ the in-app help documents the marquee direction semantics (top-left → bottom-right = intersect hit, bottom-right → top-left = full-enclose hit), the whole-group-on-one-page rule and the over-height clipping warning; user-facing wording standardized to "组合 / 取消组合".
-- **Icon refresh**: 17 toolbar / layer-panel icons migrated to on-demand lucide imports with complete tooltips; group / ungroup use the dedicated `Group` / `Ungroup` icons.
+- **Format toolbar** (Word / WPS style): font, font size, bold / underline / strikethrough, text and background color, horizontal and vertical alignment, borders (presets "all / outer / inner / none" plus per-edge toggles and line style / width / color), applied to the whole selection of elements or table cells at once; mixed values show a "混合" (mixed) placeholder.
+- **Merged into one top row**: the second-row format toolbar was folded into the top toolbar; alignment / border (format toolbar) and arrange / view (top toolbar) moved into dropdowns. Groups that used to appear and disappear with the selection are now **always present and greyed out**, and disabled buttons explain why in their hover tip.
+- **Format painter**: captures a snapshot from a single source element — single click paints once, double click paints repeatedly, `Esc` or clearing the selection exits, and a `copy` cursor covers the canvas while armed. Application is filtered per target type (text styles only onto text / long text, element borders only onto types that accept them, background color onto everything), per-side borders are deep-copied, and a marquee over several targets records history once.
 
-### New sample (demo)
+### Demo video pipeline
 
-- **"Pagination stress test" multi-page sample**: groups + tables in an extreme layout to reproduce and verify placement after page breaks; the thumbnail component now handles multi-page templates.
+- `npm run video` chains Playwright recording → edge-tts voiceover → ffmpeg composition, including a proof-sheet style intro cover (3 s intro spliced with subtitle offset) and 16:9 1920×1080 framing.
+- `VIDEO_SCRIPT` switches scripts (toolbar / expression / group lessons); the recorder supports `dblclick` / `key` / `type` / `reload` / `countAssert` steps and a cross-platform `Mod` key; `npm run video:check` validates subtitle/voiceover sync.
 
 ### Behavior changes (existing templates will print differently)
 
-- **Table design-bottom basis**: existing templates whose row content grows the table taller will see the follower spacing below the table pulled back to what the designer shows (this is the fix itself). Templates saved in the designer are pure fixes; hand-written JSON with an overestimated `options.height` self-corrects the first time it is saved in the designer.
+- **Element-level borders now render**: templates that previously stored `borderWidth` / `borderStyle` / `borderColor` on non-shape elements showed nothing on canvas or paper; those borders now appear. Set the width to 0 or choose "none" to remove them. Shapes, lines and tables are unaffected.
+- **Designer DOM changed**: the format toolbar is no longer a separate second row and some buttons live in dropdowns. Hosts with selector dependencies on the designer's internal DOM / class names (tests, style overrides) need to re-check them.
 
-### Maintenance
+### Compatibility & migration
 
-- Global vitest setup fixes intermittent `localStorage is not defined` in canvas tests; the root scripts dropped the leftover reference to the deleted `@worm-vue3-print/client` workspace; the demo removed a stale `native-controls.css` import; docs recorded that the Electron client consumes core's dist subpath (`@worm-vue3-print/core/client`) — rebuild core's dist whenever a subpath entry changes.
+- Template JSON stays backward compatible: `borders` is a new optional field, old templates simply omit it — no migration script needed.
+- Identical across browser preview, server-side PDF (print-render) and the desktop client (print-client), since all three share core's render pipeline.
+
+### Quality
+
+- New and extended tests: 389 canvas tests (51 files) and 814 core tests (61 files) all pass, covering border resolution and print output, format toolbar read/write and mixed state, and painter capture / filtering / deep copy / repeat painting / history count.
 
 ### Known limitations
 
-- A group is kept on one page: if the members' combined height exceeds the usable page height the whole group is clipped; automatic group splitting is not supported yet (the help panel warns about it).
-- The render service screenshot endpoint renders only the first item of a `printData` array, while the PDF endpoint renders them all.
+- The painter source must be a **single** element (the button greys out on multi-select) and is unavailable in the table-cell context — use the format toolbar for bulk cell styling.
+- Element borders use px while table cell borders use pt; both bases coexist for historical reasons and the panels label them separately.
 
 ---
 
