@@ -10,3 +10,6 @@ demo/public/fonts/*
 !demo/public/fonts/MaShanZheng-Regular.ttf
 !demo/public/fonts/ZCOOLKuaiLe-Regular.ttf
 !demo/public/fonts/ZCOOLQingKeHuangYou-Regular.ttf
+
+# AI 生成图片临时目录，不入库
+vibe_images/
