@@ -2,6 +2,28 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [1.3.3] - 2026-09-27
+
+### 新增
+
+- `@worm-vue3-print/core`：**元素级边框全量生效并支持分边**。新增 `render/element-border`（`resolveElementBorder` / `ELEMENT_BORDER_SIDES` / `acceptsElementBorder`）作为元素边框的唯一判定口径，画布与出纸共用同一函数（px 口径，`box-sizing: border-box`，边框不改变元素几何），并经 `/designer` 子路径导出供设计器复用。`ElementOptions` 新增 `borders` 分边字段（`top` / `right` / `bottom` / `left`，在整圈 `borderWidth` / `borderStyle` / `borderColor` 之上逐边覆盖；未设整圈时仅这些边生效）。`rect` / `oval` / `hline` / `vline`（用 border 画自身本体）与 `table`（走单元格边框）排除在外，避免双重边框；宽度未设、≤0 或非法值一律视为无边框，不兜底成默认边框。**行为变更**：存量模板里已写入元素级 `borderWidth` 的非形状元素（文本、长文本、图片、条码、二维码、HTML、页码）此前画布与出纸都不显边框，升级后会真的画出边框；形状、线条与表格不受影响。
+- `@worm-vue3-print/canvas`：**格式工具栏**（仿 Word / WPS）。字体、字号、加粗 / 下划线 / 删除线、文字色 / 背景色、水平与垂直对齐、边框（预设「所有 / 外侧 / 内部 / 无」+ 单边开关 + 线型 / 线宽 / 颜色）可一次作用于全部选中元素或表格单元格；多选样式不一致时以「混合」占位显示。
+- `@worm-vue3-print/canvas`：**格式刷**。单击刷一次、双击连续刷、`Esc` 或清空选中退出；从单个源元素捕获格式，按目标类型过滤写入（文本字段仅落文本 / 长文本，元素级边框仅落在可携带边框的类型，背景色各类型通用），分边边框深拷贝，框选多目标一次提交只记一次历史。
+- demo：**教学视频流水线**。`npm run video` 串起 Playwright 录制 → edge-tts 配音 → ffmpeg 合成，含打样单风格片头封面、`VIDEO_SCRIPT` 多剧本切换（工具栏 / 表达式 / 组合教学）与字幕同步校验。
+
+### 变更
+
+- `@worm-vue3-print/canvas`：格式工具栏由第二行独立条**合并进顶部工具栏单行**，对齐 / 边框 / 排列 / 视图收进下拉分组（新增通用 `ToolbarDropdown`）；原先随选中状态显隐的分组改为**常驻 + 置灰**，禁用按钮悬停提示给出原因。宿主若依赖设计器内部 DOM 结构 / 类名，需重新核对。
+
+### 修复
+
+- demo：字幕同步校验的停顿采样窗由 `[end+0.1, +0.35]` 收窄为 `[end+0.05, +0.2]`，避免探入下一句声母而把上一句误判为「抢跑」。
+
+### 文档与维护
+
+- 设计器内置帮助新增「格式工具栏与格式刷」说明，更新记录同步本版本。
+- demo 录制器新增 `reload` 步骤，16:9 1920×1080 画面口径与路径口径拆出 `paths.mjs`。
+
 ## [1.3.2] - 2026-09-26
 
 ### 新增

@@ -2,6 +2,28 @@
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [1.3.3] - 2026-09-27
+
+### Added
+
+- `@worm-vue3-print/core`: **element-level borders now apply to every element type and per side**. A single source of truth was added at `render/element-border` (`resolveElementBorder` / `ELEMENT_BORDER_SIDES` / `acceptsElementBorder`) and shared by the canvas and the print pipeline (px units, `box-sizing: border-box`, borders never change element geometry); it is also re-exported through the `/designer` subpath for the designer. `ElementOptions` gained the per-side `borders` field (`top` / `right` / `bottom` / `left`, overriding the whole-loop `borderWidth` / `borderStyle` / `borderColor`; with no whole loop set, only those sides render). `rect` / `oval` / `hline` / `vline` (they draw themselves with a border) and `table` (cell borders) are excluded to avoid double borders; a missing, ≤0 or invalid width means "no border" and never falls back to a default. **Behavior change**: existing templates that already carried an element-level `borderWidth` on non-shape elements (text, long text, image, barcode, QR code, HTML, page number) printed without a border before and now show it; shapes, lines and tables are unaffected.
+- `@worm-vue3-print/canvas`: **format toolbar** (Word / WPS style). Font, font size, bold / underline / strikethrough, text and background color, horizontal and vertical alignment, borders (presets "all / outer / inner / none" plus per-edge toggles and line style / width / color) apply to the whole selection of elements or table cells at once; mixed values show a "混合" (mixed) placeholder.
+- `@worm-vue3-print/canvas`: **format painter**. Single click paints once, double click paints repeatedly, `Esc` or clearing the selection exits. The snapshot is captured from one source element and filtered per target type (text fields only onto text / long text, element borders only onto types that accept them, background color onto everything); per-side borders are deep-copied, and a marquee selection of several targets records history once.
+- demo: **teaching video pipeline**. `npm run video` chains Playwright recording → edge-tts voiceover → ffmpeg composition, with a proof-sheet style intro cover, multi-script switching via `VIDEO_SCRIPT` (toolbar / expression / group lessons) and subtitle sync validation.
+
+### Changed
+
+- `@worm-vue3-print/canvas`: the format toolbar moved from its own second row **into the single top toolbar row**; alignment / border / arrange / view groups collapsed into dropdowns (new generic `ToolbarDropdown`). Groups that used to show and hide with the selection are now **always present and greyed out**, with the reason shown in the hover tip. Hosts relying on the designer's internal DOM / class names need to re-check their selectors.
+
+### Fixed
+
+- demo: the subtitle sync check now samples the pause window as `[end+0.05, +0.2]` instead of `[end+0.1, +0.35]`, so it no longer reaches into the next sentence's onset and flags a false "running ahead".
+
+### Documentation & maintenance
+
+- The in-app help gained a "format toolbar & format painter" section; the built-in changelog documents this release.
+- demo: the recorder supports a `reload` step, the 16:9 1920×1080 framing is shared, and path handling moved to `paths.mjs`.
+
 ## [1.3.2] - 2026-09-26
 
 ### Added
