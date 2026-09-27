@@ -438,13 +438,13 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
 </div>`
     }
     case 'hline':
-      return `<div class="print-element" style="${style};border-top:${opts.borderWidth ?? 0.75}pt ${opts.borderStyle ?? 'solid'} ${opts.borderColor ?? '#333'};height:0;"${measureAttr}></div>`
+      return `<div class="print-element" style="${style};border-top:${opts.borderWidth || 0.75}pt ${opts.borderStyle || 'solid'} ${opts.borderColor || '#333'};height:0;"${measureAttr}></div>`
     case 'vline':
-      return `<div class="print-element" style="${style};border-left:${opts.borderWidth ?? 0.75}pt ${opts.borderStyle ?? 'solid'} ${opts.borderColor ?? '#333'};width:0;"${measureAttr}></div>`
+      return `<div class="print-element" style="${style};border-left:${opts.borderWidth || 0.75}pt ${opts.borderStyle || 'solid'} ${opts.borderColor || '#333'};width:0;"${measureAttr}></div>`
     case 'rect':
-      return `<div class="print-element" style="${style};border:${opts.borderWidth ?? 1}pt ${opts.borderStyle ?? 'solid'} ${opts.borderColor ?? '#333'};"${measureAttr}></div>`
+      return `<div class="print-element" style="${style};border:${opts.borderWidth || 1}pt ${opts.borderStyle || 'solid'} ${opts.borderColor || '#333'};"${measureAttr}></div>`
     case 'oval':
-      return `<div class="print-element" style="${style};border:${opts.borderWidth ?? 1}pt ${opts.borderStyle ?? 'solid'} ${opts.borderColor ?? '#333'};border-radius:50%;"${measureAttr}></div>`
+      return `<div class="print-element" style="${style};border:${opts.borderWidth || 1}pt ${opts.borderStyle || 'solid'} ${opts.borderColor || '#333'};border-radius:50%;"${measureAttr}></div>`
     case 'longText':
       return `<div class="print-element" style="${style}${textStyle(opts)}${elementFitStyle(fit, opts)}"${measureAttr}${fitAttr}>${esc(opts.formatter ?? opts.testData ?? '')}</div>`
     case 'html':

@@ -205,6 +205,21 @@ describe('页眉/页脚区域元素渲染', () => {
     expect(html).toContain('border-left:2pt solid #00f')
   })
 
+  it('0 / 空串按设计器 || 语义回落缺省（0.75pt solid #333）', () => {
+    const t = makeAreaTemplate({
+      header: {
+        height: 15,
+        elements: [
+          makeAreaEl('hline', { borderWidth: 0, borderStyle: '', borderColor: '' }),
+          makeAreaEl('rect', { borderWidth: 0, borderColor: '' }),
+        ] as any,
+      },
+    })
+    const html = generateHtml(t, singlePage)
+    expect(html).toContain('border-top:0.75pt solid #333')
+    expect(html).toContain('border:1pt solid #333')
+  })
+
   it('页脚条码经 CodeRenderer 渲染并内联为 SVG', () => {
     const t = makeAreaTemplate({
       footer: {
