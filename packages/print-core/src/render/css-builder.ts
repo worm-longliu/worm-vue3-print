@@ -220,13 +220,14 @@ ${desc}.page-header {
 
 /* ── 页脚：绝对定位固定在页面底部（内容不足时不随文档流上浮） ──
    用显式 top 定位到「纸高 - 下边距 - 页脚高」，保证下边距生效、
-   与设计器 CanvasPaper 的三区几何一致。 */
+   与设计器 CanvasPaper 的三区几何一致。
+   绝对定位的包含块是 padding box 外缘（= 纸面），left 须显式补左边距。 */
 ${desc}.page-footer {
   width: ${mm(contentWidth)};
   height: ${mm(footerH)};
   position: absolute;
   top: ${mm(paper.height - mb - footerH)};
-  left: 0;
+  left: ${mm(ml)};
 }
 
 /* ── 内容区 ── */

@@ -2,6 +2,12 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [1.3.4] - 2026-09-27
+
+### 修复
+
+- `@worm-vue3-print/core`：**出纸页脚左边距丢失**。出纸 CSS 里 `.page-footer` 为绝对定位，包含块是 `.print-page` 的 padding box 外缘（= 纸面左缘），`left: 0` 使 `margins.left` 对其不生效——页脚元素出纸后比设计器预览整体左移一个左边距（页眉 / 内容区在文档流内，正常享受 padding）。现改为 `left: margins.left`，与垂直方向 `top` 显式补偿下边距的既有做法对称；浏览器打印、服务端 PDF、桌面客户端静默打印三条链路共用此 CSS，一并修复，出纸旋转（转子）与批量连续纸场景随之生效。**行为变更**：存量模板出纸页脚会右移 `margins.left`（即与设计器所见对齐，属纯修复）；此前若靠手动加大页脚元素 `left` 补偿过该问题，升级后会出现双重偏移，需在设计器中把 `left` 调回预期位置。
+
 ## [1.3.3] - 2026-09-27
 
 ### 新增

@@ -513,7 +513,9 @@ describe('页眉/页脚区域元素渲染', () => {
     const footerCss = html.match(/\.page-footer\s*\{([^}]*)\}/)?.[1] ?? ''
     expect(footerCss).toContain('position: absolute')
     expect(footerCss).toContain('top: 275mm')
-    expect(footerCss).toContain('left: 0')
+    // 绝对定位的包含块是 .print-page 的 padding box 外缘（= 纸面），
+    // left 必须显式补 margins.left，否则页脚左边距丢失（与设计器三区几何不一致）
+    expect(footerCss).toContain('left: 10mm')
   })
 })
 

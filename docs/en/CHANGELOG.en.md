@@ -2,6 +2,12 @@
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [1.3.4] - 2026-09-27
+
+### Fixed
+
+- `@worm-vue3-print/core`: **left page margin lost on printed footers**. In the print CSS, `.page-footer` is absolutely positioned, so its containing block is the padding box edge of `.print-page` (= the paper's left edge) and `left: 0` bypassed `margins.left` — footer elements shifted left of the designer preview by exactly one left margin (header and content area sit in normal flow and enjoyed the padding). The rule now uses `left: margins.left`, mirroring how `top` already compensates the bottom margin. All three output paths share this CSS and are fixed together: browser printing, server-side PDF, and silent desktop printing; output rotation (rotor) and batch continuous-paper scenarios follow automatically. **Behavior change**: existing templates' printed footers move right by `margins.left` (aligning output with the designer — a pure fix); anyone who had manually inflated a footer element's `left` to work around the bug will now see a double offset and should reset it in the designer.
+
 ## [1.3.3] - 2026-09-27
 
 ### Added
