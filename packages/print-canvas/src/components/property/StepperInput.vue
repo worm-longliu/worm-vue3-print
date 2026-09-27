@@ -3,7 +3,7 @@
     <button
       type="button"
       class="pd-step-btn pd-step-minus"
-      :disabled="atMin"
+      :disabled="atMin || disabled"
       title="减小"
       aria-label="减小"
       @click="stepBy(-1)"
@@ -16,6 +16,7 @@
       :min="min"
       :max="max"
       :step="step"
+      :disabled="disabled"
       @input="onInput"
       @change="commit"
       @blur="commit"
@@ -24,7 +25,7 @@
     <button
       type="button"
       class="pd-step-btn pd-step-plus"
-      :disabled="atMax"
+      :disabled="atMax || disabled"
       title="增大"
       aria-label="增大"
       @click="stepBy(1)"
@@ -44,8 +45,11 @@ const props = withDefaults(defineProps<{
   step?: number
   /** 未设置（继承默认）时输入框的占位提示 */
   placeholder?: string
+  /** 整体禁用（如格式工具栏无可用目标时置灰） */
+  disabled?: boolean
 }>(), {
   step: 1,
+  disabled: false,
 })
 
 const emit = defineEmits<{

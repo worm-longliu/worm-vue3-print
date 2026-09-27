@@ -24,6 +24,7 @@ import {
   type CellFitRowKind,
 } from './text-fit.js'
 import { buildFontFaceCss } from '../print/fonts.js'
+import { ELEMENT_BORDER_SIDES, resolveElementBorder } from './element-border.js'
 import { injectSystemVariables } from './data-binder.js'
 import { evaluateTemplate } from './expression-eval.js'
 import { renderWatermarkLayerHtml } from './watermark.js'
@@ -396,7 +397,20 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
   // 实测高度即内容高度，分页与连续纸探针才能拿到真实占位；设计高度仍作为分页下限保留
   const fitHeight = fit === 'autoHeight' ? undefined : height
   // 方案 A+B：flow-group 内跟随元素用相对容器样式（containerStyle）覆盖绝对定位
-  const style = containerStyle ?? elementPositionStyle(left, top, width, fitHeight, opts.zIndex)
+  const baseStyle = containerStyle ?? elementPositionStyle(left, top, width, fitHeight, opts.zIndex)
+  // 元素级边框统一追加（rect/oval/hline/vline/table 由 resolveElementBorder 排除，不双重边框）；
+  // 先整圈后逐边，CSS 后者覆盖前者
+  const elBorders = resolveElementBorder(type, opts)
+  let style = baseStyle
+  if (elBorders?.all) {
+    style += `border:${elBorders.all.borderWidth} ${elBorders.all.borderStyle} ${elBorders.all.borderColor};`
+  }
+  if (elBorders) {
+    for (const side of ELEMENT_BORDER_SIDES) {
+      const e = elBorders.edges[side]
+      if (e) style += `border-${side}:${e.borderWidth} ${e.borderStyle} ${e.borderColor};`
+    }
+  }
   const measureAttr = isMeasure ? ` data-measure-id="${el.id}"` : ''
   const fitAttr = fitAttrs(fit, el.id, opts.fontSize ?? 12, opts)
 

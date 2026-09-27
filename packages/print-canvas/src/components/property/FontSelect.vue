@@ -8,6 +8,7 @@
       aria-autocomplete="list"
       autocomplete="off"
       :placeholder="placeholder"
+      :disabled="disabled"
       :aria-expanded="open"
       :aria-controls="listId"
       :aria-activedescendant="activeRowId"
@@ -50,8 +51,11 @@ const props = withDefaults(defineProps<{
   modelValue?: string
   /** 空值行文案（同时用作输入框 placeholder） */
   placeholder?: string
+  /** 禁用（如格式工具栏无可用目标时置灰） */
+  disabled?: boolean
 }>(), {
   placeholder: '默认',
+  disabled: false,
 })
 
 const emit = defineEmits<{ 'update:model-value': [value: string | undefined] }>()

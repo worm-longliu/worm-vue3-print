@@ -33,6 +33,15 @@
       @help="helpVisible = true"
     />
 
+    <!-- 格式工具栏：仿 Word/Excel，对选中文本元素/表格单元格批量应用常用样式 -->
+    <FormatToolbar
+      :format="formatToolbar"
+      :has-clipboard="hasClipboard"
+      @copy="copy"
+      @paste="paste"
+      @delete="onDeleteElement"
+    />
+
     <!-- 页面栏：多页签 + 新增/复制/删除/排序 -->
     <PageTabs
       :pages="pages"
@@ -147,6 +156,7 @@ import type { RuntimeElement, PrintBusinessField, TemplateData, TableCell, Reque
 import type { PrintFontDeclaration, PrintTemplateData, MultiPageTemplateData as PrintMultiPageTemplateData } from '@worm-vue3-print/core'
 import { buildFontFaceCss, validateTiling, normalizeTemplate } from '@worm-vue3-print/core'
 import { useDesignerState } from '../composables/useDesignerState'
+import { useFormatToolbar } from '../composables/useFormatToolbar'
 import { useGuides } from '../composables/useGuides'
 import { TABLE_EDIT_KEY } from '../composables/useTableSelection'
 import { SELECTED_IDS_KEY, PREVIEW_IDS_KEY } from '../composables/useSelection'
@@ -164,6 +174,7 @@ import { useFontCatalog } from '../composables/useFontCatalog'
 import { useDocumentFontFace } from '../composables/useDocumentFontFace'
 import type { AlignMode } from '@worm-vue3-print/core/designer'
 import DesignerToolbar from './DesignerToolbar.vue'
+import FormatToolbar from './FormatToolbar.vue'
 import LeftPanel from './LeftPanel.vue'
 import CanvasArea from './CanvasArea.vue'
 import PropertyPanel from './PropertyPanel.vue'
@@ -229,6 +240,11 @@ const {
   initialTemplate: props.initialTemplate,
   initialElements: props.initialElements,
   initialFields: props.fields,
+})
+
+// 格式工具栏（第二行）：从选中元素/单元格选区派生可用性与当前值
+const formatToolbar = useFormatToolbar({
+  elements, selectedIds, tableSelection, recordHistory,
 })
 
 // 未保存信号：任何元素/模板数据变化点亮

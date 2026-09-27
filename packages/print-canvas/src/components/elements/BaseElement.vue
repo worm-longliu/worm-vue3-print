@@ -52,7 +52,7 @@ import { useDrag } from '../../composables/useDrag'
 import type { DragOptions } from '../../composables/useDrag'
 import { generateId } from '@worm-vue3-print/core/designer'
 import { useResize, RESIZE_POINTS } from '@worm-vue3-print/core/designer'
-import { mmToPx } from '@worm-vue3-print/core/designer'
+import { mmToPx, resolveElementBorder, ELEMENT_BORDER_SIDES } from '@worm-vue3-print/core/designer'
 
 import { SELECTED_IDS_KEY, PREVIEW_IDS_KEY } from '../../composables/useSelection'
 import TextElement from './TextElement.vue'
@@ -136,6 +136,22 @@ const contentAttrs = computed(() =>
 
 const elementStyle = computed(() => {
   const o = props.element.options
+  // 元素级边框与出纸共用 resolveElementBorder（box-sizing:border-box，边框不改变几何）；
+  // 先整圈后逐边，键序即 CSS 写入序，逐边覆盖整圈
+  const borders = resolveElementBorder(props.element.printElementType.type, o)
+  const borderStyles: Record<string, string> = {}
+  if (borders?.all) {
+    borderStyles.border = `${borders.all.borderWidth} ${borders.all.borderStyle} ${borders.all.borderColor}`
+  }
+  if (borders) {
+    for (const side of ELEMENT_BORDER_SIDES) {
+      const e = borders.edges[side]
+      if (e) {
+        borderStyles[`border${side.charAt(0).toUpperCase()}${side.slice(1)}`] =
+          `${e.borderWidth} ${e.borderStyle} ${e.borderColor}`
+      }
+    }
+  }
   return {
     position: 'absolute' as const,
     left: o.left + 'mm',
@@ -143,6 +159,7 @@ const elementStyle = computed(() => {
     width: o.width + 'mm',
     height: o.height + 'mm',
     zIndex: o.zIndex || 'auto',
+    ...borderStyles,
   }
 })
 

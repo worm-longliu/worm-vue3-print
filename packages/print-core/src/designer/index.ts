@@ -13,6 +13,9 @@ export * from '../render/text-fit.js'
 // ─── 条码打印点对齐（与渲染端共用同一份，设计态条宽必须等于出纸条宽） ───
 export * from '../render/barcode-dot.js'
 
+// ─── 元素级边框判定（与渲染端共用同一份，画布边框必须等于出纸边框） ───
+export * from '../render/element-border.js'
+
 // ─── 通用工具 ───
 export * from './utils/units.js'
 export * from './utils/scale.js'

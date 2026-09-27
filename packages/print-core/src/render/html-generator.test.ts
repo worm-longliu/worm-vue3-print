@@ -1016,3 +1016,80 @@ describe('出纸旋转（outputRotation）整页旋转', () => {
     expect(html).not.toContain('<div class="print-page-rotor"')
   })
 })
+
+// ─── 元素级边框（非表格元素出纸） ───
+
+describe('元素级边框出纸渲染', () => {
+  function elTemplate(el: any): TemplateData {
+    return {
+      paperSize: 'A4', orientation: 'portrait',
+      margins: { top: 10, right: 10, bottom: 10, left: 10 },
+      header: { height: 0, elements: [] },
+      footer: { height: 12, elements: [] },
+      firstPageOverlay: { height: 0, elements: [] },
+      elements: [el],
+    } as TemplateData
+  }
+
+  it('文本元素设 borderWidth 后出纸含 border:2px dashed #f00 且只出现一次', () => {
+    const t = elTemplate({
+      id: 'txt-b', type: 'text',
+      options: { left: 0, top: 0, width: 50, height: 8, testData: 'X', borderWidth: 2, borderStyle: 'dashed', borderColor: '#f00' },
+    })
+    const html = generateHtml(t, pageWith([{ elementId: 'txt-b', type: 'element', renderTop: 0 }]))
+    expect(html).toContain('border:2px dashed #f00')
+    expect((html.match(/border:2px dashed #f00/g) ?? []).length).toBe(1)
+  })
+
+  it('rect 元素不因元素级边框逻辑出现重复 border 声明', () => {
+    const t = elTemplate({
+      id: 'rect-b', type: 'rect',
+      options: { left: 0, top: 0, width: 50, height: 8, borderWidth: 2, borderColor: '#f00' },
+    })
+    const html = generateHtml(t, pageWith([{ elementId: 'rect-b', type: 'element', renderTop: 0 }]))
+    expect((html.match(/border:2px solid #f00/g) ?? []).length).toBe(1)
+  })
+
+  it('文本元素整圈+分边：先整圈声明、后逐边覆盖，各只一条', () => {
+    const t = elTemplate({
+      id: 'txt-e', type: 'text',
+      options: {
+        left: 0, top: 0, width: 50, height: 8, testData: 'X',
+        borderWidth: 1,
+        borders: { top: { width: 3, style: 'dashed', color: '#f00' } },
+      },
+    })
+    const html = generateHtml(t, pageWith([{ elementId: 'txt-e', type: 'element', renderTop: 0 }]))
+    expect(html).toContain('border:1px solid #000')
+    expect(html).toContain('border-top:3px dashed #f00')
+    expect((html.match(/border-top:3px dashed #f00/g) ?? []).length).toBe(1)
+    // 整圈声明必须出现在分边覆盖之前（CSS 后写覆盖前写）
+    expect(html.indexOf('border:1px solid #000')).toBeLessThan(html.indexOf('border-top:3px dashed #f00'))
+  })
+
+  it('文本元素仅分边（无整圈）：只输出该边，不输出 border 简写', () => {
+    const t = elTemplate({
+      id: 'txt-o', type: 'text',
+      options: {
+        left: 0, top: 0, width: 50, height: 8, testData: 'X',
+        borders: { bottom: { width: 2 } },
+      },
+    })
+    const html = generateHtml(t, pageWith([{ elementId: 'txt-o', type: 'element', renderTop: 0 }]))
+    expect(html).toContain('border-bottom:2px solid #000')
+    const el = html.match(/<div class="print-element" style="([^"]*)"/g) ?? []
+    expect(el.find(s => s.includes('border-bottom'))).not.toMatch(/;border:/)
+  })
+
+  it('rect 设分边字段不出纸（排除口径对 borders 同样生效）', () => {
+    const t = elTemplate({
+      id: 'rect-e', type: 'rect',
+      options: {
+        left: 0, top: 0, width: 50, height: 8, borderWidth: 2, borderColor: '#f00',
+        borders: { top: { width: 5, style: 'dotted', color: '#00f' } },
+      },
+    })
+    const html = generateHtml(t, pageWith([{ elementId: 'rect-e', type: 'element', renderTop: 0 }]))
+    expect(html).not.toContain('border-top:5px dotted #00f')
+  })
+})
