@@ -1,5 +1,5 @@
 <template>
-  <div class="designer-container">
+  <div class="designer-container" :class="{ 'format-painting': painterActive }">
     <DesignerToolbar
       :is-edit="isEdit"
       :can-undo="canUndo"
@@ -38,7 +38,7 @@
       @delete="onDeleteElement"
     >
       <!-- 格式工具栏区段：仿 Word/Excel，对选中文本元素/表格单元格批量应用常用样式 -->
-      <FormatToolbar :format="formatToolbar" />
+      <FormatToolbar :format="formatToolbar" :painter="formatPainter" />
     </DesignerToolbar>
 
     <!-- 页面栏：多页签 + 新增/复制/删除/排序 -->
@@ -156,6 +156,7 @@ import type { PrintFontDeclaration, PrintTemplateData, MultiPageTemplateData as 
 import { buildFontFaceCss, validateTiling, normalizeTemplate } from '@worm-vue3-print/core'
 import { useDesignerState } from '../composables/useDesignerState'
 import { useFormatToolbar } from '../composables/useFormatToolbar'
+import { useFormatPainter } from '../composables/useFormatPainter'
 import { useGuides } from '../composables/useGuides'
 import { TABLE_EDIT_KEY } from '../composables/useTableSelection'
 import { SELECTED_IDS_KEY, PREVIEW_IDS_KEY } from '../composables/useSelection'
@@ -245,6 +246,10 @@ const {
 const formatToolbar = useFormatToolbar({
   elements, selectedIds, tableSelection, recordHistory,
 })
+
+// 格式刷：捕获单个源元素格式，选中集变化即刷到目标（交互在 FormatToolbar 按钮上）
+const formatPainter = useFormatPainter({ elements, selectedIds, recordHistory })
+const painterActive = computed(() => formatPainter.active.value)
 
 // 未保存信号：任何元素/模板数据变化点亮
 watch([elements, templateData], () => { dirty.value = true }, { deep: true })
@@ -605,5 +610,10 @@ function handleSave() {
   flex: 1;
   display: flex;
   overflow: hidden;
+}
+/* 格式刷待刷态：画布全域 copy 光标，提示点击/框选即刷 */
+.designer-container.format-painting :deep(.canvas-area),
+.designer-container.format-painting :deep(.canvas-area *) {
+  cursor: copy !important;
 }
 </style>

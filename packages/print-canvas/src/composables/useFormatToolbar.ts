@@ -11,7 +11,7 @@ export const MIXED: unique symbol = Symbol('mixed')
 export type MixedOr<T> = T | typeof MIXED
 
 /** 支持字体/对齐等文本样式的元素类型（与 AppearanceGroup 的 isTextType 口径一致） */
-const TEXT_TYPES = new Set(['text', 'longText'])
+export const TEXT_TYPES = new Set(['text', 'longText'])
 
 export interface FormatStylePatch {
   fontFamily?: string

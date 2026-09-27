@@ -34,7 +34,9 @@ for (let i = 0; i < timings.scenes.length; i++) {
       const before = meanVolume(audio, s.start - 0.3, 0.2)
       if (before > -45) fail(`场景${i + 1} 句${k + 1} 起点前仍有语音残留（${(s.start - 0.3).toFixed(2)}s 响度 ${before}dB），字幕会滞后`)
     }
-    const after = meanVolume(audio, s.end + 0.1, 0.25)
+    // 停顿窗必须留在 0.3s 句间隙内（gap 末端即下句起点），取 [end+0.05, end+0.2]；
+    // 旧窗 [end+0.1, end+0.35] 会探入下句起点 0.05s，把下句声母误判成本句“抢跑”
+    const after = meanVolume(audio, s.end + 0.05, 0.15)
     if (after > -45 && s.end < sc.duration - 0.2) fail(`场景${i + 1} 句${k + 1} 终点 ${s.end.toFixed(2)}s 后仍在说话（响度 ${after}dB），字幕会抢跑`)
   })
   console.log(`场景${i + 1} ${sc.name}: ${sc.sentences.length} 句校验完成`)

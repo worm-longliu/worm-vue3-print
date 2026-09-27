@@ -1,0 +1,222 @@
+{
+  "title": "worm-vue3-print 顶部工具栏逐按钮详解",
+  "voice": "zh-CN-YunxiNeural",
+  "video": { "width": 1920, "height": 1080, "fps": 30 },
+  "baseUrl": "http://localhost:9303",
+  "scenes": [
+    {
+      "name": "开场与全景",
+      "voiceover": "大家好，欢迎观看 worm-vue3-print 打印模板设计器顶部工具栏的逐个讲解视频。为了方便观看，先点击一次放大按钮，把画布放大到百分之一百一十。工具栏从左到右依次是：标题区、撤销重做、格式化区、排列与视图、缩放、剪贴板，最右侧是帮助、预览和保存。下面我们逐个测试演示。",
+      "steps": [
+        { "do": "assert", "selector": ".designer-container" },
+        { "do": "click", "selector": ".designer-toolbar button[data-tip=\"放大\"]", "s": 1, "ms": 900 },
+        { "do": "highlight", "selector": ".designer-toolbar", "ms": 2800, "s": 2 },
+        { "do": "wait", "ms": 1200, "s": 3 }
+      ]
+    },
+    {
+      "name": "标题区",
+      "voiceover": "最左边是标题区，这个模板图标是设计器的标识。图标后面的文字显示模板状态，编辑已有模板时会显示编辑模板。下方的小字固定为打印模板设计器。",
+      "steps": [
+        { "do": "hover", "selector": ".designer-toolbar .tb-mark", "ms": 1500, "s": 0 },
+        { "do": "highlight", "selector": ".designer-toolbar .tb-title", "ms": 2600, "s": 1 }
+      ]
+    },
+    {
+      "name": "编辑组",
+      "voiceover": "第二组是编辑组，撤销按钮用于回退上一步操作。重做按钮则把撤销掉的操作再找回来。此刻重做还没有内容可恢复，处于置灰态，不过鼠标悬停上去，依然能看到提示气泡。",
+      "steps": [
+        { "do": "hover", "selector": ".designer-toolbar button[data-tip=\"撤销\"]", "ms": 1500, "s": 0 },
+        { "do": "hover", "selector": ".designer-toolbar button[data-tip=\"重做\"]", "ms": 1500, "s": 1 },
+        { "do": "hover", "selector": ".designer-toolbar button[data-tip=\"撤销\"]", "ms": 1500, "s": 2 }
+      ]
+    },
+    {
+      "name": "字体下拉",
+      "voiceover": "格式化区很智能，会跟着当前选中亮起，先单击选中画布上的一个文本元素。格式化区的第一个输入框是字体选择器，它是一个可搜索的下拉列表。点开它，候选列表展开，可以看到系统里安装的常用字体都在列。点一下别处列表收起，失焦会自动取消本次选择。",
+      "steps": [
+        { "do": "click", "selector": ".print-element.type-text >> nth=1", "s": 0, "ms": 700 },
+        { "do": "highlight", "selector": ".format-toolbar .ft-font", "ms": 2200, "s": 1 },
+        { "do": "click", "selector": ".format-toolbar .font-select-input", "s": 2, "ms": 800 },
+        { "do": "highlight", "selector": ".font-select-list", "ms": 2000 },
+        { "do": "click", "selector": ".designer-toolbar .tb-title", "s": 3, "ms": 700 }
+      ]
+    },
+    {
+      "name": "字号输入框",
+      "voiceover": "接着是字号框，直接输入数字再敲回车，文字大小立刻改变。右侧的小箭头是步进按钮，点一次加一磅。我们连点三下，可以看到文字一步步变大。",
+      "steps": [
+        { "do": "type", "selector": ".format-toolbar .ft-size .pd-input", "text": "18", "s": 0, "ms": 400 },
+        { "do": "key", "keys": "Enter", "ms": 900 },
+        { "do": "hover", "selector": ".format-toolbar .ft-size .pd-step-plus", "s": 1, "ms": 1400 },
+        { "do": "click", "selector": ".format-toolbar .ft-size .pd-step-plus", "s": 2, "ms": 600 },
+        { "do": "click", "selector": ".format-toolbar .ft-size .pd-step-plus", "ms": 600 },
+        { "do": "click", "selector": ".format-toolbar .ft-size .pd-step-plus", "ms": 600 }
+      ]
+    },
+    {
+      "name": "文字装饰三剑客",
+      "voiceover": "然后是三个装饰按钮，第一个加粗，点一下文字立刻变粗。第二个下划线，给文字加一条底線。第三个删除线，在文字上画一条斜线。三个都是开关态，生效时按钮高亮成蓝色，再点一下即可关闭。",
+      "steps": [
+        { "do": "click", "selector": ".format-toolbar button[data-test=\"bold\"]", "s": 0, "ms": 900 },
+        { "do": "click", "selector": ".format-toolbar button[data-test=\"underline\"]", "s": 1, "ms": 900 },
+        { "do": "click", "selector": ".format-toolbar button[data-test=\"strike\"]", "s": 2, "ms": 900 },
+        { "do": "hover", "selector": ".format-toolbar button[data-test=\"bold\"]", "s": 3, "ms": 1200 }
+      ]
+    },
+    {
+      "name": "字体颜色与背景色",
+      "voiceover": "颜色组有两个按钮，字母 A 加色条代表字体颜色，色条会预览当前颜色。点开调色板，常用颜色排成网格，还带自定义取色器和色值输入。选一个红色，选中的文字立刻换了颜色。旁边的油漆桶是背景色，负责给元素铺底色。再点开它，选一个浅灰，文字就带上底色了。",
+      "steps": [
+        { "do": "hover", "selector": ".format-toolbar .ft-color-btn >> nth=0", "s": 0, "ms": 1500 },
+        { "do": "click", "selector": ".format-toolbar .ft-color-btn .preset-color-trigger >> nth=0", "s": 1, "ms": 800 },
+        { "do": "highlight", "selector": ".preset-color-grid", "ms": 1800 },
+        { "do": "click", "selector": ".preset-color-item[title=\"#e53935\"]", "s": 2, "ms": 800 },
+        { "do": "click", "selector": ".designer-toolbar .tb-title", "ms": 600 },
+        { "do": "hover", "selector": ".format-toolbar .ft-color-btn >> nth=1", "s": 3, "ms": 1400 },
+        { "do": "click", "selector": ".format-toolbar .ft-color-btn .preset-color-trigger >> nth=1", "s": 4, "ms": 700 },
+        { "do": "click", "selector": ".preset-color-item >> nth=4", "ms": 800 },
+        { "do": "click", "selector": ".designer-toolbar .tb-title", "ms": 600 }
+      ]
+    },
+    {
+      "name": "撤销与重做实战",
+      "voiceover": "到这里我们改了字号、加粗、下划线、删除线和两个颜色，该撤销登场了。点一下撤销，最后应用的浅灰底色先消失。继续点，字色、删除线、下划线逐条退回去。点重做，它们又按正序回来。日常用 Ctrl 加 Z 和 Ctrl 加 Y 快捷键同样顺手。想推倒重来，刷新页面就能回到初始模板。",
+      "steps": [
+        { "do": "click", "selector": ".designer-toolbar button[data-tip=\"撤销\"]", "s": 1, "ms": 900 },
+        { "do": "click", "selector": ".designer-toolbar button[data-tip=\"撤销\"]", "s": 2, "ms": 800 },
+        { "do": "click", "selector": ".designer-toolbar button[data-tip=\"撤销\"]", "ms": 800 },
+        { "do": "click", "selector": ".designer-toolbar button[data-tip=\"撤销\"]", "ms": 800 },
+        { "do": "click", "selector": ".designer-toolbar button[data-tip=\"重做\"]", "s": 3, "ms": 900 },
+        { "do": "click", "selector": ".designer-toolbar button[data-tip=\"重做\"]", "ms": 900 },
+        { "do": "key", "keys": "Mod+z", "s": 4, "ms": 800 },
+        { "do": "reload", "ms": 1500, "s": 5 }
+      ]
+    },
+    {
+      "name": "对齐下拉",
+      "voiceover": "刷新之后，先把画布重新放大到百分之一百一十，再选回一个文本元素。对齐按钮是个下拉，面板里两排共六项。上排是水平对齐，第一项左对齐。第二项水平居中，文字在元素里居中。第三项右对齐。下排是垂直对齐，顶端对齐、垂直居中、底端对齐，文字竖向定位一键解决。试点垂直居中，文字往上挪了半格。用完再点对齐按钮收起面板。",
+      "steps": [
+        { "do": "click", "selector": ".designer-toolbar button[data-tip=\"放大\"]", "s": 0, "ms": 600 },
+        { "do": "click", "selector": ".print-element.type-text >> nth=1", "ms": 600 },
+        { "do": "click", "selector": ".format-toolbar [data-test=\"align-dd\"]", "s": 1, "ms": 700 },
+        { "do": "hover", "selector": "[data-test=\"align-panel\"] [data-test=\"align-left\"]", "s": 2, "ms": 1100 },
+        { "do": "click", "selector": "[data-test=\"align-panel\"] [data-test=\"align-center\"]", "s": 3, "ms": 900 },
+        { "do": "hover", "selector": "[data-test=\"align-panel\"] [data-test=\"align-right\"]", "s": 4, "ms": 1100 },
+        { "do": "hover", "selector": "[data-test=\"align-panel\"] [data-test=\"valign-top\"]", "s": 5, "ms": 800 },
+        { "do": "hover", "selector": "[data-test=\"align-panel\"] [data-test=\"valign-bottom\"]", "ms": 800 },
+        { "do": "click", "selector": "[data-test=\"align-panel\"] [data-test=\"valign-middle\"]", "s": 6, "ms": 900 },
+        { "do": "click", "selector": ".format-toolbar [data-test=\"align-dd\"]", "s": 7, "ms": 600 }
+      ]
+    },
+    {
+      "name": "边框下拉",
+      "voiceover": "边框下拉是格式化区功能最全的面板，选中元素就能打开。九宫格前四个：无边框，清空全部边框线。所有边框，一次套上整圈外框。外侧边框只留最外一圈线。内部边框只对表格单元格生效，这里置灰不可点。后四个各管一条边，点一下上边框，顶上的线就切换消失了。再换线型，下面一行四个样式：实线、虚线、点线、双线。选虚线后，再点一次上边框。顶线换成了虚线样式，粗细和颜色也能顺手改。最后点边框按钮收起面板。",
+      "steps": [
+        { "do": "click", "selector": ".format-toolbar [data-test=\"border\"]", "s": 0, "ms": 800 },
+        { "do": "hover", "selector": "[data-test=\"border-panel\"] [data-test=\"preset-none\"]", "s": 1, "ms": 1100 },
+        { "do": "click", "selector": "[data-test=\"border-panel\"] [data-test=\"preset-all\"]", "s": 2, "ms": 900 },
+        { "do": "hover", "selector": "[data-test=\"border-panel\"] [data-test=\"preset-outer\"]", "s": 3, "ms": 1100 },
+        { "do": "hover", "selector": "[data-test=\"border-panel\"] [data-test=\"preset-inner\"]", "s": 4, "ms": 1400 },
+        { "do": "hover", "selector": "[data-test=\"border-panel\"] [data-test=\"edge-top\"]", "s": 5, "ms": 900 },
+        { "do": "click", "selector": "[data-test=\"border-panel\"] [data-test=\"edge-top\"]", "ms": 900 },
+        { "do": "hover", "selector": "[data-test=\"border-panel\"] [data-test=\"style-solid\"]", "s": 6, "ms": 600 },
+        { "do": "hover", "selector": "[data-test=\"border-panel\"] [data-test=\"style-dotted\"]", "ms": 600 },
+        { "do": "hover", "selector": "[data-test=\"border-panel\"] [data-test=\"style-double\"]", "ms": 600 },
+        { "do": "click", "selector": "[data-test=\"border-panel\"] [data-test=\"style-dashed\"]", "s": 7, "ms": 500 },
+        { "do": "click", "selector": "[data-test=\"border-panel\"] [data-test=\"edge-top\"]", "ms": 900 },
+        { "do": "highlight", "selector": ".ft-border-style-row", "ms": 2000, "s": 8 },
+        { "do": "click", "selector": ".format-toolbar [data-test=\"border\"]", "s": 9, "ms": 600 }
+      ]
+    },
+    {
+      "name": "排列下拉",
+      "voiceover": "排列下拉管理元素之间的排版，需要先多选。按住 Command 或 Control 键，依次点击三个文本，一次多选到位。打开排列菜单，上排八项是对齐与分布。左对齐把所有元素左缘贴齐最左的一个。右对齐则把所有右缘拉齐。顶对齐和底对齐作用在竖向上。水平居中与垂直居中按选区中线摆放。水平分布与垂直分布把元素在范围内等间距排开。试点左对齐，三个文本立刻贴齐左缘。中间四项是层级，控制元素的叠放顺序。置顶和置底跳到两端，上移和下移逐层微调。最后两项组合与取消组合，把多个元素捆成整体，细节在另一个视频里讲。点一下组合，三个元素成为一个整体。再点取消组合，关掉菜单。",
+      "steps": [
+        { "do": "click", "selector": ".print-element.type-text >> nth=1", "s": 0, "ms": 400 },
+        { "do": "click", "selector": ".print-element.type-text >> nth=2", "modifiers": ["Mod"], "s": 1, "ms": 500 },
+        { "do": "click", "selector": ".print-element.type-text >> nth=3", "modifiers": ["Mod"], "ms": 500 },
+        { "do": "countAssert", "selector": ".print-element.selected", "count": 3 },
+        { "do": "click", "selector": ".designer-toolbar [data-test=\"arrange-dd\"]", "s": 2, "ms": 700 },
+        { "do": "hover", "selector": "[data-test=\"arrange-panel\"] button[data-tip=\"左对齐\"]", "s": 3, "ms": 1100 },
+        { "do": "hover", "selector": "[data-test=\"arrange-panel\"] button[data-tip=\"右对齐\"]", "s": 4, "ms": 1100 },
+        { "do": "hover", "selector": "[data-test=\"arrange-panel\"] button[data-tip=\"顶对齐\"]", "s": 5, "ms": 800 },
+        { "do": "hover", "selector": "[data-test=\"arrange-panel\"] button[data-tip=\"底对齐\"]", "ms": 800 },
+        { "do": "hover", "selector": "[data-test=\"arrange-panel\"] button[data-tip=\"水平居中\"]", "s": 6, "ms": 800 },
+        { "do": "hover", "selector": "[data-test=\"arrange-panel\"] button[data-tip=\"垂直居中\"]", "ms": 800 },
+        { "do": "hover", "selector": "[data-test=\"arrange-panel\"] button[data-tip=\"水平分布\"]", "s": 7, "ms": 800 },
+        { "do": "hover", "selector": "[data-test=\"arrange-panel\"] button[data-tip=\"垂直分布\"]", "ms": 800 },
+        { "do": "click", "selector": "[data-test=\"arrange-panel\"] button[data-tip=\"左对齐\"]", "s": 8, "ms": 1000 },
+        { "do": "highlight", "selector": "[data-test=\"arrange-panel\"] .tb-menu-grid >> nth=1", "ms": 1800, "s": 9 },
+        { "do": "hover", "selector": "[data-test=\"arrange-panel\"] button[data-tip=\"置顶\"]", "s": 10, "ms": 800 },
+        { "do": "hover", "selector": "[data-test=\"arrange-panel\"] button[data-tip=\"置底\"]", "ms": 800 },
+        { "do": "hover", "selector": "[data-test=\"arrange-panel\"] button[data-tip=\"上移一层\"]", "ms": 700 },
+        { "do": "hover", "selector": "[data-test=\"arrange-panel\"] button[data-tip=\"下移一层\"]", "ms": 700 },
+        { "do": "hover", "selector": "[data-test=\"arrange-panel\"] button[data-tip^=\"组合\"]", "s": 11, "ms": 1000 },
+        { "do": "hover", "selector": "[data-test=\"arrange-panel\"] button[data-tip^=\"取消组合\"]", "ms": 1000 },
+        { "do": "click", "selector": "[data-test=\"arrange-panel\"] button[data-tip^=\"组合\"]", "s": 12, "ms": 900 },
+        { "do": "countAssert", "selector": ".print-element.selected", "count": 3 },
+        { "do": "click", "selector": "[data-test=\"arrange-panel\"] button[data-tip^=\"取消组合\"]", "s": 13, "ms": 900 },
+        { "do": "click", "selector": ".designer-toolbar [data-test=\"arrange-dd\"]", "ms": 500 }
+      ]
+    },
+    {
+      "name": "视图下拉",
+      "voiceover": "视图下拉管理画布辅助工具，行式条目都是开关，高亮代表当前开着。先实测标尺：点一下隐藏，再点一下恢复。网格同理，关掉之后画布背景干净不少。再点一下把它开回来。虚框控制无边框表格上的辅助虚线。吸附开启后，拖动元素会自动贴合网格。首页专属能添加一个仅在首页叠加显示的页眉页脚元素。叠层对比把渲染截图罩在设计稿上，用来比对出纸效果。实测完刷新页面，清掉所有演示痕迹。",
+      "steps": [
+        { "do": "click", "selector": ".designer-toolbar [data-test=\"view-dd\"]", "s": 0, "ms": 700 },
+        { "do": "click", "selector": "[data-test=\"view-panel\"] button[data-tip=\"显示/隐藏标尺\"]", "s": 1, "ms": 900 },
+        { "do": "click", "selector": "[data-test=\"view-panel\"] button[data-tip=\"显示/隐藏标尺\"]", "ms": 900 },
+        { "do": "click", "selector": "[data-test=\"view-panel\"] button[data-tip=\"显示/隐藏网格背景\"]", "s": 2, "ms": 1000 },
+        { "do": "click", "selector": "[data-test=\"view-panel\"] button[data-tip=\"显示/隐藏网格背景\"]", "s": 3, "ms": 1000 },
+        { "do": "hover", "selector": "[data-test=\"view-panel\"] button[data-tip=\"显示/隐藏无边框表格的虚拟虚线\"]", "s": 4, "ms": 1400 },
+        { "do": "click", "selector": "[data-test=\"view-panel\"] button[data-tip=\"开启/关闭元素吸附到网格\"]", "s": 5, "ms": 1000 },
+        { "do": "click", "selector": "[data-test=\"view-panel\"] button[data-tip^=\"添加一个仅在首页叠加显示\"]", "s": 6, "ms": 1200 },
+        { "do": "click", "selector": "[data-test=\"view-panel\"] button[data-tip^=\"叠加显示渲染截图\"]", "s": 7, "ms": 4000 },
+        { "do": "reload", "ms": 1500, "s": 8 }
+      ]
+    },
+    {
+      "name": "缩放组",
+      "voiceover": "刷新后先把画布放大回百分之一百一十。缩放组一共四个控件。适应窗口按钮，一键把整张纸落进画布视野，我们鼠标停上去看看提示就好。减号缩小一档、加号放大一档，中间的百分比实时更新，试点一轮。画布上按住 Control 滚轮，也是常用的缩放方式。",
+      "steps": [
+        { "do": "click", "selector": ".designer-toolbar button[data-tip=\"放大\"]", "s": 0, "ms": 700 },
+        { "do": "hover", "selector": ".designer-toolbar button[data-tip=\"适应窗口\"]", "s": 1, "ms": 1400 },
+        { "do": "click", "selector": ".designer-toolbar button[data-tip=\"缩小\"]", "s": 2, "ms": 800 },
+        { "do": "highlight", "selector": ".designer-toolbar .tb-zoom", "ms": 1600 },
+        { "do": "click", "selector": ".designer-toolbar button[data-tip=\"放大\"]", "ms": 800 }
+      ]
+    },
+    {
+      "name": "剪贴板组",
+      "voiceover": "剪贴板组三个按钮，都作用于选中的元素。没有选中时它们置灰，悬停上去，提示气泡会写明原因。现在选中一个文本，点复制、再点粘贴，画布上多出一个偏移十像素的副本。点选副本，点删除，它立刻消失。当然，Ctrl 加 C、Ctrl 加 V 和 Delete 快捷键更快。",
+      "steps": [
+        { "do": "key", "keys": "Escape", "s": 0, "ms": 400 },
+        { "do": "hover", "selector": ".designer-toolbar button[data-test=\"copy\"]", "s": 1, "ms": 1600 },
+        { "do": "click", "selector": ".print-element.type-text >> nth=1", "s": 2, "ms": 600 },
+        { "do": "click", "selector": ".designer-toolbar button[data-test=\"copy\"]", "ms": 600 },
+        { "do": "click", "selector": ".designer-toolbar button[data-test=\"paste\"]", "ms": 900 },
+        { "do": "click", "selector": ".print-element.type-text >> nth=-1", "s": 3, "ms": 600 },
+        { "do": "click", "selector": ".designer-toolbar button[data-test=\"delete\"]", "ms": 900 }
+      ]
+    },
+    {
+      "name": "帮助预览保存与结尾",
+      "voiceover": "最后一组在最右侧，问号是帮助按钮，点开内置的使用文档。里面按章节罗列了操作指南，看完点右上角关闭。预览无需保存直接出真实打印效果，弹窗显示总页数，可以逐页检查。保存则把当前模板交给宿主，在 Demo 里它会下载一份模板 JSON 文件。我们点一下试试。顶部工具栏的逐个讲解就到这里，感谢观看，我们下期再见。",
+      "steps": [
+        { "do": "click", "selector": ".designer-toolbar .help-button", "s": 0, "ms": 900 },
+        { "do": "assert", "selector": ".help-modal-overlay" },
+        { "do": "highlight", "selector": ".help-modal", "ms": 2000 },
+        { "do": "click", "selector": ".help-modal-close", "s": 1, "ms": 700 },
+        { "do": "click", "selector": ".designer-toolbar button.btn-secondary:has-text(\"预览\")", "s": 2, "ms": 600 },
+        { "do": "assert", "selector": ".preview-mask" },
+        { "do": "waitForPreview" },
+        { "do": "highlight", "selector": ".preview-subtitle", "ms": 1800, "s": 2 },
+        { "do": "click", "selector": ".preview-panel button:has-text(\"关闭\")", "s": 2, "ms": 500 },
+        { "do": "highlight", "selector": ".designer-toolbar .btn-primary", "ms": 1600, "s": 3 },
+        { "do": "click", "selector": ".designer-toolbar button[data-tip=\"保存模板\"]", "s": 4, "ms": 1200 },
+        { "do": "highlight", "selector": ".designer-toolbar", "ms": 2800, "s": 5 }
+      ]
+    }
+  ]
+}

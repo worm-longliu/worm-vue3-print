@@ -1,6 +1,16 @@
 <!-- 格式工具栏区段（合并进顶部工具栏）：仿 Word/Excel，对选中文本元素或表格单元格批量应用字体/对齐/边框等常用样式 -->
 <template>
   <div class="format-toolbar">
+    <!-- 格式刷：单击刷一次、双击连续刷、再点或 Esc 退出（仿 Word） -->
+    <div class="ft-group">
+      <button
+        type="button" class="ft-btn" data-test="format-painter"
+        :class="{ on: painterActive }" :disabled="painterDisabled" :data-tip="painterTip"
+        @click="onPainterClick" @dblclick="onPainterDblclick"
+      >
+        <Paintbrush :size="15" />
+      </button>
+    </div>
     <!-- 字体组 -->
     <div class="ft-group">
       <div class="ft-font">
@@ -173,11 +183,12 @@ import { computed, ref } from 'vue'
 import {
   Bold, Underline, Strikethrough, TextAlignStart, TextAlignCenter, TextAlignEnd,
   ArrowUpToLine, ChevronsUpDown, ArrowDownToLine, Grid3x3,
-  PaintBucket,
+  PaintBucket, Paintbrush,
 } from 'lucide-vue-next'
 import type { BorderPreset } from '@worm-vue3-print/core/designer'
 import type { FormatToolbar } from '../composables/useFormatToolbar'
 import { MIXED } from '../composables/useFormatToolbar'
+import type { FormatPainter } from '../composables/useFormatPainter'
 import FontSelect from './property/FontSelect.vue'
 import StepperInput from './property/StepperInput.vue'
 import PresetColorPicker from './PresetColorPicker.vue'
@@ -185,6 +196,8 @@ import ToolbarDropdown from './ToolbarDropdown.vue'
 
 const props = defineProps<{
   format: FormatToolbar
+  /** 格式刷状态与操作；未注入时按钮保持可用壳但无操作（供纯工具栏单测） */
+  painter?: FormatPainter
 }>()
 
 const values = computed(() => props.format.values.value)
@@ -192,6 +205,32 @@ const values = computed(() => props.format.values.value)
 const fontDisabled = computed(() => !props.format.fontEditable.value)
 const decoDisabled = computed(() => fontDisabled.value || props.format.context.value === 'cells')
 const borderDisabled = computed(() => props.format.context.value === 'none')
+
+/* 格式刷：激活态按钮可再点退出；禁用提示按上下文给出原因 */
+const painterActive = computed(() => props.painter?.active.value === true)
+const painterDisabled = computed(() =>
+  !props.painter || (!painterActive.value &&
+    (props.format.context.value === 'none' || props.format.context.value === 'cells' || !props.painter.capturable.value)))
+const painterTip = computed(() => {
+  if (painterActive.value) return '退出格式刷（Esc）'
+  if (!props.painter) return '格式刷'
+  if (props.format.context.value === 'cells') return '格式刷（表格单元格暂不支持）'
+  if (props.format.context.value === 'none') return '格式刷（需选中元素）'
+  if (!props.painter.capturable.value) return '格式刷（请仅选中一个源元素）'
+  return '格式刷：单击刷一次，双击连续刷'
+})
+
+function onPainterClick() {
+  const p = props.painter
+  if (!p) return
+  if (p.active.value) { p.cancel(); return }
+  p.capture(false)
+}
+
+/** 双击序列为 click→click→dblclick：前两次已「进入再退出」，此处直接捕获并锁定 */
+function onPainterDblclick() {
+  props.painter?.capture(true)
+}
 
 /** 混合态：控件留空并以「混合」占位提示（仿 Word 多样式选中） */
 const fontFamilyDisplay = computed(() => (values.value.fontFamily === MIXED ? undefined : values.value.fontFamily))

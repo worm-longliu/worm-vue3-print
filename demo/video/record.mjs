@@ -287,6 +287,11 @@ async function runStep(step) {
       console.log(`  下载保存：${dest}`)
       return
     }
+    case 'reload':
+      await page.reload({ waitUntil: 'networkidle' })
+      await page.waitForSelector('.designer-container', { timeout: 20000 })
+      await sleep(step.ms ?? 1200)
+      return
     case 'wait':
       await sleep(step.ms ?? 1000)
       return
