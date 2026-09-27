@@ -13,6 +13,8 @@
       :selected-element-has-group="selectedHasGroup"
       :overlay-visible="overlayVisible"
       :show-help="showHelp !== false"
+      :clipboard-disabled="formatToolbar.context.value !== 'elements'"
+      :has-clipboard="hasClipboard"
       v-model:scale="scale"
       @preview="$emit('preview')"
       @save="handleSave"
@@ -31,16 +33,13 @@
       @fit-window="onFitWindow"
       @zoom="onToolbarZoom"
       @help="helpVisible = true"
-    />
-
-    <!-- 格式工具栏：仿 Word/Excel，对选中文本元素/表格单元格批量应用常用样式 -->
-    <FormatToolbar
-      :format="formatToolbar"
-      :has-clipboard="hasClipboard"
       @copy="copy"
       @paste="paste"
       @delete="onDeleteElement"
-    />
+    >
+      <!-- 格式工具栏区段：仿 Word/Excel，对选中文本元素/表格单元格批量应用常用样式 -->
+      <FormatToolbar :format="formatToolbar" />
+    </DesignerToolbar>
 
     <!-- 页面栏：多页签 + 新增/复制/删除/排序 -->
     <PageTabs
@@ -242,7 +241,7 @@ const {
   initialFields: props.fields,
 })
 
-// 格式工具栏（第二行）：从选中元素/单元格选区派生可用性与当前值
+// 格式工具栏（合并进顶部工具栏的区段）：从选中元素/单元格选区派生可用性与当前值
 const formatToolbar = useFormatToolbar({
   elements, selectedIds, tableSelection, recordHistory,
 })

@@ -1,4 +1,4 @@
-<!-- 格式工具栏（第二行）：仿 Word/Excel，对选中文本元素或表格单元格批量应用字体/对齐/边框等常用样式 -->
+<!-- 格式工具栏区段（合并进顶部工具栏）：仿 Word/Excel，对选中文本元素或表格单元格批量应用字体/对齐/边框等常用样式 -->
 <template>
   <div class="format-toolbar">
     <!-- 字体组 -->
@@ -24,13 +24,13 @@
     </div>
     <!-- 文字样式组 -->
     <div class="ft-group">
-      <button type="button" class="ft-btn" data-test="bold" :class="{ on: boldOn }" :disabled="fontDisabled" data-tip="加粗" @click="format.toggleBold()">
+      <button type="button" class="ft-btn" data-test="bold" :class="{ on: boldOn }" :disabled="fontDisabled" :data-tip="fontDisabled ? '加粗（需选中文本元素或单元格）' : '加粗'" @click="format.toggleBold()">
         <Bold :size="15" />
       </button>
-      <button type="button" class="ft-btn" data-test="underline" :class="{ on: values.underline === true }" :disabled="decoDisabled" data-tip="下划线" @click="format.toggleUnderline()">
+      <button type="button" class="ft-btn" data-test="underline" :class="{ on: values.underline === true }" :disabled="decoDisabled" :data-tip="decoTip('下划线')" @click="format.toggleUnderline()">
         <Underline :size="15" />
       </button>
-      <button type="button" class="ft-btn" data-test="strike" :class="{ on: values.strike === true }" :disabled="decoDisabled" data-tip="删除线" @click="format.toggleStrike()">
+      <button type="button" class="ft-btn" data-test="strike" :class="{ on: values.strike === true }" :disabled="decoDisabled" :data-tip="decoTip('删除线')" @click="format.toggleStrike()">
         <Strikethrough :size="15" />
       </button>
     </div>
@@ -51,129 +51,129 @@
         <span class="ft-glyph"><PaintBucket :size="14" /></span>
       </span>
     </div>
-    <!-- 对齐组 -->
+    <!-- 对齐下拉：文字水平对齐 + 垂直对齐收进菜单，触发钮显示当前水平对齐 -->
     <div class="ft-group">
-      <button type="button" class="ft-btn" data-test="align-left" :class="{ on: values.textAlign === 'left' }" :disabled="fontDisabled" data-tip="左对齐" @click="format.applyStyle({ textAlign: 'left' })">
-        <TextAlignStart :size="15" />
-      </button>
-      <button type="button" class="ft-btn" data-test="align-center" :class="{ on: values.textAlign === 'center' }" :disabled="fontDisabled" data-tip="水平居中" @click="format.applyStyle({ textAlign: 'center' })">
-        <TextAlignCenter :size="15" />
-      </button>
-      <button type="button" class="ft-btn" data-test="align-right" :class="{ on: values.textAlign === 'right' }" :disabled="fontDisabled" data-tip="右对齐" @click="format.applyStyle({ textAlign: 'right' })">
-        <TextAlignEnd :size="15" />
-      </button>
-      <span class="ft-sep" />
-      <button type="button" class="ft-btn" data-test="valign-top" :class="{ on: values.verticalAlign === 'top' }" :disabled="fontDisabled" data-tip="顶端对齐" @click="format.applyStyle({ verticalAlign: 'top' })">
-        <ArrowUpToLine :size="15" />
-      </button>
-      <button type="button" class="ft-btn" data-test="valign-middle" :class="{ on: values.verticalAlign === 'middle' }" :disabled="fontDisabled" data-tip="垂直居中" @click="format.applyStyle({ verticalAlign: 'middle' })">
-        <ChevronsUpDown :size="15" />
-      </button>
-      <button type="button" class="ft-btn" data-test="valign-bottom" :class="{ on: values.verticalAlign === 'bottom' }" :disabled="fontDisabled" data-tip="底端对齐" @click="format.applyStyle({ verticalAlign: 'bottom' })">
-        <ArrowDownToLine :size="15" />
-      </button>
-    </div>
-    <!-- 边框组 -->
-    <div ref="borderWrapRef" class="ft-group ft-relative">
-      <button type="button" class="ft-btn" data-test="border" :disabled="borderDisabled" data-tip="边框" @click="panelOpen = !panelOpen">
-        <Grid3x3 :size="15" />
-        <span class="ft-btn-text">边框</span>
-      </button>
-      <div v-if="panelOpen" class="ft-border-panel" data-test="border-panel">
-        <div class="ft-border-grid">
-          <button type="button" class="ft-cell-btn" data-test="preset-none" title="无边框" @click="onPreset('none')">
-            <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
-              <rect class="g-faint" x="2.5" y="2.5" width="13" height="13" />
-              <line class="g-solid" x1="4" y1="14" x2="14" y2="4" />
-            </svg>
-          </button>
-          <button type="button" class="ft-cell-btn" data-test="preset-all" title="所有边框" @click="onPreset('all')">
-            <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
-              <rect class="g-solid" x="2.5" y="2.5" width="13" height="13" fill="none" />
-              <line class="g-solid" x1="9" y1="3" x2="9" y2="15" />
-              <line class="g-solid" x1="3" y1="9" x2="15" y2="9" />
-            </svg>
-          </button>
-          <button type="button" class="ft-cell-btn" data-test="preset-outer" title="外侧边框" @click="onPreset('outer')">
-            <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
-              <rect class="g-solid" x="2.5" y="2.5" width="13" height="13" fill="none" />
-            </svg>
-          </button>
-          <button type="button" class="ft-cell-btn" data-test="preset-inner" :disabled="!isCells" title="内部边框" @click="onPreset('inner')">
-            <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
-              <rect class="g-faint" x="2.5" y="2.5" width="13" height="13" />
-              <line class="g-solid" x1="9" y1="3" x2="9" y2="15" />
-              <line class="g-solid" x1="3" y1="9" x2="15" y2="9" />
-            </svg>
-          </button>
-          <button type="button" class="ft-cell-btn" data-test="edge-top" :class="{ on: edgeOn('top') }" title="上边框" @click="onEdge('top')">
-            <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
-              <rect class="g-faint" x="2.5" y="2.5" width="13" height="13" />
-              <line class="g-solid" x1="2" y1="3" x2="16" y2="3" />
-            </svg>
-          </button>
-          <button type="button" class="ft-cell-btn" data-test="edge-bottom" :class="{ on: edgeOn('bottom') }" title="下边框" @click="onEdge('bottom')">
-            <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
-              <rect class="g-faint" x="2.5" y="2.5" width="13" height="13" />
-              <line class="g-solid" x1="2" y1="15" x2="16" y2="15" />
-            </svg>
-          </button>
-          <button type="button" class="ft-cell-btn" data-test="edge-left" :class="{ on: edgeOn('left') }" title="左边框" @click="onEdge('left')">
-            <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
-              <rect class="g-faint" x="2.5" y="2.5" width="13" height="13" />
-              <line class="g-solid" x1="3" y1="2" x2="3" y2="16" />
-            </svg>
-          </button>
-          <button type="button" class="ft-cell-btn" data-test="edge-right" :class="{ on: edgeOn('right') }" title="右边框" @click="onEdge('right')">
-            <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
-              <rect class="g-faint" x="2.5" y="2.5" width="13" height="13" />
-              <line class="g-solid" x1="15" y1="2" x2="15" y2="16" />
-            </svg>
-          </button>
-        </div>
-        <div class="ft-style-row">
-          <button
-            v-for="s in LINE_STYLES" :key="s.key"
-            type="button" class="ft-style-btn" :class="{ on: borderStyle === s.key }"
-            :data-test="`style-${s.key}`" :title="s.label" @click="borderStyle = s.key"
-          >
-            <span class="ft-style-line" :style="{ borderTop: s.preview }"></span>
-          </button>
-        </div>
-        <div class="ft-border-style-row">
-          <span class="ft-edge-label">粗细</span>
-          <div class="ft-line-width">
-            <StepperInput v-model="borderWidth" :min="0.25" :max="5" :step="0.25" />
+      <ToolbarDropdown test-id="align-dd" :tip="alignTip" :disabled="fontDisabled">
+        <template #trigger>
+          <component :is="alignIcon" :size="15" />
+          <span class="ft-btn-text">对齐</span>
+        </template>
+        <div class="ft-align-panel" data-test="align-panel">
+          <div class="ft-align-row">
+            <button type="button" class="ft-cell-btn" data-test="align-left" :class="{ on: values.textAlign === 'left' }" data-tip="左对齐" @click="format.applyStyle({ textAlign: 'left' })">
+              <TextAlignStart :size="15" />
+            </button>
+            <button type="button" class="ft-cell-btn" data-test="align-center" :class="{ on: values.textAlign === 'center' }" data-tip="水平居中" @click="format.applyStyle({ textAlign: 'center' })">
+              <TextAlignCenter :size="15" />
+            </button>
+            <button type="button" class="ft-cell-btn" data-test="align-right" :class="{ on: values.textAlign === 'right' }" data-tip="右对齐" @click="format.applyStyle({ textAlign: 'right' })">
+              <TextAlignEnd :size="15" />
+            </button>
+          </div>
+          <div class="ft-align-row">
+            <button type="button" class="ft-cell-btn" data-test="valign-top" :class="{ on: values.verticalAlign === 'top' }" data-tip="顶端对齐" @click="format.applyStyle({ verticalAlign: 'top' })">
+              <ArrowUpToLine :size="15" />
+            </button>
+            <button type="button" class="ft-cell-btn" data-test="valign-middle" :class="{ on: values.verticalAlign === 'middle' }" data-tip="垂直居中" @click="format.applyStyle({ verticalAlign: 'middle' })">
+              <ChevronsUpDown :size="15" />
+            </button>
+            <button type="button" class="ft-cell-btn" data-test="valign-bottom" :class="{ on: values.verticalAlign === 'bottom' }" data-tip="底端对齐" @click="format.applyStyle({ verticalAlign: 'bottom' })">
+              <ArrowDownToLine :size="15" />
+            </button>
           </div>
         </div>
-        <div class="ft-border-style-row">
-          <span class="ft-edge-label">颜色</span>
-          <PresetColorPicker v-model="borderColor" :clearable="false" />
-        </div>
-      </div>
+      </ToolbarDropdown>
     </div>
-    <div class="ft-spacer" />
-    <!-- 剪贴板组 -->
+    <!-- 边框下拉（WPS 式面板） -->
     <div class="ft-group">
-      <button type="button" class="ft-btn" data-test="copy" :disabled="clipboardDisabled" data-tip="复制 (Ctrl+C)" @click="$emit('copy')">
-        <Copy :size="15" />
-      </button>
-      <button type="button" class="ft-btn" data-test="paste" :disabled="clipboardDisabled || !hasClipboard" data-tip="粘贴 (Ctrl+V)" @click="$emit('paste')">
-        <ClipboardPaste :size="15" />
-      </button>
-      <button type="button" class="ft-btn danger" data-test="delete" :disabled="clipboardDisabled" data-tip="删除 (Delete)" @click="$emit('delete')">
-        <Trash2 :size="15" />
-      </button>
+      <ToolbarDropdown test-id="border" :tip="borderTip" :disabled="borderDisabled">
+        <template #trigger>
+          <Grid3x3 :size="15" />
+          <span class="ft-btn-text">边框</span>
+        </template>
+        <div class="ft-border-panel" data-test="border-panel">
+        <div class="ft-border-grid">
+            <button type="button" class="ft-cell-btn" data-test="preset-none" data-tip="无边框" @click="onPreset('none')">
+              <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+                <rect class="g-faint" x="2.5" y="2.5" width="13" height="13" />
+                <line class="g-solid" x1="4" y1="14" x2="14" y2="4" />
+              </svg>
+            </button>
+            <button type="button" class="ft-cell-btn" data-test="preset-all" data-tip="所有边框" @click="onPreset('all')">
+              <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+                <rect class="g-solid" x="2.5" y="2.5" width="13" height="13" fill="none" />
+                <line class="g-solid" x1="9" y1="3" x2="9" y2="15" />
+                <line class="g-solid" x1="3" y1="9" x2="15" y2="9" />
+              </svg>
+            </button>
+            <button type="button" class="ft-cell-btn" data-test="preset-outer" data-tip="外侧边框" @click="onPreset('outer')">
+              <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+                <rect class="g-solid" x="2.5" y="2.5" width="13" height="13" fill="none" />
+              </svg>
+            </button>
+            <button type="button" class="ft-cell-btn" data-test="preset-inner" :disabled="!isCells" :data-tip="isCells ? '内部边框' : '内部边框（仅表格单元格可用）'" @click="onPreset('inner')">
+              <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+                <rect class="g-faint" x="2.5" y="2.5" width="13" height="13" />
+                <line class="g-solid" x1="9" y1="3" x2="9" y2="15" />
+                <line class="g-solid" x1="3" y1="9" x2="15" y2="9" />
+              </svg>
+            </button>
+            <button type="button" class="ft-cell-btn" data-test="edge-top" :class="{ on: edgeOn('top') }" data-tip="上边框" @click="onEdge('top')">
+              <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+                <rect class="g-faint" x="2.5" y="2.5" width="13" height="13" />
+                <line class="g-solid" x1="2" y1="3" x2="16" y2="3" />
+              </svg>
+            </button>
+            <button type="button" class="ft-cell-btn" data-test="edge-bottom" :class="{ on: edgeOn('bottom') }" data-tip="下边框" @click="onEdge('bottom')">
+              <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+                <rect class="g-faint" x="2.5" y="2.5" width="13" height="13" />
+                <line class="g-solid" x1="2" y1="15" x2="16" y2="15" />
+              </svg>
+            </button>
+            <button type="button" class="ft-cell-btn" data-test="edge-left" :class="{ on: edgeOn('left') }" data-tip="左边框" @click="onEdge('left')">
+              <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+                <rect class="g-faint" x="2.5" y="2.5" width="13" height="13" />
+                <line class="g-solid" x1="3" y1="2" x2="3" y2="16" />
+              </svg>
+            </button>
+            <button type="button" class="ft-cell-btn" data-test="edge-right" :class="{ on: edgeOn('right') }" data-tip="右边框" @click="onEdge('right')">
+              <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+                <rect class="g-faint" x="2.5" y="2.5" width="13" height="13" />
+                <line class="g-solid" x1="15" y1="2" x2="15" y2="16" />
+              </svg>
+            </button>
+          </div>
+          <div class="ft-style-row">
+            <button
+              v-for="s in LINE_STYLES" :key="s.key"
+              type="button" class="ft-style-btn" :class="{ on: borderStyle === s.key }"
+              :data-test="`style-${s.key}`" :data-tip="s.label" @click="borderStyle = s.key"
+            >
+              <span class="ft-style-line" :style="{ borderTop: s.preview }"></span>
+            </button>
+          </div>
+          <div class="ft-border-style-row">
+            <span class="ft-edge-label">粗细</span>
+            <div class="ft-line-width">
+              <StepperInput v-model="borderWidth" :min="0.25" :max="5" :step="0.25" />
+            </div>
+          </div>
+          <div class="ft-border-style-row">
+            <span class="ft-edge-label">颜色</span>
+            <PresetColorPicker v-model="borderColor" :clearable="false" />
+          </div>
+        </div>
+      </ToolbarDropdown>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import {
   Bold, Underline, Strikethrough, TextAlignStart, TextAlignCenter, TextAlignEnd,
   ArrowUpToLine, ChevronsUpDown, ArrowDownToLine, Grid3x3,
-  Copy, ClipboardPaste, Trash2, PaintBucket,
+  PaintBucket,
 } from 'lucide-vue-next'
 import type { BorderPreset } from '@worm-vue3-print/core/designer'
 import type { FormatToolbar } from '../composables/useFormatToolbar'
@@ -181,18 +181,10 @@ import { MIXED } from '../composables/useFormatToolbar'
 import FontSelect from './property/FontSelect.vue'
 import StepperInput from './property/StepperInput.vue'
 import PresetColorPicker from './PresetColorPicker.vue'
+import ToolbarDropdown from './ToolbarDropdown.vue'
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   format: FormatToolbar
-  hasClipboard?: boolean
-}>(), {
-  hasClipboard: false,
-})
-
-defineEmits<{
-  copy: []
-  paste: []
-  delete: []
 }>()
 
 const values = computed(() => props.format.values.value)
@@ -200,7 +192,6 @@ const values = computed(() => props.format.values.value)
 const fontDisabled = computed(() => !props.format.fontEditable.value)
 const decoDisabled = computed(() => fontDisabled.value || props.format.context.value === 'cells')
 const borderDisabled = computed(() => props.format.context.value === 'none')
-const clipboardDisabled = computed(() => props.format.context.value !== 'elements')
 
 /** 混合态：控件留空并以「混合」占位提示（仿 Word 多样式选中） */
 const fontFamilyDisplay = computed(() => (values.value.fontFamily === MIXED ? undefined : values.value.fontFamily))
@@ -211,9 +202,21 @@ const boldOn = computed(() => values.value.bold === true)
 const textColor = computed(() => (values.value.color === MIXED ? undefined : values.value.color))
 const bgColor = computed(() => (values.value.backgroundColor === MIXED ? undefined : values.value.backgroundColor))
 
-/* 边框面板（WPS 式）：线型/粗细/颜色为面板内草稿，点图标按钮时整体落盘 */
-const panelOpen = ref(false)
-const borderWrapRef = ref<HTMLElement | null>(null)
+/** 对齐下拉触发钮：显示当前水平对齐，混合/未选时回退左对齐图标（仿 Word） */
+const alignIcon = computed(() =>
+  values.value.textAlign === 'center' ? TextAlignCenter
+    : values.value.textAlign === 'right' ? TextAlignEnd
+      : TextAlignStart)
+
+/* 禁用态 tip 附带原因（提示在置灰按钮上也会显示） */
+const alignTip = computed(() => fontDisabled.value ? '对齐（需选中文本元素或单元格）' : '对齐')
+const borderTip = computed(() => borderDisabled.value ? '边框（需选中元素）' : '边框')
+function decoTip(base: string): string {
+  if (fontDisabled.value) return `${base}（需选中文本元素）`
+  if (props.format.context.value === 'cells') return `${base}（单元格不支持）`
+  return base
+}
+/* 边框面板（WPS 式）：线型/粗细/颜色为面板内草稿，点预设/单边时整体落盘 */
 const borderStyle = ref<'solid' | 'dashed' | 'dotted' | 'double'>('solid')
 const borderWidth = ref(0.75)
 const borderColor = ref('#333333')
@@ -251,28 +254,15 @@ function onEdge(side: BorderSide) {
   if (isCells.value) props.format.toggleCellEdge(side, borderSpec())
   else props.format.toggleElementEdge(side, borderSpec())
 }
-
-function onDocPointerDown(e: PointerEvent) {
-  if (!panelOpen.value) return
-  if (borderWrapRef.value?.contains(e.target as Node)) return
-  panelOpen.value = false
-}
-onMounted(() => document.addEventListener('pointerdown', onDocPointerDown))
-onUnmounted(() => document.removeEventListener('pointerdown', onDocPointerDown))
 </script>
 
 <style scoped>
+/* 合并进顶部工具栏的内联区段：不自带行容器，跟随宿主 flex 布局 */
 .format-toolbar {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 0 12px;
-  height: 40px;
-  background: var(--pd-surface, #ffffff);
-  border-bottom: 1px solid var(--pd-border-soft, #e9ecf2);
-  flex-shrink: 0;
-  position: relative;
-  z-index: 99;
+  min-width: 0;
 }
 .ft-group {
   display: flex;
@@ -282,12 +272,6 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocPointerDown))
 }
 .ft-group + .ft-group {
   border-left: 1px solid var(--pd-border-soft, #e9ecf2);
-}
-.ft-relative {
-  position: relative;
-}
-.ft-spacer {
-  flex: 1;
 }
 .ft-btn {
   height: 28px;
@@ -316,10 +300,6 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocPointerDown))
   color: var(--pd-accent, #165DFF);
   background: var(--pd-accent-soft, rgba(22, 93, 255, .09));
 }
-.ft-btn.danger:hover:not(:disabled) {
-  color: var(--pd-accent-secondary, #f56c6c);
-  background: var(--pd-danger-soft, rgba(245, 108, 108, .10));
-}
 .ft-btn-text {
   font-size: 12px;
 }
@@ -343,7 +323,7 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocPointerDown))
   transition: opacity .15s ease;
   z-index: 100;
 }
-.ft-btn[data-tip]:hover:not(:disabled)::after {
+.ft-btn[data-tip]:hover::after {
   opacity: 1;
 }
 .ft-font {
@@ -352,11 +332,13 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocPointerDown))
 .ft-size {
   width: 96px;
 }
-.ft-sep {
-  width: 1px;
-  height: 18px;
-  margin: 0 4px;
-  background: var(--pd-border-soft, #e9ecf2);
+/* 字体/字号控件文字与工具栏其他文字（12px）保持一致 */
+.ft-font :deep(.font-select-input),
+.ft-size :deep(.pd-input) {
+  font-size: 12px;
+}
+.ft-size :deep(.pd-step-btn) {
+  font-size: 12px;
 }
 /* Word 式颜色按钮：图标本体即触发器，底部色条显示当前颜色（A=字色，油漆桶=填充色） */
 .ft-color-btn {
@@ -405,20 +387,24 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocPointerDown))
   color: var(--pd-text, #2a2e37);
   pointer-events: none;
 }
+/* 面板外壳样式由 ToolbarDropdown 提供 */
 .ft-border-panel {
-  position: absolute;
-  top: 36px;
-  left: 4px;
   width: 196px;
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: var(--pd-surface, #fff);
-  border: 1px solid var(--pd-border, #d9dde6);
-  border-radius: 8px;
-  box-shadow: var(--pd-shadow-md, 0 2px 8px rgba(23, 32, 60, .06), 0 10px 28px rgba(23, 32, 60, .07));
-  z-index: 200;
+}
+.ft-align-panel {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ft-align-row {
+  display: grid;
+  grid-template-columns: repeat(3, 36px);
+  gap: 4px;
 }
 .ft-border-grid {
   display: grid;
@@ -458,6 +444,34 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocPointerDown))
 .ft-cell-btn .g-solid {
   stroke: currentColor;
   stroke-width: 1.6;
+}
+/* 面板内按钮提示：与工具栏 data-tip 同一深色气泡形态 */
+.ft-cell-btn[data-tip],
+.ft-style-btn[data-tip] {
+  position: relative;
+}
+.ft-cell-btn[data-tip]::after,
+.ft-style-btn[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 400;
+  color: #fff;
+  background: rgba(30, 35, 48, .88);
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s ease;
+  z-index: 210;
+}
+.ft-cell-btn[data-tip]:hover::after,
+.ft-style-btn[data-tip]:hover::after {
+  opacity: 1;
 }
 .ft-style-row {
   display: grid;
@@ -499,5 +513,7 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocPointerDown))
 .ft-edge-label {
   font-size: 12px;
   color: var(--pd-text-muted, #8b909c);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 </style>

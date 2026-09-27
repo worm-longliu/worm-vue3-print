@@ -30,15 +30,15 @@ function mountToolbar(elements: RuntimeElement[], selectedIds: string[], selecti
     tableSelection: ref(selection),
     recordHistory: () => {},
   })
-  return mount(FormatToolbar, { props: { format, hasClipboard: false } })
+  return mount(FormatToolbar, { props: { format } })
 }
 
 describe('FormatToolbar 上下文禁用', () => {
-  it('无选中时加粗与边框与剪贴板按钮均禁用', () => {
+  it('无选中时加粗/对齐/边框按钮均禁用', () => {
     const w = mountToolbar([el('a', 'text')], [])
     expect(w.find('[data-test=bold]').attributes('disabled')).toBeDefined()
+    expect(w.find('[data-test=align-dd]').attributes('disabled')).toBeDefined()
     expect(w.find('[data-test=border]').attributes('disabled')).toBeDefined()
-    expect(w.find('[data-test=copy]').attributes('disabled')).toBeDefined()
   })
 
   it('混选文本与图片时字体组禁用、边框可用', () => {
@@ -76,9 +76,10 @@ describe('FormatToolbar 交互写入', () => {
     expect(a.options.fontWeight).toBe('normal')
   })
 
-  it('点击水平居中按钮写入 textAlign', async () => {
+  it('展开对齐下拉后点击水平居中写入 textAlign', async () => {
     const a = el('a', 'text')
     const w = mountToolbar([a], ['a'])
+    await w.find('[data-test=align-dd]').trigger('click')
     await w.find('[data-test=align-center]').trigger('click')
     expect(a.options.textAlign).toBe('center')
   })
@@ -149,15 +150,5 @@ describe('FormatToolbar 边框下拉（WPS 式菜单）', () => {
     expect(w.find('[data-test=edge-top]').classes()).toContain('on')
     await w.find('[data-test=edge-top]').trigger('click')
     expect(t.options.tableRows![0]!.cells[0]!.borders?.top).toBeUndefined()
-  })
-})
-
-describe('FormatToolbar 剪贴板按钮', () => {
-  it('元素上下文点击复制/删除触发事件', async () => {
-    const w = mountToolbar([el('a', 'text')], ['a'])
-    await w.find('[data-test=copy]').trigger('click')
-    await w.find('[data-test=delete]').trigger('click')
-    expect(w.emitted('copy')).toHaveLength(1)
-    expect(w.emitted('delete')).toHaveLength(1)
   })
 })
