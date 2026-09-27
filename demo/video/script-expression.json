@@ -1,0 +1,58 @@
+{
+  "title": "worm-vue3-print 表达式编辑器使用教学",
+  "voice": "zh-CN-YunxiNeural",
+  "video": { "width": 1920, "height": 1080, "fps": 30 },
+  "baseUrl": "http://localhost:9303",
+  "scenes": [
+    {
+      "name": "开场与入口",
+      "voiceover": "大家好，欢迎观看 worm-vue3-print 表达式编辑器教学。表达式可以把字段、函数和静态文案拼接起来，常用于页码、金额合计、单号等场景。支持表达式的元素，双击即可打开编辑器。比如页脚这个页码文本，已经预置了现成的表达式。",
+      "steps": [
+        { "do": "assert", "selector": ".designer-container" },
+        { "do": "highlight", "selector": ".print-element.type-text:has-text(\"ADD(pageIndex\")", "ms": 2400, "s": 3 }
+      ]
+    },
+    {
+      "name": "认识编辑器布局",
+      "voiceover": "双击这个文本，弹出表达式编辑器。弹窗左侧是导航区，包含字段、变量和函数三个页签。中间可以浏览和搜索具体条目，双击条目就会插入到光标处。右边是表达式编辑区，静态文案与占位符可以自由混排。顶部的结果预览，会按当前表达式实时呈现效果。",
+      "steps": [
+        { "do": "dblclick", "selector": ".print-element.type-text:has-text(\"ADD(pageIndex\")", "s": 0 },
+        { "do": "assert", "selector": ".ee-textarea" },
+        { "do": "highlight", "selector": ".ee-nav", "ms": 2200, "s": 1 },
+        { "do": "highlight", "selector": ".ee-content", "ms": 2200, "s": 2 },
+        { "do": "highlight", "selector": ".ee-editor", "ms": 2200, "s": 3 },
+        { "do": "highlight", "selector": ".ee-preview", "ms": 2000, "s": 4 }
+      ]
+    },
+    {
+      "name": "字段与函数插入",
+      "voiceover": "切到字段页签，这里是当前模板数据的字段树。双击单据编号，占位符立即插入。再切到函数页签，函数按聚合、数值与格式化分组。双击求和函数 SUM，同样一键插入。顶部的搜索框，还能按关键字快速定位条目。",
+      "steps": [
+        { "do": "click", "selector": ".ee-nav-tab:has-text(\"字段\")", "s": 0 },
+        { "do": "highlight", "selector": ".ee-field-item >> nth=0", "ms": 1500 },
+        { "do": "dblclick", "selector": ".ee-field-item >> nth=0", "s": 1 },
+        { "do": "click", "selector": ".ee-nav-tab:has-text(\"函数\")", "s": 2 },
+        { "do": "dblclick", "selector": ".ee-list-item:has-text(\"求和\")", "s": 3 },
+        { "do": "highlight", "selector": ".ee-content-search", "ms": 1800, "s": 4 }
+      ]
+    },
+    {
+      "name": "编写与实时预览",
+      "voiceover": "现在清空编辑区，演示一个完整写法。键入页码文案，并用 ADD 函数让当前页码加一，再接上总页数。顶部的结果预览实时替换，页码系统变量立即见效。",
+      "steps": [
+        { "do": "type", "selector": ".ee-textarea", "text": "第 {ADD(pageIndex,1)} 页 / 共 {ADD(totalPages,1)} 页", "delay": 80, "s": 1 },
+        { "do": "highlight", "selector": ".ee-preview", "ms": 2400, "s": 2 }
+      ]
+    },
+    {
+      "name": "保存与结尾",
+      "voiceover": "点击确定，表达式就写回这个文本元素，画布随之更新。若不想保存，也可以点取消或右上角关闭，放弃本次修改。双击编辑、单击插入、实时预览，这就是表达式编辑器的完整流程。感谢观看，我们下期再见。",
+      "steps": [
+        { "do": "click", "selector": ".pd-dialog-footer button.pd-button.primary:has-text(\"确定\")", "s": 0 },
+        { "do": "wait", "ms": 600 },
+        { "do": "highlight", "selector": ".print-element.type-text:has-text(\"ADD(pageIndex\")", "ms": 2200, "s": 0 },
+        { "do": "highlight", "selector": ".designer-container", "ms": 2600, "s": 2 }
+      ]
+    }
+  ]
+}

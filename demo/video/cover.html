@@ -13,7 +13,7 @@
     --yellow: #F5C400;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 1920px; height: 1440px; overflow: hidden; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; }
   body {
     position: relative;
     background:
@@ -57,21 +57,21 @@
   .reg .h {
     position: absolute; inset: 50% -14px auto -14px; height: 3px; margin-top: -1.5px; background: var(--ink);
   }
-  .reg.tr { top: 214px; right: 210px; }
-  .reg.bl { bottom: 250px; left: 210px; transform: scale(0.72); }
+  .reg.tr { top: 186px; right: 210px; }
+  .reg.bl { bottom: 200px; left: 210px; transform: scale(0.72); }
 
   /* ── 主视觉（左对齐，光心略偏上） ────────────── */
   .stage {
-    position: absolute; left: 236px; right: 236px; top: 452px;
+    position: absolute; left: 236px; right: 236px; top: 268px;
   }
   .subtitle {
-    font-size: 58px; font-weight: 600; letter-spacing: 14px;
+    font-size: 52px; font-weight: 600; letter-spacing: 14px;
   }
   .rule {
-    width: 168px; height: 10px; background: var(--ink); margin: 44px 0 40px;
+    width: 168px; height: 9px; background: var(--ink); margin: 30px 0 26px;
   }
   .hero {
-    position: relative; font: 700 162px/1.04 Menlo, "SF Mono", monospace; letter-spacing: -4px;
+    position: relative; font: 700 138px/1.04 Menlo, "SF Mono", monospace; letter-spacing: -4px;
     white-space: nowrap;
   }
   .hero .plate { position: absolute; inset: 0; mix-blend-mode: multiply; }
@@ -79,27 +79,27 @@
   .hero .m { color: var(--magenta); transform: translate(9px, 7px); }
   .hero .k { position: relative; }
   .chapters {
-    margin-top: 66px; display: flex; align-items: center; gap: 30px;
-    font-size: 33px; font-weight: 500; letter-spacing: 4px;
+    margin-top: 40px; display: flex; align-items: center; gap: 30px;
+    font-size: 31px; font-weight: 500; letter-spacing: 4px;
   }
   .chapters i { font-style: normal; width: 14px; height: 14px; background: var(--ink); }
   .chapters i.y { background: var(--yellow); }
 
   /* ── 底部：校色条 + 版本打刻章 ───────────────── */
-  .strip { position: absolute; left: 236px; bottom: 176px; display: flex; align-items: flex-end; gap: 6px; }
-  .strip b { display: block; width: 88px; height: 44px; }
+  .strip { position: absolute; left: 236px; bottom: 112px; display: flex; align-items: flex-end; gap: 6px; }
+  .strip b { display: block; width: 88px; height: 40px; }
   .strip .ramp { display: flex; }
-  .strip .ramp u { width: 22px; height: 44px; text-decoration: none; }
+  .strip .ramp u { width: 22px; height: 40px; text-decoration: none; }
   .strip-label {
-    position: absolute; left: 236px; bottom: 232px;
+    position: absolute; left: 236px; bottom: 164px;
     font: 500 19px/1 Menlo, monospace; letter-spacing: 3px;
   }
   .stamp {
-    position: absolute; right: 236px; bottom: 168px;
-    border: 4px solid var(--ink); padding: 22px 30px 24px;
-    font: 500 26px/1.7 Menlo, monospace; letter-spacing: 2px; text-align: right;
+    position: absolute; right: 236px; bottom: 104px;
+    border: 4px solid var(--ink); padding: 18px 30px 20px;
+    font: 500 24px/1.7 Menlo, monospace; letter-spacing: 2px; text-align: right;
   }
-  .stamp em { font-style: normal; opacity: 0.55; margin-right: 18px; font-size: 21px; }
+  .stamp em { font-style: normal; opacity: 0.55; margin-right: 18px; font-size: 20px; }
 </style>
 </head>
 <body>
@@ -138,7 +138,7 @@
   <div class="stamp">
     <div><em>版本</em><span id="version">v0.0.0</span></div>
     <div><em>日期</em><span id="date">0000-00-00</span></div>
-    <div><em>规格</em><span>1920 × 1440</span></div>
+    <div><em>规格</em><span id="size">1920 × 1080</span></div>
   </div>
 
 <script>
@@ -146,6 +146,7 @@
   if (q.get('subtitle')) document.getElementById('subtitle').textContent = q.get('subtitle');
   if (q.get('version')) document.getElementById('version').textContent = q.get('version');
   if (q.get('date')) document.getElementById('date').textContent = q.get('date');
+  if (q.get('size')) document.getElementById('size').textContent = q.get('size');
   const ruler = document.getElementById('ruler');
   for (let mm = 0; mm <= 640; mm += 80) {
     const s = document.createElement('span');

@@ -7,12 +7,11 @@
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { ffmpegBin, ffprobeBin } from './bin.mjs'
+import { OUT_DIR } from './paths.mjs'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const OUT = join(__dirname, 'out')
+const OUT = OUT_DIR
 const timings = JSON.parse(readFileSync(join(OUT, 'timings.json'), 'utf8'))
 const meta = JSON.parse(readFileSync(join(OUT, 'recording_meta.json'), 'utf8'))
 let failed = false

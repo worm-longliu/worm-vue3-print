@@ -1,0 +1,66 @@
+{
+  "title": "worm-vue3-print 组合与取消组合操作教学",
+  "voice": "zh-CN-YunxiNeural",
+  "video": { "width": 1920, "height": 1080, "fps": 30 },
+  "baseUrl": "http://localhost:9303",
+  "scenes": [
+    {
+      "name": "开场与目标",
+      "voiceover": "大家好，欢迎观看 worm-vue3-print 设计器组合功能教学。组合可以把多个元素当作一个整体来选中和移动，打印时还能保证整组同页。以当前综合示例模板为例，内容区顶部的三个字体文本就非常适合成组。下面完整演示组合与取消组合。",
+      "steps": [
+        { "do": "assert", "selector": ".designer-container" },
+        { "do": "highlight", "selector": ".print-element.type-text >> nth=1", "ms": 1200, "s": 2 },
+        { "do": "highlight", "selector": ".print-element.type-text >> nth=2", "ms": 1200 },
+        { "do": "highlight", "selector": ".print-element.type-text >> nth=3", "ms": 1400 }
+      ]
+    },
+    {
+      "name": "多选元素",
+      "voiceover": "组合需要先多选。按住 Control 或 Command 键，再依次点击三个文本，可以看到三个元素同时高亮，多选就位。此外，从画布空白处按下拖动框选，也能一次性选中多个元素。",
+      "steps": [
+        { "do": "click", "selector": ".print-element.type-text >> nth=1", "s": 1 },
+        { "do": "click", "selector": ".print-element.type-text >> nth=2", "modifiers": ["Mod"], "ms": 500 },
+        { "do": "click", "selector": ".print-element.type-text >> nth=3", "modifiers": ["Mod"], "ms": 500 },
+        { "do": "countAssert", "selector": ".print-element.selected", "count": 3 }
+      ]
+    },
+    {
+      "name": "执行组合",
+      "voiceover": "多选之后，工具栏出现组合按钮，点击它，三个文本就成了一个组。再单击其中任意成员，三个元素会一起被选中，移动等操作都按整组进行。出纸时整组被强制放在同一页，放不下就整组下移，绝不会被分页拆开。",
+      "steps": [
+        { "do": "click", "selector": "button[data-tip^=\"组合\"]", "s": 0, "ms": 600 },
+        { "do": "key", "keys": "Escape", "ms": 300 },
+        { "do": "click", "selector": ".print-element.type-text >> nth=2", "s": 2 },
+        { "do": "countAssert", "selector": ".print-element.selected", "count": 3 }
+      ]
+    },
+    {
+      "name": "取消组合",
+      "voiceover": "取消组合同样简单。切到左侧图层页签，面板底部就有取消组合按钮。点击它，再单击其中一个文本，恢复为只选中自己，说明组合已经解除。",
+      "steps": [
+        { "do": "key", "keys": "Escape", "ms": 200 },
+        { "do": "click", "selector": ".print-element.type-text >> nth=2", "ms": 400 },
+        { "do": "click", "selector": ".left-panel .pd-tab:has-text(\"图层\")", "s": 1 },
+        { "do": "highlight", "selector": ".layer-actions button[title^=\"取消组合\"]", "ms": 1800 },
+        { "do": "click", "selector": ".layer-actions button[title^=\"取消组合\"]", "s": 2, "ms": 500 },
+        { "do": "key", "keys": "Escape", "ms": 200 },
+        { "do": "click", "selector": ".print-element.type-text >> nth=2", "ms": 300 },
+        { "do": "countAssert", "selector": ".print-element.selected", "count": 1 }
+      ]
+    },
+    {
+      "name": "快捷键与结尾",
+      "voiceover": "习惯键盘操作的话，多选后按 Ctrl 加 G 一键组合，再按 Ctrl 加 Shift 加 G 一键取消。组合与取消组合的全部入口就这些。感谢观看，我们下期再见。",
+      "steps": [
+        { "do": "key", "keys": "Escape", "ms": 200 },
+        { "do": "click", "selector": ".print-element.type-text >> nth=1", "s": 0 },
+        { "do": "click", "selector": ".print-element.type-text >> nth=2", "modifiers": ["Mod"], "ms": 400 },
+        { "do": "click", "selector": ".print-element.type-text >> nth=3", "modifiers": ["Mod"], "ms": 400 },
+        { "do": "key", "keys": "Mod+g", "ms": 500 },
+        { "do": "assert", "selector": "button[data-tip^=\"取消组合\"]" },
+        { "do": "key", "keys": "Mod+Shift+g", "s": 1, "ms": 500 },
+        { "do": "highlight", "selector": ".designer-container", "ms": 2400, "s": 2 }
+      ]
+    }
+  ]
+}

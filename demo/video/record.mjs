@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 真实 demo 自动演示录制：1440×1080（4:3）Playwright 实时录制。
+ * 真实 demo 自动演示录制：尺寸取剧本 script.video（16:9 为 1920×1080）Playwright 实时录制。
  * - 按 timings.json 逐场景执行 script.json 里的动作步骤
  * - 注入 overlay.js：字幕条 / 大号鼠标指针 / 目标高亮框，随画面一起被录制
  * - 场景时长 = max(配音时长, 步骤耗时)，实际时长写入 recording_meta.json 供合成补齐音频
@@ -11,11 +11,11 @@ import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync, existsSync 
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
+import { SCRIPT_PATH, OUT_DIR } from './paths.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DEMO_DIR = resolve(__dirname, '..')
-const OUT_DIR = join(__dirname, 'out')
-const script = JSON.parse(readFileSync(join(__dirname, 'script.json'), 'utf8'))
+const script = JSON.parse(readFileSync(SCRIPT_PATH, 'utf8'))
 const timings = JSON.parse(readFileSync(join(OUT_DIR, 'timings.json'), 'utf8'))
 const overlaySrc = readFileSync(join(__dirname, 'overlay.js'), 'utf8')
 
@@ -154,24 +154,69 @@ async function main() {
 
 // ── 步骤执行器 ──────────────────────────────────────────────
 
+const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
+const resolveKeys = (keys) => keys.replace(/\bMod\b/g, MOD)
+
+async function moveAndClick(selector, { modifiers, clickCount = 1 } = {}) {
+  const loc = page.locator(selector).first()
+  await loc.scrollIntoViewIfNeeded()
+  const box = await loc.boundingBox()
+  const x = box.x + box.width / 2
+  const y = box.y + box.height / 2
+  await page.mouse.move(x, y, { steps: 22 })
+  await sleep(160)
+  if (modifiers) for (const k of modifiers) await page.keyboard.down(resolveKeys(k))
+  await page.mouse.down()
+  await sleep(90)
+  await page.mouse.up()
+  if (clickCount > 1) {
+    await sleep(60)
+    await page.mouse.down({ clickCount })
+    await sleep(60)
+    await page.mouse.up({ clickCount })
+  }
+  if (modifiers) for (const k of [...modifiers].reverse()) await page.keyboard.up(resolveKeys(k))
+}
+
 async function runStep(step) {
   switch (step.do) {
     case 'assert':
       await page.waitForSelector(step.selector, { timeout: 15000 })
       await sleep(step.ms ?? 300)
       return
-    case 'click': {
+    case 'countAssert': {
+      // 轮询等待 selector 命中数达标（如 .print-element.selected 多选/组合扩展）
+      const deadline = Date.now() + 10000
+      for (;;) {
+        const n = await page.locator(step.selector).count()
+        if (n === step.count) return
+        if (Date.now() > deadline) throw new Error(`${step.selector} 数量 ${n} ≠ ${step.count}`)
+        await sleep(200)
+      }
+    }
+    case 'click':
+      await moveAndClick(step.selector, { modifiers: step.modifiers })
+      await sleep(step.ms ?? 450)
+      return
+    case 'dblclick':
+      await moveAndClick(step.selector, { clickCount: 2 })
+      await sleep(step.ms ?? 600)
+      return
+    case 'key':
+      await page.keyboard.press(resolveKeys(step.keys))
+      await sleep(step.ms ?? 500)
+      return
+    case 'type': {
       const loc = page.locator(step.selector).first()
       await loc.scrollIntoViewIfNeeded()
-      const box = await loc.boundingBox()
-      const x = box.x + box.width / 2
-      const y = box.y + box.height / 2
-      await page.mouse.move(x, y, { steps: 22 })
-      await sleep(160)
-      await page.mouse.down()
-      await sleep(90)
-      await page.mouse.up()
-      await sleep(step.ms ?? 450)
+      await loc.click()
+      await sleep(200)
+      if (step.clear !== false) {
+        await page.keyboard.press(`${MOD}+a`)
+        await page.keyboard.press('Backspace')
+      }
+      await page.keyboard.type(step.text, { delay: step.delay ?? 70 })
+      await sleep(step.ms ?? 500)
       return
     }
     case 'hover': {

@@ -8,18 +8,16 @@
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { ffmpegBin, ensureBins } from './bin.mjs'
+import { SCRIPT_PATH, OUT_DIR } from './paths.mjs'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const OUT_DIR = join(__dirname, 'out')
 const TMP_DIR = join(OUT_DIR, 'tmp')
 ensureBins()
 
 const timings = JSON.parse(readFileSync(join(OUT_DIR, 'timings.json'), 'utf8'))
 const meta = JSON.parse(readFileSync(join(OUT_DIR, 'recording_meta.json'), 'utf8'))
-const script = JSON.parse(readFileSync(join(__dirname, 'script.json'), 'utf8'))
+const script = JSON.parse(readFileSync(SCRIPT_PATH, 'utf8'))
 
 if (timings.scenes.length !== meta.scenes.length) {
   console.error(`场景数不一致：timings ${timings.scenes.length} vs recording ${meta.scenes.length}`)
@@ -98,5 +96,5 @@ ff([
 
 writeFileSync(join(OUT_DIR, 'subtitles.srt'), srtLines.join('\n'))
 rmSync(TMP_DIR, { recursive: true, force: true })
-console.log(`\n成品：${finalMp4}（总时长 ${cursor.toFixed(1)}s，4:3 ${script.video.width}×${script.video.height}）`)
+console.log(`\n成品：${finalMp4}（总时长 ${cursor.toFixed(1)}s，${script.video.width}×${script.video.height}）`)
 console.log(`字幕：${join(OUT_DIR, 'subtitles.srt')}`)

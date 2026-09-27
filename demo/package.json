@@ -13,7 +13,9 @@
     "video:record": "node video/record.mjs",
     "video:compose": "node video/compose.mjs",
     "video:check": "node video/check-sync.mjs",
-    "video": "npm run video:voice && npm run video:cover && npm run video:record && npm run video:compose"
+    "video": "npm run video:voice && npm run video:cover && npm run video:record && npm run video:compose",
+    "video:expression": "VIDEO_SCRIPT=script-expression.json npm run video",
+    "video:group": "VIDEO_SCRIPT=script-group.json npm run video"
   },
   "dependencies": {
     "@worm-vue3-print/canvas": "file:../packages/print-canvas",

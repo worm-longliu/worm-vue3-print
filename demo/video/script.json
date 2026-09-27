@@ -1,7 +1,7 @@
 {
   "title": "worm-vue3-print 打印模板设计器全流程教学",
   "voice": "zh-CN-YunxiNeural",
-  "video": { "width": 1920, "height": 1440, "fps": 30 },
+  "video": { "width": 1920, "height": 1080, "fps": 30 },
   "baseUrl": "http://localhost:9303",
   "scenes": [
     {

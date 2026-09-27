@@ -8,14 +8,12 @@
  */
 import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join, resolve } from 'node:path'
 import { ffmpegBin, ffprobeBin, ensureBins } from './bin.mjs'
+import { SCRIPT_PATH, OUT_DIR } from './paths.mjs'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const OUT_DIR = join(__dirname, 'out')
 const VOICE_DIR = join(OUT_DIR, 'voice')
-const script = JSON.parse(readFileSync(join(__dirname, 'script.json'), 'utf8'))
+const script = JSON.parse(readFileSync(SCRIPT_PATH, 'utf8'))
 const GAP = 0.3
 
 ensureBins()

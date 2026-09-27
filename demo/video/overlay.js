@@ -13,10 +13,10 @@
   function boot() {
     const style = mount(`<style>
       #__demo_subtitle {
-        position: fixed; left: 50%; bottom: 56px; transform: translateX(-50%);
-        max-width: 82%; padding: 13px 35px; border-radius: 16px;
+        position: fixed; left: 50%; bottom: 42px; transform: translateX(-50%);
+        max-width: 82%; padding: 11px 30px; border-radius: 14px;
         background: rgba(15, 18, 26, 0.78); color: #fff;
-        font: 600 36px/1.5 -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        font: 600 30px/1.5 -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
         text-align: center; letter-spacing: 0.5px;
         text-shadow: 0 1px 2px rgba(0,0,0,.6);
         opacity: 0; transition: opacity .18s ease; pointer-events: none; z-index: ${Z + 2};
