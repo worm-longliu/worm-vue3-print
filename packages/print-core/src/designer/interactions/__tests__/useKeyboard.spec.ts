@@ -140,7 +140,7 @@ describe('useKeyboard', () => {
 })
 
 describe('useKeyboard 修饰符与 Ctrl+D/Ctrl+1', () => {
-  it('Shift+方向键大步 10pt', () => {
+  it('Shift+方向键大步 10mm', () => {
     const calls: [number, number][] = []
     const onMove = (dx: number, dy: number) => calls.push([dx, dy])
     const { setup, cleanup } = useKeyboard({ onMove })
@@ -151,7 +151,7 @@ describe('useKeyboard 修饰符与 Ctrl+D/Ctrl+1', () => {
     cleanup()
   })
 
-  it('Ctrl+方向键小步 0.5pt', () => {
+  it('Ctrl+方向键小步 0.5mm', () => {
     const calls: [number, number][] = []
     const onMove = (dx: number, dy: number) => calls.push([dx, dy])
     const { setup, cleanup } = useKeyboard({ onMove })
