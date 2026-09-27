@@ -246,7 +246,7 @@ export interface ElementFieldBinding {
 /** 元素分边边框的边位 */
 export type ElementBorderSide = 'top' | 'right' | 'bottom' | 'left'
 
-/** 元素单边边框规格（px 口径，与整圈 borderWidth 一致；区别于单元格的 pt 口径） */
+/** 元素单边边框规格（pt 口径，与整圈 borderWidth 及单元格边框统一） */
 export interface ElementBorderEdge {
   width: number
   style?: string
@@ -284,7 +284,7 @@ export interface ElementOptions {
   borderWidth?: number
   borderStyle?: string
   borderColor?: string
-  /** 元素分边边框（px 口径）：在整圈三字段之上逐边覆盖；未设整圈时仅这些边生效 */
+  /** 元素分边边框（pt 口径）：在整圈三字段之上逐边覆盖；未设整圈时仅这些边生效 */
   borders?: Partial<Record<ElementBorderSide, ElementBorderEdge>>
   contentPaddingLeft?: number
   contentPaddingTop?: number

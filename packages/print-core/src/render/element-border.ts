@@ -3,12 +3,12 @@
 // 设计器画布与出纸共用同一函数，保证所见即所得。
 // rect/oval/hline/vline 用 border 画自身本体、table 走单元格边框，均排除在外，否则双重边框。
 // 关键：宽度未设 / ≤0 / 非法值 → 无边框（整圈与分边同规则），绝不兜底默认边框（避免存量模板凭空长边框）。
-// 口径：px（区别于单元格 TableCellBorder 的 pt）。
+// 口径：pt（与单元格 TableCellBorder、rect/oval 自身 borderWidth 统一）。
 
 import type { ElementBorderSide, ElementOptions } from '../designer/types.js'
 
 export interface ElementBorderCss {
-  /** CSS 长度，px 口径（与 rect/oval 现有一致） */
+  /** CSS 长度，pt 口径（与 rect/oval、单元格边框一致） */
   borderWidth: string
   borderStyle: string
   borderColor: string
@@ -41,7 +41,7 @@ function parseBorder(
 ): ElementBorderCss | null {
   if (typeof width !== 'number' || !Number.isFinite(width) || width <= 0) return null
   return {
-    borderWidth: `${width}px`,
+    borderWidth: `${width}pt`,
     borderStyle: typeof style === 'string' && VALID_STYLES.has(style) ? style : 'solid',
     borderColor: color || '#000',
   }

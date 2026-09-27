@@ -185,9 +185,24 @@ describe('页眉/页脚区域元素渲染', () => {
       },
     })
     const html = generateHtml(t, singlePage)
-    expect(html).toContain('border-top:1px solid #000')
-    expect(html).toContain('border:2px solid #f00')
+    expect(html).toContain('border-top:0.75pt solid #333')
+    expect(html).toContain('border:2pt solid #f00')
     expect(html).toContain('border-radius:50%')
+  })
+
+  it('横竖线出纸尊重 borderWidth/borderStyle/borderColor（pt 口径，与设计器一致）', () => {
+    const t = makeAreaTemplate({
+      header: {
+        height: 15,
+        elements: [
+          makeAreaEl('hline', { borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#f00' }),
+          makeAreaEl('vline', { borderWidth: 2, borderColor: '#00f' }),
+        ] as any,
+      },
+    })
+    const html = generateHtml(t, singlePage)
+    expect(html).toContain('border-top:1.5pt dashed #f00')
+    expect(html).toContain('border-left:2pt solid #00f')
   })
 
   it('页脚条码经 CodeRenderer 渲染并内联为 SVG', () => {
@@ -1031,14 +1046,14 @@ describe('元素级边框出纸渲染', () => {
     } as TemplateData
   }
 
-  it('文本元素设 borderWidth 后出纸含 border:2px dashed #f00 且只出现一次', () => {
+  it('文本元素设 borderWidth 后出纸含 border:2pt dashed #f00 且只出现一次', () => {
     const t = elTemplate({
       id: 'txt-b', type: 'text',
       options: { left: 0, top: 0, width: 50, height: 8, testData: 'X', borderWidth: 2, borderStyle: 'dashed', borderColor: '#f00' },
     })
     const html = generateHtml(t, pageWith([{ elementId: 'txt-b', type: 'element', renderTop: 0 }]))
-    expect(html).toContain('border:2px dashed #f00')
-    expect((html.match(/border:2px dashed #f00/g) ?? []).length).toBe(1)
+    expect(html).toContain('border:2pt dashed #f00')
+    expect((html.match(/border:2pt dashed #f00/g) ?? []).length).toBe(1)
   })
 
   it('rect 元素不因元素级边框逻辑出现重复 border 声明', () => {
@@ -1047,7 +1062,7 @@ describe('元素级边框出纸渲染', () => {
       options: { left: 0, top: 0, width: 50, height: 8, borderWidth: 2, borderColor: '#f00' },
     })
     const html = generateHtml(t, pageWith([{ elementId: 'rect-b', type: 'element', renderTop: 0 }]))
-    expect((html.match(/border:2px solid #f00/g) ?? []).length).toBe(1)
+    expect((html.match(/border:2pt solid #f00/g) ?? []).length).toBe(1)
   })
 
   it('文本元素整圈+分边：先整圈声明、后逐边覆盖，各只一条', () => {
@@ -1060,11 +1075,11 @@ describe('元素级边框出纸渲染', () => {
       },
     })
     const html = generateHtml(t, pageWith([{ elementId: 'txt-e', type: 'element', renderTop: 0 }]))
-    expect(html).toContain('border:1px solid #000')
-    expect(html).toContain('border-top:3px dashed #f00')
-    expect((html.match(/border-top:3px dashed #f00/g) ?? []).length).toBe(1)
+    expect(html).toContain('border:1pt solid #000')
+    expect(html).toContain('border-top:3pt dashed #f00')
+    expect((html.match(/border-top:3pt dashed #f00/g) ?? []).length).toBe(1)
     // 整圈声明必须出现在分边覆盖之前（CSS 后写覆盖前写）
-    expect(html.indexOf('border:1px solid #000')).toBeLessThan(html.indexOf('border-top:3px dashed #f00'))
+    expect(html.indexOf('border:1pt solid #000')).toBeLessThan(html.indexOf('border-top:3pt dashed #f00'))
   })
 
   it('文本元素仅分边（无整圈）：只输出该边，不输出 border 简写', () => {
@@ -1076,7 +1091,7 @@ describe('元素级边框出纸渲染', () => {
       },
     })
     const html = generateHtml(t, pageWith([{ elementId: 'txt-o', type: 'element', renderTop: 0 }]))
-    expect(html).toContain('border-bottom:2px solid #000')
+    expect(html).toContain('border-bottom:2pt solid #000')
     const el = html.match(/<div class="print-element" style="([^"]*)"/g) ?? []
     expect(el.find(s => s.includes('border-bottom'))).not.toMatch(/;border:/)
   })
@@ -1090,6 +1105,6 @@ describe('元素级边框出纸渲染', () => {
       },
     })
     const html = generateHtml(t, pageWith([{ elementId: 'rect-e', type: 'element', renderTop: 0 }]))
-    expect(html).not.toContain('border-top:5px dotted #00f')
+    expect(html).not.toContain('border-top:5pt dotted #00f')
   })
 })
