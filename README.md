@@ -13,6 +13,10 @@ GitHub Pages：**https://worm-longliu.github.io/worm-vue3-print/**
 
 > 静态部署，仅支持设计器编辑、浏览器预览与浏览器端打印；服务端 PDF 与桌面客户端静默打印不可用。
 
+## 🖼 设计器预览
+
+![可视化打印模板设计器截图](docs/images/designer.png)
+
 ## 📖 文档
 
 **[中文文档首页 · 文档总览](docs/中文/文档总览.md)** ｜ [快速开始](docs/中文/指南/快速开始.md) ｜ [API 文档](docs/中文/接口/API文档.md) ｜ [示例](docs/中文/示例/示例文档.md)
@@ -307,8 +311,16 @@ docker build -f services/print-render/Dockerfile -t worm-vue3-print-render .
 - Gitee：https://gitee.com/liulong_oschina/worm-vue3-print
 - GitHub：https://github.com/worm-longliu/worm-vue3-print
 
-## 抖音
+## 抖音 & 赞赏
+
+本项目基于 MIT 协议免费开源，赞赏纯属自愿、与授权和服务无关。
+
+如果这套工具帮到了你，欢迎扫码请作者喝杯咖啡；赞赏后请在 [Issue](https://github.com/worm-longliu/worm-vue3-print/issues) 留言昵称，我会登记进 [赞赏名单](SPONSORS.md)（仅公开昵称与日期，金额私有不公示）。
 
 <p align="center">
   <img src="./douyin.png" width="180" alt="抖音码" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="./docs/images/wpay.png" width="180" alt="微信赞赏码" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="./docs/images/alipay.jpg" width="180" alt="支付宝赞赏码" />
 </p>
