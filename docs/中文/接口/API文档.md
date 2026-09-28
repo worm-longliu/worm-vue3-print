@@ -289,7 +289,8 @@ import type {
   TemplateData, RuntimeElement, PrintBusinessField,
   ScreenshotRequest, RequestScreenshotFn, UploadImageFn, UploadDesignBackgroundFn,
 } from '@worm-vue3-print/canvas'
-import '@worm-vue3-print/canvas/native-controls.css'
+// 发布包对外只有一个样式入口（源码别名模式才用 native-controls.css）
+import '@worm-vue3-print/canvas/style.css'
 ```
 
 另导出：`createDefaultTemplate()`、`toRuntimePool()`、`getDemoData()`、`DEFAULT_DEMO_DATA`、

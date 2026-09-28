@@ -53,7 +53,7 @@ npm workspaces monorepo，依赖方向单向：**`core`（纯逻辑）→ `canva
 
 ### canvas（`packages/print-canvas`，Vue 3.5+ 原生控件）
 
-- `components/`（PrintDesigner、属性面板、各元素控件）+ `composables/`（拖拽/吸附/参考线/历史/选择等，均有对应 *.spec.ts）；样式在 `styles/`，以 `native-controls.css` 整体导出，**禁止引入 Element Plus 等 UI 库**，DOMPurify 消毒 HTML 元素。
+- `components/`（PrintDesigner、属性面板、各元素控件）+ `composables/`（拖拽/吸附/参考线/历史/选择等，均有对应 *.spec.ts）；样式源码在 `styles/native-controls.css`，发布包只对外暴露一个样式入口 `@worm-vue3-print/canvas/style.css`（→ `dist/canvas.css`），`native-controls.css` 非公开子路径、仅源码别名模式可用，**禁止引入 Element Plus 等 UI 库**，DOMPurify 消毒 HTML 元素。
 - 宿主通过 `ref.getTemplateJson()` 取画布 JSON；模板加载/重置是宿主职责（替换 `initial-template` 引用即可）。
 
 ### 三端消费方（只许做平台适配，不许重实现 core 逻辑）

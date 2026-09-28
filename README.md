@@ -21,6 +21,8 @@ GitHub Pages：**https://worm-longliu.github.io/worm-vue3-print/**
 
 **[中文文档首页 · 文档总览](docs/中文/文档总览.md)** ｜ [快速开始](docs/中文/指南/快速开始.md) ｜ [API 文档](docs/中文/接口/API文档.md) ｜ [示例](docs/中文/示例/示例文档.md)
 
+**English**: [Overview](docs/en/Overview.md) ｜ [Changelog](docs/en/CHANGELOG.en.md)（由 AI 依据中文文档生成，以中文版为准）
+
 使用指南：
 
 - [使用指南（核心概念与输出方式选型）](docs/中文/指南/使用指南.md)
@@ -47,9 +49,10 @@ worm-vue3-print/
 ├── demo/                      # 演示项目：设计器 + 预览 + 静默打印集成的完整示例
 ├── docs/                      # 项目文档
 │   ├── 中文/                  #   中文文档（指南 / 接口 / 示例 / 文档总览 / CHANGELOG）
-│   ├── en/                    #   英文文档（CHANGELOG 等）
+│   ├── en/                    #   英文文档（首页 Overview / CHANGELOG，AI 生成并声明）
 │   └── superpowers/           #   设计文档（specs）与实施计划（plans）
 ├── skills/                    # opencode 集成技能（worm-vue3-print-integration，含对接指南）
+├── scripts/                   # 仓库级脚本（打印架构守卫、产物版权头注入）
 ├── .github/
 │   ├── workflows/             # CI / 自动发布工作流
 │   └── release/               # 发布配置
@@ -71,18 +74,22 @@ worm-vue3-print/
 | `clients/print-client` | 静默打印桌面客户端（Electron，private）：主进程 WS 服务 / 打印引擎 / 打印机服务 / 配置与任务记录（`src/main`）、配置窗口 Vue 3 界面（`src/renderer`）、隐藏渲染 worker（`src/worker`）、沙箱 IPC 桥（`src/preload`）、IPC 通道契约（`src/shared`）；含 electron-builder 打包配置与真机冒烟脚本（`scripts/`） |
 | `services/print-render` | 服务端渲染微服务（private）：基于 Playwright 的 PDF / 截图渲染（`driver-playwright` / `pdf-render` / `browser-pool` / `server`），workspace 软链依赖 core，与浏览器预览、桌面客户端共用同一份打印管线 |
 | `demo` | 演示项目：设计器接入（`App.vue`）、静默打印集成、渲染客户端封装（`render-client.ts`）、业务字段（`business.ts`）、内置模板 JSON（`template-purchase-receipt.json`） |
-| `docs` | 文档：`中文/`（指南、接口、示例、文档总览、CHANGELOG）、`en/`（英文），`superpowers/` 为设计文档（specs）与实施计划（plans） |
+| `docs` | 文档：`中文/`（指南、接口、示例、文档总览、CHANGELOG，为权威版本）、`en/`（英文首页 Overview 与 CHANGELOG，由 AI 生成并在文内声明），`superpowers/` 为设计文档（specs）与实施计划（plans） |
 | `skills` | opencode 集成技能 `worm-vue3-print-integration`：往宿主项目接入 core / canvas / 静默打印的规范与指南（`SKILL.md` + `references/`） |
+| `scripts` | 仓库级 Node 脚本：`check-print-architecture.mjs`（三端重复实现守卫，`npm run lint:print-architecture`）、`inject-license-banner.mjs`（发布包类型声明补版权头） |
 | `.github/workflows` | CI（构建 / 测试）与自动发布工作流 |
 | `package.json` | 根清单：workspaces 聚合、构建 / 测试 / 打包根命令（`npm run pack:client` 等） |
 
 ## 包结构
 
-| 包 | 说明 |
-|----|------|
-| `@worm-vue3-print/core` | 模板表达式引擎与同构渲染管线（数据绑定 / HTML 生成 / 分页，含连续纸探针推导），纯 TypeScript，无 Vue、无宿主依赖，浏览器与 Node 均可运行；浏览器端静默打印 SDK 经子路径 `@worm-vue3-print/core/client` 提供 |
-| `@worm-vue3-print/canvas` | Vue 3 可视化设计器画布（原生控件，无 Element Plus；含 `PrintDesigner`、`PrintHtmlPreview` 组件） |
-| `@worm-vue3-print/print-client` | 跨平台静默打印桌面客户端（Electron，回环 WebSocket + core 同构渲染 + `webContents.print` 静默出纸），位于 `clients/print-client` |
+| 包 | 目录 | 发布 | 说明 |
+|----|------|------|------|
+| `@worm-vue3-print/core` | `packages/print-core` | npm | 模板表达式引擎与同构渲染管线（数据绑定 / HTML 生成 / 分页，含连续纸探针推导），纯 TypeScript，无 Vue、无宿主依赖，浏览器与 Node 均可运行；浏览器端静默打印 SDK 经子路径 `@worm-vue3-print/core/client` 提供 |
+| `@worm-vue3-print/canvas` | `packages/print-canvas` | npm | Vue 3 可视化设计器画布（原生控件，无 Element Plus；含 `PrintDesigner`、`PrintHtmlPreview` 组件） |
+| `@worm-vue3-print/render` | `services/print-render` | 内部 | 基于 Playwright（Headless Chromium）的服务端 PDF / 截图渲染微服务，Docker 部署；与浏览器预览、桌面客户端共用同一份渲染管线，保证三端出纸一致 |
+| `@worm-vue3-print/print-client` | `clients/print-client` | 内部 | 跨平台静默打印桌面客户端（Electron，回环 WebSocket + core 同构渲染 + `webContents.print` 静默出纸） |
+
+> 发布到 npm 的只有 `core` 与 `canvas` 两个包（`npm run publish:npm`）；`render` 与 `print-client` 为私有工作区包，分别以 Docker 镜像和安装包形式分发。
 
 ## 功能特性
 
@@ -166,8 +173,8 @@ const html = generateHtml(pages)                     // 生成 HTML
 ```ts
 import { PrintDesigner, PrintHtmlPreview, createDefaultTemplate } from '@worm-vue3-print/canvas'
 import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
-// 设计器内部控件基于原生样式，需全局引入一次
-import '@worm-vue3-print/canvas/native-controls.css'
+// 设计器控件样式（发布包唯一对外样式入口），需全局引入一次
+import '@worm-vue3-print/canvas/style.css'
 ```
 
 ```vue
@@ -305,6 +312,39 @@ docker build -f services/print-render/Dockerfile -t worm-vue3-print-render .
 - License：MIT（见 `LICENSE`）。
 - 清晰的分层边界：`core`（纯逻辑）→ `canvas`（设计器 UI）。
 - 发布与协作流程见 `CONTRIBUTING.md`。
+
+## 依赖与开源协议（商用合规说明）
+
+本项目采用 **MIT 协议**，商用、二次分发、闭源集成、修改后对外提供服务、二次销售均**无需授权申请、无需付费、无需开源你的业务代码**，唯一义务是保留本项目版权声明（`Copyright (c) 2026 Worm Base AI`）。
+
+### 运行时依赖清单与协议
+
+以下是会被打进发布产物或随服务分发的**运行时依赖**，逐一经审计：
+
+| 依赖 | 协议 | 所在模块 | 用途 | 商用影响 |
+| --- | --- | --- | --- | --- |
+| `jsbarcode` | MIT | core / canvas | 一维条码渲染 | 无限制 |
+| `qrcode` | MIT | core / canvas | 二维码渲染 | 无限制 |
+| `dompurify` | MPL-2.0 **或** Apache-2.0（双许可，可选） | canvas | HTML 富文本 XSS 净化 | 无限制 |
+| `sortablejs` | MIT | canvas | 图层/列表拖拽排序 | 无限制 |
+| `lucide-vue-next` | ISC | canvas | 工具栏图标 | 无限制 |
+| `express` | MIT | render 服务 | HTTP 接口层 | 无限制 |
+| `playwright` | Apache-2.0 | render 服务 | Headless Chromium 输出 PDF/截图 | 无限制 |
+| `ws` | MIT | 桌面客户端 | 本地 WebSocket 静默打印通道 | 无限制 |
+
+### 审计结论
+
+- **不含任何 GPL / AGPL / LGPL / SSPL / CPAL 等强 copyleft 协议**，不存在「因依赖传染而被迫开源你自有代码」的风险。
+- 唯一的弱 copyleft 来源是 `dompurify` 的 MPL-2.0 分支。MPL 只约束该库自身的源文件，且它同时授予 Apache-2.0 选项——**按 Apache-2.0 使用即可，本项目按 Apache-2.0 口径处理**，无任何附加义务。
+- 开发期依赖（Vite、TypeScript、Vitest、vue-tsc 等，含 Electron 构建链）为 MIT / Apache-2.0 / BSD-3-Clause，**不进入发布产物、不随你的应用分发**，不构成下游义务。
+- `playwright` 下载的 Chromium 二进制为 BSD-style 许可，可自由用于商业用途（含售卖生成的 PDF）；如需随 Docker 镜像分发，保留其声明文件即可。
+- 依赖树共 545 个包（含 dev）已逐包核对 `license` 字段，无缺失声明、无 `NONE`/`SEE LICENSE IN` 之类不透明条目。
+
+### 你需要做什么
+
+**什么都不用做。** 若你把本库作为依赖集成进产品，且产品需要列出第三方许可清单（OSS Notice），可直接引用上表；本项目自身的 `LICENSE` 文件建议随产物一并保留。
+
+> 本说明基于对项目依赖的静态审计，随版本更新维护。协议原文以各依赖官方仓库与 `LICENSE` 文件为准；本文不构成法律意见，重大商业决策请咨询法务。
 
 ## 仓库地址
 

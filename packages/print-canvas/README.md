@@ -17,8 +17,8 @@ npm install @worm-vue3-print/canvas @worm-vue3-print/core
 ```ts
 import { PrintDesigner, PrintHtmlPreview, createDefaultTemplate } from '@worm-vue3-print/canvas'
 import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
-// 设计器内部控件基于原生样式，需全局引入一次
-import '@worm-vue3-print/canvas/native-controls.css'
+// 设计器控件样式（发布包唯一对外样式入口），需全局引入一次
+import '@worm-vue3-print/canvas/style.css'
 ```
 
 ```vue
