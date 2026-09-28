@@ -17,6 +17,14 @@
   "files": [
     "dist"
   ],
+  "author": {
+    "name": "Worm Base AI"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitee.com/liulong_oschina/worm-vue3-print.git"
+  },
+  "readme": "README.md",
   "license": "MIT",
   "keywords": [
     "vue3",
@@ -28,7 +36,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "vite build && vue-tsc -p tsconfig.build.json"
+    "build": "vite build && vue-tsc -p tsconfig.build.json && node ../../scripts/inject-license-banner.mjs dist"
   },
   "peerDependencies": {
     "vue": "^3.5.0"

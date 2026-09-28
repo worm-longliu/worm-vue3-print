@@ -38,6 +38,14 @@
     "dist"
   ],
   "license": "MIT",
+  "author": {
+    "name": "Worm Base AI"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitee.com/liulong_oschina/worm-vue3-print.git"
+  },
+  "readme": "README.md",
   "keywords": [
     "print",
     "template",
@@ -47,7 +55,7 @@
     "designer"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && node ../../scripts/inject-license-banner.mjs dist",
     "test": "vitest run",
     "test:watch": "vitest"
   },

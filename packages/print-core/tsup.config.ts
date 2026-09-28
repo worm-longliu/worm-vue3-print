@@ -1,10 +1,22 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'tsup'
+
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'))
+
+// 产物版权头：npm 分发链路（含 minify 的 iife）唯一能留存署名的位置
+const banner = `/*!
+ * ${pkg.name} v${pkg.version}
+ * Copyright (c) 2026 Worm Base AI
+ * SPDX-FileCopyrightText: 2026 Worm Base AI
+ * SPDX-License-Identifier: MIT
+ */`
 
 export default defineConfig([
   {
     entry: ['src/index.ts', 'src/designer/index.ts', 'src/browser/index.ts', 'src/node/index.ts', 'src/client/index.ts'],
     format: ['esm', 'cjs'],
     dts: true,
+    banner: { js: banner },
     clean: true,
     shims: true,
   },
@@ -18,5 +30,6 @@ export default defineConfig([
     dts: false,
     clean: false,
     minify: true,
+    banner: { js: banner },
   },
 ])
