@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>portrait card</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; }
+  body {
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background:
+      radial-gradient(1200px 800px at 85% -5%, rgba(56, 189, 248, 0.16), transparent 60%),
+      radial-gradient(1000px 700px at 0% 105%, rgba(52, 211, 153, 0.14), transparent 60%),
+      #0b1120;
+    color: #e2e8f0;
+    display: flex; flex-direction: column;
+    padding: 72px 72px 520px;
+  }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; font-size: 34px; color: #7dd3fc; letter-spacing: 2px; }
+  .topbar .l { display: flex; align-items: center; gap: 18px; }
+  .topbar .dot { width: 16px; height: 16px; border-radius: 50%; background: #34d399; box-shadow: 0 0 24px #34d399; }
+  .topbar .idx { font-size: 30px; color: #64748b; letter-spacing: 4px; }
+  .stage { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 56px; }
+  .kicker { font-size: 44px; color: #94a3b8; font-weight: 600; }
+  .huge { font-size: 150px; font-weight: 800; line-height: 1.12; letter-spacing: 2px; }
+  .huge .hl { color: #38bdf8; }
+  .huge .ok { color: #34d399; }
+  .sub { font-size: 52px; line-height: 1.5; color: #cbd5e1; }
+  .sub b { color: #f8fafc; }
+  .chiprow { display: flex; flex-wrap: wrap; gap: 24px; }
+  .chip { font-size: 40px; font-weight: 700; padding: 18px 34px; border-radius: 999px; background: rgba(52, 211, 153, 0.12); border: 2px solid rgba(52, 211, 153, 0.5); color: #6ee7b7; }
+  .chip.no { background: rgba(248, 113, 113, 0.1); border-color: rgba(248, 113, 113, 0.45); color: #fca5a5; }
+  .chip.blue { background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.5); color: #7dd3fc; }
+  .panel { background: rgba(148, 163, 184, 0.08); border: 2px solid rgba(148, 163, 184, 0.22); border-radius: 28px; padding: 40px 44px; }
+  .panel .pt { font-size: 36px; color: #94a3b8; font-weight: 700; margin-bottom: 20px; letter-spacing: 2px; }
+  .banned { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 30px; }
+  .banned .b { font-family: "SF Mono", Menlo, monospace; font-size: 46px; font-weight: 700; color: #f87171; text-decoration: line-through 4px rgba(248,113,113,.7); text-decoration-thickness: 4px; padding: 10px 0; }
+  .dep { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; border-bottom: 1.5px dashed rgba(148,163,184,.25); font-size: 40px; }
+  .dep:last-child { border-bottom: none; }
+  .dep .n { font-family: "SF Mono", Menlo, monospace; color: #e2e8f0; font-weight: 600; }
+  .dep .l { color: #6ee7b7; font-weight: 700; font-size: 36px; text-align: right; }
+  .dep .l small { display: block; color: #64748b; font-size: 28px; font-weight: 500; }
+  .big0 { display: flex; align-items: baseline; gap: 26px; }
+  .big0 .zero { font-size: 220px; font-weight: 800; color: #34d399; line-height: 1; }
+  .big0 .lbl { font-size: 56px; font-weight: 700; color: #e2e8f0; }
+  .formula { display: flex; flex-direction: column; gap: 26px; align-items: center; }
+  .formula .row { display: flex; align-items: center; gap: 22px; font-size: 44px; font-weight: 700; }
+  .arrow { color: #38bdf8; font-size: 50px; }
+  .note { font-size: 38px; color: #94a3b8; line-height: 1.5; }
+  .oblig { border: 3px solid rgba(251, 191, 36, 0.55); background: rgba(251, 191, 36, 0.08); border-radius: 28px; padding: 44px; }
+  .oblig .t { font-size: 44px; color: #fbbf24; font-weight: 800; margin-bottom: 18px; }
+  .oblig .c { font-family: "SF Mono", Menlo, monospace; font-size: 40px; color: #fde68a; word-break: break-all; }
+  .footer { display: none; }
+  .qrbox { display: flex; align-items: center; gap: 36px; }
+  .qrbox img { width: 240px; height: 240px; border-radius: 20px; border: 3px solid rgba(56,189,248,.4); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <span class="l"><span class="dot"></span><span>worm-vue3-print · 开源合规审计</span></span>
+  <span class="idx" id="idx"></span>
+</div>
+<div class="stage" id="stage"></div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const body = q.get('body') || 'intro';
+  const idx = q.get('idx') || '';
+  document.getElementById('idx').textContent = idx;
+  const S = {
+    intro: `
+      <div class="kicker">能不能放心商用？</div>
+      <div class="huge">Vue3 打印<br/><span class="hl">模板设计器</span></div>
+      <div class="sub">依赖与开源协议 <b>全量审计</b><br/>30 秒给你一个确定答案</div>`,
+    mit: `
+      <div class="kicker">第 1 层 · 项目自身协议</div>
+      <div class="huge"><span class="hl">MIT</span> 协议</div>
+      <div class="chiprow">
+        <span class="chip">✓ 商用</span><span class="chip">✓ 二次分发</span><span class="chip">✓ 闭源集成</span>
+        <span class="chip">✓ 改后对外服务</span><span class="chip">✓ 二次销售</span>
+      </div>
+      <div class="sub"><b>免授权 · 免付费</b><br/>无需开源你的业务代码</div>`,
+    audit: `
+      <div class="kicker">第 2 层 · 全树逐包审计</div>
+      <div class="big0"><span class="zero">0</span><span class="lbl">强传染协议命中</span></div>
+      <div class="banned panel">
+        <div class="b">GPL</div><div class="b">AGPL</div><div class="b">LGPL</div><div class="b">SSPL</div>
+      </div>
+      <div class="sub">依赖树 <b>545 个包</b>（含 dev）<br/>逐包核对 license 字段</div>`,
+    weak: `
+      <div class="kicker">第 3 层 · 弱 copyleft 处理</div>
+      <div class="huge" style="font-size:110px">仅 1 处<br/><span class="hl">dompurify</span></div>
+      <div class="panel formula">
+        <div class="row"><span class="chip no">MPL-2.0</span><span class="arrow">或</span><span class="chip">Apache-2.0</span></div>
+        <div class="row"><span class="arrow">↓ 双许可可选</span></div>
+        <div class="row"><span class="chip">✓ 按 Apache-2.0 使用</span></div>
+      </div>
+      <div class="note">MPL 只约束该库自身源文件；本项目按 Apache-2.0 口径处理，无附加义务</div>`,
+    runtime: `
+      <div class="kicker">第 4 层 · 运行时依赖清单</div>
+      <div class="panel" style="padding:20px 44px">
+        <div class="dep"><span class="n">jsbarcode</span><span class="l">MIT</span></div>
+        <div class="dep"><span class="n">qrcode</span><span class="l">MIT</span></div>
+        <div class="dep"><span class="n">dompurify</span><span class="l">Apache-2.0<small>双许可可选</small></span></div>
+        <div class="dep"><span class="n">sortablejs</span><span class="l">MIT</span></div>
+        <div class="dep"><span class="n">lucide-vue-next</span><span class="l">ISC</span></div>
+        <div class="dep"><span class="n">express / ws</span><span class="l">MIT</span></div>
+        <div class="dep"><span class="n">playwright</span><span class="l">Apache-2.0<small>Chromium 二进制 BSD-style</small></span></div>
+      </div>
+      <div class="note">Vite / TypeScript / Vitest 等仅开发期使用，不进发布产物</div>`,
+    duty: `
+      <div class="kicker">第 5 层 · 你唯一要做的</div>
+      <div class="huge" style="font-size:120px"><span class="ok">保留</span>版权声明</div>
+      <div class="oblig">
+        <div class="t">MIT 唯一义务</div>
+        <div class="c">Copyright (c) 2026<br/>Worm Base AI</div>
+      </div>
+      <div class="sub">OSS Notice 直接引用 README 审计表；<b>其余什么都不用做</b></div>
+      <div class="qrbox">
+        <img src="../../../douyin.png" alt="douyin" />
+        <div class="note">关注抖音 · 仓库见<br/>Gitee / GitHub<br/><b style="color:#e2e8f0">MIT · 放心商用</b></div>
+      </div>`,
+  };
+  document.getElementById('stage').innerHTML = S[body] || S.intro;
+</script>
+</body>
+</html>

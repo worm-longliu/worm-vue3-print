@@ -16,7 +16,13 @@
     "video": "npm run video:voice && npm run video:cover && npm run video:record && npm run video:compose",
     "video:expression": "VIDEO_SCRIPT=script-expression.json npm run video",
     "video:group": "VIDEO_SCRIPT=script-group.json npm run video",
-    "video:toolbar": "VIDEO_SCRIPT=script-toolbar.json npm run video"
+    "video:toolbar": "VIDEO_SCRIPT=script-toolbar.json npm run video",
+    "video:portrait:voice": "node video/portrait/voice.mjs",
+    "video:portrait:cards": "node video/portrait/cards.mjs",
+    "video:portrait:compose": "node video/portrait/compose.mjs",
+    "video:portrait:check": "node video/portrait/check-layout.mjs",
+    "video:portrait:subs": "node video/portrait/check-subs.mjs",
+    "video:portrait": "npm run video:portrait:voice && npm run video:portrait:cards && npm run video:portrait:check && npm run video:portrait:compose && npm run video:portrait:subs"
   },
   "dependencies": {
     "@worm-vue3-print/canvas": "file:../packages/print-canvas",

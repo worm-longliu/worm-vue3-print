@@ -1,0 +1,38 @@
+{
+  "title": "worm-vue3-print 依赖与开源协议（商用合规说明）",
+  "voice": "zh-CN-YunxiNeural",
+  "rate": "+12%",
+  "video": { "width": 1080, "height": 1920, "fps": 30 },
+  "scenes": [
+    {
+      "name": "intro",
+      "body": "intro",
+      "voiceover": "这款开源 Vue3 打印设计器，能不能放心商用？"
+    },
+    {
+      "name": "mit",
+      "body": "mit",
+      "voiceover": "MIT 协议：商用、闭源集成、二次销售，免授权、免付费，不用开源你的业务代码。"
+    },
+    {
+      "name": "audit",
+      "body": "audit",
+      "voiceover": "五百四十五个依赖逐包审计，GPL、AGPL、LGPL、SSPL 零命中。"
+    },
+    {
+      "name": "weak",
+      "body": "weak",
+      "voiceover": "唯一弱传染来自 dompurify，双许可可选，按 Apache-2.0 用，无附加义务。"
+    },
+    {
+      "name": "runtime",
+      "body": "runtime",
+      "voiceover": "运行时依赖全是 MIT、Apache-2.0、ISC；Vite 这些开发依赖不进产物。"
+    },
+    {
+      "name": "duty",
+      "body": "duty",
+      "voiceover": "唯一义务：保留版权声明。许可清单直接引用 README 审计表。放心用。"
+    }
+  ]
+}
