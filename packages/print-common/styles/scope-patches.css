@@ -1,0 +1,54 @@
+/* 派生泄漏修正层：由 scripts/gen-styles.mjs 追加到 src/styles/designer.css 末尾。
+ *
+ * 背景：canvas 的 scoped 样式编译成 `.foo[data-v-hash]`，派生时剥掉作用域属性后
+ * 规则会**跨组件命中**同名类；canvas 运行时却不会。这类差异 DOM 断言看不出来，
+ * 只能靠成对截图 + computed style 实测（口径见 packages/print-common/PARITY.md §〇）。
+ *
+ * 维护：canvas 改样式后重跑 `node demo-common/scripts/style-scope-audit.mjs` 列出候选，
+ * 再用 `node demo-common/scripts/tiling-parity.mjs`（含本区断言）与成对截图确认是否需要在下方补条目。
+ * 每条都写清 canvas 侧的实测值，不要凭 selector 猜。
+ */
+
+/* PropertyPanel.vue 的 scoped 规则：拼版区段（TilingConfig）在 canvas 里拿不到它们
+   → canvas 实测：.margin-grid / .custom-size-grid 都是 display:block 单列堆叠，
+     .custom-size-x 是 inline 且继承正文色（rgb(42,46,55)），不是被排成三列网格。
+     注意要把 grid-template-columns / gap 的计算值一并还原：对拍断言比的是 computed style，
+     只改 display 时这两项仍会带着被泄漏的值。 */
+.tiling-config .margin-grid {
+  display: block;
+  grid-template-columns: none;
+  gap: normal;
+}
+.tiling-config .custom-size-grid {
+  display: block;
+  grid-template-columns: none;
+  gap: normal;
+}
+.tiling-config .custom-size-x {
+  display: inline;
+  min-width: 0;
+  color: inherit;
+}
+
+/* WatermarkConfig.vue 的 scoped `.pd-hint{margin-left:8px;color:#909399;min-width:32px}`
+   与 PropertyPanel.vue 的 scoped `.pd-hint{margin:2px 0 6px;color:muted}` 在 canvas 里各管自己组件的节点，
+   派生后互相覆盖：canvas 实测「非水印区段」的提示是 min-width:auto、margin-left:0、muted 色；
+   「水印区段」的提示是 margin-left:8px、#909399、min-width:32px。以下按这两个实测态还原
+   （注意 margin 简写在后者会把 margin-left 打回 0，所以水印那条必须排在后面）。 */
+.pd-hint {
+  min-width: auto;
+}
+.watermark-config .pd-hint {
+  min-width: 32px;
+  margin-left: 8px;
+  color: #909399;
+}
+
+/* 同上：PropertyPanel 的 muted 色会盖掉 TilingConfig 自己的错误/摘要配色
+   → canvas 实测：拼版错误行 #f56c6c 红字、摘要行 --pd-text-regular。 */
+.tiling-config .tiling-error {
+  color: #f56c6c;
+}
+.tiling-config .tiling-summary {
+  color: var(--pd-text-regular, #606266);
+}

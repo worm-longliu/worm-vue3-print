@@ -13,3 +13,14 @@ demo/public/fonts/*
 
 # AI 生成图片临时目录，不入库
 vibe_images/
+
+# print-common 从 canvas 派生的构建输入（npm run styles 生成，不入库）
+packages/print-common/src/styles/designer.css
+packages/print-common/src/core/icons.ts
+
+# demo-common 验收产物（verify-demo.mjs 每次跑都会重新截图）
+demo-common/evidence/
+
+# demo-common 子工程直挂资产：npm install 的 postinstall 从 @worm-vue3-print/common 的 dist 拷来
+demo-common/apps/*/public/vendor/
+demo-common/apps/*/dist/

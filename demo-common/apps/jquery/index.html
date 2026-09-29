@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>jQuery 宿主 · Web Component 打印设计器 Demo</title>
+    <!--
+      直挂形态的外部资源就这两行：插件的 css + js（来自 npm 包 @worm-vue3-print/common 的 dist），
+      再加一份与 demo 同源的宿主样式 demo-ui.css（由 scripts/sync-demo-styles.mjs 从 demo 逐字抽取）。
+      传统项目直接从制品库拿这两个文件丢进静态目录即可，不需要任何打包器。
+    -->
+    <link rel="stylesheet" href="/vendor/worm-print-common.css" />
+    <link rel="stylesheet" href="/src/styles/demo-ui.css" />
+  </head>
+  <body>
+    <div class="demo-app">
+      <!-- 顶栏：类名与文案与 demo / apps/vue3 逐字一致 -->
+      <header class="demo-topbar">
+        <span class="demo-project">worm-vue3-print</span>
+        <span class="demo-logo">打印模板设计器 Demo</span>
+        <span class="demo-badge">业务类型：<span id="badge-biz">空白模板</span></span>
+        <span class="demo-badge">宿主：jQuery + Web Component</span>
+        <button type="button" class="demo-print-btn" id="btn-custom">自定义字段与数据</button>
+        <button type="button" class="demo-print-btn" id="btn-gallery">加载示例</button>
+        <button type="button" class="demo-print-btn" id="btn-export">导出模板</button>
+        <button type="button" class="demo-print-btn" id="btn-import">导入模板</button>
+        <button type="button" class="demo-print-btn" id="btn-clear">清空</button>
+        <label
+          class="demo-batch-switch"
+          id="batch-switch"
+          title="开启后浏览器预览/打印、客户端静默打印、服务端 PDF 均传入 N 份数据数组，由打印插件合并为一个作业"
+        >
+          <input type="checkbox" id="batch-checkbox" />
+          <span id="batch-text">批量打印（1 份）</span>
+        </label>
+        <button type="button" class="demo-print-btn" id="btn-print-output">打印输出</button>
+        <input type="file" accept="application/json,.json" class="demo-file-input" id="template-file-input" />
+      </header>
+
+      <!-- 画布容器：<print-designer> 由 src/app.js 挂进 #host，样式给它块级 100% 宽高 -->
+      <main class="demo-container" id="host"></main>
+
+      <!-- 设计器预览（@preview 触发）：DOM 结构与 demo 的 PrintHtmlPreview 一致；
+           显隐用 hidden 属性控制，flex 遮罩额外写行内 display 兜底（demo-ui.css 里是 display:flex，
+           作者样式会盖掉 [hidden] 的 UA 规则，故两者同时维护） -->
+      <div class="preview-mask" id="preview-mask" hidden style="display: none">
+        <div class="preview-panel">
+          <div class="preview-head">
+            <span class="preview-title">打印预览</span>
+            <span class="preview-subtitle" id="preview-subtitle" hidden></span>
+            <div class="preview-actions">
+              <button type="button" class="preview-btn" id="preview-print">打印</button>
+              <button type="button" class="preview-btn ghost" id="preview-close">关闭</button>
+            </div>
+          </div>
+          <div class="preview-body print-html-preview">
+            <div class="print-html-preview-loading" id="preview-loading">预览渲染中…</div>
+            <div class="print-html-preview-error" id="preview-error" hidden></div>
+            <iframe class="print-html-preview-iframe" id="preview-frame" title="打印预览"></iframe>
+          </div>
+        </div>
+      </div>
+
+      <!-- 打印输出弹窗（服务端 PDF / 客户端静默打印） -->
+      <div class="print-mask" id="print-mask" hidden style="display: none">
+        <div class="print-panel">
+          <div class="print-head">
+            <span class="print-title">打印输出</span>
+            <span class="print-close" id="print-close">×</span>
+          </div>
+          <div class="print-body">
+            <section class="print-card">
+              <h3 class="card-title">服务端 PDF 打印</h3>
+              <p class="card-desc">将当前画布模板与 demo 数据交由 render 微服务渲染，生成 PDF 后在浏览器新标签页打开。</p>
+              <div class="card-row">
+                <span class="status checking" id="render-status" title="探测 render 微服务 /render-api/health">
+                  <i class="status-dot"></i><span id="render-status-text">渲染服务检测中…</span>
+                </span>
+                <button type="button" class="text-btn" id="render-recheck">重新检测</button>
+              </div>
+              <button type="button" class="primary-btn" id="btn-server-pdf" disabled>服务端 PDF</button>
+              <p class="error-text" id="render-error" hidden></p>
+            </section>
+
+            <section class="print-card">
+              <h3 class="card-title">客户端静默打印</h3>
+              <p class="card-desc">页面内用 core 同构管线完成两遍渲染，将最终 HTML 直送本机打印客户端（WebSocket 127.0.0.1:17521）静默出纸，客户端不再执行模板渲染。</p>
+              <div class="card-row">
+                <span class="status checking" id="client-status" title="本机打印客户端（WebSocket 127.0.0.1:17521）">
+                  <i class="status-dot"></i><span id="client-status-text">检测打印客户端…</span>
+                </span>
+                <button type="button" class="text-btn" id="client-recheck">重新检测</button>
+              </div>
+              <div class="card-actions">
+                <select class="printer-select" id="printer-select" disabled title="选择目标打印机（留空为系统默认）">
+                  <option value="">系统默认打印机</option>
+                </select>
+                <button type="button" class="primary-btn" id="btn-client-print" disabled>客户端静默打印</button>
+              </div>
+              <p class="message-text" id="client-message" hidden></p>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <!-- 示例模板库：卡片与页签由 src/gallery.js 生成 -->
+      <div class="gallery-mask" id="gallery-mask" hidden style="display: none">
+        <div class="gallery-panel">
+          <div class="gallery-head">
+            <span class="gallery-title">选择示例模板</span>
+            <span class="gallery-subtitle" id="gallery-subtitle"></span>
+            <button type="button" class="gallery-close" id="gallery-close">×</button>
+          </div>
+          <div class="gallery-tabs" id="gallery-tabs"></div>
+          <div class="gallery-body" id="gallery-body"></div>
+          <div class="gallery-foot">
+            <span class="gallery-tip">选中后将覆盖当前画布内容（可撤销）</span>
+            <div class="gallery-actions">
+              <button type="button" class="gallery-btn ghost" id="gallery-cancel">取消</button>
+              <button type="button" class="gallery-btn" id="gallery-confirm" disabled>使用该模板</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 自定义字段与数据：直接粘贴 JSON，应用后即时生效 -->
+      <div class="custom-mask" id="custom-mask" hidden style="display: none">
+        <div class="custom-panel">
+          <div class="custom-head">
+            <span class="custom-title">自定义字段与数据</span>
+            <span class="custom-close" id="custom-close">×</span>
+          </div>
+          <div class="custom-body">
+            <section class="custom-section">
+              <div class="section-head">
+                <span class="section-label">字段 fields</span>
+                <span class="section-hint">业务字段数组，每项含 fieldKey / fieldLabel / fieldType / sortOrder</span>
+              </div>
+              <textarea class="custom-editor" id="custom-fields" spellcheck="false"></textarea>
+              <p class="custom-error" id="custom-fields-error" hidden></p>
+            </section>
+            <section class="custom-section">
+              <div class="section-head">
+                <span class="section-label">数据 data</span>
+                <span class="section-hint">打印数据对象，结构与字段 fieldKey 对应</span>
+              </div>
+              <textarea class="custom-editor" id="custom-data" spellcheck="false"></textarea>
+              <p class="custom-error" id="custom-data-error" hidden></p>
+            </section>
+          </div>
+          <div class="custom-foot">
+            <button type="button" class="custom-btn ghost" id="custom-format">格式化</button>
+            <div class="custom-foot-right">
+              <button type="button" class="custom-btn ghost" id="custom-cancel">取消</button>
+              <button type="button" class="custom-btn" id="custom-apply">应用</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/vendor/jquery.min.js"></script>
+    <script src="/vendor/worm-print-common.js"></script>
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>

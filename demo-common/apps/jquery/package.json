@@ -1,0 +1,22 @@
+{
+  "name": "@worm-vue3-print/demo-common-jquery",
+  "version": "1.3.4",
+  "private": true,
+  "type": "module",
+  "description": "jQuery 宿主直挂集成 @worm-vue3-print/common 的独立示例：无打包器，一个 <script> + 一个 <link>，含浏览器预览打印、服务端 PDF、客户端静默打印",
+  "scripts": {
+    "sync": "node scripts/sync-assets.mjs",
+    "postinstall": "node scripts/sync-assets.mjs",
+    "dev": "node scripts/sync-assets.mjs && node server.mjs",
+    "build": "echo 本工程无构建步骤：直挂形态只产 public/vendor 两份文件",
+    "preview": "node server.mjs"
+  },
+  "dependencies": {
+    "@worm-vue3-print/core": "file:../../../packages/print-core",
+    "@worm-vue3-print/common": "file:../../../packages/print-common",
+    "jquery": "^3.7.1"
+  },
+  "allowScripts": {
+    "esbuild": true
+  }
+}

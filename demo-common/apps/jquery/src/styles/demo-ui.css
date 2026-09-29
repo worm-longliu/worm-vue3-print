@@ -1,0 +1,758 @@
+/*
+ * 宿主 UI 样式：与 ./demo（Vue 3 打印设计器示例）完全一致。
+ * 由 demo-common/scripts/sync-demo-styles.mjs 自动生成，请勿手改。
+ */
+
+/* ══ demo 骨架：顶栏 / 画布容器 / 全屏预览层 ══ 逐字来自 demo/src/App.vue */
+/* 设计器内部控件基于原生样式，需全局引入一次 */
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+.demo-app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+.demo-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  padding: 0 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #e9ecf2;
+  font-size: 13px;
+  color: #2a2e37;
+  flex-shrink: 0;
+}
+.demo-logo {
+  font-weight: 600;
+  color: #165dff;
+}
+.demo-project {
+  font-weight: 700;
+  color: #2a2e37;
+  font-size: 14px;
+}
+.demo-project::after {
+  content: '';
+  display: inline-block;
+  width: 1px;
+  height: 14px;
+  margin: 0 4px 0 12px;
+  background: #e9ecf2;
+  vertical-align: middle;
+}
+.demo-badge {
+  padding: 2px 10px;
+  border: 1px solid #d9dde6;
+  border-radius: 999px;
+  background: #f4f6fa;
+  color: #5a667f;
+  font-size: 12px;
+}
+.demo-note {
+  color: #8b909c;
+  font-size: 12px;
+}
+.demo-print-btn {
+  margin-left: 0;
+  padding: 5px 16px;
+  border: 1px solid #165dff;
+  border-radius: 6px;
+  background: #fff;
+  color: #165dff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.demo-print-btn:hover {
+  background: #eef3ff;
+}
+.demo-topbar > .demo-print-btn:first-of-type {
+  margin-left: auto;
+}
+.demo-batch-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border: 1px solid #d9dde6;
+  border-radius: 6px;
+  background: #fff;
+  color: #5a667f;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+.demo-batch-switch input {
+  margin: 0;
+  cursor: pointer;
+  accent-color: #165dff;
+}
+.demo-batch-switch.on {
+  border-color: #165dff;
+  background: #eef3ff;
+  color: #165dff;
+  font-weight: 600;
+}
+.demo-file-input {
+  display: none;
+}
+.demo-container {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── 预览弹层（全屏，便于看清整页细节） ── */
+.preview-mask {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  z-index: 9999;
+}
+.preview-panel {
+  width: 100vw;
+  height: 100vh;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.preview-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e9ecf2;
+  flex-shrink: 0;
+}
+/* PrintHtmlPreview 根节点：占满头部之外的剩余高度，内部 iframe 自行滚动 */
+.preview-body {
+  flex: 1;
+  min-height: 0;
+}
+.preview-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2a2e37;
+}
+.preview-subtitle {
+  font-size: 12px;
+  color: #8b909c;
+}
+.preview-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+.preview-btn {
+  padding: 5px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #165dff;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.preview-btn.ghost {
+  background: #f4f6fa;
+  color: #2a2e37;
+  border: 1px solid #d9dde6;
+}
+
+/* ══ 打印输出弹窗（服务端 PDF / 客户端静默打印） ══ 逐字来自 demo/src/components/PrintOutputDialog.vue */
+.print-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 32, 60, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.print-panel {
+  width: min(560px, 92vw);
+  max-height: 90vh;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 26px 60px rgba(23, 32, 60, 0.28);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.print-head {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e9ecf2;
+  flex-shrink: 0;
+}
+.print-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #2a2e37;
+}
+.print-close {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  line-height: 24px;
+  text-align: center;
+  border-radius: 6px;
+  font-size: 18px;
+  color: #8b909c;
+  cursor: pointer;
+  user-select: none;
+}
+.print-close:hover {
+  background: #f4f6fa;
+  color: #2a2e37;
+}
+.print-body {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.print-card {
+  border: 1px solid #e9ecf2;
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: #fbfcfe;
+}
+.card-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2a2e37;
+}
+.card-desc {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #8b909c;
+}
+.card-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #5a667f;
+  cursor: default;
+}
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c2c7d0;
+}
+.status.online {
+  color: #16a34a;
+}
+.status.online .status-dot {
+  background: #22c55e;
+}
+.status.offline {
+  color: #dc2626;
+}
+.status.offline .status-dot {
+  background: #ef4444;
+}
+.status.checking .status-dot {
+  background: #f59e0b;
+}
+.text-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #165dff;
+  font-size: 12px;
+  cursor: pointer;
+}
+.text-btn:hover {
+  text-decoration: underline;
+}
+.primary-btn {
+  padding: 6px 14px;
+  border: 1px solid #165dff;
+  border-radius: 6px;
+  background: #165dff;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.primary-btn:hover:not(:disabled) {
+  background: #0e4fd8;
+}
+.primary-btn:disabled {
+  border-color: #c2c7d0;
+  background: #c2c7d0;
+  cursor: not-allowed;
+}
+.printer-select {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid #d9dde6;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #2a2e37;
+  background: #fff;
+}
+.printer-select:disabled {
+  background: #f4f6fa;
+  color: #9aa1af;
+  cursor: not-allowed;
+}
+.error-text {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #dc2626;
+}
+.message-text {
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+.message-text.success {
+  color: #16a34a;
+}
+.message-text.error {
+  color: #dc2626;
+}
+
+/* ══ 示例模板库弹窗 ══ 逐字来自 demo/src/components/TemplateGalleryDialog.vue */
+.gallery-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 32, 60, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+.gallery-panel {
+  width: min(920px, 94vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 26px 60px rgba(23, 32, 60, 0.28);
+  overflow: hidden;
+}
+.gallery-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e9ecf2;
+}
+.gallery-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #2a2e37;
+}
+.gallery-subtitle {
+  font-size: 12px;
+  color: #8b909c;
+}
+.gallery-close {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #8b909c;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.gallery-close:hover {
+  background: #f2f4f8;
+  color: #2a2e37;
+}
+.gallery-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px 0;
+}
+.gallery-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 14px;
+  border: 1px solid #d9dde6;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #5a667f;
+  font-size: 13px;
+  cursor: pointer;
+}
+.gallery-tab.on {
+  border-color: #165dff;
+  background: #eef3ff;
+  color: #165dff;
+  font-weight: 600;
+}
+.gallery-tab-count {
+  font-size: 11px;
+  color: #98a0b0;
+}
+.gallery-tab.on .gallery-tab-count {
+  color: #165dff;
+}
+.gallery-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  gap: 12px;
+  padding: 14px 16px;
+}
+.sample-card {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #e3e7ef;
+  border-radius: 6px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.sample-card:hover {
+  border-color: #a9c2ff;
+}
+.sample-card.selected {
+  border-color: #165dff;
+  box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.12);
+}
+.sample-meta {
+  min-width: 0;
+  flex: 1;
+}
+.sample-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2a2e37;
+}
+.sample-flag {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #eef3ff;
+  color: #165dff;
+  font-size: 11px;
+  font-weight: 400;
+}
+.sample-flag.tiling {
+  background: #fff3e8;
+  color: #d97706;
+}
+.sample-paper {
+  margin-top: 3px;
+  font-size: 11px;
+  color: #7a839a;
+}
+.sample-desc {
+  margin-top: 5px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #5a667f;
+}
+.gallery-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-top: 1px solid #e9ecf2;
+}
+.gallery-tip {
+  font-size: 12px;
+  color: #8b909c;
+}
+.gallery-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+.gallery-btn {
+  padding: 6px 18px;
+  border: none;
+  border-radius: 6px;
+  background: #165dff;
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.gallery-btn:disabled {
+  background: #c6d2ea;
+  cursor: not-allowed;
+}
+.gallery-btn.ghost {
+  background: #f4f6fa;
+  color: #2a2e37;
+  border: 1px solid #d9dde6;
+}
+
+/* ══ 自定义字段与数据弹窗 ══ 逐字来自 demo/src/components/CustomDataDialog.vue */
+.custom-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 32, 60, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+.custom-panel {
+  width: min(720px, 94vw);
+  height: min(84vh, 760px);
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 26px 60px rgba(23, 32, 60, 0.28);
+  overflow: hidden;
+}
+.custom-head {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e9ecf2;
+  flex-shrink: 0;
+}
+.custom-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #2a2e37;
+}
+.custom-close {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  line-height: 24px;
+  text-align: center;
+  border-radius: 6px;
+  font-size: 18px;
+  color: #8b909c;
+  cursor: pointer;
+  user-select: none;
+}
+.custom-close:hover {
+  background: #f4f6fa;
+  color: #2a2e37;
+}
+.custom-body {
+  flex: 1;
+  min-height: 0;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.custom-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.section-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2a2e37;
+}
+.section-hint {
+  font-size: 11px;
+  color: #9aa1af;
+}
+.custom-editor {
+  flex: 1;
+  min-height: 0;
+  padding: 10px 12px;
+  border: 1px solid #d9dde6;
+  border-radius: 6px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #2a2e37;
+  background: #fbfcfe;
+  resize: none;
+  outline: none;
+  tab-size: 2;
+}
+.custom-editor:focus {
+  border-color: #165dff;
+  background: #fff;
+}
+.custom-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #dc2626;
+}
+.custom-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid #e9ecf2;
+  flex-shrink: 0;
+}
+.custom-foot-right {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+.custom-btn {
+  padding: 6px 18px;
+  border: 1px solid #165dff;
+  border-radius: 6px;
+  background: #165dff;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.custom-btn:hover {
+  background: #0e4fd8;
+}
+.custom-btn.ghost {
+  background: #f4f6fa;
+  color: #2a2e37;
+  border: 1px solid #d9dde6;
+}
+.custom-btn.ghost:hover {
+  background: #e9ecf2;
+}
+
+/* ══ 示例卡片缩略图 ══ 逐字来自 demo/src/components/SampleThumb.vue */
+.thumb-stage {
+  width: 148px;
+  height: 108px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f2f4f8;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.thumb-page {
+  position: relative;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(23, 32, 60, 0.18);
+  flex-shrink: 0;
+}
+.thumb-el {
+  position: absolute;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.thumb-text {
+  display: block;
+  width: 100%;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.thumb-el--longText .thumb-text {
+  white-space: normal;
+  word-break: break-all;
+}
+.thumb-el--table {
+  border: 1px solid #c6ccd8;
+}
+.thumb-grid-line {
+  position: absolute;
+  background: #d7dce6;
+}
+.thumb-el--barcode {
+  background: repeating-linear-gradient(90deg, #2f3542 0 1px, #ffffff 1px 3px);
+}
+.thumb-el--qrcode {
+  background: repeating-conic-gradient(#2f3542 0% 25%, #ffffff 0% 50%) 0 0 / 4px 4px;
+  border: 1px solid #c6ccd8;
+}
+.thumb-el--image {
+  background: #e8ecf3;
+  border: 1px dashed #c6ccd8;
+}
+.thumb-el--hline {
+  background: #b6bdc9;
+}
+.thumb-el--vline {
+  background: #b6bdc9;
+}
+.thumb-el--rect {
+  border: 1px solid #b6bdc9;
+}
+.thumb-el--oval {
+  border: 1px solid #b6bdc9;
+  border-radius: 50%;
+}
+
+/* ══ 预览 iframe 容器（子 demo 用原生 iframe 复刻同一 DOM） ══ 逐字来自 packages/print-canvas/src/components/PrintHtmlPreview.vue */
+.print-html-preview {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: #e9ebee;
+}
+.print-html-preview-iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+.print-html-preview-loading,
+.print-html-preview-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  font-size: 14px;
+}
+.print-html-preview-error {
+  color: #f56c6c;
+}
+
+/* ── 通用宿主适配补充（非 demo 样式，仅为让自定义元素拿到与组件根节点相同的高度） ── */
+html,
+body,
+#app,
+#root,
+.demo-app {
+  height: 100%;
+  margin: 0;
+}
+.demo-container print-designer {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

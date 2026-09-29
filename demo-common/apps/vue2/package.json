@@ -1,0 +1,24 @@
+{
+  "name": "@worm-vue3-print/demo-common-vue2",
+  "version": "1.3.4",
+  "private": true,
+  "type": "module",
+  "description": "Vue 2.7 宿主（SFC 单文件组件）集成 @worm-vue3-print/common 的独立示例：设计器挂载、事件、浏览器预览打印、服务端 PDF、客户端静默打印",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 9332"
+  },
+  "dependencies": {
+    "@worm-vue3-print/core": "file:../../../packages/print-core",
+    "@worm-vue3-print/common": "file:../../../packages/print-common",
+    "vue": "2.7.16"
+  },
+  "devDependencies": {
+    "vite": "^7.3.6",
+    "@vitejs/plugin-vue2": "^2.3.4"
+  },
+  "allowScripts": {
+    "esbuild": true
+  }
+}

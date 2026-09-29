@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>demo-common · 四个宿主的打印设计器集成示例</title>
+    <style>
+      body { margin: 0; padding: 32px; background: #f6f8fb; color: #2a2e37;
+             font: 14px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif; }
+      h1 { margin: 0 0 4px; font-size: 20px; }
+      h1 span { color: #165dff; }
+      p.lead { margin: 0 0 24px; color: #5a667f; }
+      .warn { margin: 8px 0 16px; padding: 10px 14px; border: 1px solid #ffd8bf; border-radius: 8px;
+              background: #fff7e6; color: #ad4200; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+      .card { background: #fff; border: 1px solid #e5e8ef; border-radius: 10px; padding: 16px 18px; }
+      .card h2 { margin: 0 0 6px; font-size: 16px; }
+      .tag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 10px;
+             font-size: 12px; background: #f0f5ff; color: #165dff; }
+      .tag.direct { background: #fff2e8; color: #d4380d; }
+      .card p { margin: 6px 0; color: #5a667f; font-size: 13px; }
+      code, pre { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12.5px; }
+      pre { margin: 8px 0; padding: 8px 10px; background: #f2f4f8; border-radius: 6px; overflow-x: auto; }
+      a.go { display: inline-block; margin-top: 6px; color: #165dff; text-decoration: none; font-weight: 600; }
+      a.go:hover { text-decoration: underline; }
+      footer { margin-top: 24px; color: #8a94a6; font-size: 12.5px; }
+    </style>
+  </head>
+  <body>
+    <h1><span>worm-vue3-print</span> · 通用宿主适配 · 打印设计器宿主示例</h1>
+    <p class="lead">
+      四个互相独立的 npm 工程，每个都把自己宿主接入 <code>&lt;print-designer&gt;</code> 的全过程写在自家文件里
+      —— 设计器挂载、模板与字段注入、宿主回调、事件、浏览器预览打印、服务端 PDF、客户端静默打印。
+      没有共用壳层，照抄其中一个工程即可落到你自己的项目里。
+      四个页面的界面版式与 <code>demo/</code>（Vue 3 版示例）完全一致，样式由
+      <code>scripts/sync-demo-styles.mjs</code> 同源生成。
+    </p>
+
+    <p class="warn">
+      <strong>⚠ 实验性质</strong>：<code>@worm-vue3-print/common</code> 尚未定版，接口与产物形态仍可能调整，
+      <strong>不建议应用到生产环境</strong>；Vue 3 项目请使用成熟方案 <code>@worm-vue3-print/canvas</code>
+      （对应 <code>demo/</code>，端口 9303）。本组示例仅供评估与非生产环境的集成验证。
+    </p>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Vue 3<span class="tag">NPM 包接入</span></h2>
+        <p>SFC 写法；编译期要配 <code>isCustomElement</code>。</p>
+        <pre>cd demo-common/apps/vue3
+npm install
+npm run dev   # :9331</pre>
+        <a class="go" href="http://localhost:9331/">打开 →</a>
+      </div>
+
+      <div class="card">
+        <h2>Vue 2.7<span class="tag">NPM 包接入</span></h2>
+        <p>SFC 单文件组件（Options API）；<code>ignoredElements</code> 声明自定义元素。</p>
+        <pre>cd demo-common/apps/vue2
+npm install
+npm run dev   # :9332</pre>
+        <a class="go" href="http://localhost:9332/">打开 →</a>
+      </div>
+
+      <div class="card">
+        <h2>React 18<span class="tag">NPM 包接入</span></h2>
+        <p>hooks + <code>ref</code> 赋 property + <code>addEventListener</code> 听 CustomEvent。</p>
+        <pre>cd demo-common/apps/react
+npm install
+npm run dev   # :9335</pre>
+        <a class="go" href="http://localhost:9335/">打开 →</a>
+      </div>
+
+      <div class="card">
+        <h2>jQuery<span class="tag direct">JS + CSS 直挂</span></h2>
+        <p>无打包器：一个 <code>&lt;link&gt;</code> + 一个 <code>&lt;script&gt;</code>，业务代码只用全局
+          <code>WormPrintCommon</code> 与 <code>$</code>。</p>
+        <pre>cd demo-common/apps/jquery
+npm install     # postinstall 拷 dist 两份文件
+npm run dev     # :9334（node server.mjs 纯静态）</pre>
+        <a class="go" href="http://localhost:9334/">打开 →</a>
+      </div>
+    </div>
+
+    <footer>
+      四个 demo 都能单独跑。<code>@worm-vue3-print/common</code> 是零框架 Web Component，设计器样式内置在组件 Shadow DOM；
+      <code>@worm-vue3-print/core</code> 提供同构出纸管线（<code>renderHtmlPages</code> / <code>PrintClient</code>）。
+      可选依赖：<code>npm run dev:render</code>（服务端 PDF，:3001）、本机 print-client 桌面客户端（:17521）；
+      两者不在时「打印输出」弹窗显示「离线」并给出可读提示。
+      验收：<code>node demo-common/scripts/verify-demo.mjs http://localhost:&lt;端口&gt;/</code>（四个宿主同一套 32 项 UI 级断言）。
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "@worm-vue3-print/demo-common-react",
+  "version": "1.3.4",
+  "private": true,
+  "type": "module",
+  "description": "React 18 宿主集成 @worm-vue3-print/common 的独立示例：设计器挂载、事件、浏览器预览打印、服务端 PDF、客户端静默打印",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 9335"
+  },
+  "dependencies": {
+    "@worm-vue3-print/core": "file:../../../packages/print-core",
+    "@worm-vue3-print/common": "file:../../../packages/print-common",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.4",
+    "vite": "^7.3.6"
+  },
+  "allowScripts": {
+    "esbuild": true
+  }
+}
