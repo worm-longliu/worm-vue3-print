@@ -17,6 +17,7 @@
     "video:expression": "VIDEO_SCRIPT=script-expression.json npm run video",
     "video:group": "VIDEO_SCRIPT=script-group.json npm run video",
     "video:toolbar": "VIDEO_SCRIPT=script-toolbar.json npm run video",
+    "video:roll-label": "VIDEO_SCRIPT=script-roll-label.json npm run video",
     "video:portrait:voice": "node video/portrait/voice.mjs",
     "video:portrait:cards": "node video/portrait/cards.mjs",
     "video:portrait:compose": "node video/portrait/compose.mjs",

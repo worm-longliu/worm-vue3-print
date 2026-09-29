@@ -1,0 +1,63 @@
+{
+  "title": "worm-vue3-print 双列卷纸标签实战",
+  "voice": "zh-CN-YunxiNeural",
+  "video": { "width": 1920, "height": 1080, "fps": 30 },
+  "baseUrl": "http://localhost:9303",
+  "scenes": [
+    {
+      "name": "使用场景",
+      "voiceover": "大家好，欢迎观看 worm-vue3-print 实战教学。仓储和物料管理里，经常用到这种双列卷纸标签。整纸宽度 122 毫米，并排两张标签，单枚规格 60 乘 45 毫米，列间留 2 毫米缝隙。今天我们用可视化设计器做出这枚标签，一次打印八张。",
+      "steps": [
+        { "do": "showImage", "src": "/images/label-roll-122.png", "ms": 1000, "s": 0 },
+        { "do": "goto", "selector": ".designer-container", "s": 3 }
+      ]
+    },
+    {
+      "name": "加载示例",
+      "voiceover": "点击顶栏的加载示例按钮，打开示例模板库。切换到标签分类，选择双列卷纸标签。点击使用该模板，画布就切换成一枚 60 乘 45 毫米的标签。看它的版式：顶部是仓库与物料名称，中间一条 Code128 条形码，左下是二维码，右侧排规格、数量、批次和日期四行信息。",
+      "steps": [
+        { "do": "click", "selector": ".demo-topbar button:has-text(\"加载示例\")", "s": 0 },
+        { "do": "assert", "selector": ".gallery-panel" },
+        { "do": "click", "selector": ".gallery-tab:has-text(\"标签\")", "s": 1 },
+        { "do": "click", "selector": ".sample-card:has(.sample-name:text-is(\"双列卷纸标签\"))", "s": 1 },
+        { "do": "click", "selector": ".gallery-panel button:has-text(\"使用该模板\")", "s": 2 },
+        { "do": "assert", "selector": ".demo-badge:has-text(\"双列卷纸标签\")" },
+        { "do": "highlight", "selector": ".hiprint-printPaper", "ms": 3200, "s": 3 }
+      ]
+    },
+    {
+      "name": "拼版配置",
+      "voiceover": "双列出纸的关键，在右侧页面属性里的拼版配置。打开页面属性页签，拼版打印已经开启，目标纸张是自定义的 122 乘 45 毫米，一页正好对应卷纸上的一截。列数为 2，横向间距 2 毫米，两列 60 毫米加间隙正好 122。注意页高等于单枚标签高，标签机按标签间隙逐截走纸，要打 20 枚，引擎会自动分成 10 页，每页出一截。",
+      "steps": [
+        { "do": "click", "selector": ".property-panel .pd-tab:has-text(\"页面属性\")", "s": 0 },
+        { "do": "highlight", "selector": "[data-test=\"tiling-config\"]", "ms": 3200, "s": 1 },
+        { "do": "assert", "selector": ".tiling-summary:has-text(\"2 列 × 1 行\")", "ms": 800, "s": 3 },
+        { "do": "highlight", "selector": ".tiling-summary", "ms": 3000, "s": 3 }
+      ]
+    },
+    {
+      "name": "预览单枚",
+      "voiceover": "点击工具栏的预览按钮，先检查单枚标签的版式。条形码和二维码都由数据实时生成，文字没有溢出标签边界。确认无误后，关闭预览。",
+      "steps": [
+        { "do": "click", "selector": ".designer-toolbar button.btn-secondary:has-text(\"预览\")", "s": 0 },
+        { "do": "assert", "selector": ".preview-mask" },
+        { "do": "waitForPreview" },
+        { "do": "highlight", "selector": ".preview-body", "ms": 2600, "s": 1 },
+        { "do": "click", "selector": ".preview-panel button:has-text(\"关闭\")", "s": 2 }
+      ]
+    },
+    {
+      "name": "批量打印与结尾",
+      "voiceover": "打开顶栏的批量打印开关，示例自带八份物料数据。点击打印输出，浏览器打印、客户端静默打印和服务端 PDF 三条链路，会把八枚标签合并为一个作业，自动分成四页 122 乘 45 毫米出纸。这就是双列卷纸标签的全流程，感谢观看，我们下期再见。",
+      "steps": [
+        { "do": "click", "selector": ".demo-batch-switch", "s": 0 },
+        { "do": "assert", "selector": ".demo-batch-switch.on" },
+        { "do": "click", "selector": ".demo-topbar button:has-text(\"打印输出\")", "s": 1 },
+        { "do": "assert", "selector": ".print-mask" },
+        { "do": "highlight", "selector": ".print-panel", "ms": 3000, "s": 1 },
+        { "do": "click", "selector": ".print-close", "s": 2 },
+        { "do": "highlight", "selector": ".designer-container", "ms": 2600, "s": 2 }
+      ]
+    }
+  ]
+}

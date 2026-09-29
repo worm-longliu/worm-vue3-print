@@ -292,6 +292,32 @@ async function runStep(step) {
       await page.waitForSelector('.designer-container', { timeout: 20000 })
       await sleep(step.ms ?? 1200)
       return
+    case 'showImage': {
+      // 全屏展示使用场景图片。about:blank 里加载 localhost 资源会被 Private Network
+      // Access 拦截（net::ERR_FAILED），故直接读 demo/public 下的文件内联为 base64。
+      const file = join(DEMO_DIR, 'public', step.src.replace(/^\//, ''))
+      const b64 = readFileSync(file).toString('base64')
+      const mime = file.endsWith('.png') ? 'image/png' : 'image/jpeg'
+      await page.goto('about:blank')
+      await page.setContent(
+        '<body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0e1420">' +
+          `<img src="data:${mime};base64,${b64}" style="max-width:86%;max-height:82%;border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.55)">`,
+        { waitUntil: 'load' },
+      )
+      await page.waitForFunction(() => {
+        const i = document.querySelector('img')
+        return i && i.complete && i.naturalWidth > 0
+      })
+      await sleep(step.ms ?? 2000)
+      return
+    }
+    case 'goto':
+      // 带 url 时整页导航；否则视为从 showImage 等临时页返回上一页
+      if (step.url) await page.goto(step.url, { waitUntil: 'networkidle' })
+      else await page.goBack({ waitUntil: 'networkidle' })
+      if (step.selector) await page.waitForSelector(step.selector, { timeout: 20000 })
+      await sleep(step.ms ?? 1200)
+      return
     case 'wait':
       await sleep(step.ms ?? 1000)
       return
