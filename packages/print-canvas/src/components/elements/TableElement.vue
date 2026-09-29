@@ -116,6 +116,7 @@ import {
   resolveCellBorderCss, clampResizedColumnWidth,
 } from '@worm-vue3-print/core/designer'
 import { TABLE_EDIT_KEY, type TableEditContext } from '../../composables/useTableSelection'
+import { SELECTED_IDS_KEY } from '../../composables/useSelection'
 import TableContextMenu from './TableContextMenu.vue'
 import CellBarcode from './CellBarcode.vue'
 import CellImage from './CellImage.vue'
@@ -374,16 +375,32 @@ function onCellDblClick(r: number, c: number) {
 // ─── 右键菜单 ───
 
 const menu = reactive({ visible: false, x: 0, y: 0 })
+// 设计器选中集合（非设计态无注入时为空实现，仅跳过选中联动）
+const selectedIds = inject(SELECTED_IDS_KEY, null)
 
 function onCellContextMenu(r: number, c: number, e: MouseEvent) {
-  if (!props.designMode || !props.isSelected) return
+  if (!props.designMode) return
+  // 表格未选中时先单选本表格：右键单元格不应静默无反应（历史上此守卫吞掉菜单，
+  // 且表格层 stopPropagation 也挡住了元素菜单，表现为右键完全失效）
+  if (!props.isSelected && selectedIds) {
+    selectedIds.value = new Set([props.element.id])
+  }
   const s = selection.value
   const inSel = s && r >= s.r1 && r <= s.r2 && c >= s.c1 && c <= s.c2
   if (!inSel) applySelection({ r, c }, { r, c })
   menu.x = e.clientX
   menu.y = e.clientY
   menu.visible = true
-  window.addEventListener('mousedown', () => { menu.visible = false }, { once: true })
+  // 用 mouseup 而非 mousedown 关闭：mousedown 时 Teleport 菜单被移除，
+  // 菜单项的 click 派发不到（表格右键菜单全部失效）
+  window.removeEventListener('mouseup', closeMenuOnOutsideMouseup)
+  window.addEventListener('mouseup', closeMenuOnOutsideMouseup)
+}
+
+function closeMenuOnOutsideMouseup(e: MouseEvent) {
+  if ((e.target as HTMLElement | null)?.closest?.('.table-ctx-menu')) return // 菜单内抬起：由菜单项 click 负责关闭
+  menu.visible = false
+  window.removeEventListener('mouseup', closeMenuOnOutsideMouseup)
 }
 
 const mergeReason = computed(() => {

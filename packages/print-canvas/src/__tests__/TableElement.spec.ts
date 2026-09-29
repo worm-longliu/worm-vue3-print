@@ -1,11 +1,12 @@
 // web/src/components/print/__tests__/TableElement.spec.ts
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick, reactive, ref } from 'vue'
 
 import TableElement from '../components/elements/TableElement.vue'
 import TableContextMenu from '../components/elements/TableContextMenu.vue'
 import { TABLE_EDIT_KEY } from '../composables/useTableSelection'
+import { SELECTED_IDS_KEY } from '../composables/useSelection'
 import type { RuntimeElement, TableSelection } from '@worm-vue3-print/core/designer'
 
 function makeElement(): RuntimeElement {
@@ -420,5 +421,172 @@ describe('TableElement 单元格文字溢出显示形式', () => {
     const box = wrapper.find('.cell-fit')
     expect(box.attributes('data-fit-base')).toBe('14')
     expect(box.attributes('data-fit-min')).toBe('9')
+  })
+})
+
+// 表格右键菜单逐项测试：打开条件 + 每个菜单项对表格结构的实际效果。
+// 历史 bug：未选中表格时单元格右键被 isSelected 守卫吞掉（表格层 stopPropagation
+// 又挡住了元素菜单），表现为右键「完全无反应」。
+describe('TableElement 右键菜单', () => {
+  function makeMenuTable(): RuntimeElement {
+    return reactive({
+      id: 'el-table',
+      options: {
+        left: 0, top: 0, width: 60, height: 20,
+        tableColWidths: [30, 30],
+        tableRows: [
+          { id: 'r0', type: 'header', height: 10, cells: [{ id: 'a0', formatter: 'A' }, { id: 'b0', formatter: 'B' }] },
+          { id: 'r1', type: 'data', height: 10, cells: [{ id: 'a1', formatter: '1' }, { id: 'b1', formatter: '2' }] },
+        ],
+      },
+      printElementType: { type: 'table', title: '表格' },
+    } as unknown as RuntimeElement)
+  }
+
+  function mountMenuTable(opts: { selected?: boolean } = {}) {
+    const element = makeMenuTable()
+    const tableSelection = ref<TableSelection | null>(null)
+    const selectedIds = ref<Set<string>>(opts.selected === false ? new Set() : new Set(['el-table']))
+    const recordHistory = vi.fn()
+    const wrapper = mount(TableElement, {
+      props: { element, designMode: true, isSelected: opts.selected ?? true, scale: 1 },
+      global: {
+        provide: {
+          [TABLE_EDIT_KEY]: {
+            tableSelection,
+            setTableSelection: (s: TableSelection | null) => { tableSelection.value = s },
+            recordHistory,
+            maxTableWidth: ref(Infinity),
+          },
+          [SELECTED_IDS_KEY as symbol]: selectedIds,
+        },
+      },
+    })
+    return { wrapper, element, tableSelection, selectedIds, recordHistory }
+  }
+
+  // 菜单经 Teleport 挂到 body：用 document 查询，并在每个用例前清理残留节点
+  beforeEach(() => {
+    document.querySelectorAll('.table-ctx-menu').forEach(n => n.remove())
+  })
+
+  function menuItems(): HTMLElement[] {
+    return Array.from(document.querySelectorAll('.table-ctx-menu .menu-item')) as HTMLElement[]
+  }
+
+  async function openMenu(wrapper: ReturnType<typeof mount>, r: number, c: number) {
+    await wrapper.findAll('td')[r * 2 + c]!.trigger('contextmenu', { clientX: 50, clientY: 50 })
+  }
+
+  async function clickMenuItem(text: string) {
+    const item = menuItems().find(i => i.textContent?.trim() === text)
+    if (!item) throw new Error(`表格菜单项不存在: ${text}`)
+    item.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await nextTick()
+  }
+
+  it('单元格右键打开菜单：全部命令项齐全', async () => {
+    const { wrapper } = mountMenuTable()
+    await openMenu(wrapper, 0, 0)
+    expect(menuItems().map(i => i.textContent?.trim())).toEqual([
+      '在上方插入行', '在下方插入行', '删除行',
+      '在左侧插入列', '在右侧插入列', '删除列',
+      '合并单元格', '拆分单元格',
+      '标题行', '数据行', '小计行', '汇总行',
+    ])
+  })
+
+  it('表格未选中时单元格右键同样打开菜单，并单选本表格（历史 bug：无反应）', async () => {
+    const { wrapper, tableSelection, selectedIds } = mountMenuTable({ selected: false })
+    await openMenu(wrapper, 1, 1)
+    expect(document.querySelector('.table-ctx-menu')).toBeTruthy()
+    expect(tableSelection.value).toMatchObject({ r1: 1, c1: 1, r2: 1, c2: 1 })
+    expect(selectedIds.value).toEqual(new Set(['el-table']))
+  })
+
+  it('在上方/下方插入行', async () => {
+    const { wrapper, element } = mountMenuTable()
+    await openMenu(wrapper, 1, 0)
+    await clickMenuItem('在上方插入行')
+    expect(element.options.tableRows).toHaveLength(3)
+    expect(element.options.tableRows![1].cells.every(c => !c.formatter)).toBe(true) // 新行空内容
+    await openMenu(wrapper, 1, 0)
+    await clickMenuItem('在下方插入行')
+    expect(element.options.tableRows).toHaveLength(4)
+    expect(element.options.height).toBeCloseTo(10 * 4, 1) // 行高和同步元素尺寸
+  })
+
+  it('删除行：仅删命中行所在选区首行；最后一行置灰无效', async () => {
+    const { wrapper, element } = mountMenuTable()
+    await openMenu(wrapper, 0, 0)
+    await clickMenuItem('删除行')
+    expect(element.options.tableRows).toHaveLength(1)
+    expect(element.options.tableRows![0].type).toBe('data')
+    // 剩最后一行：删除项置灰且不改变结构
+    await openMenu(wrapper, 0, 0)
+    const del = menuItems().find(i => i.textContent?.trim() === '删除行')!
+    expect(del.className).toContain('disabled')
+    del.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await nextTick()
+    expect(element.options.tableRows).toHaveLength(1)
+  })
+
+  it('在左侧/右侧插入列：单元格矩阵与列宽同步增长', async () => {
+    const { wrapper, element } = mountMenuTable()
+    await openMenu(wrapper, 0, 0)
+    await clickMenuItem('在左侧插入列')
+    expect(element.options.tableColWidths).toHaveLength(3)
+    expect(element.options.tableRows![0].cells).toHaveLength(3)
+    await openMenu(wrapper, 0, 2)
+    await clickMenuItem('在右侧插入列')
+    expect(element.options.tableColWidths).toHaveLength(4)
+    expect(element.options.width).toBeCloseTo(120, 1) // 列宽和同步
+  })
+
+  it('删除列：矩阵与列宽同步收缩', async () => {
+    const { wrapper, element } = mountMenuTable()
+    await openMenu(wrapper, 0, 0)
+    await clickMenuItem('删除列')
+    expect(element.options.tableColWidths).toEqual([30])
+    expect(element.options.tableRows!.every(r => r.cells.length === 1)).toBe(true)
+  })
+
+  it('合并/拆分单元格：多单元格选区合并为首格，拆分还原矩阵', async () => {
+    const { wrapper, element } = mountMenuTable()
+    // 拖选 (0,0)-(0,1) 后合并
+    await wrapper.findAll('td')[0]!.trigger('mousedown', { button: 0 })
+    await wrapper.findAll('td')[1]!.trigger('mouseenter')
+    await openMenu(wrapper, 0, 1)
+    await clickMenuItem('合并单元格')
+    const row0 = element.options.tableRows![0]
+    expect(row0.cells[0].colspan).toBe(2)
+    expect(row0.cells[1].merged).toBe(true)
+    // 拆分
+    await openMenu(wrapper, 0, 0)
+    await clickMenuItem('拆分单元格')
+    expect(element.options.tableRows![0].cells[0].colspan ?? 1).toBe(1)
+    expect(element.options.tableRows![0].cells[1].merged).toBeFalsy()
+  })
+
+  it('行类型切换：数据行 → 汇总行，非法目标置灰', async () => {
+    const { wrapper, element } = mountMenuTable()
+    await openMenu(wrapper, 1, 0)
+    await clickMenuItem('汇总行')
+    expect(element.options.tableRows![1].type).toBe('summary')
+    // 当前类型高亮；点击当前类型不改变结构
+    await openMenu(wrapper, 0, 0)
+    const headerItem = menuItems().find(i => i.textContent?.trim() === '标题行')!
+    expect(headerItem.className).toContain('active')
+    headerItem.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await nextTick()
+    expect(element.options.tableRows![0].type).toBe('header')
+  })
+
+  it('动作执行后记一次历史并清空选区', async () => {
+    const { wrapper, tableSelection, recordHistory } = mountMenuTable()
+    await openMenu(wrapper, 0, 0)
+    await clickMenuItem('在下方插入行')
+    expect(recordHistory).toHaveBeenCalledTimes(1)
+    expect(tableSelection.value).toBe(null)
   })
 })

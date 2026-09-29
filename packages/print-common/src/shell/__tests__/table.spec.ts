@@ -202,6 +202,20 @@ describe('选区与右键菜单', () => {
     expect(kids[13].getAttribute('title')).toBe('数据行已存在（第 2 行），全表最多一行')
   })
 
+  it('表格未选中时右键单元格仍打开菜单，并单选该表格（与 canvas 同口径）', () => {
+    const store = makeStore()
+    const fired: string[] = []
+    const menu: TableMenuState = { visible: false, x: 0, y: 0 }
+    const id0 = store.elements[0]!.id
+    store.clearSelection()
+    const host = paint(store, a => fired.push(a), menu)
+    host.querySelectorAll('td')[0]!.dispatchEvent(
+      mouse('contextmenu', { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }))
+    expect(menu.visible, '未选中表格时右键不应无反应').toBe(true)
+    expect(fired).toContain('table-cell-contextmenu')
+    expect(store.selectedIds.has(id0)).toBe(true)
+  })
+
   it('单格选区不可合并；两格可选后可合并', () => {
     const store = makeStore()
     const menu: TableMenuState = { visible: false, x: 0, y: 0 }

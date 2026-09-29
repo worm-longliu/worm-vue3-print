@@ -89,6 +89,7 @@
       v-if="contextMenu.visible"
       ref="contextMenuRef"
       class="context-menu"
+      @mousedown.stop
       :style="{
         left: (contextMenu.x + contextMenu.flipX) + 'px',
         top: (contextMenu.y + contextMenu.flipY) + 'px',
@@ -115,12 +116,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, watch, inject, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import type { RuntimeElement, TemplateData, AlignLine } from '@worm-vue3-print/core/designer'
 import { pxToMm, mmToPx } from '@worm-vue3-print/core/designer'
 import { nextWheelScale, MIN_SCALE_PERCENT, FIT_SCALE_MIN_PERCENT } from '@worm-vue3-print/core/designer'
 import { getPaperDimensions } from '@worm-vue3-print/core/designer'
 import { RULER_THICKNESS } from '@worm-vue3-print/core/designer'
+import { SELECTED_IDS_KEY } from '../composables/useSelection'
 import CanvasPaper from './CanvasPaper.vue'
 import Ruler from './Ruler.vue'
 
@@ -483,10 +485,17 @@ const contextMenu = reactive({
   targetId: null as string | null,
 })
 const contextMenuRef = ref<HTMLElement | null>(null)
+// 当前选中集合：右键命中已选中成员时保留多选，否则先单选该元素
+const selectedIds = inject(SELECTED_IDS_KEY, null)
 
 function onContextMenu(e: MouseEvent, elId?: string) {
   // 元素右键:由 BaseElement 上抛(已 stop);空白右键:无 elId,仅背景区域弹菜单
   if (!elId && !isCanvasBackground(e.target)) return
+  // 右键未命中原选中集时先单选该元素（通用右键菜单口径），
+  // 否则复制/剪切/删除/层级等动作会静默作用于旧选中或空选中
+  if (elId && !selectedIds?.value.has(elId)) {
+    emit('select', elId, false)
+  }
   contextMenu.targetId = elId ?? null
   contextMenu.visible = true
   contextMenu.x = e.clientX
@@ -508,39 +517,53 @@ function onContextMenu(e: MouseEvent, elId?: string) {
     }
   })
 
-  // 点击其他区域关闭：先清理旧监听器防止重复绑定
-  window.removeEventListener('mousedown', closeContextMenu)
-  setTimeout(() => {
-    window.addEventListener('mousedown', closeContextMenu, { once: true })
-  }, 0)
+  // 点击其他区域关闭：监听 mousedown 并跳过菜单内部的按下。
+  // 菜单根节点带 @mousedown.stop，菜单内按下不会冒泡到 window，
+  // 因此菜单项的 click 能正常派发（若在此处无条件移除菜单 DOM，
+  // mousedown 先于 click 销毁节点，所有菜单动作静默失效）。
+  // 本次右击的 mousedown 已过去，延迟到菜单渲染后再绑定。
+  window.removeEventListener('mousedown', scheduleMenuClose)
+  const gen = ++menuOpenGen
+  void nextTick(() => {
+    if (gen !== menuOpenGen) return
+    window.addEventListener('mousedown', scheduleMenuClose)
+  })
+}
+
+let menuOpenGen = 0
+
+function scheduleMenuClose(e: MouseEvent) {
+  const menu = contextMenuRef.value
+  if (menu && menu.contains(e.target as Node)) return
+  closeContextMenu()
 }
 
 function closeContextMenu() {
   contextMenu.visible = false
-  window.removeEventListener('mousedown', closeContextMenu)
+  window.removeEventListener('mousedown', scheduleMenuClose)
 }
 
 function handlePaste() {
-  contextMenu.visible = false
+  closeContextMenu()
   if (props.hasClipboard) emit('paste')
 }
 
 function handleSelectAll() {
-  contextMenu.visible = false
+  closeContextMenu()
   emit('select-all')
 }
 
 function handleClearSelection() {
-  contextMenu.visible = false
+  closeContextMenu()
   emit('clear-selection')
 }
 
 /** 元素右键菜单动作派发 */
 function emitAction(action: string, arg?: string) {
-  contextMenu.visible = false
+  closeContextMenu()
   if (action === 'copy') emit('copy')
   else if (action === 'cut') emit('cut')
-  else if (action === 'paste') emit('paste')
+  else if (action === 'paste') handlePaste()
   else if (action === 'delete') emit('delete')
   else if (action === 'move-layer') emit('move-layer', arg!)
 }
@@ -590,6 +613,7 @@ defineExpose({ centerScroll, fitToWindow, zoomByStep })
 onBeforeUnmount(() => {
   window.removeEventListener('mousemove', onMarqueeMove)
   window.removeEventListener('mouseup', onMarqueeUp)
+  window.removeEventListener('mousedown', scheduleMenuClose)
   resizeObserver?.disconnect()
   cancelAnimationFrame(scaleMeasureRaf)
 })

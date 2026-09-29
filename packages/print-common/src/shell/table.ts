@@ -459,7 +459,9 @@ function closeMenu(store: DesignerStore, fire: TableFire) {
 function openCellMenu(ctx: TableCtx, r: number, c: number, ev: MouseEvent) {
   ev.preventDefault()
   ev.stopPropagation()
-  if (!ctx.isSelected) return
+  // 未选中时先单选本表格（与单元格双击同口径）：右键单元格不应静默无反应，
+  // 且此处已 stopPropagation，元素右键菜单也不会代答
+  if (!ctx.isSelected) ctx.store.selectOne(ctx.el.id)
   const s = ctx.selection
   const inSel = !!s && r >= s.r1 && r <= s.r2 && c >= s.c1 && c <= s.c2
   if (!inSel) applySelection(ctx, { r, c }, { r, c })
