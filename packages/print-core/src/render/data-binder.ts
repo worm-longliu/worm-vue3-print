@@ -33,9 +33,6 @@ export function bindData(
   if (bound.footer?.elements) {
     bound.footer.elements = bound.footer.elements.map(el => bindElement(el, data, baseUrl))
   }
-  if (bound.firstPageOverlay?.elements) {
-    bound.firstPageOverlay.elements = bound.firstPageOverlay.elements.map(el => bindElement(el, data, baseUrl))
-  }
   bound.elements = bound.elements.map(el => bindElement(el, data, baseUrl))
 
   // 模板声明的字体：相对 URL 按字体基址解析（缺省回落图片基址），

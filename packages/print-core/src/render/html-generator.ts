@@ -118,7 +118,6 @@ function generateMeasurementHtml(
     0, // totalPages placeholder
     ctx,
   )
-  const overlayHtml = renderAreaElements(template.firstPageOverlay?.elements ?? [], contentWidth, undefined, undefined, ctx)
 
   let html = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -130,7 +129,6 @@ function generateMeasurementHtml(
 <section class="print-page" data-measure-page="0">
   ${renderWatermarkLayerHtml(template.watermark, printData, getPaperDims(template))}
   <div class="page-header">${headerHtml}</div>
-  <div class="first-page-overlay">${overlayHtml}</div>
   <div class="content-area" style="height:auto;overflow:visible;">
     ${elementsHtml}
   </div>
@@ -244,11 +242,6 @@ function renderPage(
     pageCtx,
   )
 
-  // 首页叠加（仅首页）
-  const overlayHtml = page.pageIndex === 0
-    ? `<div class="first-page-overlay">${renderAreaElements(scoped.firstPageOverlay?.elements ?? [], contentWidth, pageNum, totalPages, pageCtx)}</div>`
-    : ''
-
   // 内容区元素
   let contentHtml = page.sections
     .map(section => renderSection(section, scoped, pageCtx))
@@ -257,11 +250,10 @@ function renderPage(
   contentHtml = contentHtml.replace(/\{pageIndex\}/g, String(pageNum))
   contentHtml = contentHtml.replace(/\{totalPages\}/g, String(totalPages))
 
-  // 设计稿整页内容（水印+三区+首叠加）；出纸旋转角度非 0 时包进转子层整页旋转
+  // 设计稿整页内容（水印+三区）；出纸旋转角度非 0 时包进转子层整页旋转
   const pageInner = `
   ${renderWatermarkLayerHtml(template.watermark, printData, paperMm, { pageIndex: pageNum, totalPages })}
   <div class="page-header">${headerHtml}</div>
-  ${overlayHtml}
   <div class="content-area">
     ${contentHtml}
   </div>
@@ -298,7 +290,6 @@ function withPageNumbers(template: TemplateData, vars: PageVars): TemplateData {
     elements: template.elements.map(mapEl),
     header: mapArea(template.header),
     footer: mapArea(template.footer),
-    firstPageOverlay: mapArea(template.firstPageOverlay),
   }
 }
 
@@ -307,7 +298,6 @@ function templateReferencesPageNumbers(template: TemplateData): boolean {
     template.elements,
     template.header?.elements,
     template.footer?.elements,
-    template.firstPageOverlay?.elements,
   ]
   return areas.some(list => (list ?? []).some(el => typeof el.options?.rawFormatter === 'string'))
 }

@@ -32,7 +32,6 @@ export function applyTextFitSizes(template: TemplateData, fits: FitFontSize[] | 
   collect(template.elements)
   collect(template.header?.elements)
   collect(template.footer?.elements)
-  collect(template.firstPageOverlay?.elements)
 
   for (const fit of fits) {
     const parsed = parseCellFitKey(fit.key)

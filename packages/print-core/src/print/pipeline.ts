@@ -239,7 +239,7 @@ async function prepareSingleWithSession(
   applyTextFitSizes(bound, measurements.fits)
   const pageLayouts = paginate(bound, normalizeMeasurements(measurements.measurements, bound))
 
-  // 最终 HTML：补齐测量趟看不到的码值（页眉/页脚/首页叠加中的真实页码）
+  // 最终 HTML：补齐测量趟看不到的码值（页眉/页脚中的真实页码）
   const finalBuild = await buildHtmlWithCodes({
     bound, job, session, data, pageLayouts, isMeasurementPass: false, baseMap: measurement.map,
   })

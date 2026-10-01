@@ -57,7 +57,7 @@ describe('applyTextFitSizes', () => {
     expect((el.options._subtotalTemplates as RenderRow[])[0]!.cells[0]!.fittedFontSize).toBe(5.5)
   })
 
-  it('页眉/页脚/首页叠加区元素同样可回写（这些区域也参与测量趟）', () => {
+  it('页眉/页脚区元素同样可回写（这些区域也参与测量趟）', () => {
     const header = textEl({ textFit: 'shrink' })
     header.id = 'h1'
     const data = template([])

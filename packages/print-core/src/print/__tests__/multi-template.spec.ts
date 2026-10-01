@@ -153,38 +153,6 @@ describe('composeMultiPageDocument', () => {
     expect(html).toContain('.mt-1.print-page {')
   })
 
-  it('首页叠加仅在各模板自身首页出现', () => {
-    const coverWithOverlay = {
-      ...cover,
-      firstPageOverlay: {
-        height: 10,
-        elements: [{ id: 'cover-overlay', type: 'text', options: { left: 0, top: 0, width: 50, height: 10, formatter: '封面叠加' } }],
-      },
-    }
-    const contentWithOverlay = {
-      ...content,
-      firstPageOverlay: {
-        height: 10,
-        elements: [{ id: 'content-overlay', type: 'text', options: { left: 0, top: 0, width: 50, height: 10, formatter: '内容叠加' } }],
-      },
-    }
-    const doc = composeMultiPageDocument([{
-      boundPages: [coverWithOverlay, contentWithOverlay],
-      layoutsPerPage: [pageOf(coverWithOverlay), pageOf(contentWithOverlay)],
-      data: {},
-    }])
-    const html = doc.html
-    // 封面叠加在第 1 页；内容叠加在第 2 页（内容模板首页）而非第 3 页
-    const page1 = html.slice(0, html.indexOf('data-page="2"'))
-    const page2 = html.slice(html.indexOf('data-page="2"'), html.indexOf('data-page="3"'))
-    const page3 = html.slice(html.indexOf('data-page="3"'))
-    expect(page1).toContain('封面叠加')
-    expect(page1).not.toContain('内容叠加')
-    expect(page2).toContain('内容叠加')
-    expect(page2).not.toContain('封面叠加')
-    expect(page3).not.toContain('内容叠加')
-  })
-
   it('批量 2 份：pageCount=6，份间 .print-copy 包装，页码份内重置', () => {
     const coverLayouts = pageOf(cover)
     const contentLayouts = pageOf(content)
