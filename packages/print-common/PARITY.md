@@ -118,7 +118,7 @@
 | 页面：纸张预设（分组下拉）、自定义宽高、方向、内容旋转、页面背景色 | ✅ | |
 | 页面：设计背景（上传、旋转、移除） | ✅ | 上传走宿主 `uploadDesignBackground`（与 canvas 同契约）；未注入时入口禁用，不再回落本地 data URL |
 | 页面：拼版（开关、目标纸、留白、间距、列数、校验与摘要） | ✅ | 数字与告警全部走 core 纯函数；`tiling-parity.mjs` 12 步对拍（含连续纸禁用态与非法拼版的保存拦截文案）。三处 canvas 专属语义已补齐：**打开开关即按纸面收敛列数** `patch({ ...TILE_DEFAULTS, columns: min(2, columnMax) })`（否则小目标纸一开就非法到保存都被拦）、**切 CUSTOM 只补空值**（`sheetCustomWidth ?? current.width`，保留用户已填的自定义目标纸尺寸）、**拼版启用时隐藏「内容旋转角度」**（canvas `!continuousPaper && !tilingEnabled`） |
-| 页面：页边距、三区高度、水印 | ✅ | 「页眉/页脚高度 (mm)」与 canvas 同串同值域：页眉高度 / 页脚高度（0–100，**步长 0.1**）。本包早期是自造的「页眉 / 页脚 (mm)」两字段网格（max 200、无叠加高度），由 `tiling-parity` 的可见页签字段清单断言揭穿。水印整段移植 `WatermarkConfig.vue`（`shell/watermark.ts`）：表达式/测试值/旋转/颜色/透明度/密度预设/自定义瓦片，落盘口径与 canvas 的 `onChange` 一致（表达式写 `binding`、静态文本写 `content`） |
+| 页面：页边距、页眉/页脚高度、水印 | ✅ | 「页眉/页脚高度 (mm)」与 canvas 同串同值域：页眉高度 / 页脚高度（0–100，**步长 0.1**）。本包早期是自造的「页眉 / 页脚 (mm)」两字段网格（max 200、无叠加高度），由 `tiling-parity` 的可见页签字段清单断言揭穿。水印整段移植 `WatermarkConfig.vue`（`shell/watermark.ts`）：表达式/测试值/旋转/颜色/透明度/密度预设/自定义瓦片，落盘口径与 canvas 的 `onChange` 一致（表达式写 `binding`、静态文本写 `content`） |
 
 ## 六、宿主接口
 

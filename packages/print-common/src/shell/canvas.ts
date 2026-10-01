@@ -195,7 +195,7 @@ export function renderCanvasArea(ctx: ShellCtx, ui: CanvasUI) {
           position: 'relative',
         },
       }, [paperEl]),
-    ].filter(Boolean)),
+    ]),
   ]
 
   if (s.showRuler) {

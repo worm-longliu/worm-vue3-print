@@ -490,8 +490,8 @@ describe('首页预算与后续页一致（2.0.0 起无首页叠加扣减）', (
     // 显式携带废弃字段 firstPageOverlay.height=30，是为了让本用例「可证伪」：
     // 若有人把首页叠加扣减加回引擎（首页预算再被扣掉任何高度），首页可用将从 78
     // 骤减（30mm 场景只剩 48），65mm 内容必然提前换页 → 用例立刻变红。
-    // 当前 core 类型里该字段仍为必填，Task 10 删字段后废弃键留在运行时被引擎忽略，
-    // 故此处以 `as unknown as TemplateData` 形态传入，删字段前后本锁都有效。
+    // 该键不属于当前 TemplateData 类型，是按运行时形状强行注入的废弃键（故需 `as unknown as
+    // TemplateData`）；引擎忽略它即为现状。保留注入是为了让本锁可被证伪，删掉注入即失去意义。
     const tpl = {
       ...makeCustomPaperTemplate(100, 100, [
         freeEl('e0', 0, 22), freeEl('e1', 22, 22), freeEl('e2', 44, 21),
