@@ -487,9 +487,17 @@ function makeCustomPaperTemplate(
 
 describe('首页预算与后续页一致（2.0.0 起无首页叠加扣减）', () => {
   it('自定义纸 100×100、边距 10 → 内容高 80、可用 78，三段共 65mm 全落首页', () => {
-    const tpl = makeCustomPaperTemplate(100, 100, [
-      freeEl('e0', 0, 22), freeEl('e1', 22, 22), freeEl('e2', 44, 21),
-    ])
+    // 显式携带废弃字段 firstPageOverlay.height=30，是为了让本用例「可证伪」：
+    // 若有人把首页叠加扣减加回引擎（首页预算再被扣掉任何高度），首页可用将从 78
+    // 骤减（30mm 场景只剩 48），65mm 内容必然提前换页 → 用例立刻变红。
+    // 当前 core 类型里该字段仍为必填，Task 10 删字段后废弃键留在运行时被引擎忽略，
+    // 故此处以 `as unknown as TemplateData` 形态传入，删字段前后本锁都有效。
+    const tpl = {
+      ...makeCustomPaperTemplate(100, 100, [
+        freeEl('e0', 0, 22), freeEl('e1', 22, 22), freeEl('e2', 44, 21),
+      ]),
+      firstPageOverlay: { height: 30, elements: [] },
+    } as unknown as TemplateData
     const pages = paginate(tpl, measureFree([['e0', 22], ['e1', 22], ['e2', 21]]))
     expect(pages).toHaveLength(1)
     expect(pages[0].sections.map(s => s.elementId)).toEqual(['e0', 'e1', 'e2'])
