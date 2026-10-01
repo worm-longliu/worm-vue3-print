@@ -980,7 +980,7 @@ describe('单元格与文本元素的字体输出', () => {
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] },
       footer: { height: 0, elements: [] },
-        elements: [{
+      elements: [{
         id: 'txt-1', type: 'text',
         options: { left: 0, top: 0, width: 50, height: 10, fontFamily: 'KaiTi', fontSize: 12, formatter: 'HELLO' },
       }] as any,
@@ -1053,7 +1053,7 @@ describe('元素级边框出纸渲染', () => {
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] },
       footer: { height: 12, elements: [] },
-        elements: [el],
+      elements: [el],
     } as TemplateData
   }
 

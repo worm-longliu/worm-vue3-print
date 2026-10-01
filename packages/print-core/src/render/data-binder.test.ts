@@ -149,7 +149,7 @@ describe('printData 列表数据绑定', () => {
       paperSize: 'A4', orientation: 'portrait',
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-        elements: [{
+      elements: [{
         id: 't1', type: 'table',
         options: { left: 10, top: 10, width: 100, height: 30, tableMode: 'dynamic',
           tableColWidths: [50, 50], fields: [],
@@ -176,7 +176,7 @@ describe('printData 列表数据绑定', () => {
       paperSize: 'A4', orientation: 'portrait',
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-        elements: [{
+      elements: [{
         id: 't1', type: 'table',
         options: { left: 10, top: 10, width: 100, height: 30, tableMode: 'dynamic',
           tableColWidths: [50, 50], fields: [], dataSource: 'goods',
@@ -197,7 +197,7 @@ describe('printData 列表数据绑定', () => {
       paperSize: 'A4', orientation: 'portrait',
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-        elements: [{
+      elements: [{
         id: 't1', type: 'table',
         options: { left: 10, top: 10, width: 100, height: 30, tableMode: 'dynamic',
           tableColWidths: [50, 50], fields: [], dataSource: 'goods',
@@ -217,7 +217,7 @@ describe('printData 列表数据绑定', () => {
       paperSize: 'A4', orientation: 'portrait',
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-        elements: [{
+      elements: [{
         id: 't1', type: 'table',
         options: { left: 10, top: 10, width: 100, height: 30, tableMode: 'dynamic',
           tableColWidths: [50, 50], fields: [],
@@ -240,7 +240,7 @@ describe('bindData 图片 src', () => {
       paperSize: 'A4', orientation: 'portrait',
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-        elements: [{ id: 'img-1', type: 'image', options: { left: 0, top: 0, width: 30, height: 30, src } }],
+      elements: [{ id: 'img-1', type: 'image', options: { left: 0, top: 0, width: 30, height: 30, src } }],
     } as TemplateData
   }
 
