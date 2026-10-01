@@ -20,7 +20,6 @@ function makeTemplate(tableOptions: Record<string, any>): TemplateData {
     margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [{ id: 'tbl-1', type: 'table', options: { left: 0, top: 0, width: 100, ...tableOptions } } as any],
   }
 }
@@ -155,7 +154,6 @@ function makeAreaTemplate(overrides: Partial<TemplateData> = {}): TemplateData {
     margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 15, elements: [] },
     footer: { height: 12, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [],
     ...overrides,
   } as TemplateData
@@ -922,7 +920,6 @@ describe('批量文档拆分函数', () => {
     margins: { top: 0, right: 0, bottom: 0, left: 0 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [],
   } as unknown as TemplateData
 
@@ -983,8 +980,7 @@ describe('单元格与文本元素的字体输出', () => {
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] },
       footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
-      elements: [{
+        elements: [{
         id: 'txt-1', type: 'text',
         options: { left: 0, top: 0, width: 50, height: 10, fontFamily: 'KaiTi', fontSize: 12, formatter: 'HELLO' },
       }] as any,
@@ -1013,7 +1009,6 @@ describe('出纸旋转（outputRotation）整页旋转', () => {
     margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [{
       id: 'txt-1', type: 'text',
       options: { left: 0, top: 0, width: 50, height: 10, fontSize: 12, formatter: 'HELLO' },
@@ -1058,8 +1053,7 @@ describe('元素级边框出纸渲染', () => {
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] },
       footer: { height: 12, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
-      elements: [el],
+        elements: [el],
     } as TemplateData
   }
 

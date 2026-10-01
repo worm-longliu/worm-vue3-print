@@ -273,7 +273,7 @@ export function buildPageGeometryCss(
 
 /**
  * 生成完整的打印页面 CSS。
- * 包含纸张尺寸、边距、页眉页脚、内容区、首页叠加区域等样式。
+ * 包含纸张尺寸、边距、页眉页脚、内容区几何等样式。
  * 出纸旋转角度非 0（固定纸）时，额外输出 .print-page-rotor / .print-page-rotor-${angle} 转子规则完成整页旋转。
  * @param pageHeightMm 连续纸由浏览器探针推导出的最终纸高（mm）；传入时替换模板纸张高度，
  *                     使 @page/.print-page/footer 全部对齐该高度。普通纸不传。

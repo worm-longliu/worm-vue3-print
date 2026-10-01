@@ -16,7 +16,6 @@ const template = {
   margins: { top: 10, right: 10, bottom: 10, left: 10 },
   header: { height: 0, elements: [] },
   footer: { height: 0, elements: [] },
-  firstPageOverlay: { height: 0, elements: [] },
   elements: [{ id: 'a', type: 'text', options: { left: 0, top: 0, width: 40, height: 8, formatter: 'hi' } }],
 } as unknown as TemplateData
 

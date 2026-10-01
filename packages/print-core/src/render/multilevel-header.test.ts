@@ -51,7 +51,6 @@ function makeTemplate(rows: any[]): TemplateData {
     margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [{
       id: 'tbl-1', type: 'table',
       options: { left: 0, top: 0, width: 120, tableColWidths: [40, 40, 40], tableRows: rows, tableMode: 'dynamic', fields: [{ text: 'items', dataSource: 'items' }] },

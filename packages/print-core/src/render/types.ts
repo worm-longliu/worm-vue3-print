@@ -83,7 +83,6 @@ export interface TemplateData {
   margins: { top: number; right: number; bottom: number; left: number }
   header: { height: number; elements: TemplateElement[] }
   footer: { height: number; elements: TemplateElement[] }
-  firstPageOverlay: { height: number; elements: TemplateElement[] }
   elements: TemplateElement[]
 }
 

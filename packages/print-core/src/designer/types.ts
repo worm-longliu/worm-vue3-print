@@ -52,10 +52,6 @@ export interface TemplateData {
     height: number // mm
     elements: TemplateElement[]
   }
-  firstPageOverlay: {
-    height: number // mm
-    elements: TemplateElement[]
-  }
   elements: TemplateElement[] // 内容区主体元素
   /** 页面名称（多页面模板中用于设计器页签显示；渲染端忽略） */
   name?: string
@@ -421,15 +417,6 @@ export interface BindingDescriptor {
   clearable?: boolean
 }
 // ─── 宿主能力注入：开源核心不直接发起网络请求，以下能力由宿主实现后注入 ───
-
-/** 截图请求载荷（设计器叠层对比用） */
-export interface ScreenshotRequest {
-  templateJson: TemplateData
-  printData: Record<string, any>
-}
-
-/** 截图适配器：宿主依据模板 + 数据返回 PNG Blob */
-export type RequestScreenshotFn = (req: ScreenshotRequest) => Promise<Blob>
 
 /** 图片上传适配器：宿主上传文件并返回可访问的图片 URL */
 export type UploadImageFn = (file: File) => Promise<string>

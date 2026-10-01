@@ -41,8 +41,7 @@ export function createDefaultTemplate(): TemplateData {
     footer: { height: 10, elements: [] },
     elements: [],
     watermark: {},
-    // 画布不再读写该首页专属字段；core 类型尚未删除其必填声明，经 unknown 桥接
-  } as unknown as TemplateData
+  }
 }
 
 /** 三区元素合并为统一运行时元素池（补建 id、打 zone 标） */
@@ -205,8 +204,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
         customHeight: templateData.value.customHeight,
         watermark: templateData.value.watermark ? { ...templateData.value.watermark } : undefined,
         guides: [...(templateData.value.guides ?? [])],
-        // 快照不再搬运该首页专属字段；core 类型尚未删除其必填声明，经 unknown 桥接
-      } as unknown as TemplateData,
+      },
       pages: JSON.parse(JSON.stringify(pages.value)),
       activePageIndex: activePageIndex.value,
     }

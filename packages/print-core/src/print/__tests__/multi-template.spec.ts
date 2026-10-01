@@ -21,7 +21,6 @@ function makePage(name: string, elements: Array<Record<string, any>>): TemplateD
       // 页码元素占位符存 testData（bindData 只求值 formatter，不动 testData），与真实行为一致
       elements: [{ id: 'pg', type: 'pageNumber', options: { left: 0, top: 0, width: 50, height: 5, testData: '{pageIndex}/{totalPages}' } }],
     },
-    firstPageOverlay: { height: 0, elements: [] },
     name,
     elements: elements as TemplateData['elements'],
   }

@@ -11,6 +11,5 @@ export function createDefaultTemplate(): TemplateData {
     footer: { height: 10, elements: [] },
     elements: [],
     watermark: {},
-    // 画布不再读写该字段；core 类型尚未删除其必填声明，经 unknown 桥接
-  } as unknown as TemplateData
+  }
 }

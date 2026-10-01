@@ -21,16 +21,17 @@ function round2(n: number): number {
 }
 
 export function normalizeTemplateUnits(data: TemplateData): TemplateData {
-  if (data.unit === 'mm') return data
+  // 2.0.0 起首页叠加区已移除：残留该键的旧模板一律剥离，既不换算也不再进渲染
+  const rest: Record<string, unknown> = { ...data }
+  delete rest.firstPageOverlay
+  if (rest.unit === 'mm') return rest as unknown as TemplateData
+  const src = rest as unknown as TemplateData
   const convert = (els?: PrintElementData[]): PrintElementData[] => els?.map(convertElement) ?? []
   return {
-    ...data,
+    ...src,
     unit: 'mm',
-    elements: convert(data.elements),
-    header: data.header ? { ...data.header, elements: convert(data.header.elements) } : data.header,
-    footer: data.footer ? { ...data.footer, elements: convert(data.footer.elements) } : data.footer,
-    firstPageOverlay: data.firstPageOverlay
-      ? { ...data.firstPageOverlay, elements: convert(data.firstPageOverlay.elements) }
-      : data.firstPageOverlay,
+    elements: convert(src.elements),
+    header: src.header ? { ...src.header, elements: convert(src.header.elements) } : src.header,
+    footer: src.footer ? { ...src.footer, elements: convert(src.footer.elements) } : src.footer,
   }
 }

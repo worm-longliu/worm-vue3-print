@@ -26,7 +26,7 @@ describe('normalizeTemplateUnits', () => {
     expect(Math.abs(el!.width - 425 * PT_TO_MM)).toBeLessThan(0.01)
   })
 
-  it('页眉/页脚/首页叠加元素同样换算', () => {
+  it('页眉/页脚元素同样换算，并剥离已废弃的首页叠加字段', () => {
     const tpl = {
       header: { height: 10, elements: [{ id: 'h', options: { left: 20, top: 5, width: 100, height: 10 } }] },
       footer: { height: 10, elements: [{ id: 'f', options: { left: 20, top: 5, width: 100, height: 10 } }] },
@@ -35,6 +35,17 @@ describe('normalizeTemplateUnits', () => {
     const out = normalizeTemplateUnits(tpl)
     expect(out.header!.elements[0]?.options.left).toBeCloseTo(20 * PT_TO_MM, 1)
     expect(out.footer!.elements[0]?.options.top).toBeCloseTo(5 * PT_TO_MM, 1)
-    expect(out.firstPageOverlay!.elements[0]?.options.width).toBeCloseTo(100 * PT_TO_MM, 1)
+    expect('firstPageOverlay' in out).toBe(false)
+  })
+
+  it('unit 已是 mm 时同样剥离首页叠加字段（旧模板导入不留废弃键）', () => {
+    const tpl = {
+      unit: 'mm',
+      firstPageOverlay: { height: 10, elements: [] },
+      elements: [{ id: '1', options: { left: 10, top: 20, width: 42, height: 8 } }],
+    } as unknown as TemplateData
+    const out = normalizeTemplateUnits(tpl)
+    expect('firstPageOverlay' in out).toBe(false)
+    expect(out.elements![0]?.options.left).toBe(10)
   })
 })

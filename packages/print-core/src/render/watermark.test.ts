@@ -30,7 +30,6 @@ function makeTemplate(): TemplateData {
     margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [],
   }
 }

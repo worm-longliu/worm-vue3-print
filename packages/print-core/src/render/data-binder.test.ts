@@ -8,7 +8,6 @@ function makeTemplate(tableOptions: Record<string, any>): TemplateData {
     margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [{ id: 'tbl-1', type: 'table', options: { left: 0, top: 0, width: 150, ...tableOptions } }],
   } as TemplateData
 }
@@ -99,7 +98,7 @@ describe('bindTableData 静态模式', () => {
 
 describe('文本元素 formatter 求值', () => {
   it('文本元素 options.formatter 在绑定后求值', () => {
-    const tpl = { paperSize: 'A4', orientation: 'portrait', margins: { top: 10, right: 10, bottom: 10, left: 10 }, header: { height: 10, elements: [] }, footer: { height: 10, elements: [] }, firstPageOverlay: { height: 0, elements: [] }, elements: [{ id: 'e1', type: 'text', options: { formatter: '公司：{company.name}' } }] } as any
+    const tpl = { paperSize: 'A4', orientation: 'portrait', margins: { top: 10, right: 10, bottom: 10, left: 10 }, header: { height: 10, elements: [] }, footer: { height: 10, elements: [] }, elements: [{ id: 'e1', type: 'text', options: { formatter: '公司：{company.name}' } }] } as any
     const bound = bindData(tpl, { company: { name: '乐檬' } })
     expect(bound.elements[0].options.formatter).toBe('公司：乐檬')
   })
@@ -109,7 +108,6 @@ describe('bindData 点分路径', () => {
   const mkTpl = (rows: any[]): TemplateData => ({
     paperSize: 'A4', orientation: 'portrait', margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 10, elements: [] }, footer: { height: 10, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [{
       id: 't1', type: 'table',
       options: { tableMode: 'dynamic', fields: [{ text: '商品', dataSource: 'goods' }],
@@ -139,7 +137,7 @@ describe('bindData 点分路径', () => {
     expect(summaryRow.cells[0].content).toContain('120')
   })
   it('变量替换支持点分 {company.name}', () => {
-    const tpl = { paperSize: 'A4', orientation: 'portrait', margins: { top: 10, right: 10, bottom: 10, left: 10 }, header: { height: 10, elements: [] }, footer: { height: 10, elements: [] }, firstPageOverlay: { height: 0, elements: [] }, elements: [{ id: 'e1', type: 'text', options: { formatter: '{company.name}' } }] } as any
+    const tpl = { paperSize: 'A4', orientation: 'portrait', margins: { top: 10, right: 10, bottom: 10, left: 10 }, header: { height: 10, elements: [] }, footer: { height: 10, elements: [] }, elements: [{ id: 'e1', type: 'text', options: { formatter: '{company.name}' } }] } as any
     const bound = bindData(tpl, { company: { name: '乐檬' } })
     expect(bound.elements[0].options.formatter).toBe('乐檬')
   })
@@ -151,8 +149,7 @@ describe('printData 列表数据绑定', () => {
       paperSize: 'A4', orientation: 'portrait',
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
-      elements: [{
+        elements: [{
         id: 't1', type: 'table',
         options: { left: 10, top: 10, width: 100, height: 30, tableMode: 'dynamic',
           tableColWidths: [50, 50], fields: [],
@@ -179,8 +176,7 @@ describe('printData 列表数据绑定', () => {
       paperSize: 'A4', orientation: 'portrait',
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
-      elements: [{
+        elements: [{
         id: 't1', type: 'table',
         options: { left: 10, top: 10, width: 100, height: 30, tableMode: 'dynamic',
           tableColWidths: [50, 50], fields: [], dataSource: 'goods',
@@ -201,8 +197,7 @@ describe('printData 列表数据绑定', () => {
       paperSize: 'A4', orientation: 'portrait',
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
-      elements: [{
+        elements: [{
         id: 't1', type: 'table',
         options: { left: 10, top: 10, width: 100, height: 30, tableMode: 'dynamic',
           tableColWidths: [50, 50], fields: [], dataSource: 'goods',
@@ -222,8 +217,7 @@ describe('printData 列表数据绑定', () => {
       paperSize: 'A4', orientation: 'portrait',
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
-      elements: [{
+        elements: [{
         id: 't1', type: 'table',
         options: { left: 10, top: 10, width: 100, height: 30, tableMode: 'dynamic',
           tableColWidths: [50, 50], fields: [],
@@ -246,8 +240,7 @@ describe('bindData 图片 src', () => {
       paperSize: 'A4', orientation: 'portrait',
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
-      elements: [{ id: 'img-1', type: 'image', options: { left: 0, top: 0, width: 30, height: 30, src } }],
+        elements: [{ id: 'img-1', type: 'image', options: { left: 0, top: 0, width: 30, height: 30, src } }],
     } as TemplateData
   }
 

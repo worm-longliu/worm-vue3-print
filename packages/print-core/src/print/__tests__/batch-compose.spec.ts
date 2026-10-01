@@ -9,7 +9,6 @@ function tpl(paperSize: 'A4' | 'CONTINUOUS'): TemplateData {
     margins: { top: 0, right: 0, bottom: 0, left: 0 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [],
   } as unknown as TemplateData
 }

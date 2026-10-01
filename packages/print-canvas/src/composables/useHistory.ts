@@ -78,8 +78,7 @@ export function useHistory(options?: UseHistoryOptions) {
         customHeight: td.customHeight,
         watermark: td.watermark ? { ...td.watermark } : undefined,
         guides: td.guides ? [...td.guides] : undefined,
-        // 快照不再搬运该首页专属字段；core 类型尚未删除其必填声明，经 unknown 桥接
-      } as unknown as TemplateData
+      }
     }
     return result
   }

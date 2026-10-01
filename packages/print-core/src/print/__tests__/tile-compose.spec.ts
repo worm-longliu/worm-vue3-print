@@ -24,7 +24,6 @@ function tpl(): TemplateData {
     margins: { top: 3, right: 3, bottom: 3, left: 3 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [
       { id: 't1', type: 'text', options: { left: 0, top: 0, width: 60, height: 8, formatter: '{title}' } },
     ],

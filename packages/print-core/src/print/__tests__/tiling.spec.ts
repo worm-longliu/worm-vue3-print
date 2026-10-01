@@ -32,7 +32,6 @@ function labelTemplate(tiling?: TilingOptions): TemplateData {
     margins: { top: 3, right: 3, bottom: 3, left: 3 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [],
     tiling: tiling ?? baseCfg(),
   } as unknown as TemplateData
