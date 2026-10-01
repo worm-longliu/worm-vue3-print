@@ -11,7 +11,6 @@
       :snap-to-grid="snapToGrid"
       :show-table-ghost-border="showTableGhostBorder"
       :selected-element-has-group="selectedHasGroup"
-      :overlay-visible="overlayVisible"
       :show-help="showHelp !== false"
       :clipboard-disabled="formatToolbar.context.value !== 'elements'"
       :has-clipboard="hasClipboard"
@@ -26,7 +25,6 @@
       @toggle-grid="showGrid = !showGrid"
       @toggle-snap="snapToGrid = !snapToGrid"
       @toggle-table-ghost-border="showTableGhostBorder = !showTableGhostBorder"
-      @toggle-overlay="toggleOverlay"
       @group="onGroup"
       @ungroup="onUngroup"
       @fit-window="onFitWindow"
@@ -80,9 +78,6 @@
         :show-table-ghost-border="showTableGhostBorder"
         :has-clipboard="hasClipboard"
         :guides="guides"
-        :overlay-visible="overlayVisible"
-        :screenshot-url="screenshotUrl"
-        :overlay-opacity="overlayOpacity"
         @select="onSelectElement"
         @drop-element="onDropElement"
         @drop-field="onDropField"
@@ -150,7 +145,7 @@
 <script setup lang="ts">
 import '../styles/native-controls.css'
 import { ref, watch, provide, computed, onMounted, onUnmounted } from 'vue'
-import type { RuntimeElement, PrintBusinessField, TemplateData, TableCell, RequestScreenshotFn, UploadImageFn, UploadDesignBackgroundFn, MultiPageTemplateData } from '@worm-vue3-print/core/designer'
+import type { RuntimeElement, PrintBusinessField, TemplateData, TableCell, UploadImageFn, UploadDesignBackgroundFn, MultiPageTemplateData } from '@worm-vue3-print/core/designer'
 import type { PrintFontDeclaration, PrintTemplateData, MultiPageTemplateData as PrintMultiPageTemplateData } from '@worm-vue3-print/core'
 import { buildFontFaceCss, validateTiling, normalizeTemplate } from '@worm-vue3-print/core'
 import { useDesignerState } from '../composables/useDesignerState'
@@ -161,7 +156,6 @@ import { TABLE_EDIT_KEY } from '../composables/useTableSelection'
 import { SELECTED_IDS_KEY, PREVIEW_IDS_KEY } from '../composables/useSelection'
 import { getZoneRects } from '@worm-vue3-print/core/designer'
 import { getPaperDimensions, PAPER_PRESETS } from '@worm-vue3-print/core/designer'
-import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
 import { findMainCell } from '@worm-vue3-print/core/designer'
 import { computeFitScale, FIT_SCALE_MIN_PERCENT } from '@worm-vue3-print/core/designer'
 import {
@@ -188,8 +182,6 @@ const props = defineProps<{
   initialElements?: RuntimeElement[]
   fields?: PrintBusinessField[]
   isEdit?: boolean
-  /** 截图适配器（叠层对比）：未注入时该功能不可用 */
-  requestScreenshot?: RequestScreenshotFn
   /** 图片上传适配器：未注入时图片上传不可用 */
   uploadImage?: UploadImageFn
   /** 设计背景图上传适配器：未注入时背景上传入口禁用；返回值须为完整图片路径 */
@@ -295,40 +287,6 @@ watch(selectedElement, el => {
 })
 
 const canvasAreaRef = ref<InstanceType<typeof CanvasArea> | null>(null)
-
-// 叠层对比模式
-const overlayVisible = ref(false)
-const screenshotUrl = ref('')
-const overlayOpacity = ref(0.5)
-
-async function toggleOverlay() {
-  if (overlayVisible.value) {
-    overlayVisible.value = false
-    return
-  }
-  const templateJson = templateJsonWithFonts()
-  if (!templateJson) {
-    alert('模板数据为空')
-    return
-  }
-  if (!props.requestScreenshot) {
-    alert('截图服务未配置')
-    return
-  }
-  try {
-    // 叠层对比针对当前激活页生成截图：多页模板取 activePage 单页模板
-    const mp = templateJson as MultiPageTemplateData
-    const activeTemplate: TemplateData = Array.isArray(mp.pages)
-      ? mp.pages[activePageIndex.value]!
-      : (templateJson as TemplateData)
-    const blob = await props.requestScreenshot({ templateJson: activeTemplate, printData: DEFAULT_DEMO_DATA })
-    if (screenshotUrl.value) URL.revokeObjectURL(screenshotUrl.value)
-    screenshotUrl.value = URL.createObjectURL(blob)
-    overlayVisible.value = true
-  } catch {
-    alert('截图生成失败')
-  }
-}
 
 // 状态栏:鼠标坐标(纸面 mm)
 const coordinate = ref<{ x: number; y: number } | null>(null)

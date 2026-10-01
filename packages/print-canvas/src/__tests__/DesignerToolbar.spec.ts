@@ -48,12 +48,6 @@ describe('DesignerToolbar 视图下拉（标尺开关）', () => {
     const btn = w.findAll('button').find(b => b.text().includes('标尺'))!
     expect(btn.classes()).not.toContain('on')
   })
-
-  it('叠层对比收入视图下拉', async () => {
-    const w = await mountViewOpened()
-    await w.findAll('button').find(b => b.text().includes('叠层对比'))!.trigger('click')
-    expect(w.emitted('toggle-overlay')).toHaveLength(1)
-  })
 })
 
 describe('DesignerToolbar 剪贴板组', () => {

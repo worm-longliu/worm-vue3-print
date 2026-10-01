@@ -55,7 +55,7 @@
           </div>
         </div>
       </ToolbarDropdown>
-      <!-- 视图下拉：标尺/网格/虚框/吸附开关 + 叠层对比 -->
+      <!-- 视图下拉：标尺/网格/虚框/吸附开关 -->
       <ToolbarDropdown test-id="view-dd" tip="视图">
         <template #trigger>
           <Eye :size="15" />
@@ -74,7 +74,6 @@
           <button class="tb-btn tb-menu-row" :class="{ on: snapToGrid }" data-tip="开启/关闭元素吸附到网格" @click="$emit('toggle-snap')">
             <span class="dot" /> 吸附
           </button>
-          <button class="tb-btn tb-menu-row" :class="{ warn: overlayVisible }" data-tip="叠加显示渲染截图，与设计稿对比效果" @click="$emit('toggle-overlay')">叠层对比</button>
         </div>
       </ToolbarDropdown>
     </div>
@@ -146,7 +145,6 @@ const props = withDefaults(defineProps<{
   snapToGrid?: boolean
   showTableGhostBorder?: boolean
   selectedElementHasGroup?: boolean
-  overlayVisible?: boolean
   /** 是否展示帮助入口（工具栏帮助按钮）；默认开启，传 false 关闭 */
   showHelp?: boolean
   /** 剪贴板组置灰（非元素上下文时由宿主传入） */
@@ -176,7 +174,6 @@ defineEmits<{
   'toggle-grid': []
   'toggle-snap': []
   'toggle-table-ghost-border': []
-  'toggle-overlay': []
   group: []
   ungroup: []
   'fit-window': []
@@ -247,11 +244,6 @@ defineEmits<{
 .tb-btn.on {
   color: var(--pd-accent, #165DFF);
   background: var(--pd-accent-soft, rgba(22, 93, 255, .09));
-  font-weight: 600;
-}
-.tb-btn.warn {
-  color: var(--pd-accent-secondary, #f56c6c);
-  background: var(--pd-danger-soft, rgba(245, 108, 108, .10));
   font-weight: 600;
 }
 .tb-btn .dot {

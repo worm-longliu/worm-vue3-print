@@ -34,10 +34,6 @@
         @zone-height-commit="(zone: 'header' | 'footer') => $emit('zone-height-commit', zone)"
         @clone-element="(el, pos) => $emit('clone-element', el, pos)"
       />
-      <!-- 叠层对比截图 -->
-      <div v-if="overlayVisible && screenshotUrl" class="overlay-layer">
-        <img :src="screenshotUrl" class="overlay-image" :style="{ opacity: overlayOpacity ?? 0.5 }" />
-      </div>
     </div>
 
     <!-- 视口固定式标尺：不随纸张滚动/缩放，刻度随滚动平移 -->
@@ -135,9 +131,6 @@ const props = withDefaults(defineProps<{
   showTableGhostBorder?: boolean
   hasClipboard?: boolean
   guides?: AlignLine[]
-  overlayVisible?: boolean
-  screenshotUrl?: string
-  overlayOpacity?: number
   /** 是否显示视口固定标尺，默认开启 */
   showRuler?: boolean
 }>(), {
@@ -649,18 +642,6 @@ onBeforeUnmount(() => {
   flex: none;
   margin: auto;
   width: fit-content;
-}
-/* 叠层对比 */
-.overlay-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  z-index: 100;
-}
-.overlay-image {
-  width: 100%;
-  display: block;
 }
 /* 框选选框 */
 .marquee-selection {
