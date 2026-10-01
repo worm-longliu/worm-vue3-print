@@ -6,7 +6,6 @@ import type {
   ExecutorMethod,
   PageDriver,
   PdfTargetSpec,
-  ScreenshotTargetSpec,
   ViewportPx,
 } from '@worm-vue3-print/core'
 import { BrowserPool } from './browser-pool.js'
@@ -48,15 +47,6 @@ class PlaywrightDriver implements PageDriver {
 
   async pdf(_html: string, spec: PdfTargetSpec): Promise<Uint8Array> {
     return new Uint8Array(await this.page.pdf(toPlaywrightPdfOptions(spec)))
-  }
-
-  async screenshot(_html: string, spec: ScreenshotTargetSpec): Promise<Uint8Array> {
-    const buffer = await this.page.screenshot({
-      type: spec.type,
-      fullPage: spec.fullPage,
-      omitBackground: spec.omitBackground,
-    })
-    return new Uint8Array(buffer)
   }
 
   async close(): Promise<void> {

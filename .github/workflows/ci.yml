@@ -41,9 +41,6 @@ jobs:
       - name: 连续纸与出图规格集成测试
         run: npm run test -w @worm-vue3-print/render -- src/continuous.integration.test.ts
         timeout-minutes: 5
-      - name: 截图集成测试
-        run: npm run test -w @worm-vue3-print/render -- src/screenshot.test.ts
-        timeout-minutes: 5
       - name: 明细分页集成测试
         run: npm run test -w @worm-vue3-print/render -- src/subtotal.integration.test.ts
         timeout-minutes: 5

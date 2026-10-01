@@ -15,7 +15,6 @@ function continuousTemplate(): PrintTemplateData {
     margins: { top: 2, right: 2, bottom: 2, left: 2 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [
       { id: 't1', type: 'text', options: { left: 0, top: 0, width: 60, height: 8, formatter: '第一行' } },
       { id: 't2', type: 'text', options: { left: 0, top: 20, width: 60, height: 8, formatter: '第二行' } },

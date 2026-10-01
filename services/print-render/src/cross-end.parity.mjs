@@ -17,7 +17,6 @@ export const A4_TEMPLATE = {
   margins: { top: 10, right: 10, bottom: 10, left: 10 },
   header: { height: 0, elements: [] },
   footer: { height: 0, elements: [] },
-  firstPageOverlay: { height: 0, elements: [] },
   elements: [
     { id: 't', type: 'text', options: { left: 0, top: 0, width: 120, height: 8, formatter: '跨端一致性' } },
   ],

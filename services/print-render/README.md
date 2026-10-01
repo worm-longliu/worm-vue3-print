@@ -4,8 +4,7 @@
 `services/print-render`（`private` 服务包，不发布 npm，仅 Docker 部署）。
 通过 npm workspace 本地软链依赖同仓库的 `@worm-vue3-print/core`（表达式引擎与渲染管线），
 修改 core 无需发版即可在本服务生效。
-宿主（如管理后台 `web`）的后端 `PrintRenderClient` 调用本服务的 `POST /render/pdf` 与
-`POST /render/screenshot`，传入 `templateJson`（模板 JSON）与 `printData`（打印数据），
+宿主（如管理后台 `web`）的后端 `PrintRenderClient` 调用本服务的 `POST /render/pdf`，传入 `templateJson`（模板 JSON）与 `printData`（打印数据），
 模板绑定、分页与 HTML 生成在 Node 侧完成；测量、连续纸探针、码制渲染与出图由 `@worm-vue3-print/core` 的 DOM 执行器在页面上下文执行（与浏览器预览、桌面客户端共用同一份管线）。
 
 ## 渲染流程
@@ -15,7 +14,7 @@
 1. 数据绑定：`@worm-vue3-print/core` 的 `bindData` 将 `printData` 变量/表达式替换进模板；
 2. 第一遍测量：`generateHtml` 生成测量 HTML，`page.setContent()` 加载后测量各元素实际高度（mm）；
 3. 分页计算：`paginate` 基于实测高度执行分页算法（含表格重复表头、小计/汇总）；
-4. 第二遍出图：按分页结果生成最终 HTML，`page.pdf()` 输出 PDF（截图接口为单遍 `page.screenshot()`）。
+4. 第二遍出图：按分页结果生成最终 HTML，`page.pdf()` 输出 PDF。
 
 生成内容仅含 HTML/CSS/SVG 与 base64 `<img>`，页码 `{pageIndex}/{totalPages}` 在第二遍按分页填充。
 
@@ -25,12 +24,11 @@
 |------|------|------|
 | `GET`  | `/health` | 健康检查，返回浏览器池状态（活跃数/并发上限/队列长度） |
 | `POST` | `/render/pdf` | 渲染并返回 `application/pdf` |
-| `POST` | `/render/screenshot` | 渲染并返回 `image/png`（设计器叠层对比用，不分页） |
 
 - 鉴权：`/render/*` 需携带请求头 `X-Render-Key`，与环境变量 `RENDER_API_KEY` 一致（默认 `dev-render-key`）。
 - 请求体：`{ templateJson, printData, baseUrl, fontBaseUrl }`。`templateJson` 必含 `paperSize`、`orientation`、`margins`；`baseUrl` 用于把相对路径图片（如 `/docfiles/...`）拼成可访问的绝对地址；`fontBaseUrl` 用于相对路径字体（模板 `fonts[].files[].url`），缺省回落 `baseUrl`，容器部署常用环境变量 `FONT_BASE_URL` 统一指定（容器内 `localhost` 指向容器自身，模板里的相对字体地址必须指向容器可达的静态站/CDN）。
 - **字体文件必须允许跨源加载**：容器加载模板 HTML 时的 origin 为 `null`，字体站点/CDN 需返回 `Access-Control-Allow-Origin`（如 `*`），否则字体静默回退系统字体、出图与设计稿不一致。
-- `printData`：业务数据，传对象渲染单份；传非空对象数组时按数组长度批量渲染，各份数据不同、份间自动分页，合并为同一个 PDF（最多 500 份）。空数组、超过上限或数组项不是对象时返回 `400 INVALID_REQUEST`。`/render/screenshot` 传数组时仅渲染第一条数据。
+- `printData`：业务数据，传对象渲染单份；传非空对象数组时按数组长度批量渲染，各份数据不同、份间自动分页，合并为同一个 PDF（最多 500 份）。空数组、超过上限或数组项不是对象时返回 `400 INVALID_REQUEST`。
 - 限制：请求体上限 10MB，单请求 30s 超时。
 
 ## 本地开发
@@ -117,6 +115,6 @@ docker run -p 3001:3001 \
 ## 目录
 
 - `src/server.ts` — Express 服务入口（HTTP 适配层：鉴权、超时、端点）
-- `src/pdf-render.ts` — 两遍渲染主流程与公共 API（`renderPdf` / `renderScreenshot`）
+- `src/pdf-render.ts` — 两遍渲染主流程与公共 API（`renderPdf`）
 - `src/browser-pool.ts` — Playwright 浏览器池（并发、复用、优雅关闭）
-- `src/driver-playwright.ts` — Playwright driver（借页、视口、注入 core 执行器、`page.pdf`/`page.screenshot`）
+- `src/driver-playwright.ts` — Playwright driver（借页、视口、注入 core 执行器、`page.pdf`）

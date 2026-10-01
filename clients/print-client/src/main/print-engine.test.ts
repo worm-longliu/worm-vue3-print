@@ -37,7 +37,6 @@ function createEngine(policy: { keep: boolean; dir: string }) {
           renderCodes: async () => new Map(),
           measure: async () => [],
           probeContentBottom: async () => 0,
-          toScreenshot: async () => new Uint8Array(),
         }),
     } as any,
     history,

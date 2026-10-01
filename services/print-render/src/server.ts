@@ -2,7 +2,7 @@
 // 打印渲染服务入口
 
 import express from 'express'
-import { renderPdf, renderScreenshot } from './pdf-render.js'
+import { renderPdf } from './pdf-render.js'
 import { BrowserPool } from './browser-pool.js'
 import { MAX_BATCH_COPIES } from '@worm-vue3-print/core'
 import type { RenderRequest, PrintTemplateData as TemplateData } from '@worm-vue3-print/core'
@@ -98,45 +98,6 @@ app.post('/render/pdf', authMiddleware, async (req, res) => {
     console.error('Render failed:', error)
     const message = error instanceof Error ? error.message : 'Unknown error'
     res.status(500).json({ code: 'RENDER_FAILED', message })
-  }
-})
-
-// ─── 截图端点 ───
-
-app.post('/render/screenshot', authMiddleware, async (req, res) => {
-  const body = req.body as RenderRequest
-
-  if (!body.templateJson) {
-    res.status(400).json({ code: 'INVALID_REQUEST', message: 'templateJson is required' })
-    return
-  }
-
-  // 截图数组仅渲染首条，但非法数组（空/超限/含非对象项）仍在入口拒绝
-  const printDataError = validatePrintData(body.printData)
-  if (printDataError) {
-    res.status(400).json({ code: 'INVALID_REQUEST', message: printDataError })
-    return
-  }
-
-  let timedOut = false
-  const timer = setTimeout(() => {
-    timedOut = true
-    res.status(504).json({ code: 'RENDER_TIMEOUT', message: 'Screenshot timed out' })
-  }, REQUEST_TIMEOUT_MS)
-
-  try {
-    const png = await renderScreenshot(body)
-    if (timedOut) return
-    clearTimeout(timer)
-    res.setHeader('Content-Type', 'image/png')
-    res.setHeader('Content-Length', png.length)
-    res.send(png)
-  } catch (error) {
-    if (timedOut) return
-    clearTimeout(timer)
-    console.error('Screenshot failed:', error)
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    res.status(500).json({ code: 'SCREENSHOT_FAILED', message })
   }
 })
 
