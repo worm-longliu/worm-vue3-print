@@ -117,7 +117,7 @@ describe('mergeFontDeclarations', () => {
   })
 })
 
-// ─── 整份文档组合：页码 / 新开一页 / 首页叠加 / 批量 ───
+// ─── 整份文档组合：页码 / 新开一页 / 批量 ───
 
 describe('composeMultiPageDocument', () => {
   it('封面 1 页 + 内容 2 页：pageCount=3，页码全局连续 1/3、2/3、3/3', () => {

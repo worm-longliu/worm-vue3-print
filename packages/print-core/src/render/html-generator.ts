@@ -272,7 +272,7 @@ function renderPage(
 // ─── 页码相关的按页重算 ───
 
 /**
- * 按本页页码重新求值引用了 pageIndex / totalPages 的元素文本（含页眉、页脚、首页叠加）。
+ * 按本页页码重新求值引用了 pageIndex / totalPages 的元素文本（含页眉、页脚）。
  * 无元素携带 rawFormatter 时原样返回（零开销，存量模板产物逐字不变）。
  */
 function withPageNumbers(template: TemplateData, vars: PageVars): TemplateData {
