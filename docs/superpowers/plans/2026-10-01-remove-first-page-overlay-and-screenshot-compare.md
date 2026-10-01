@@ -1279,8 +1279,8 @@ npm run parity:cross-end
 
 Expected: 五条命令全部成功退出（`parity:cross-end` 需 core 与 render 已构建）
 
-Run: `grep -rn -E "firstPageOverlay|overlayVisible|toggle-overlay|requestScreenshot|renderScreenshot|ScreenshotTargetSpec|add-overlay-element|setOverlay" packages services clients demo/src skills docs/中文 docs/en README.md --exclude-dir=dist --exclude-dir=node_modules --exclude-dir=vendor | grep -vE "CHANGELOG|superpowers" | wc -l`
-Expected: `0`
+Run: `grep -rn -E "firstPageOverlay|overlayVisible|toggle-overlay|requestScreenshot|renderScreenshot|ScreenshotTargetSpec|add-overlay-element|setOverlay" packages services clients demo/src skills docs/中文 docs/en README.md --exclude-dir=dist --exclude-dir=node_modules --exclude-dir=vendor | grep -vE "CHANGELOG|superpowers|migrate\.ts|designer/utils/__tests__/migrate\.spec\.ts|pagination-engine\.test\.ts" | wc -l`
+Expected: `0`。排除项即「有意保留」的兼容链与存档：`migrate.ts` 的废弃键剥离实现、`migrate.spec.ts` 的剥离断言夹具、`pagination-engine.test.ts` 的可证伪语义锁（这三处是移除说明第④条要求存在的东西，删掉它们才是缺陷）、CHANGELOG 历史条目与 `docs/superpowers/` 存档。
 
 - [ ] **Step 6: UI 级确认（必须由人完成）**
 
