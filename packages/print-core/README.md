@@ -26,10 +26,10 @@ print-core/
 
 ### 打印管线（`print/`，纯 TS）
 
-- 入口：`prepareDocument(job, runtime)`、`renderPdf(job, runtime)`、`renderScreenshot(job, runtime)`；
-- 规格：`buildPdfTargetSpec`、`toElectronPrintToPdfOptions`（英寸）、`toPlaywrightPdfOptions`（mm）、`buildScreenshotTargetSpec`；
+- 入口：`prepareDocument(job, runtime)`、`renderPdf(job, runtime)`；
+- 规格：`buildPdfTargetSpec`、`toElectronPrintToPdfOptions`（英寸）、`toPlaywrightPdfOptions`（mm）；
 - 纸张：`resolvePaperMm`（宿主覆盖逃生门）、`paperViewportPx`（测量容器 mm→px）、`escapeHeightMm`（连续纸纸高逃生门）；
-- 契约：`PageDriver`（宿主只实现 open/setContent/injectExecutor/evaluate 与可选 pdf/screenshot）+
+- 契约：`PageDriver`（宿主只实现 open/setContent/injectExecutor/evaluate 与可选 pdf）+
   `createDomHostRuntime(driverFactory, bundle)`（共享的载入→注入→就绪→执行→释放时序、超时预算与错误归一化）；
 - 拼版：`computeTileLayout` / `validateTiling` / `computeMaxColumns` / `tilePosition` / `resolveSheetMm` /
   `composeTiledHtml`（标签多行多列铺到目标纸，如 70×40 标签铺满 A4）。配置为模板级 `TemplateData.tiling`，

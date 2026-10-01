@@ -6,7 +6,6 @@ import type {
   CodeSpec,
   PdfTargetSpec,
   RawMeasurement,
-  ScreenshotTargetSpec,
   ViewportPx,
 } from './types.js'
 import type { FitFontSize } from '../render/text-fit.js'
@@ -113,26 +112,6 @@ export function createDomHostRuntime(factory: DriverFactory, bundle?: ExecutorBu
               }
             })(),
             ms, 'RENDER_TIMEOUT', `PDF 生成超过 ${ms}ms`,
-          )
-        },
-
-        async toScreenshot(
-          html: string,
-          spec: ScreenshotTargetSpec,
-          viewport: ViewportPx,
-        ): Promise<Uint8Array> {
-          if (!driver.screenshot) throw new PrintFailure('UNSUPPORTED_RUNTIME', '当前宿主不支持截图')
-          const ms = budget()
-          return withTimeout(
-            (async () => {
-              try {
-                await load(html, viewport)
-                return await driver.screenshot!(html, spec)
-              } catch (err) {
-                throw fail(err, 'SCREENSHOT_FAILED', '截图失败')
-              }
-            })(),
-            ms, 'RENDER_TIMEOUT', `截图超过 ${ms}ms`,
           )
         },
       }

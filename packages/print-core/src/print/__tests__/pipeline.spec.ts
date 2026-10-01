@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { prepareDocument, renderPdf, renderScreenshot } from '../pipeline.js'
+import { prepareDocument, renderPdf } from '../pipeline.js'
 import { createDomHostRuntime } from '../dom-host-runtime.js'
 import { EXECUTOR, createFakeDriverFactory } from './fake-driver.js'
 import type { FakeDriverOptions } from './fake-driver.js'
@@ -185,20 +185,6 @@ describe('renderPdf', () => {
   })
 })
 
-describe('renderScreenshot', () => {
-  it('不分页：只做测量模式 HTML 与截图', async () => {
-    const { fake, runtime } = runtimeOf({
-      measurements: [{ id: 'a', heightPx: 38 }],
-      screenshotBytes: new Uint8Array([5]),
-    })
-    const shot = await renderScreenshot({ templateJson: template() }, runtime)
-    expect(Array.from(shot)).toEqual([5])
-    expect(fake.calls.filter(call => call === 'evaluate:readMeasurements')).toHaveLength(0)
-    expect(fake.calls.filter(call => call === 'evaluate:readContentBottom')).toHaveLength(0)
-    expect(fake.calls).toContain('screenshot')
-  })
-})
-
 describe('拼版打印', () => {
   const TILING = {
     enabled: true,
@@ -328,12 +314,5 @@ describe('多页面模板', () => {
     expect(result.pageCount).toBe(1)
     expect(result.html).not.toContain('class="print-page mt-0"')
     expect(result.html).not.toContain('<section class="print-copy">')
-  })
-
-  it('截图：多模板按真实分页整份渲染（fullPage）', async () => {
-    const { fake, runtime } = runtimeOf({ measurements: [], screenshotBytes: new Uint8Array([7]) })
-    const buf = await renderScreenshot({ templateJson: multiTemplate() }, runtime)
-    expect(buf).toEqual(new Uint8Array([7]))
-    expect(fake.calls).toContain('screenshot')
   })
 })

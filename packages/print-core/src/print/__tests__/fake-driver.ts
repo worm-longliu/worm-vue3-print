@@ -10,13 +10,11 @@ export interface FakeDriverOptions {
   /** 指定键的 SVG；未指定的规格返回通用假 SVG */
   codeMap?: Record<string, string>
   pdfBytes?: Uint8Array
-  screenshotBytes?: Uint8Array
   /** 该原语调用前抛错，用于验证错误归一化（如 'evaluate:readMeasurements'） */
   failAt?: string
   /** 该原语调用前延迟，用于验证超时 */
   delayMs?: number
   supportsPdf?: boolean
-  supportsScreenshot?: boolean
 }
 
 export function createFakeDriverFactory(options: FakeDriverOptions = {}) {
@@ -47,9 +45,6 @@ export function createFakeDriverFactory(options: FakeDriverOptions = {}) {
     ...(options.supportsPdf === false
       ? {}
       : { async pdf() { await slow('pdf'); return options.pdfBytes ?? new Uint8Array([1, 2, 3]) } }),
-    ...(options.supportsScreenshot === false
-      ? {}
-      : { async screenshot() { await slow('screenshot'); return options.screenshotBytes ?? new Uint8Array([9]) } }),
     async close() { calls.push('close') },
   }
   const factory: DriverFactory = {

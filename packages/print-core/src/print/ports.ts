@@ -2,7 +2,6 @@ import type {
   CodeSpec,
   PdfTargetSpec,
   RawMeasurement,
-  ScreenshotTargetSpec,
   ViewportPx,
 } from './types.js'
 import type { FitFontSize } from '../render/text-fit.js'
@@ -30,7 +29,6 @@ export interface PrintSession {
   measure(html: string, viewport: ViewportPx): Promise<MeasureResult>
   probeContentBottom(html: string, viewport: ViewportPx): Promise<number>
   toPdf(html: string, spec: PdfTargetSpec, viewport: ViewportPx): Promise<Uint8Array>
-  toScreenshot(html: string, spec: ScreenshotTargetSpec, viewport: ViewportPx): Promise<Uint8Array>
 }
 
 export interface PrintRuntime {

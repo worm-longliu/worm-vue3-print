@@ -33,12 +33,6 @@ export interface PdfTargetSpec {
   preferCSSPageSize: boolean
 }
 
-export interface ScreenshotTargetSpec {
-  type: 'png'
-  fullPage: boolean
-  omitBackground: boolean
-}
-
 /** 宿主回传的原始测量值（CSS px，不做任何业务换算） */
 export interface RawMeasurement {
   id: string

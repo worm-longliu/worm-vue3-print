@@ -4,7 +4,6 @@ export type PrintFailureCode =
   | 'MEASURE_FAILED'
   | 'RENDER_TIMEOUT'
   | 'PDF_FAILED'
-  | 'SCREENSHOT_FAILED'
   | 'UNSUPPORTED_RUNTIME'
   | 'INTERNAL'
 

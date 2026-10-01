@@ -5,7 +5,7 @@ import { composeContinuousHeight } from '../render/continuous-paper.js'
 import { getPaperDimensions, getOutputPaperDimensions, isContinuousPaper } from '../render/types.js'
 import { createCollectingCodeRenderer, createMapCodeRenderer, mergeCodeMaps } from './codes.js'
 import { escapeHeightMm, paperViewportPx, resolvePaperMm } from './paper.js'
-import { buildPdfTargetSpec, buildScreenshotTargetSpec } from './pdf-spec.js'
+import { buildPdfTargetSpec } from './pdf-spec.js'
 import { normalizeMeasurements } from './measure.js'
 import { applyTextFitSizes } from './apply-text-fit.js'
 import { pxToMm } from './units.js'
@@ -39,36 +39,6 @@ export async function renderPdf(job: PrintJob, runtime: PrintRuntime): Promise<R
     const viewport = paperViewportPx(prepared.paperMm)
     const pdf = await session.toPdf(prepared.html, buildPdfTargetSpec(prepared.paperMm), viewport)
     return { pdf, prepared }
-  })
-}
-
-/** 截图：不分页，用测量模式 HTML 单页完整渲染；数组数据仅渲染首条。不参与拼版（仍是标签纸单页快照） */
-export async function renderScreenshot(job: PrintJob, runtime: PrintRuntime): Promise<Uint8Array> {
-  return runtime.withSession(job, async (session) => {
-    const pageTemplates = normalizeTemplate(job.templateJson)
-
-    // 多页面模板：按真实分页整份渲染截图（fullPage 一次获得整份文档）
-    if (pageTemplates.length > 1) {
-      const normalized = normalizePrintData(job.printData)
-      const data = normalized.mode === 'batch' ? normalized.dataList[0] : normalized.data
-      const copy = await prepareMultiCopy(job, session, data)
-      const doc = composeMultiPageDocument([copy])
-      const viewport = paperViewportPx(getPaperDimensions(pageTemplates[0]!))
-      return session.toScreenshot(doc.html, buildScreenshotTargetSpec(), viewport)
-    }
-
-    // 1 页 wrapper 归一化为单模板，走既有截图路径
-    const singleJob: PrintJob = pageTemplates[0] !== job.templateJson
-      ? { ...job, templateJson: pageTemplates[0]! }
-      : job
-    const normalized = normalizePrintData(singleJob.printData)
-    const data = normalized.mode === 'batch' ? normalized.dataList[0] : normalized.data
-    const bound = bindData(singleJob.templateJson as TemplateData, data, singleJob.baseUrl, singleJob.fontBaseUrl)
-    const built = await buildHtmlWithCodes({
-      bound, job: singleJob, session, data, pageLayouts: [], isMeasurementPass: true,
-    })
-    const viewport = paperViewportPx(getPaperDimensions(bound))
-    return session.toScreenshot(built.html, buildScreenshotTargetSpec(), viewport)
   })
 }
 

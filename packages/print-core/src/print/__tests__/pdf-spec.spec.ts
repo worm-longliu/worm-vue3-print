@@ -3,7 +3,6 @@ import {
   buildPdfTargetSpec,
   toElectronPrintToPdfOptions,
   toPlaywrightPdfOptions,
-  buildScreenshotTargetSpec,
 } from '../pdf-spec.js'
 
 describe('buildPdfTargetSpec', () => {
@@ -46,11 +45,5 @@ describe('toPlaywrightPdfOptions', () => {
       printBackground: true,
       preferCSSPageSize: false,
     })
-  })
-})
-
-describe('buildScreenshotTargetSpec', () => {
-  it('PNG、整页、不省略背景', () => {
-    expect(buildScreenshotTargetSpec()).toEqual({ type: 'png', fullPage: true, omitBackground: false })
   })
 })

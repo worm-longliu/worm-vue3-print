@@ -1,5 +1,5 @@
 import { millimetersToInches } from './units.js'
-import type { MarginsMm, PaperMm, PdfTargetSpec, ScreenshotTargetSpec } from './types.js'
+import type { MarginsMm, PaperMm, PdfTargetSpec } from './types.js'
 
 const ZERO_MARGINS_MM: MarginsMm = { top: 0, right: 0, bottom: 0, left: 0 }
 
@@ -59,9 +59,4 @@ export function toPlaywrightPdfOptions(spec: PdfTargetSpec): PlaywrightPdfOption
     printBackground: spec.printBackground,
     preferCSSPageSize: spec.preferCSSPageSize,
   }
-}
-
-/** Playwright page.screenshot 的最小结构 */
-export function buildScreenshotTargetSpec(): ScreenshotTargetSpec {
-  return { type: 'png', fullPage: true, omitBackground: false }
 }

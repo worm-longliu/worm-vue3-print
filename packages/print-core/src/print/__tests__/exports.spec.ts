@@ -4,7 +4,7 @@ describe('core 根入口的打印 API', () => {
   it('导出管线与规格函数', async () => {
     const core = await import('../../index.js')
     const names = [
-      'prepareDocument', 'renderPdf', 'renderScreenshot', 'createDomHostRuntime',
+      'prepareDocument', 'renderPdf', 'createDomHostRuntime',
       'resolvePaperMm', 'paperViewportPx', 'buildPdfTargetSpec',
       'toElectronPrintToPdfOptions', 'toPlaywrightPdfOptions',
       'normalizeMeasurements', 'codeSpecKey', 'createMapCodeRenderer',
