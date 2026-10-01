@@ -56,10 +56,6 @@
       }
     ]
   },
-  "firstPageOverlay": {
-    "height": 0,
-    "elements": []
-  },
   "fonts": [
     {
       "family": "Ma Shan Zheng",

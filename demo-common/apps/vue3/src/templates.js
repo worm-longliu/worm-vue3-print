@@ -249,7 +249,6 @@ export const SAMPLES = [
           },
         ],
       },
-      firstPageOverlay: { height: 0, elements: [] },
       elements: [
         {
           id: 'el-1787389122029-bwhe9i',
@@ -749,7 +748,6 @@ export const SAMPLES = [
           },
         ],
       },
-      firstPageOverlay: { height: 0, elements: [] },
       watermark: {},
       elements: [
         {
@@ -1051,7 +1049,6 @@ export const SAMPLES = [
       margins: { top: 5, right: 5, bottom: 5, left: 5 },
       header: { height: 0, elements: [] },
       footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
       watermark: {},
       elements: [
         {
@@ -1695,7 +1692,6 @@ export const SAMPLES = [
           },
         ],
       },
-      firstPageOverlay: { height: 0, elements: [] },
       fonts: [
         { family: 'Ma Shan Zheng', label: '马善政毛笔楷书', files: [{ weight: 400, url: '/fonts/MaShanZheng-Regular.ttf' }] },
         { family: 'ZCOOL KuaiLe', label: '站酷快乐体', files: [{ weight: 400, url: '/fonts/ZCOOLKuaiLe-Regular.ttf' }] },
@@ -2740,7 +2736,6 @@ export const SAMPLES = [
           margins: { top: 10, right: 10, bottom: 10, left: 10 },
           header: { height: 0, elements: [] },
           footer: { height: 0, elements: [] },
-          firstPageOverlay: { height: 0, elements: [] },
           elements: [
             {
               id: 'el1',
@@ -2827,7 +2822,6 @@ export const SAMPLES = [
           margins: { top: 10, right: 10, bottom: 10, left: 10 },
           header: { height: 60, elements: [] },
           footer: { height: 0, elements: [] },
-          firstPageOverlay: { height: 0, elements: [] },
           elements: [
             {
               id: 'el1',
@@ -2881,7 +2875,6 @@ export const SAMPLES = [
           margins: { top: 10, right: 10, bottom: 10, left: 10 },
           header: { height: 0, elements: [] },
           footer: { height: 0, elements: [] },
-          firstPageOverlay: { height: 0, elements: [] },
           elements: [
             {
               id: 'el1',
@@ -2947,7 +2940,6 @@ export const SAMPLES = [
           margins: { top: 10, right: 10, bottom: 10, left: 10 },
           header: { height: 0, elements: [] },
           footer: { height: 0, elements: [] },
-          firstPageOverlay: { height: 0, elements: [] },
           elements: [
             {
               id: 'el1',
@@ -2996,7 +2988,6 @@ export const SAMPLES = [
           margins: { top: 10, right: 10, bottom: 10, left: 10 },
           header: { height: 30, elements: [] },
           footer: { height: 0, elements: [] },
-          firstPageOverlay: { height: 0, elements: [] },
           elements: [
             {
               id: 'el1',
@@ -3225,7 +3216,6 @@ export const SAMPLES = [
       margins: { top: 2, right: 2, bottom: 2, left: 2 },
       header: { height: 0, elements: [] },
       footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
       watermark: {},
       elements: [
         {
@@ -3419,7 +3409,6 @@ export const SAMPLES = [
       },
       header: { height: 0, elements: [] },
       footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
       watermark: {},
       elements: [
         {
@@ -3587,7 +3576,6 @@ export const SAMPLES = [
       },
       header: { height: 0, elements: [] },
       footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
       watermark: {},
       elements: [
         {
@@ -3836,7 +3824,6 @@ export const SAMPLES = [
       },
       header: { height: 0, elements: [] },
       footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
       watermark: {},
       elements: [
         {
@@ -4018,7 +4005,6 @@ export const SAMPLES = [
       margins: { top: 3, right: 2, bottom: 3, left: 2 },
       header: { height: 0, elements: [] },
       footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
       watermark: {},
       elements: [
         {

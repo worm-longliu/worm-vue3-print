@@ -7,7 +7,7 @@
     python3 build_template.py scene.json -o output.template.json
     cat scene.json | python3 build_template.py - > output.template.json
 
-简写描述只需给出「纸张 + 元素列表」，骨架字段（header/footer/firstPageOverlay/unit/
+简写描述只需给出「纸张 + 元素列表」，骨架字段（header/footer/unit/
 元素 id/printElementType/表格占位格）由本脚本补齐，避免手写完整 JSON 时漏字段。
 
 完整字段规范见 references/template-schema.md。
@@ -323,7 +323,6 @@ def build_template(spec: Dict[str, Any]) -> Dict[str, Any]:
         'margins': parse_margins(spec.get('margins'), 'margins'),
         'header': {'height': float(spec.get('header', 0)), 'elements': []},
         'footer': {'height': float(spec.get('footer', 0)), 'elements': []},
-        'firstPageOverlay': {'height': 0, 'elements': []},
         'elements': [],
     }
     if custom_w is not None:

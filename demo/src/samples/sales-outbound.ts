@@ -84,7 +84,6 @@ const SALES_OUTBOUND_TEMPLATE: TemplateData = {
       el('text', { left: 88, top: 1, width: 40, height: 5, formatter: '第 {pageIndex} 页 / 共 {totalPages} 页', fontSize: 8, color: '#666666', textAlign: 'right', verticalAlign: 'middle' }),
     ],
   },
-  firstPageOverlay: { height: 0, elements: [] },
   watermark: {},
   elements: [
     el('table', {

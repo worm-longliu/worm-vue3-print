@@ -22,7 +22,6 @@
   "margins": { "top": 10, "right": 10, "bottom": 10, "left": 10 },
   "header":  { "height": 0, "elements": [] },   // 页眉（每页重复）
   "footer":  { "height": 0, "elements": [] },   // 页脚（每页重复）
-  "firstPageOverlay": { "height": 0, "elements": [] },
   "elements": [ /* 内容区主体元素 */ ],
   "name": "采购收货单",             // 可选，多页模板的页签名
   "customWidth": 210,              // 仅 paperSize=CUSTOM 必填；连续纸时为纸宽

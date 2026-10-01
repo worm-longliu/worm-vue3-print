@@ -18,10 +18,6 @@
         "height": 0.0,
         "elements": []
       },
-      "firstPageOverlay": {
-        "height": 0,
-        "elements": []
-      },
       "elements": [
         {
           "id": "el1",
@@ -203,10 +199,6 @@
         "height": 0.0,
         "elements": []
       },
-      "firstPageOverlay": {
-        "height": 0,
-        "elements": []
-      },
       "elements": [
         {
           "id": "el1",
@@ -278,10 +270,6 @@
       },
       "footer": {
         "height": 0.0,
-        "elements": []
-      },
-      "firstPageOverlay": {
-        "height": 0,
         "elements": []
       },
       "elements": [
@@ -411,10 +399,6 @@
         "height": 0.0,
         "elements": []
       },
-      "firstPageOverlay": {
-        "height": 0,
-        "elements": []
-      },
       "elements": [
         {
           "id": "el1",
@@ -516,10 +500,6 @@
       },
       "footer": {
         "height": 0.0,
-        "elements": []
-      },
-      "firstPageOverlay": {
-        "height": 0,
         "elements": []
       },
       "elements": [

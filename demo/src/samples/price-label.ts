@@ -84,7 +84,6 @@ const PRICE_LABEL_TEMPLATE: TemplateData = {
   },
   header: { height: 0, elements: [] },
   footer: { height: 0, elements: [] },
-  firstPageOverlay: { height: 0, elements: [] },
   watermark: {},
   elements: [
     // 纵向须留足分页安全余量（渲染管线为每页预留 2mm），否则末元素会被挤到第二页

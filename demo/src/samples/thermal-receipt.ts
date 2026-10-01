@@ -63,7 +63,6 @@ const THERMAL_RECEIPT_TEMPLATE: TemplateData = {
   margins: { top: 3, right: 2, bottom: 3, left: 2 },
   header: { height: 0, elements: [] },
   footer: { height: 0, elements: [] },
-  firstPageOverlay: { height: 0, elements: [] },
   watermark: {},
   elements: [
     el('text', { left: 0, top: 0, width: 76, height: 6, formatter: '{store.name}', fontSize: 14, fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle' }),

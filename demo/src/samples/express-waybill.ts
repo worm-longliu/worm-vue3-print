@@ -76,7 +76,6 @@ const EXPRESS_WAYBILL_TEMPLATE: TemplateData = {
   margins: { top: 5, right: 5, bottom: 5, left: 5 },
   header: { height: 0, elements: [] },
   footer: { height: 0, elements: [] },
-  firstPageOverlay: { height: 0, elements: [] },
   watermark: {},
   elements: [
     el('text', { left: 0, top: 0, width: 60, height: 6, formatter: '{express.company}', fontSize: 13, fontWeight: 'bold', verticalAlign: 'middle' }),

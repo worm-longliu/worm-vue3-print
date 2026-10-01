@@ -5,7 +5,6 @@
   "margins": { "top": 15, "right": 15, "bottom": 15, "left": 15 },
   "header": { "height": 0, "elements": [] },
   "footer": { "height": 0, "elements": [] },
-  "firstPageOverlay": { "height": 0, "elements": [] },
   "elements": [
     {
       "id": "test-title",
