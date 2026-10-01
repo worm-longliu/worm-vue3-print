@@ -24,3 +24,6 @@ demo-common/evidence/
 # demo-common 子工程直挂资产：npm install 的 postinstall 从 @worm-vue3-print/common 的 dist 拷来
 demo-common/apps/*/public/vendor/
 demo-common/apps/*/dist/
+
+# demo-common 子工程的示例字体：sync-demo-samples.mjs 从 demo/public/fonts 拷来，单个 1.5~8MB 不入库
+demo-common/apps/*/public/fonts/

@@ -48,6 +48,70 @@ body,
   background: #e9ecf2;
   vertical-align: middle;
 }
+/* 宿主示例互跳：无 JS 的 details 下拉，五个工程各写一份；链接用 <a> 不用 <button>（顶栏动作数口径不变） */
+.demo-host-switch {
+  position: relative;
+}
+.demo-host-switch > summary {
+  padding: 2px 10px;
+  border: 1px solid #d9dde6;
+  border-radius: 999px;
+  background: #f4f6fa;
+  color: #5a667f;
+  font-size: 12px;
+  list-style: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.demo-host-switch > summary::-webkit-details-marker {
+  display: none;
+}
+.demo-host-switch > summary::after {
+  content: '▾';
+  margin-left: 6px;
+  color: #98a0b0;
+}
+.demo-host-switch[open] > summary {
+  border-color: #165dff;
+  background: #eef3ff;
+  color: #165dff;
+}
+.demo-host-switch-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  /* 顶栏与画布容器是同级 flex item，浏览器按原子层整体绘制：层级不够时菜单会被设计器整片盖住。
+     取 500：高于画布常驻 chrome（工具条 100、标尺浮层 60、标尺 1），
+     低于设计器与宿主的一切弹窗/瞬时层（帮助 1000、对话框遮罩 2000、取色面板与表格右键 3000、
+     参考线与吸附 9997~9999、框选 10000、画布右键菜单 10001、宿主的预览与示例库遮罩 9999/10000）。 */
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 196px;
+  padding: 6px;
+  border: 1px solid #e3e7ef;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(23, 32, 60, 0.16);
+}
+.demo-host-switch-menu a {
+  padding: 5px 9px;
+  border-radius: 6px;
+  color: #5a667f;
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.demo-host-switch-menu a:hover {
+  background: #e8eefc;
+  color: #165dff;
+}
+.demo-host-switch-menu a.on {
+  background: #165dff;
+  color: #ffffff;
+  cursor: default;
+}
 .demo-badge {
   padding: 2px 10px;
   border: 1px solid #d9dde6;

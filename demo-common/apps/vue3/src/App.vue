@@ -1,3 +1,209 @@
+
+<template>
+  <div class="demo-app">
+    <header class="demo-topbar">
+      <span class="demo-project">worm-vue3-print</span>
+      <span class="demo-logo">打印模板设计器 Demo</span>
+      <details class="demo-host-switch">
+        <summary>宿主示例：Vue3</summary>
+        <nav class="demo-host-switch-menu" aria-label="宿主示例互跳">
+          <a href="http://localhost:9303/">Vue3 canvas（demo 权威示例）</a>
+          <a class="on" href="http://localhost:9331/" title="当前页面">Vue3 宿主</a>
+          <a href="http://localhost:9332/">Vue2 宿主</a>
+          <a href="http://localhost:9335/">React 宿主</a>
+          <a href="http://localhost:9334/">jQuery 宿主</a>
+        </nav>
+      </details>
+      <span class="demo-badge">业务类型：{{ currentSample ? currentSample.name : '空白模板' }}</span>
+      <span class="demo-badge">宿主：Vue 3 + Web Component</span>
+      <button type="button" class="demo-print-btn" @click="customDialogVisible = true">自定义字段与数据</button>
+      <button type="button" class="demo-print-btn" @click="galleryVisible = true">加载示例</button>
+      <button type="button" class="demo-print-btn" @click="onExportTemplate">导出模板</button>
+      <button type="button" class="demo-print-btn" @click="fileInputRef?.click()">导入模板</button>
+      <button type="button" class="demo-print-btn" @click="onClearTemplate">清空</button>
+      <label class="demo-batch-switch" :class="{ on: batchEnabled }" :title="`开启后浏览器预览/打印、客户端静默打印、服务端 PDF 均传入 ${batchDataList.length} 份数据数组，由打印插件合并为一个作业`">
+        <input v-model="batchEnabled" type="checkbox" />
+        <span>批量打印（{{ batchDataList.length }} 份）</span>
+      </label>
+      <button type="button" class="demo-print-btn" @click="printDialogVisible = true">打印输出</button>
+      <input ref="fileInputRef" type="file" accept="application/json,.json" class="demo-file-input" @change="onImportTemplate($event)" />
+    </header>
+
+    <main class="demo-container">
+      <!-- 自定义元素：字符串开关走 attribute，对象/函数入参走 property（见 script 注释） -->
+      <print-designer
+        ref="designerRef"
+        is-edit="true"
+        show-help="true"
+        @save="onSave"
+        @preview="onPreview"
+        @help="onHelp"
+        @dblclick-element="onDblclickElement"
+        @dblclick-cell="onDblclickCell"
+      />
+    </main>
+
+    <!-- 设计器预览：由设计器自带「预览」触发（@preview），DOM 结构与 demo 的 PrintHtmlPreview 一致 -->
+    <div v-if="previewVisible" class="preview-mask">
+      <div class="preview-panel">
+        <div class="preview-head">
+          <span class="preview-title">打印预览</span>
+          <span v-if="previewPages > 0" class="preview-subtitle">{{ previewPages }} 页</span>
+          <div class="preview-actions">
+            <button type="button" class="preview-btn" @click="printPreview">打印</button>
+            <button type="button" class="preview-btn ghost" @click="previewVisible = false">关闭</button>
+          </div>
+        </div>
+        <div class="preview-body print-html-preview">
+          <div v-if="previewLoading" class="print-html-preview-loading">预览渲染中…</div>
+          <div v-if="previewError" class="print-html-preview-error">{{ previewError }}</div>
+          <iframe ref="previewFrameRef" class="print-html-preview-iframe" title="打印预览" />
+        </div>
+      </div>
+    </div>
+
+    <!-- 打印输出弹窗（服务端 PDF / 客户端静默打印）：printData 随批量开关在对象/数组间切换 -->
+    <div v-if="printDialogVisible" class="print-mask" @click.self="printDialogVisible = false">
+      <div class="print-panel">
+        <div class="print-head">
+          <span class="print-title">打印输出</span>
+          <span class="print-close" @click="printDialogVisible = false">×</span>
+        </div>
+        <div class="print-body">
+          <section class="print-card">
+            <h3 class="card-title">服务端 PDF 打印</h3>
+            <p class="card-desc">将当前画布模板与 demo 数据交由 render 微服务渲染，生成 PDF 后在浏览器新标签页打开。</p>
+            <div class="card-row">
+              <span class="status" :class="renderStatus" :title="renderStatusTitle">
+                <i class="status-dot"></i>{{ renderStatusText }}
+              </span>
+              <button type="button" class="text-btn" @click="refreshRenderStatus">重新检测</button>
+            </div>
+            <button type="button" class="primary-btn" :disabled="rendering || renderStatus !== 'online'" @click="onServerPdf">
+              {{ rendering ? '生成中…' : '服务端 PDF' }}
+            </button>
+            <p v-if="renderError" class="error-text">{{ renderError }}</p>
+          </section>
+
+          <section class="print-card">
+            <h3 class="card-title">客户端静默打印</h3>
+            <p class="card-desc">页面内用 core 同构管线完成两遍渲染，将最终 HTML 直送本机打印客户端（WebSocket 127.0.0.1:17521）静默出纸，客户端不再执行模板渲染。</p>
+            <div class="card-row">
+              <span class="status" :class="clientStatus" title="本机打印客户端（WebSocket 127.0.0.1:17521）">
+                <i class="status-dot"></i>{{ clientStatusText }}
+              </span>
+              <button type="button" class="text-btn" @click="connectPrintClient">重新检测</button>
+            </div>
+            <div class="card-actions">
+              <select v-model="selectedPrinter" class="printer-select" :disabled="clientStatus !== 'online' || clientPrinting" title="选择目标打印机（留空为系统默认）">
+                <option value="">系统默认打印机</option>
+                <option v-for="p in clientPrinters" :key="p.name" :value="p.name">
+                  {{ p.name }}{{ p.isDefault ? '（默认）' : '' }}
+                </option>
+              </select>
+              <button type="button" class="primary-btn" :disabled="clientPrinting || clientStatus !== 'online'" @click="onClientPrint">
+                {{ clientPrinting ? '打印中…' : '客户端静默打印' }}
+              </button>
+            </div>
+            <p v-if="clientMessage" class="message-text" :class="clientMessageKind">{{ clientMessage }}</p>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- 示例模板库：点击「加载示例」唤出，选中后覆盖当前画布 -->
+    <div v-if="galleryVisible" class="gallery-mask" @click.self="galleryVisible = false">
+      <div class="gallery-panel">
+        <div class="gallery-head">
+          <span class="gallery-title">选择示例模板</span>
+          <span class="gallery-subtitle">{{ SAMPLES.length }} 个示例 · 全部使用静态数据</span>
+          <button type="button" class="gallery-close" @click="galleryVisible = false">×</button>
+        </div>
+
+        <div class="gallery-tabs">
+          <button
+            v-for="g in GROUPS"
+            :key="g"
+            type="button"
+            class="gallery-tab"
+            :class="{ on: activeGroup === g }"
+            @click="activeGroup = g"
+          >
+            {{ g }}<span class="gallery-tab-count">{{ countOf(g) }}</span>
+          </button>
+        </div>
+
+        <div class="gallery-body">
+          <div
+            v-for="s in visibleSamples"
+            :key="s.id"
+            class="sample-card"
+            :class="{ selected: selectedId === s.id, current: s.id === currentSample?.id }"
+            @click="selectedId = s.id"
+            @dblclick="confirmGallery"
+          >
+            <SampleThumb :template="s.template" :data="s.data" />
+            <div class="sample-meta">
+              <div class="sample-name">
+                {{ s.name }}
+                <span v-if="s.id === currentSample?.id" class="sample-flag">当前</span>
+                <span v-if="s.template.tiling?.enabled" class="sample-flag tiling">拼版</span>
+              </div>
+              <div class="sample-paper">{{ s.paper }}</div>
+              <div class="sample-desc">{{ s.desc }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="gallery-foot">
+          <span class="gallery-tip">选中后将覆盖当前画布内容（可撤销）</span>
+          <div class="gallery-actions">
+            <button type="button" class="gallery-btn ghost" @click="galleryVisible = false">取消</button>
+            <button type="button" class="gallery-btn" :disabled="!selectedId" @click="confirmGallery">使用该模板</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 自定义字段与数据：直接粘贴 JSON，调整后即时生效，便于验证打印效果 -->
+    <div v-if="customDialogVisible" class="custom-mask" @click.self="customDialogVisible = false">
+      <div class="custom-panel">
+        <div class="custom-head">
+          <span class="custom-title">自定义字段与数据</span>
+          <span class="custom-close" @click="customDialogVisible = false">×</span>
+        </div>
+
+        <div class="custom-body">
+          <section class="custom-section">
+            <div class="section-head">
+              <span class="section-label">字段 fields</span>
+              <span class="section-hint">业务字段数组，每项含 fieldKey / fieldLabel / fieldType / sortOrder</span>
+            </div>
+            <textarea v-model="fieldsText" class="custom-editor" spellcheck="false"></textarea>
+            <p v-if="fieldsError" class="custom-error">{{ fieldsError }}</p>
+          </section>
+
+          <section class="custom-section">
+            <div class="section-head">
+              <span class="section-label">数据 data</span>
+              <span class="section-hint">打印数据对象，结构与字段 fieldKey 对应</span>
+            </div>
+            <textarea v-model="dataText" class="custom-editor" spellcheck="false"></textarea>
+            <p v-if="dataError" class="custom-error">{{ dataError }}</p>
+          </section>
+        </div>
+
+        <div class="custom-foot">
+          <button type="button" class="custom-btn ghost" @click="onFormatJson">格式化</button>
+          <div class="custom-foot-right">
+            <button type="button" class="custom-btn ghost" @click="customDialogVisible = false">取消</button>
+            <button type="button" class="custom-btn" @click="onApplyCustom">应用</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
 <script setup>
 // Vue 3 宿主集成 @worm-vue3-print/common 的完整链路示例。
 // 版式与 ./demo（Vue 3 设计器示例）完全一致：样式由 sync-demo-styles.mjs 从 demo 逐字抽取生成，
@@ -116,7 +322,13 @@ function onHelp() {
 }
 
 function onDblclickElement(event) {
-  console.log('[demo] @dblclick-element 触发：', JSON.parse(event.detail))
+  // detail 为元素 id 字符串（与 canvas 的 @dblclick-element 首参同口径）
+  console.log('[demo] @dblclick-element 触发：', event.detail)
+}
+
+function onDblclickCell(event) {
+  // detail 为 { elementId, r, c, cellId } 对象（画布单元格与属性台单元格两条入口同形）
+  console.log('[demo] @dblclick-cell 触发：', event.detail)
 }
 
 // ────────────────── 顶栏：模板导入 / 导出 / 清空 ──────────────────
@@ -479,199 +691,5 @@ onBeforeUnmount(() => {
 })
 </script>
 
-<template>
-  <div class="demo-app">
-    <header class="demo-topbar">
-      <span class="demo-project">worm-vue3-print</span>
-      <span class="demo-logo">打印模板设计器 Demo</span>
-      <span class="demo-badge">业务类型：{{ currentSample ? currentSample.name : '空白模板' }}</span>
-      <span class="demo-badge">宿主：Vue 3 + Web Component</span>
-      <button type="button" class="demo-print-btn" @click="customDialogVisible = true">自定义字段与数据</button>
-      <button type="button" class="demo-print-btn" @click="galleryVisible = true">加载示例</button>
-      <button type="button" class="demo-print-btn" @click="onExportTemplate">导出模板</button>
-      <button type="button" class="demo-print-btn" @click="fileInputRef?.click()">导入模板</button>
-      <button type="button" class="demo-print-btn" @click="onClearTemplate">清空</button>
-      <label class="demo-batch-switch" :class="{ on: batchEnabled }" :title="`开启后浏览器预览/打印、客户端静默打印、服务端 PDF 均传入 ${batchDataList.length} 份数据数组，由打印插件合并为一个作业`">
-        <input v-model="batchEnabled" type="checkbox" />
-        <span>批量打印（{{ batchDataList.length }} 份）</span>
-      </label>
-      <button type="button" class="demo-print-btn" @click="printDialogVisible = true">打印输出</button>
-      <input ref="fileInputRef" type="file" accept="application/json,.json" class="demo-file-input" @change="onImportTemplate($event)" />
-    </header>
-
-    <main class="demo-container">
-      <!-- 自定义元素：字符串开关走 attribute，对象/函数入参走 property（见 script 注释） -->
-      <print-designer
-        ref="designerRef"
-        is-edit="true"
-        show-help="true"
-        @save="onSave"
-        @preview="onPreview"
-        @help="onHelp"
-        @dblclick-element="onDblclickElement"
-      />
-    </main>
-
-    <!-- 设计器预览：由设计器自带「预览」触发（@preview），DOM 结构与 demo 的 PrintHtmlPreview 一致 -->
-    <div v-if="previewVisible" class="preview-mask">
-      <div class="preview-panel">
-        <div class="preview-head">
-          <span class="preview-title">打印预览</span>
-          <span v-if="previewPages > 0" class="preview-subtitle">{{ previewPages }} 页</span>
-          <div class="preview-actions">
-            <button type="button" class="preview-btn" @click="printPreview">打印</button>
-            <button type="button" class="preview-btn ghost" @click="previewVisible = false">关闭</button>
-          </div>
-        </div>
-        <div class="preview-body print-html-preview">
-          <div v-if="previewLoading" class="print-html-preview-loading">预览渲染中…</div>
-          <div v-if="previewError" class="print-html-preview-error">{{ previewError }}</div>
-          <iframe ref="previewFrameRef" class="print-html-preview-iframe" title="打印预览" />
-        </div>
-      </div>
-    </div>
-
-    <!-- 打印输出弹窗（服务端 PDF / 客户端静默打印）：printData 随批量开关在对象/数组间切换 -->
-    <div v-if="printDialogVisible" class="print-mask" @click.self="printDialogVisible = false">
-      <div class="print-panel">
-        <div class="print-head">
-          <span class="print-title">打印输出</span>
-          <span class="print-close" @click="printDialogVisible = false">×</span>
-        </div>
-        <div class="print-body">
-          <section class="print-card">
-            <h3 class="card-title">服务端 PDF 打印</h3>
-            <p class="card-desc">将当前画布模板与 demo 数据交由 render 微服务渲染，生成 PDF 后在浏览器新标签页打开。</p>
-            <div class="card-row">
-              <span class="status" :class="renderStatus" :title="renderStatusTitle">
-                <i class="status-dot"></i>{{ renderStatusText }}
-              </span>
-              <button type="button" class="text-btn" @click="refreshRenderStatus">重新检测</button>
-            </div>
-            <button type="button" class="primary-btn" :disabled="rendering || renderStatus !== 'online'" @click="onServerPdf">
-              {{ rendering ? '生成中…' : '服务端 PDF' }}
-            </button>
-            <p v-if="renderError" class="error-text">{{ renderError }}</p>
-          </section>
-
-          <section class="print-card">
-            <h3 class="card-title">客户端静默打印</h3>
-            <p class="card-desc">页面内用 core 同构管线完成两遍渲染，将最终 HTML 直送本机打印客户端（WebSocket 127.0.0.1:17521）静默出纸，客户端不再执行模板渲染。</p>
-            <div class="card-row">
-              <span class="status" :class="clientStatus" title="本机打印客户端（WebSocket 127.0.0.1:17521）">
-                <i class="status-dot"></i>{{ clientStatusText }}
-              </span>
-              <button type="button" class="text-btn" @click="connectPrintClient">重新检测</button>
-            </div>
-            <div class="card-actions">
-              <select v-model="selectedPrinter" class="printer-select" :disabled="clientStatus !== 'online' || clientPrinting" title="选择目标打印机（留空为系统默认）">
-                <option value="">系统默认打印机</option>
-                <option v-for="p in clientPrinters" :key="p.name" :value="p.name">
-                  {{ p.name }}{{ p.isDefault ? '（默认）' : '' }}
-                </option>
-              </select>
-              <button type="button" class="primary-btn" :disabled="clientPrinting || clientStatus !== 'online'" @click="onClientPrint">
-                {{ clientPrinting ? '打印中…' : '客户端静默打印' }}
-              </button>
-            </div>
-            <p v-if="clientMessage" class="message-text" :class="clientMessageKind">{{ clientMessage }}</p>
-          </section>
-        </div>
-      </div>
-    </div>
-
-    <!-- 示例模板库：点击「加载示例」唤出，选中后覆盖当前画布 -->
-    <div v-if="galleryVisible" class="gallery-mask" @click.self="galleryVisible = false">
-      <div class="gallery-panel">
-        <div class="gallery-head">
-          <span class="gallery-title">选择示例模板</span>
-          <span class="gallery-subtitle">{{ SAMPLES.length }} 个示例 · 全部使用静态数据</span>
-          <button type="button" class="gallery-close" @click="galleryVisible = false">×</button>
-        </div>
-
-        <div class="gallery-tabs">
-          <button
-            v-for="g in GROUPS"
-            :key="g"
-            type="button"
-            class="gallery-tab"
-            :class="{ on: activeGroup === g }"
-            @click="activeGroup = g"
-          >
-            {{ g }}<span class="gallery-tab-count">{{ countOf(g) }}</span>
-          </button>
-        </div>
-
-        <div class="gallery-body">
-          <div
-            v-for="s in visibleSamples"
-            :key="s.id"
-            class="sample-card"
-            :class="{ selected: selectedId === s.id, current: s.id === currentSample?.id }"
-            @click="selectedId = s.id"
-            @dblclick="confirmGallery"
-          >
-            <SampleThumb :template="s.template" :data="s.data" />
-            <div class="sample-meta">
-              <div class="sample-name">
-                {{ s.name }}
-                <span v-if="s.id === currentSample?.id" class="sample-flag">当前</span>
-                <span v-if="s.template.tiling?.enabled" class="sample-flag tiling">拼版</span>
-              </div>
-              <div class="sample-paper">{{ s.paper }}</div>
-              <div class="sample-desc">{{ s.desc }}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="gallery-foot">
-          <span class="gallery-tip">选中后将覆盖当前画布内容（可撤销）</span>
-          <div class="gallery-actions">
-            <button type="button" class="gallery-btn ghost" @click="galleryVisible = false">取消</button>
-            <button type="button" class="gallery-btn" :disabled="!selectedId" @click="confirmGallery">使用该模板</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 自定义字段与数据：直接粘贴 JSON，调整后即时生效，便于验证打印效果 -->
-    <div v-if="customDialogVisible" class="custom-mask" @click.self="customDialogVisible = false">
-      <div class="custom-panel">
-        <div class="custom-head">
-          <span class="custom-title">自定义字段与数据</span>
-          <span class="custom-close" @click="customDialogVisible = false">×</span>
-        </div>
-
-        <div class="custom-body">
-          <section class="custom-section">
-            <div class="section-head">
-              <span class="section-label">字段 fields</span>
-              <span class="section-hint">业务字段数组，每项含 fieldKey / fieldLabel / fieldType / sortOrder</span>
-            </div>
-            <textarea v-model="fieldsText" class="custom-editor" spellcheck="false"></textarea>
-            <p v-if="fieldsError" class="custom-error">{{ fieldsError }}</p>
-          </section>
-
-          <section class="custom-section">
-            <div class="section-head">
-              <span class="section-label">数据 data</span>
-              <span class="section-hint">打印数据对象，结构与字段 fieldKey 对应</span>
-            </div>
-            <textarea v-model="dataText" class="custom-editor" spellcheck="false"></textarea>
-            <p v-if="dataError" class="custom-error">{{ dataError }}</p>
-          </section>
-        </div>
-
-        <div class="custom-foot">
-          <button type="button" class="custom-btn ghost" @click="onFormatJson">格式化</button>
-          <div class="custom-foot-right">
-            <button type="button" class="custom-btn ghost" @click="customDialogVisible = false">取消</button>
-            <button type="button" class="custom-btn" @click="onApplyCustom">应用</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
 
 <style src="./styles/demo-ui.css"></style>

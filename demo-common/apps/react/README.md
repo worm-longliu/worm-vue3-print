@@ -44,7 +44,9 @@ React 侧没有 `isCustomElement` 这种编译配置：未知标签 `print-desig
    `fields` 只有 setter，读回看 `el.store.fields`。
 2. **事件必须 `addEventListener` 且在 cleanup 里 `removeEventListener`**。
    JSX 的 `onSave` 不会绑定 CustomEvent。`main.jsx` 有 `StrictMode`，dev 下 effect 双跑，
-   漏解绑会重复注册（同一次 `@save` 下载两份文件）。载荷在 `event.detail`（模板 JSON 字符串）。
+   漏解绑会重复注册（同一次 `@save` 下载两份文件）。载荷在 `event.detail`（模板 JSON 字符串；
+   例外：`dblclick-element` 的 detail **就是元素 id 字符串本身**、`dblclick-cell` 的是
+   `{ elementId, r, c, cellId }` 对象，都**不要** `JSON.parse`）。
    旁路取模板用 `el.getTemplateJson()`，它绕过拼版校验，保存/导出前要先调 `el.validateTemplate()`。
 3. **一次性注册的处理器要读最新状态需绕开闭包陷阱**。三条链路要用当前 `printData`（随批量开关变），
    若把 `printData` 放进事件 effect 依赖会导致频繁重绑；这里用 `printDataRef` 桥接，
@@ -55,7 +57,7 @@ React 侧没有 `isCustomElement` 这种编译配置：未知标签 `print-desig
 
 ## 页面上可点的动作（与 vue3 子工程完全一致）
 
-示例模板库切换（出库单 / 资产标签拼版 / 热敏小票）· 自定义字段与数据 · 导出/导入/清空模板 ·
+示例模板库切换（10 个与 demo 同源的示例：单据 / 标签拼版 / 连续纸小票）· 自定义字段与数据 · 导出/导入/清空模板 ·
 设计器自身「预览」唤出的全屏预览层与浏览器打印 · 打印输出弹窗内的服务端 PDF 与客户端静默打印 ·
 批量份数开关（把打印数据切成数组，三链路共用）。
 

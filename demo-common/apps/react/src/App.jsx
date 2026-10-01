@@ -153,17 +153,22 @@ export default function App() {
       openPreview(JSON.parse(event.detail))
     }
     const onHelp = () => console.log('[demo] @help 触发：设计器自带帮助弹窗，宿主可据此埋点')
-    const onDblclickElement = (event) => console.log('[demo] @dblclick-element 触发：', JSON.parse(event.detail))
+    // detail 为元素 id 字符串（与 canvas 的 @dblclick-element 首参同口径）
+    const onDblclickElement = (event) => console.log('[demo] @dblclick-element 触发：', event.detail)
+    // detail 为 { elementId, r, c, cellId } 对象（画布单元格与属性台单元格两条入口同形）
+    const onDblclickCell = (event) => console.log('[demo] @dblclick-cell 触发：', event.detail)
 
     el.addEventListener('save', onSave)
     el.addEventListener('preview', onPreview)
     el.addEventListener('help', onHelp)
     el.addEventListener('dblclick-element', onDblclickElement)
+    el.addEventListener('dblclick-cell', onDblclickCell)
     return () => {
       el.removeEventListener('save', onSave)
       el.removeEventListener('preview', onPreview)
       el.removeEventListener('help', onHelp)
       el.removeEventListener('dblclick-element', onDblclickElement)
+      el.removeEventListener('dblclick-cell', onDblclickCell)
     }
   }, [assertTilingValid, openPreview])
 
@@ -261,6 +266,16 @@ export default function App() {
       <header className="demo-topbar">
         <span className="demo-project">worm-vue3-print</span>
         <span className="demo-logo">打印模板设计器 Demo</span>
+        <details className="demo-host-switch">
+          <summary>宿主示例：React</summary>
+          <nav className="demo-host-switch-menu" aria-label="宿主示例互跳">
+            <a href="http://localhost:9303/">Vue3 canvas（demo 权威示例）</a>
+            <a href="http://localhost:9331/">Vue3 宿主</a>
+            <a href="http://localhost:9332/">Vue2 宿主</a>
+            <a className="on" href="http://localhost:9335/" title="当前页面">React 宿主</a>
+            <a href="http://localhost:9334/">jQuery 宿主</a>
+          </nav>
+        </details>
         <span className="demo-badge">业务类型：{currentSample ? currentSample.name : '空白模板'}</span>
         <span className="demo-badge">宿主：React + Web Component</span>
         <button type="button" className="demo-print-btn" onClick={() => setCustomDialogVisible(true)}>自定义字段与数据</button>

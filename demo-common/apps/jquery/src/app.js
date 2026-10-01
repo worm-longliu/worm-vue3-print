@@ -295,7 +295,10 @@ function mountDesigner() {
   $(el).on('save', e => onSave(e.originalEvent))
   $(el).on('preview', e => onPreview(e.originalEvent))
   $(el).on('help', () => console.log('[demo] @help 触发：设计器自带帮助弹窗，宿主可据此埋点'))
-  $(el).on('dblclick-element', e => console.log('[demo] @dblclick-element 触发：', JSON.parse(e.originalEvent.detail)))
+  // detail 为元素 id 字符串（与 canvas 的 @dblclick-element 首参同口径）
+  $(el).on('dblclick-element', e => console.log('[demo] @dblclick-element 触发：', e.originalEvent.detail))
+  // detail 为 { elementId, r, c, cellId } 对象（画布单元格与属性台单元格两条入口同形）
+  $(el).on('dblclick-cell', e => console.log('[demo] @dblclick-cell 触发：', e.originalEvent.detail))
 }
 
 function bindTopbar() {

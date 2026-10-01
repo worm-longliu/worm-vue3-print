@@ -18,6 +18,8 @@ const MIME = {
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.ttf': 'font/ttf',
+  '.woff2': 'font/woff2',
 }
 
 const server = createServer(async (req, res) => {
@@ -41,8 +43,9 @@ const server = createServer(async (req, res) => {
     return
   }
 
-  // /vendor/* 映射到 public/vendor/*（sync-assets 拷进来的两份产物），其余按工程根目录取文件
-  const target = path.startsWith('/vendor/') ? `public${path}` : path
+  // /vendor/*、/images/*、/fonts/* 映射到 public/ 下同名目录（vendor 由 sync-assets 拷包产物，images/fonts 由 sync-demo-samples 拷示例资源），其余按工程根目录取文件
+  const fromPublic = /^\/(vendor|images|fonts)\//.test(path)
+  const target = fromPublic ? `public${path}` : path
   const rel = normalize(target.replace(/^\/+/, '') || 'index.html')
   if (rel.startsWith('..')) {
     res.statusCode = 403

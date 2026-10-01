@@ -247,25 +247,26 @@ export function renderCanvasArea(ctx: ShellCtx, ui: CanvasUI) {
   }
 
   if (ui.contextMenu.visible) {
+    const menu = ui.contextMenu
     nodes.push(h('div', {
       class: 'context-menu',
       style: { left: `${ui.contextMenu.x + ui.contextMenu.flipX}px`, top: `${ui.contextMenu.y + ui.contextMenu.flipY}px` },
     }, ui.contextMenu.targetId
       ? [
-        menuItem(ctx, '复制', 'copy'),
-        menuItem(ctx, '剪切', 'cut'),
-        menuItem(ctx, '粘贴', 'paste', !s.hasClipboard),
-        menuItem(ctx, '删除', 'delete'),
+        menuItem(ctx, menu, '复制', 'copy'),
+        menuItem(ctx, menu, '剪切', 'cut'),
+        menuItem(ctx, menu, '粘贴', 'paste', !s.hasClipboard),
+        menuItem(ctx, menu, '删除', 'delete'),
         h('div', { class: 'context-menu-sep' }),
-        menuItem(ctx, '置顶', 'move-layer', false, 'top'),
-        menuItem(ctx, '上移', 'move-layer', false, 'up'),
-        menuItem(ctx, '下移', 'move-layer', false, 'down'),
-        menuItem(ctx, '置底', 'move-layer', false, 'bottom'),
+        menuItem(ctx, menu, '置顶', 'move-layer', false, 'top'),
+        menuItem(ctx, menu, '上移', 'move-layer', false, 'up'),
+        menuItem(ctx, menu, '下移', 'move-layer', false, 'down'),
+        menuItem(ctx, menu, '置底', 'move-layer', false, 'bottom'),
       ]
       : [
-        menuItem(ctx, '粘贴', 'paste-at', !s.hasClipboard),
-        menuItem(ctx, '全选', 'select-all'),
-        menuItem(ctx, '取消选择', 'clear-selection'),
+        menuItem(ctx, menu, '粘贴', 'paste-at', !s.hasClipboard),
+        menuItem(ctx, menu, '全选', 'select-all'),
+        menuItem(ctx, menu, '取消选择', 'clear-selection'),
       ]))
   }
 
@@ -283,10 +284,16 @@ export function renderCanvasArea(ctx: ShellCtx, ui: CanvasUI) {
   }, nodes.filter(Boolean) as never)
 }
 
-function menuItem(ctx: ShellCtx, label: string, action: string, disabled = false, arg?: unknown) {
+function menuItem(ctx: ShellCtx, menu: CanvasUI['contextMenu'], label: string, action: string, disabled = false, arg?: unknown) {
   return h('div', {
     class: `context-menu-item${disabled ? ' disabled' : ''}`,
     text: label,
-    onClick: () => !disabled && ctx.fire(action, arg),
+    // 与 canvas 的 emitAction 同口径：点击一律先收起菜单，再按守卫决定是否派发
+    // （canvas 的置灰「粘贴」也收起，只是 handlePaste 里 if (hasClipboard) 拦住派发）
+    onClick: () => {
+      menu.visible = false
+      if (!disabled) ctx.fire(action, arg)
+      ctx.repaint()
+    },
   })
 }

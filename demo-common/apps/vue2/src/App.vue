@@ -203,7 +203,12 @@ export default {
       console.log('[demo] @help 触发：设计器自带帮助弹窗，宿主可据此埋点')
     },
     onDblclickElement(event) {
-      console.log('[demo] @dblclick-element 触发：', JSON.parse(event.detail))
+      // detail 为元素 id 字符串（与 canvas 的 @dblclick-element 首参同口径）
+      console.log('[demo] @dblclick-element 触发：', event.detail)
+    },
+    onDblclickCell(event) {
+      // detail 为 { elementId, r, c, cellId } 对象（画布单元格与属性台单元格两条入口同形）
+      console.log('[demo] @dblclick-cell 触发：', event.detail)
     },
     // ────────────────── 顶栏：模板导入 / 导出 / 清空 ──────────────────
     onExportTemplate() {
@@ -480,6 +485,16 @@ export default {
     <header class="demo-topbar">
       <span class="demo-project">worm-vue3-print</span>
       <span class="demo-logo">打印模板设计器 Demo</span>
+      <details class="demo-host-switch">
+        <summary>宿主示例：Vue2</summary>
+        <nav class="demo-host-switch-menu" aria-label="宿主示例互跳">
+          <a href="http://localhost:9303/">Vue3 canvas（demo 权威示例）</a>
+          <a href="http://localhost:9331/">Vue3 宿主</a>
+          <a class="on" href="http://localhost:9332/" title="当前页面">Vue2 宿主</a>
+          <a href="http://localhost:9335/">React 宿主</a>
+          <a href="http://localhost:9334/">jQuery 宿主</a>
+        </nav>
+      </details>
       <span class="demo-badge">业务类型：{{ currentSample ? currentSample.name : '空白模板' }}</span>
       <span class="demo-badge">宿主：Vue 2 + Web Component</span>
       <button type="button" class="demo-print-btn" @click="customDialogVisible = true">自定义字段与数据</button>
@@ -505,6 +520,7 @@ export default {
         @preview="onPreview"
         @help="onHelp"
         @dblclick-element="onDblclickElement"
+        @dblclick-cell="onDblclickCell"
       />
     </main>
 

@@ -11,6 +11,18 @@ const require = createRequire(join(dirname(fileURLToPath(import.meta.url)), '..'
 const { chromium } = require('playwright')
 
 const URL_ = process.argv[2] || 'http://localhost:9331/'
+// 示例库由 sync-demo-samples.mjs 从 demo 同源生成（四份同 MD5），断言口径直接读产物，不再手工维护计数。
+const { SAMPLES } = await import(new URL('../apps/vue3/src/templates.js', import.meta.url))
+const DEFAULT_SAMPLE = SAMPLES[0]
+const FIRST_LABEL_SAMPLE = SAMPLES.find(s => s.group === '标签')
+/** 取示例数据里的字符串叶子：纸面必须出现它们，才算表达式真的绑定到位（不写死任何示例字样） */
+const dataLeaves = (obj, out = []) => {
+  for (const v of Object.values(obj ?? {})) {
+    if (v && typeof v === 'object') dataLeaves(v, out)
+    else if (typeof v === 'string' && v.length >= 4) out.push(v)
+  }
+  return out
+}
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'evidence')
 mkdirSync(OUT, { recursive: true })
 
@@ -72,6 +84,17 @@ const layout = await page.evaluate(() => {
     topbar: !!document.querySelector('.demo-topbar'),
     btnCount: document.querySelectorAll('.demo-topbar .demo-print-btn').length,
     batchSwitch: !!document.querySelector('.demo-batch-switch'),
+    hostSwitch: (() => {
+      const box = document.querySelector('.demo-host-switch')
+      return {
+        open: !!box?.open,
+        summary: box?.querySelector('summary')?.textContent.trim() ?? '',
+        links: [...(box?.querySelectorAll('a') ?? [])].map(a => ({
+          href: a.getAttribute('href'),
+          on: a.classList.contains('on'),
+        })),
+      }
+    })(),
     badges: [...document.querySelectorAll('.demo-badge')].map(b => b.textContent.trim()),
     container: { w: Math.round(cRect.width), h: Math.round(cRect.height) },
     designer: { w: Math.round(dRect.width), h: Math.round(dRect.height) },
@@ -84,6 +107,48 @@ const layout = await page.evaluate(() => {
 })
 check('顶栏与画布容器沿用 demo 类名', layout.topbar && layout.container.w > 0, '.demo-topbar/.demo-container')
 check('顶栏动作数=6（与 demo 相同的按钮数）', layout.btnCount === 6, `实际 ${layout.btnCount}`)
+// 顶栏「宿主示例」下拉：默认收起，五个工程入口齐备（链接用 <a>，不计入上面的按钮数），summary 标出当前宿主
+const HOST_PORTS = ['9303', '9331', '9332', '9335', '9334']
+const SWITCH_NAME_BY_PORT = { '9303': 'Vue3 canvas', '9331': 'Vue3', '9332': 'Vue2', '9335': 'React', '9334': 'jQuery' }
+const hostOrigin = new URL(URL_).origin + '/'
+const sw = layout.hostSwitch
+const switchOk =
+  !sw.open &&
+  sw.links.length === HOST_PORTS.length &&
+  HOST_PORTS.every(p => sw.links.some(a => a.href === `http://localhost:${p}/`)) &&
+  sw.links.filter(a => a.on).length === 1 &&
+  sw.links.find(a => a.on).href === hostOrigin &&
+  sw.summary.endsWith(SWITCH_NAME_BY_PORT[new URL(URL_).port])
+check('宿主示例下拉收起态：五入口齐备且 summary 标出当前宿主', switchOk,
+  `${sw.summary}·open=${sw.open}·${sw.links.map(a => a.href).join(' ')}`)
+// 展开态：菜单可见、挂在顶栏下方，且命中测试归菜单所有（顶栏与画布容器是同级 flex item，
+// 浏览器按原子层整体绘制，菜单层级不够就会被设计器元素盖住——只看 rect 会漏判）
+await page.locator('.demo-host-switch > summary').click()
+await page.waitForTimeout(150)
+const opened = await page.evaluate(() => {
+  const box = document.querySelector('.demo-host-switch')
+  const menu = box.querySelector('.demo-host-switch-menu')
+  const m = menu.getBoundingClientRect()
+  const bar = document.querySelector('.demo-topbar').getBoundingClientRect()
+  let covered = 0
+  for (let row = 1; row <= 6; row++) {
+    for (const col of [12, Math.round(m.width / 2), Math.round(m.width) - 12]) {
+      const el = document.elementFromPoint(m.left + col, m.top + (m.height * row) / 7)
+      if (!el || !menu.contains(el)) covered++
+    }
+  }
+  return {
+    open: box.open,
+    visible: m.width > 150 && m.height > 60,
+    belowTopbar: m.top >= bar.bottom - 8,
+    covered,
+  }
+})
+check('宿主示例下拉展开态：菜单挂在顶栏下方且未被画布元素遮挡',
+  opened.open && opened.visible && opened.belowTopbar && opened.covered === 0,
+  `被盖采样点 ${opened.covered}/18`)
+await page.locator('.demo-host-switch > summary').click()
+await page.waitForTimeout(150)
 check('批量开关沿用 demo 的 .demo-batch-switch', layout.batchSwitch)
 check('画布撑满 .demo-container（自定义元素非塌陷）',
   layout.designer.w > 800 && layout.designer.h > 500
@@ -91,7 +156,7 @@ check('画布撑满 .demo-container（自定义元素非塌陷）',
   `${layout.designer.w}x${layout.designer.h} vs 容器 ${layout.container.w}x${layout.container.h}`)
 check('已删除宿主侧栏（无日志面板/预览分栏）', !layout.sidePanel)
 check('顶部不展示模板 ID 徽章', !layout.badges.some(b => b.includes('模板 ID')), layout.badges.join(' | '))
-check('业务类型徽章=当前示例', layout.badges.some(b => b.includes('销售出库单')), layout.badges.join(' | '))
+check('业务类型徽章=当前示例', layout.badges.some(b => b.includes(DEFAULT_SAMPLE.name)), layout.badges.join(' | '))
 check('设计器已载入示例并注入字段与回调',
   layout.designerEls > 0 && layout.hasFields > 0 && layout.uploadIsFn && layout.jsonLen > 200,
   `元素 ${layout.designerEls}·字段 ${layout.hasFields}·JSON ${layout.jsonLen} 字符`)
@@ -111,8 +176,8 @@ const gallery = await page.evaluate(() => ({
     return { w: Math.round(r.width), h: Math.round(r.height), els: p.querySelectorAll('.thumb-el').length }
   })(),
 }))
-check('示例库卡片数=3', gallery.cards === 3, `cards=${gallery.cards}`)
-check('每张卡片绘制版式缩略图', gallery.thumbs === 3 && gallery.firstThumb.els > 0,
+check(`示例库卡片数=${SAMPLES.length}（与 demo 同源）`, gallery.cards === SAMPLES.length, `cards=${gallery.cards}`)
+check('每张卡片绘制版式缩略图', gallery.thumbs === SAMPLES.length && gallery.firstThumb.els > 0,
   `thumb-page=${gallery.thumbs}·首页元素=${gallery.firstThumb.els}`)
 check('缩略图纸张按比例绘制（非 0 尺寸）', gallery.firstThumb.w > 20 && gallery.firstThumb.h > 10,
   `${gallery.firstThumb.w}x${gallery.firstThumb.h}`)
@@ -121,8 +186,9 @@ check('筛选页签=全部/单据/标签/小票（带计数）', gallery.tabs.le
 check('示例库副标题沿用 demo 文案', /个示例 · 全部使用静态数据/.test(gallery.subtitle ?? ''), gallery.subtitle)
 
 await clickByText(page, '标签', '.gallery-mask .gallery-tab')
+const labelCount = SAMPLES.filter(s => s.group === '标签').length
 const filtered = await page.evaluate(() => document.querySelectorAll('.gallery-mask .sample-card').length)
-check('切到「标签」页签只剩 1 张卡片', filtered === 1, `cards=${filtered}`)
+check(`切到「标签」页签只剩 ${labelCount} 张卡片`, filtered === labelCount, `cards=${filtered}`)
 // demo 口径：切页签不改选中项，需先点卡片再确认
 await page.locator('.gallery-mask .sample-card').first().click()
 await page.waitForTimeout(200)
@@ -132,7 +198,7 @@ const applied = await page.evaluate(() => ({
   biz: [...document.querySelectorAll('.demo-badge')].map(b => b.textContent).join(' '),
   paper: JSON.parse(document.querySelector('print-designer').getTemplateJson()).paperSize,
 }))
-check('应用示例后徽章与画布同步切换', /资产标签/.test(applied.biz) && /LABEL/.test(applied.paper),
+check('应用示例后徽章与画布同步切换', applied.biz.includes(FIRST_LABEL_SAMPLE.name) && /LABEL/.test(applied.paper),
   `${applied.biz} · ${applied.paper}`)
 
 // ── 3. 预览链路：点设计器自身「预览」→ 全屏预览层出纸（先单份，再批量） ──
@@ -147,19 +213,33 @@ const readPreview = () => page.evaluate(() => {
   return {
     pages: doc.body.querySelectorAll('.print-page').length,
     bars: doc.querySelectorAll('svg').length + doc.querySelectorAll('img[src^="data:image/svg"]').length,
-    text: doc.body.innerText.replace(/\s+/g, ' ').slice(0, 50),
+    text: doc.body.innerText.replace(/\s+/g, ' ').slice(0, 400),
     subtitle: document.querySelector('.preview-subtitle')?.textContent.trim() ?? '',
     head: !!document.querySelector('.preview-head .preview-title'),
     loading: !!document.querySelector('.print-html-preview-loading'),
   }
 })
+/** 纸面数稳定：批量份数的后续纸面是异步追加的，只等「首页出现」会偶发读到 1 页 */
+const pageCount = () =>
+  page.evaluate(() => document.querySelector('.preview-mask iframe')?.contentWindow?.document.querySelectorAll('.print-page').length ?? 0)
+async function waitPreviewSettled(timeout = 20000) {
+  const started = Date.now()
+  let prev = -1
+  let same = 0
+  for (;;) {
+    const n = await pageCount()
+    same = n > 0 && n === prev ? same + 1 : 0
+    prev = n
+    if (same >= 2) return n
+    if (Date.now() - started > timeout) throw new Error(`预览纸面数未稳定（当前 ${n} 页）`)
+    await page.waitForTimeout(120)
+  }
+}
 async function previewOnce() {
   await openDesignerPreview()
   await waitVisible(page, '.preview-mask', 8000)
-  await page.waitForFunction(() => {
-    const doc = document.querySelector('.preview-mask iframe')?.contentWindow?.document
-    return !!doc && doc.body.querySelectorAll('.print-page').length > 0
-  }, { timeout: 20000 })
+  await page.waitForFunction(() => !!document.querySelector('.preview-mask iframe')?.contentWindow?.document, { timeout: 20000 })
+  await waitPreviewSettled()
   await page.waitForFunction(() => {
     const doc = document.querySelector('.preview-mask iframe')?.contentWindow.document
     return doc.querySelectorAll('svg, img[src^="data:image/svg"]').length > 0
@@ -173,7 +253,9 @@ async function previewOnce() {
 const single = await previewOnce()
 check('预览层为 demo 的全屏版式', single.head && single.subtitle.includes('页'), single.subtitle)
 check('预览渲染出纸面', single.pages > 0, `${single.pages} 页`)
-check('纸面含模板文本', /资产|编号|标签/.test(single.text), single.text)
+const expectedTexts = dataLeaves(FIRST_LABEL_SAMPLE.data).slice(0, 4)
+check('纸面含当前示例的数据值', expectedTexts.every(t => single.text.includes(t)),
+  `应含 ${expectedTexts.join(' / ')} → ${single.text}`)
 check('码值已渲染（条形码 svg / 二维码 svg data-url）', single.bars > 0, `码值节点 ${single.bars} 个`)
 
 await page.locator('.demo-batch-switch input').check()

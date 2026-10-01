@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>demo-common · 四个宿主的打印设计器集成示例</title>
+    <title>打印设计器示例总览 · 五个宿主工程</title>
     <style>
       body { margin: 0; padding: 32px; background: #f6f8fb; color: #2a2e37;
              font: 14px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif; }
@@ -27,13 +27,14 @@
     </style>
   </head>
   <body>
-    <h1><span>worm-vue3-print</span> · 通用宿主适配 · 打印设计器宿主示例</h1>
+    <h1><span>worm-vue3-print</span> · 打印设计器宿主示例总览</h1>
     <p class="lead">
-      四个互相独立的 npm 工程，每个都把自己宿主接入 <code>&lt;print-designer&gt;</code> 的全过程写在自家文件里
+      五个互相独立的示例工程，每个都把自己宿主接入打印设计器的全过程写在自家文件里
       —— 设计器挂载、模板与字段注入、宿主回调、事件、浏览器预览打印、服务端 PDF、客户端静默打印。
       没有共用壳层，照抄其中一个工程即可落到你自己的项目里。
-      四个页面的界面版式与 <code>demo/</code>（Vue 3 版示例）完全一致，样式由
-      <code>scripts/sync-demo-styles.mjs</code> 同源生成。
+      五个页面的界面版式完全一致：样式与示例库分别由
+      <code>scripts/sync-demo-styles.mjs</code> 与 <code>scripts/sync-demo-samples.mjs</code> 从
+      <code>demo/</code> 同源生成，打开任意一个页面都能用顶栏的「宿主示例」下拉切到其余四个。
     </p>
 
     <p class="warn">
@@ -43,6 +44,15 @@
     </p>
 
     <div class="grid">
+      <div class="card">
+        <h2>Vue 3 canvas<span class="tag">组件版设计器</span></h2>
+        <p><code>@worm-vue3-print/canvas</code> 的 <code>&lt;PrintDesigner&gt;</code> SFC 组件，本仓库的权威示例（样式与示例库的抽取源）。</p>
+        <pre>cd demo
+npm install
+npm run dev     # :9303</pre>
+        <a class="go" href="http://localhost:9303/">打开 →</a>
+      </div>
+
       <div class="card">
         <h2>Vue 3<span class="tag">NPM 包接入</span></h2>
         <p>SFC 写法；编译期要配 <code>isCustomElement</code>。</p>
@@ -82,11 +92,13 @@ npm run dev     # :9334（node server.mjs 纯静态）</pre>
     </div>
 
     <footer>
-      四个 demo 都能单独跑。<code>@worm-vue3-print/common</code> 是零框架 Web Component，设计器样式内置在组件 Shadow DOM；
+      五个 demo 都能单独跑，本页由 <code>node demo-common/scripts/serve-nav.mjs</code> 挂在 <code>:9300</code>
+      （<code>npm run nav:demo-common</code>；<code>npm run dev:demo-common:all</code> 会顺带起它）。
+      <code>@worm-vue3-print/common</code> 是零框架 Web Component，设计器样式内置在组件 Shadow DOM；
       <code>@worm-vue3-print/core</code> 提供同构出纸管线（<code>renderHtmlPages</code> / <code>PrintClient</code>）。
       可选依赖：<code>npm run dev:render</code>（服务端 PDF，:3001）、本机 print-client 桌面客户端（:17521）；
       两者不在时「打印输出」弹窗显示「离线」并给出可读提示。
-      验收：<code>node demo-common/scripts/verify-demo.mjs http://localhost:&lt;端口&gt;/</code>（四个宿主同一套 32 项 UI 级断言）。
+      验收：<code>node demo-common/scripts/verify-demo.mjs http://localhost:&lt;端口&gt;/</code>（四个宿主同一套 34 项 UI 级断言）。
     </footer>
   </body>
 </html>

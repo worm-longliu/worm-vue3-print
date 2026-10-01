@@ -633,14 +633,14 @@ export class PrintDesignerElement extends HTMLElement {
       case 'copy': s.copy(); break
       case 'cut': s.cutSelected(); break
       case 'paste': s.paste(); break
-      case 'paste-at': s.paste(); this.menu.visible = false; break
+      case 'paste-at': s.paste(); break
       case 'delete': s.deleteSelected(); break
       case 'delete-page': s.deletePage(s.activePageIndex); break
       case 'add-page': s.addPage(); break
       case 'duplicate-page': s.duplicatePage(s.activePageIndex); break
       case 'move-page': s.movePage(s.activePageIndex, s.activePageIndex + (arg as number)); break
       case 'select-all': s.selectAll(); break
-      case 'clear-selection': s.clearSelection(); this.menu.visible = false; break
+      case 'clear-selection': s.clearSelection(); break
       case 'toggle-ruler': s.showRuler = !s.showRuler; this.repaint(); break
       case 'toggle-grid': s.showGrid = !s.showGrid; this.repaint(); break
       case 'toggle-snap': s.snapToGrid = !s.snapToGrid; this.repaint(); break
@@ -662,7 +662,22 @@ export class PrintDesignerElement extends HTMLElement {
         break
       case 'guide-remove': s.removeGuide(arg as string); break
       case 'resize-start': this.beginResize(arg as { event: MouseEvent; id: string; point: string }); break
-      case 'element-mousedown': this.beginDrag(arg as { event: MouseEvent; id: string }); break
+      case 'element-mousedown': {
+        const a = arg as { event: MouseEvent; id: string }
+        if (a.event.button === 0 && this.isDoubleTap(`el:${a.id}`, a.event)) {
+          this.fire('element-dblclick', { event: a.event, id: a.id })
+        }
+        this.beginDrag(a); break
+      }
+      case 'table-cell-mousedown': {
+        const a = arg as { elementId: string; r: number; c: number; cellId?: string; event: MouseEvent }
+        if (this.isDoubleTap(`cell:${a.elementId}:${a.r}:${a.c}`, a.event)) {
+          // 未选中表格时第一击走的是元素 mousedown：消费掉元素键，避免同一次双击重复派发 dblclick-element
+          this.taps.delete(`el:${a.elementId}`)
+          this.fire('table-cell-dblclick', { elementId: a.elementId, r: a.r, c: a.c, cellId: a.cellId })
+        }
+        break
+      }
       case 'zone-resize': this.beginZoneResize(arg as { event: MouseEvent; zone: 'header' | 'footer' }); break
       case 'guide-mousedown': this.beginGuideDrag(arg as { event: MouseEvent; id: string }); break
       case 'ruler-mousedown': this.beginRulerGuide(arg as { event: MouseEvent; orientation: string }); break
@@ -672,13 +687,22 @@ export class PrintDesignerElement extends HTMLElement {
       case 'canvas-contextmenu': this.onContextMenu(arg as MouseEvent); break
       case 'contextmenu': this.onElementContextMenu(arg as { event: MouseEvent; id: string }); break
       case 'element-dblclick': {
+        // 由 isDoubleTap 在 mousedown 阶段派发（见上方注释），原生 dblclick 在重绘后不会触发，这里不再监听
         const { id } = arg as { id: string }
         this.dblEditElement(id)
         this.dispatchEvent(new CustomEvent('dblclick-element', {
           detail: id, bubbles: true, composed: true,
         })); break
       }
-      case 'table-cell-dblclick': this.dblEditCell(arg as { elementId: string; r: number; c: number }); break
+      case 'table-cell-dblclick': {
+        const a = arg as { elementId: string; r: number; c: number; cellId?: string }
+        this.dblEditCell(a)
+        // 与 dblclick-element 对称的宿主事件：detail 为对象，画布单元格与属性台单元格两条入口同形
+        this.dispatchEvent(new CustomEvent('dblclick-cell', {
+          detail: { elementId: a.elementId, r: a.r, c: a.c, cellId: a.cellId },
+          bubbles: true, composed: true,
+        })); break
+      }
       case 'open-expression': this.openExpression(arg as ExpressionEditorTarget); break
       case 'drop': this.onDrop(arg as DragEvent); break
       case 'wheel': this.onWheel(arg as WheelEvent); break
@@ -820,6 +844,23 @@ export class PrintDesignerElement extends HTMLElement {
     }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
+  }
+
+  /**
+   * 双击判定：同一目标两次左键 mousedown，间隔 <500ms 且位移 ≤6px 即视为一次双击。
+   * 不能用原生 dblclick：paint 是 clear(shell) 全量重建，第一击选中元素后旧节点即被替换，
+   * 第二击落在新节点上时 Chrome 不再派发 dblclick（实测 30ms 间隔亦为空）；
+   * canvas 侧 Vue 原地 patch 节点不换，才没有这个问题。
+   */
+  private taps = new Map<string, { t: number; x: number; y: number }>()
+
+  private isDoubleTap(key: string, ev: MouseEvent): boolean {
+    const prev = this.taps.get(key)
+    this.taps.set(key, { t: ev.timeStamp, x: ev.clientX, y: ev.clientY })
+    if (!prev || ev.timeStamp - prev.t >= 500) return false
+    if (Math.abs(ev.clientX - prev.x) > 6 || Math.abs(ev.clientY - prev.y) > 6) return false
+    this.taps.delete(key)
+    return true
   }
 
   private beginDrag(arg: { event: MouseEvent; id: string }) {

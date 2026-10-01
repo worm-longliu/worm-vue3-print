@@ -244,7 +244,7 @@ export function renderDesignElement(ctx: ShellCtx, el: RuntimeElement) {
     style: elementStyle(el),
     dataset: { elId: el.id },
     onMousedown: (ev: Event) => ctx.fire('element-mousedown', { event: ev as MouseEvent, id: el.id }),
-    onDblclick: (ev: Event) => ctx.fire('element-dblclick', { event: ev as MouseEvent, id: el.id }),
+    // 双击判定在 print-designer 的 element-mousedown 分支（paint 全量重建会断掉原生 dblclick）
     onContextmenu: (ev: Event) => {
       ev.preventDefault()
       ev.stopPropagation()

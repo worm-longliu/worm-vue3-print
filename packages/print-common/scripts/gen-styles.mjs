@@ -44,11 +44,22 @@ const hostBaseline = `/* 由 scripts/gen-styles.mjs 从 print-canvas 派生，�
 }
 `
 
+/**
+ * 浮层令牌对齐：canvas 的表达式/帮助弹窗渲染在 .designer-container 子树内，能继承其
+ * scoped 样式里声明的 --pd-* 变量；本包浮层挂 shadow root（.designer-container 的兄弟
+ * 节点），var() 全部解析不到 → 回落 fallback，整卡观感塌陷（实测弹窗底色透明、文字纯黑、
+ * 页签无选中态）。把同一 token 块在 :host 上再声明一次：自定义属性沿继承同时流进容器与
+ * 浮层，值与 canvas 逐字同源，无第二份维护。
+ */
+const tokenBlock = unscoped.match(/\.designer-container\s*\{[^}]*--pd-bg[^}]*\}/)
+if (!tokenBlock) console.warn('[gen-styles] 未找到 .designer-container 的 --pd-* 令牌块，跳过 :host 变量注入（浮层样式将回落 fallback）')
+const hostTokens = tokenBlock ? `\n:host${tokenBlock[0].slice('.designer-container'.length)}\n` : ''
+
 mkdirSync(OUT_DIR, { recursive: true })
 /** 派生泄漏修正层（手写）：剥 [data-v-*] 会让 scoped 规则跨组件命中，这里按 canvas 实测值还原 */
 const patches = readFileSync(fileURLToPath(new URL('../styles/scope-patches.css', import.meta.url)), 'utf8')
-writeFileSync(OUT, `${hostBaseline}\n${nativeCss}\n${unscoped}\n${patches}\n`, 'utf8')
+writeFileSync(OUT, `${hostBaseline}${hostTokens}${nativeCss}${unscoped}${patches}\n`, 'utf8')
 
-const bytes = Buffer.byteLength(`${hostBaseline}${nativeCss}${unscoped}${patches}`, 'utf8')
+const bytes = Buffer.byteLength(`${hostBaseline}${hostTokens}${nativeCss}${unscoped}${patches}`, 'utf8')
 const rules = (unscoped.match(/\{/g) || []).length
 console.log(`[gen-styles] 已派生 src/styles/designer.css：${rules} 条规则 + 泄漏修正层 ${(patches.length / 1024).toFixed(1)} kB / ${(bytes / 1024).toFixed(1)} kB（canvas ${(unscoped.length / 1024).toFixed(1)} kB + native-controls ${(nativeCss.length / 1024).toFixed(1)} kB）`)

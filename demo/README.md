@@ -29,6 +29,10 @@ npm install
 npm run dev:demo     # http://localhost:9303
 ```
 
+顶栏的「宿主示例」下拉可以把页面切到其余四个宿主 demo（`:9331` Vue3 / `:9332` Vue2 / `:9335` React /
+`:9334` jQuery，见仓库根的 `demo-common/`），五份示例模板与数据同源；总览导航页在 `:9300`
+（`npm run nav:demo-common`，`npm run dev:demo-common:all` 会顺带起它）。
+
 demo 通过 Vite dev 代理调用服务：前端只请求同源 `/render-api/*`，由 `vite.config.ts`
 转发到 `http://localhost:3001`（规避浏览器跨域），并在代理层注入 `X-Render-Key`，
 密钥不进入前端 bundle。可用环境变量覆盖目标地址与密钥（仅 dev 生效）：

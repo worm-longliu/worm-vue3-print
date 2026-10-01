@@ -45,7 +45,7 @@ src/print-dialog.js         打印输出弹窗：服务端 PDF + 客户端静默
 src/render-client.js        /render-api 调用封装（只用 fetch，无 bare import）
 src/browser-render.js       WormPrintCommon.renderHtmlPages + browserCodeRenderer 的薄封装
 src/ui.js                   弹层显隐、提示文案、JSON 下载等零碎 DOM 工具
-src/templates.js            三个示例的模板 / 字段 / 数据 / 批量数据
+src/templates.js            十个示例的模板 / 字段 / 数据 / 批量数据（sync-demo-samples.mjs 从 demo 生成，勿手改）
 src/styles/demo-ui.css      宿主样式（sync-demo-styles.mjs 从 demo 逐字抽取，勿手改）
 ```
 
@@ -82,7 +82,9 @@ src/styles/demo-ui.css      宿主样式（sync-demo-styles.mjs 从 demo 逐字�
    el.uploadDesignBackground = file => upload(file)
    ```
 
-4. **听事件 + 出纸**（CustomEvent 的载荷在 `e.originalEvent.detail`，三条链路都吃 `getTemplateJson()` 的 JSON）
+4. **听事件 + 出纸**（CustomEvent 的载荷在 `e.originalEvent.detail`，三条链路都吃 `getTemplateJson()` 的 JSON；
+   只有 `save`/`preview` 的 detail 是 JSON 字符串要 `JSON.parse`，`dblclick-element` 的是元素 id 字符串本身、
+   `dblclick-cell` 的是 `{ elementId, r, c, cellId }` 对象，直接用）
 
    ```js
    $(el).on('save', e => persist(JSON.parse(e.originalEvent.detail)))   // jQuery 包了一层事件对象

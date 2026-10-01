@@ -35,7 +35,8 @@ npm run dev -w @worm-vue3-print/render     # 服务端 PDF（3001，dev 代理�
 | `vite.config.js` | `@vitejs/plugin-vue2`（`plugins: [vue2()]`），`/render-api` 代理注入 `X-Render-Key` |
 
 依赖：`npm i @worm-vue3-print/common @worm-vue3-print/core vue@2.7`；`npm i -D @vitejs/plugin-vue2`。
-示例数据在 `src/templates.js`（3 个示例，带 group/paper/desc 元数据），改成你的接口返回即可。
+示例数据在 `src/templates.js`（10 个示例，带 group/paper/desc 元数据；由 `demo-common/scripts/sync-demo-samples.mjs`
+从 demo 的 `src/samples` 同源生成，勿手改），改成你的接口返回即可。
 
 ## Vue 2 专属的坑（务必处理）
 
@@ -55,13 +56,14 @@ npm run dev -w @worm-vue3-print/render     # 服务端 PDF（3001，dev 代理�
 5. **`v-if` 控制的预览 iframe 要等下一帧再写内容**。打开预览后 `await this.$nextTick()` 再
    `await requestAnimationFrame(...)` 两层，节点才真正可取，随后 `writeHtmlToFrame` 写入 HTML。
 6. **事件是 CustomEvent**。`@save` / `@preview` 的 `event.detail` 是模板 JSON 字符串（`@preview` 已带当前模板），
-   另有 `@help`、`@dblclick-element`；旁路取模板用 `getTemplateJson()`，但它绕过拼版闸门，
+   另有 `@help`、`@dblclick-element`（`event.detail` **就是元素 id 字符串本身**，不是 JSON，无需 `JSON.parse`）、
+   `@dblclick-cell`（`event.detail` 为 `{ elementId, r, c, cellId }` 对象）；旁路取模板用 `getTemplateJson()`，但它绕过拼版闸门，
    保存/导出前需自己调 `validateTemplate()`。
 7. **模板单根节点**。四个 mask 全部放在根 `.demo-app` 内（Vue 2 不支持多根 fragment）。
 
 ## 页面上能点的集成动作
 
-顶栏：自定义字段与数据 / 加载示例 / 导出模板 / 导入模板 / 清空 / 打印输出 / 批量开关。
+顶栏：自定义字段与数据 / 加载示例 / 导出模板 / 导入模板 / 清空 / 打印输出 / 批量开关，另有「宿主示例」下拉互跳五个工程。
 示例库弹窗：分组页签（全部·单据·标签·小票）+ 缩略图卡片 + 双击/确定应用。
 自定义弹窗：粘贴字段/数据 JSON、格式化、非法拦截、应用即时生效。
 预览：点设计器自身「预览」触发 `@preview` → 全屏预览层浏览器同构渲染出纸（Esc 关闭）。

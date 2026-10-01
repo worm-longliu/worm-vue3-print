@@ -3,6 +3,16 @@
     <header class="demo-topbar">
       <span class="demo-project">worm-vue3-print</span>
       <span class="demo-logo">打印模板设计器 Demo</span>
+      <details class="demo-host-switch">
+        <summary>宿主示例：Vue3 canvas</summary>
+        <nav class="demo-host-switch-menu" aria-label="宿主示例互跳">
+          <a class="on" href="http://localhost:9303/" title="当前页面">Vue3 canvas（本仓库权威示例）</a>
+          <a href="http://localhost:9331/">Vue3 宿主</a>
+          <a href="http://localhost:9332/">Vue2 宿主</a>
+          <a href="http://localhost:9335/">React 宿主</a>
+          <a href="http://localhost:9334/">jQuery 宿主</a>
+        </nav>
+      </details>
       <span class="demo-badge">模板 ID：{{ TEMPLATE_ID }}</span>
       <span class="demo-badge">业务类型：{{ currentSample ? currentSample.name : '空白模板' }}</span>
       <button type="button" class="demo-print-btn" @click="customDialogVisible = true">自定义字段与数据</button>
@@ -417,6 +427,70 @@ body,
   margin: 0 4px 0 12px;
   background: #e9ecf2;
   vertical-align: middle;
+}
+/* 宿主示例互跳：无 JS 的 details 下拉，五个工程各写一份；链接用 <a> 不用 <button>（顶栏动作数口径不变） */
+.demo-host-switch {
+  position: relative;
+}
+.demo-host-switch > summary {
+  padding: 2px 10px;
+  border: 1px solid #d9dde6;
+  border-radius: 999px;
+  background: #f4f6fa;
+  color: #5a667f;
+  font-size: 12px;
+  list-style: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.demo-host-switch > summary::-webkit-details-marker {
+  display: none;
+}
+.demo-host-switch > summary::after {
+  content: '▾';
+  margin-left: 6px;
+  color: #98a0b0;
+}
+.demo-host-switch[open] > summary {
+  border-color: #165dff;
+  background: #eef3ff;
+  color: #165dff;
+}
+.demo-host-switch-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  /* 顶栏与画布容器是同级 flex item，浏览器按原子层整体绘制：层级不够时菜单会被设计器整片盖住。
+     取 500：高于画布常驻 chrome（工具条 100、标尺浮层 60、标尺 1），
+     低于设计器与宿主的一切弹窗/瞬时层（帮助 1000、对话框遮罩 2000、取色面板与表格右键 3000、
+     参考线与吸附 9997~9999、框选 10000、画布右键菜单 10001、宿主的预览与示例库遮罩 9999/10000）。 */
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 196px;
+  padding: 6px;
+  border: 1px solid #e3e7ef;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(23, 32, 60, 0.16);
+}
+.demo-host-switch-menu a {
+  padding: 5px 9px;
+  border-radius: 6px;
+  color: #5a667f;
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.demo-host-switch-menu a:hover {
+  background: #e8eefc;
+  color: #165dff;
+}
+.demo-host-switch-menu a.on {
+  background: #165dff;
+  color: #ffffff;
+  cursor: default;
 }
 .demo-badge {
   padding: 2px 10px;

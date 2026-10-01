@@ -4,7 +4,8 @@
 //
 // ─── fire(action, arg) 动作清单 ───
 // 矩阵变更、历史、重绘都在本文件内完成（store 为唯一数据源）；除首条外均为通知型。
-//   'table-cell-dblclick'     { elementId, r, c, cellId }   必须接线：外层打开该单元格的表达式编辑器（对照 canvas onDblClickCell）
+//   'table-cell-mousedown'    { elementId, r, c, cellId, event }  必须接线：双击判定（print-designer 的 isDoubleTap 命中后内部再派 'table-cell-dblclick'）
+//   'table-cell-dblclick'     { elementId, r, c, cellId }   内部动作：打开该单元格的表达式编辑器（对照 canvas onDblClickCell；画布侧由双击判定触发，属性台输入框仍挂原生 onDblclick）
 //   'table-selection-change'  { elementId, selection: TableSelection | null }  通知：单元格选区变化（已写入 store.tableSelection）
 //   'table-cell-contextmenu'  { elementId, r, c, clientX, clientY }  通知：表格右键菜单已打开（传入的 menu 对象已被置 visible）
 //   'table-menu-close'        { elementId }                 通知：表格右键菜单关闭
@@ -420,8 +421,10 @@ function applySelection(ctx: TableCtx, a: { r: number; c: number }, b: { r: numb
   ctx.fire('table-selection-change', { elementId: ctx.el.id, selection })
 }
 
-function onCellMouseDown(ctx: TableCtx, r: number, c: number, ev: MouseEvent) {
+function onCellMouseDown(ctx: TableCtx, r: number, c: number, cellId: string, ev: MouseEvent) {
   if (ev.button !== 0) return // canvas 用 @mousedown.left，右键交给 contextmenu
+  // 双击判定不依赖节点同一性：即便本次 mousedown 后画布整体重建，下一击仍能在同一 key 上凑成双击
+  ctx.fire('table-cell-mousedown', { elementId: ctx.el.id, r, c, cellId, event: ev })
   if (!ctx.isSelected) return
   ev.stopPropagation() // 阻止画布拖拽元素
   const st = tableState(ctx.store)
@@ -438,12 +441,6 @@ function onCellMouseDown(ctx: TableCtx, r: number, c: number, ev: MouseEvent) {
 function onCellMouseEnter(ctx: TableCtx, r: number, c: number) {
   const anchor = tableState(ctx.store).anchor
   if (anchor) applySelection(ctx, anchor, { r, c })
-}
-
-function onCellDblClick(ctx: TableCtx, r: number, c: number, cellId: string, ev: MouseEvent) {
-  ev.stopPropagation() // 单元格编辑优先于元素双击
-  if (!ctx.isSelected) ctx.store.selectOne(ctx.el.id)
-  ctx.fire('table-cell-dblclick', { elementId: ctx.el.id, r, c, cellId })
 }
 
 // ─── 右键菜单 ───
@@ -807,9 +804,8 @@ export function renderTable(el: RuntimeElement, store: DesignerStore, fire: Tabl
             colspan: cell.colspan || 1,
             class: cellClass(ctx, ri, ci),
             style: cellStyle(ctx, cell),
-            onMousedown: (ev: Event) => onCellMouseDown(ctx, ri, ci, ev as MouseEvent),
+            onMousedown: (ev: Event) => onCellMouseDown(ctx, ri, ci, cell.id, ev as MouseEvent),
             onMouseenter: () => onCellMouseEnter(ctx, ri, ci),
-            onDblclick: (ev: Event) => onCellDblClick(ctx, ri, ci, cell.id, ev as MouseEvent),
             onContextmenu: (ev: Event) => openCellMenu(ctx, ri, ci, ev as MouseEvent),
           }, [cellContent(ctx, row, ri, ci, cell)]))
           .filter(Boolean)))),
