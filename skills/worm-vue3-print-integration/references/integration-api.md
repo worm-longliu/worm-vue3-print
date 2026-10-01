@@ -11,7 +11,6 @@
       :fields="fields"
       :is-edit="true"
       :upload-image="uploadImage"
-      :request-screenshot="requestScreenshot"
       @save="onSave"
       @preview="onPreview"
     />
@@ -66,19 +65,10 @@ async function uploadImage(file: File) {
   const result = await res.json()
   return result.url as string
 }
-
-async function requestScreenshot(request: { templateJson: TemplateData; printData: Record<string, any> }) {
-  const res = await fetch('/api/print/screenshot', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  })
-  return res.blob()
-}
 </script>
 ```
 
-`request-screenshot` 和 `upload-image` 是可选宿主能力；未注入时设计器对应功能不可用，但基础设计、保存和预览仍可使用。
+`upload-image` 是可选宿主能力；未注入时设计器对应功能不可用，但基础设计、保存和预览仍可使用。
 
 ## 组件契约
 
@@ -90,7 +80,6 @@ Props：
 - `initial-elements?: RuntimeElement[]`
 - `fields?: PrintBusinessField[]`
 - `is-edit?: boolean`
-- `request-screenshot?: (request: ScreenshotRequest) => Promise<Blob>`
 - `upload-image?: (file: File) => Promise<string>`
 - `show-help?: boolean`（默认 `true`，传 `false` 关闭帮助入口）
 
@@ -208,4 +197,4 @@ const pageLayouts = paginate(bound, measuredElements)
 const html = generateHtml(bound, pageLayouts, printData, { codeRenderer })
 ```
 
-若用户要服务端 PDF 或截图，引导其查看/接入 monorepo 内的 `services/print-render` 服务（`@worm-vue3-print/render`）；在接入方业务仓库中不要虚构 `/render/pdf` 实现。
+若用户要服务端 PDF，引导其查看/接入 monorepo 内的 `services/print-render` 服务（`@worm-vue3-print/render`）；在接入方业务仓库中不要虚构 `/render/pdf` 实现。

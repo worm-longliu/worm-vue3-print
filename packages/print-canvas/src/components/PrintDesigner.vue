@@ -190,7 +190,7 @@ const props = defineProps<{
   showHelp?: boolean
   /**
    * 模板级字体声明（宿主配置）：设计器据此注入 @font-face、在字体下拉中列出，
-   * 并在保存/预览/截图时同步写入模板 JSON，供服务端与客户端出图使用同一份字体。
+   * 并在保存/预览时同步写入模板 JSON，供服务端与客户端出图使用同一份字体。
    */
   fonts?: readonly PrintFontDeclaration[]
 }>()
@@ -270,7 +270,7 @@ provide(FONT_CATALOG_KEY, fontCatalog)
 useDocumentFontFace(computed(() => buildFontFaceCss(props.fonts)))
 
 /**
- * 保存/预览/截图统一取这一份：把 prop 配置的字体同步写进模板 JSON，
+ * 保存/预览统一取这一份：把 prop 配置的字体同步写进模板 JSON，
  * 渲染端（服务端 / 客户端 / 浏览器）只认模板里的声明。宿主未配置时保留模板自带声明。
  */
 function templateJsonWithFonts(): TemplateData | MultiPageTemplateData {

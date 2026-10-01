@@ -1,6 +1,6 @@
 # 服务端渲染微服务对接（print-render）
 
-`services/print-render` 是 monorepo 内的 private 服务包（`@worm-vue3-print/render`，**不发布 npm**，Docker 部署）。它通过 npm workspace 本地软链依赖同仓库 `@worm-vue3-print/core`，在纯 Node 侧用 Playwright Headless Chromium 完成 PDF/截图渲染。宿主后端通过 HTTP 调用它。
+`services/print-render` 是 monorepo 内的 private 服务包（`@worm-vue3-print/render`，**不发布 npm**，Docker 部署）。它通过 npm workspace 本地软链依赖同仓库 `@worm-vue3-print/core`，在纯 Node 侧用 Playwright Headless Chromium 完成 PDF 渲染。宿主后端通过 HTTP 调用它。
 
 ## 1. 服务接口契约
 
@@ -8,7 +8,6 @@
 | --- | --- | --- | --- | --- |
 | `GET` | `/health` | 无 | - | `{status, activeRenders, maxConcurrent, queueLength}` |
 | `POST` | `/render/pdf` | `X-Render-Key` 头 | `RenderRequest` | `application/pdf` 字节流 |
-| `POST` | `/render/screenshot` | `X-Render-Key` 头 | `RenderRequest` | `image/png`（单遍，不分页，设计器叠层对比用） |
 
 请求体 `RenderRequest`：
 
@@ -23,7 +22,7 @@
 - `templateJson` 必填，且必须含 `paperSize`、`orientation`、`margins`，否则返回 400。即 `getTemplateJson()` 的产物，直接透传，不要自行裁剪。
 - `printData` 兼容单对象与对象数组（数组=一次多份，每份独立分页）。
 - `baseUrl` 用于把模板中相对路径图片（如 `/docfiles/xxx.png`）拼成渲染进程可访问的绝对地址。服务端渲染环境必须能访问这些图片 URL。
-- 错误响应体：`{code, message}`，code 取值 `UNAUTHORIZED(401)`、`INVALID_REQUEST(400)`、`RENDER_TIMEOUT(504)`、`RENDER_FAILED/SCREENSHOT_FAILED(500)`。
+- 错误响应体：`{code, message}`，code 取值 `UNAUTHORIZED(401)`、`INVALID_REQUEST(400)`、`RENDER_TIMEOUT(504)`、`RENDER_FAILED(500)`。
 - 限制：请求体 10MB，单请求 30s 超时（服务端内部）。宿主后端的 HTTP 读取超时应 **≥ 30s**（两遍渲染比单遍慢，复杂模板留足余量，实践中设 40s）。
 
 鉴权：请求头 `X-Render-Key` 必须等于服务端环境变量 `RENDER_API_KEY`（默认 `dev-render-key`）。**密钥只能存在于宿主后端/代理层，绝不进前端 bundle。**
@@ -35,7 +34,7 @@
 1. `core` 的 `bindData` 把 `printData` 变量/表达式替换进模板；
 2. 第一遍测量：`generateHtml` 生成测量 HTML，`page.setContent()` 加载后测量各元素实际高度（mm）；
 3. `paginate` 按实测高度分页（含表格重复表头、小计/汇总）；
-4. 第二遍出图：按分页结果生成最终 HTML，`page.pdf()` 出 PDF。截图接口是单遍 `page.screenshot()`。
+4. 第二遍出图：按分页结果生成最终 HTML，`page.pdf()` 出 PDF。
 
 因此浏览器预览与服务端 PDF 分页一致的前提：同一份 `templateJson`、同一份 `printData`、同一个 `baseUrl`，以及渲染环境装了与设计时一致的中文字体。
 
@@ -109,7 +108,7 @@ return resp.body();                          // application/pdf
 
 两类服务端端点：
 - **已保存模板打印**：入参 `{templateId, businessType, orderId?}` → 后端取模板 + 组装真实业务数据 → 转发。
-- **设计器免保存预览/截图**：入参直接带 `{templateJson, printData}` → 后端原样转发（printData 用 demo 数据），供设计器里的截图叠层对比。
+- **设计器免保存预览**：入参直接带 `{templateJson, printData}` → 后端原样转发（printData 用 demo 数据）。
 
 ## 5. 前端如何调用（不要直连渲染服务）
 

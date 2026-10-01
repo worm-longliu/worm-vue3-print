@@ -16,7 +16,7 @@ version: 1.2.0
 | 需要 Vue 3 可视化设计器或浏览器端打印预览 | `@worm-vue3-print/canvas` + `@worm-vue3-print/core` | NPM 包 |
 | 需要未发布修复、调试库源码、修改/回传补丁 | `core`，按需 `canvas` | 源码安装 |
 | 外部宿主要直接消费 monorepo 中的 `.vue/.ts` | 两者按需 | 源码 + Vite 别名 |
-| 服务端 PDF / 截图微服务 | monorepo 内 `services/print-render`（private 服务包，workspace 软链 core，**不发布 npm**） | 按 [服务端渲染](references/server-render.md) 部署 |
+| 服务端 PDF 微服务 | monorepo 内 `services/print-render`（private 服务包，workspace 软链 core，**不发布 npm**） | 按 [服务端渲染](references/server-render.md) 部署 |
 | 工位电脑无打印对话框静默出纸（小票/标签/针式多联/批量） | `@worm-vue3-print/core/client` + 桌面打印客户端（Electron） | core 子路径（无需另装 SDK）+ [静默打印](references/silent-print.md) |
 
 生产项目优先 NPM 包；当前已发布版本为 **1.3.0**。只有用户明确要改/调试库源码、消费未发布代码，或项目本身就在本 monorepo 中，才用源码安装。安装细节见 [安装方式](references/installation.md)。
@@ -60,7 +60,7 @@ version: 1.2.0
 2. 业务字段元数据来源：返回 `PrintBusinessField[]`（`fieldKey/fieldLabel/fieldType/sortOrder` 契约，见接入 API）；可硬编码、配置表或注解反射生成。
 3. 模板 CRUD + 设计器初始化聚合功能（一次返回模板 + 字段树 + 可选示例数据）。
 4. 渲染数据组装功能：按模板 id + 业务单据 id 组装 `printData`，返回 `{templateJson, printData, baseUrl}`（链路 A / C 共用）。
-5. 链路 B：代理 `print-render` 的 PDF/截图端点，注入 `X-Render-Key`，组装业务数据后透传。
+5. 链路 B：代理 `print-render` 的 PDF 端点，注入 `X-Render-Key`，组装业务数据后透传。
 
 链路 C 的打印机、份数、纸张等打印配置由宿主前端按模板维护（如 localStorage：模板 ID → 打印选项），随 `client.print()` 下发；客户端不持久化业务打印配置。
 
@@ -98,7 +98,7 @@ version: 1.2.0
 ## 6. 验收要点（委托或集成完成后逐项核对）
 
 - 安装方式与样式导入匹配：NPM/`file:` 用 `@worm-vue3-print/canvas/style.css`，源码别名才用 `native-controls.css`。
-- `PrintDesigner` 只使用真实契约：props `initial-template/fields/is-edit/request-screenshot/upload-image`，事件仅 `save/preview`，实例方法仅 `getTemplateJson()`。
+- `PrintDesigner` 只使用真实契约：props `initial-template/fields/is-edit/upload-image`，事件仅 `save/preview`，实例方法仅 `getTemplateJson()`。
 - 没有调用不存在的 `setTemplateMeta`、监听不存在的 `back` 事件。
 - 模板 JSON 与宿主元信息分离；列表/详情能正确回填 elements。
 - 链路 A 预览与打印用同一份 `templateJson + printData + baseUrl`。
@@ -114,7 +114,7 @@ version: 1.2.0
 - `PrintDesigner` 事件只有 `save(json)` 与 `preview()`；expose 只有 `getTemplateJson()`。不要据旧文档假设 `back` 事件或 `setTemplateMeta` 方法。
 - 常用导出：`PrintDesigner`、`PrintHtmlPreview`、`createDefaultTemplate`、`DEFAULT_DEMO_DATA`/`getDemoData`（均来自 `@worm-vue3-print/canvas`；后两者由 `core/designer` 转出）。
 - 模板 JSON 不含名称、业务类型、备注等宿主元信息，元信息由宿主自行持久化。
-- 服务端 PDF/截图由独立微服务 `services/print-render` 承担；`core` 只提供同构渲染管线。接入方业务仓库不要虚构 `/render/pdf` 的实现。
+- 服务端 PDF 由独立微服务 `services/print-render` 承担；`core` 只提供同构渲染管线。接入方业务仓库不要虚构 `/render/pdf` 的实现。
 - 静默打印客户端是 monorepo 内 `clients/print-client`（Electron，private，不发布 npm），浏览器侧 SDK 为 core 子路径 `@worm-vue3-print/core/client`（无需单独安装）；协议消息类型与错误码定义在该子路径内，客户端经 workspace 依赖复用，两端永不漂移。
 - 客户端仅绑定 `127.0.0.1`、单任务串行：并发任务返回 `BUSY`，由宿主端排队重试，客户端不做离线队列与失败补打。
 - 连续纸（模板 `paperSize: 'CONTINUOUS'`）模板无需传纸高，出纸高度由客户端按渲染内容自动推导；普通纸始终使用模板纸张，`print.paperSize`/`paperName` 仅作覆盖项。

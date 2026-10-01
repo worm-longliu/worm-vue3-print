@@ -12,7 +12,7 @@
 
 | 手段 | 命令 | 覆盖 |
 |---|---|---|
-| 逻辑单测 | `npm run test -w @worm-vue3-print/common` | 98 项（7 个 spec）：三区摊平与序列化往返、默认页名与重排、拼版闸门、对齐、层级、撤销重做、参考线、粘贴偏移与组 id 重映射、Ctrl+D 复制、方向键微移会话、落点归区与类型拒绝、拖拽结束归区、Alt 拖拽克隆、格式刷（选中集变化即刷 / 双击锁定 + Esc 退出）、混选 MIXED、字体只落文本元素、加粗回落、表格矩阵 9 项、取色器 15 项、字体下拉 13 项、帮助弹窗 14 项、属性台搜索门控 14 项、拖拽视觉态与步进/下拉细节 9 项 |
+| 逻辑单测 | `npm run test -w @worm-vue3-print/common` | 120 项（10 个 spec）：三区摊平与序列化往返、默认页名与重排、拼版闸门、对齐、层级、撤销重做、参考线、粘贴偏移与组 id 重映射、Ctrl+D 复制、方向键微移会话、落点归区与类型拒绝、拖拽结束归区、Alt 拖拽克隆、格式刷（选中集变化即刷 / 双击锁定 + Esc 退出）、混选 MIXED、字体只落文本元素、加粗回落、表格矩阵 10 项、取色器 15 项、字体下拉 13 项、帮助弹窗 14 项、属性台搜索门控 14 项、拖拽视觉态与步进/下拉细节 9 项、右键菜单 10 项、双击表达式编辑 8 项、吸附拖拽 3 项 |
 | 类名覆盖率审计 | `node demo-common/scripts/class-audit.mjs` | 把 canvas 50 个组件模板里出现的类名逐个回查本包源码：「派生 CSS 有该规则 + 本包源码无挂点」= 掉样式或缺功能 |
 | 派生 CSS 泄漏审计 | `node demo-common/scripts/style-scope-audit.mjs` | 列两类嫌疑（纯泄漏：类只在一个组件 scoped 定义却被别处用；多组件同名声明不同），裁决须两侧实测 computed style |
 | 宿主样式同源 | `npm run styles:demo-common` | `demo-common/scripts/sync-demo-styles.mjs` 从 `demo/src/App.vue` + 三个弹窗 + `SampleThumb` + 本仓 `PrintHtmlPreview` 逐字抽取 style，合成四个宿主工程同 MD5 的 `src/styles/demo-ui.css`；四个子 demo 的宿主版式因此与 Vue3 版 demo **完全一致**（工程内不再写私有布局样式） |

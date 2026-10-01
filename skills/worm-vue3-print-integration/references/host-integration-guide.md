@@ -14,7 +14,7 @@
                                     ▼                            ▼
                 ┌──────────── 浏览器侧渲染 / 出纸 ──────────┐    print-render 微服务
                 │ 链路 A：PrintHtmlPreview → print()        │    （ Playwright 两遍渲染 → PDF ）
-                │ 链路 B：同源代理 → 渲染服务 PDF/截图       │
+                │ 链路 B：同源代理 → 渲染服务 PDF            │
                 │ 链路 C：@worm-vue3-print/core/client      │
                 │         → WebSocket 127.0.0.1            │
                 └──────────────┬───────────────────────────┘
@@ -88,7 +88,7 @@
 
 **链路 B 额外功能（需要服务端 PDF 时）**
 
-- PDF/截图代理：入参与渲染数据功能一致，组装好数据包后转发 `print-render` 微服务并注入 `X-Render-Key`，原样返回 `application/pdf` / `image/png` 字节流；需支持设计器免保存场景（前端直接给 `templateJson`，后端配 demo 数据透传）。对接细节见 [服务端渲染](server-render.md)。
+- PDF 代理：入参与渲染数据功能一致，组装好数据包后转发 `print-render` 微服务并注入 `X-Render-Key`，原样返回 `application/pdf` 字节流；需支持设计器免保存场景（前端直接给 `templateJson`，后端配 demo 数据透传）。对接细节见 [服务端渲染](server-render.md)。
 
 **链路 C 额外功能（需要静默打印时）**
 
@@ -200,7 +200,7 @@ onMounted(async () => {
 注意：
 - 设计器页父容器必须有确定高度（`PrintDesigner` 内部 `height:100%`），否则画布塌陷。
 - **不要**调用 `setTemplateMeta`——该方法不存在。元信息用宿主页面自己的标签/弹窗展示与编辑。
-- 图片上传、服务端截图是可选能力，需要时才注入 `upload-image` / `request-screenshot`；不注入时对应功能隐藏，基础设计/保存/预览不受影响。默认布局等业务入口由宿主自己渲染，赋值 `initial-template` 即可重载画布。
+- 图片上传是可选能力，需要时才注入 `upload-image`；不注入时对应功能隐藏，基础设计/保存/预览不受影响。默认布局等业务入口由宿主自己渲染，赋值 `initial-template` 即可重载画布。
 
 ### 5.3 业务打印按钮（选模板 → 取数 → 预览）
 
@@ -245,5 +245,5 @@ async function handlePrint() {
 2. 做设计器页，跑通「新建 → 进设计器 → 保存 elements → 重新进入回填」。
 3. fields 先用前端常量跑通字段树，再接后端（推荐注解反射）。
 4. 做渲染数据组装功能 + 业务打印按钮 + 预览弹窗，用一份真实单据数据跑通链路 A。
-5. 需要电子存档 PDF 时，部署 `print-render` 并在后端加链路 B 的 PDF/截图代理功能与「下载 PDF」按钮。
+5. 需要电子存档 PDF 时，部署 `print-render` 并在后端加链路 B 的 PDF 代理功能与「下载 PDF」按钮。
 6. 需要工位静默出纸时，分发并安装桌面打印客户端，前端经 `@worm-vue3-print/core/client` 加「静默打印」按钮走链路 C。

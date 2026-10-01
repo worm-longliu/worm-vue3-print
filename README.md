@@ -46,7 +46,7 @@ worm-vue3-print/
 ├── clients/
 │   └── print-client/          # @worm-vue3-print/print-client Electron 静默打印桌面客户端（private，不发布 npm）
 ├── services/
-│   └── print-render/          # @worm-vue3-print/render 服务端 PDF / 截图渲染微服务（private，不发布 npm）
+│   └── print-render/          # @worm-vue3-print/render 服务端 PDF 渲染微服务（private，不发布 npm）
 ├── demo/                      # 演示项目：Vue 3 设计器 + 预览 + 静默打印集成的完整示例
 ├── demo-common/               # 演示项目（实验性 · 未完全稳定测试）：apps/ 下四个独立宿主 demo（Vue3/Vue2/React/jQuery），index.html 为静态导航页
 ├── docs/                      # 项目文档
@@ -75,7 +75,7 @@ worm-vue3-print/
 | `packages/print-canvas` | 设计器画布（`@worm-vue3-print/canvas`）：Vue 3 组件（`components`）、组合式函数（`composables`）、内置帮助内容（`help-content`）、原生控件样式（`styles`）。含 `PrintDesigner`、`PrintHtmlPreview` |
 | `packages/print-common` | ⚠️ **实验性 · 未完全稳定测试**：通用宿主适配设计器（`@worm-vue3-print/common`）：以原生自定义元素 `<print-designer>` 形态提供，**支持多种运行时框架**——任意框架（Vue 3 / Vue 2 / React / jQuery / Angular 等）或无框架宿主均可直接接入，供 React / Vue2 / jQuery 等非 Vue3 宿主使用，**不打包 Vue 运行时**。样式与图标由 `scripts/gen-styles.mjs`、`scripts/gen-icons.mjs` 从 canvas 构建产物派生（类名逐字对齐），交互与渲染逻辑复用 core 的 designer 导出；另产出浏览器直挂形态 `dist/common.js`（UMD，core 与码制库内联，挂 `window.WormPrintCommon`）与 `dist/common.css`，无打包器宿主一个 `<script>` + 一个 `<link>` 即可接入。与 Vue3 版的功能与样式一致性说明见包内 `PARITY.md`，宿主示例在 `demo-common/apps/` |
 | `clients/print-client` | 静默打印桌面客户端（Electron，private）：主进程 WS 服务 / 打印引擎 / 打印机服务 / 配置与任务记录（`src/main`）、配置窗口 Vue 3 界面（`src/renderer`）、隐藏渲染 worker（`src/worker`）、沙箱 IPC 桥（`src/preload`）、IPC 通道契约（`src/shared`）；含 electron-builder 打包配置与真机冒烟脚本（`scripts/`） |
-| `services/print-render` | 服务端渲染微服务（private）：基于 Playwright 的 PDF / 截图渲染（`driver-playwright` / `pdf-render` / `browser-pool` / `server`），workspace 软链依赖 core，与浏览器预览、桌面客户端共用同一份打印管线 |
+| `services/print-render` | 服务端渲染微服务（private）：基于 Playwright 的 PDF 渲染（`driver-playwright` / `pdf-render` / `browser-pool` / `server`），workspace 软链依赖 core，与浏览器预览、桌面客户端共用同一份打印管线 |
 | `demo` | Vue 3 演示项目：设计器接入（`App.vue`）、静默打印集成、渲染客户端封装（`render-client.ts`）、业务字段（`business.ts`）、内置模板 JSON（`template-purchase-receipt.json`），端口 9303 |
 | `demo-common` | ⚠️ **实验性示例 · 未完全稳定测试**（对应上方实验性的 `print-common`）：通用宿主适配、**支持多种运行时框架**的多宿主集成示例：`apps/vue3`（9331，SFC）、`apps/vue2`（9332，SFC + Options API）、`apps/react`（9335，hooks）走 **NPM 包接入**；`apps/jquery`（9334）走 **JS + CSS 直挂**（无打包器、业务代码不 import 插件，只用 `window.WormPrintCommon` + `$`）。四个工程彼此独立（各有 `package.json` / lock / node_modules），**不共用任何壳层封装**——设计器挂载、`fields`/`template` 的 property 注入、`uploadImage` 宿主回调、`save`/`preview`/`help`/`dblclick-element`/`dblclick-cell` 事件、浏览器渲染预览与打印、服务端 PDF、客户端静默打印、批量份数都写在各自的文件里，照抄一个工程即可落到自己项目；示例模板/字段/数据也各自带一份（`src/templates.js`）。四个页面的界面版式与 `demo/` **完全一致**：同一份顶栏动作、同一个全屏打印预览层、同一套「打印输出 / 加载示例 / 自定义字段与数据」弹窗，样式由 `scripts/sync-demo-styles.mjs`（`npm run styles:demo-common`）从 `demo/` 逐字抽取成各工程同 MD5 的 `src/styles/demo-ui.css`，工程内不再写私有布局样式。`index.html` 是四入口静态导航页，`scripts/dev-all.mjs` / `install-all.mjs` 一次拉起或安装四个工程，`scripts/verify-demo.mjs` 做 32 项 UI 级验收（按 demo 类名逐项判定，含防「DOM 全绿但布局塌陷」的尺寸断言） |
 | `docs` | 文档：`中文/`（指南、接口、示例、文档总览、CHANGELOG，为权威版本）、`en/`（英文首页 Overview 与 CHANGELOG，由 AI 生成并在文内声明），`superpowers/` 为设计文档（specs）与实施计划（plans） |
@@ -91,7 +91,7 @@ worm-vue3-print/
 | `@worm-vue3-print/core` | `packages/print-core` | npm | 模板表达式引擎与同构渲染管线（数据绑定 / HTML 生成 / 分页，含连续纸探针推导），纯 TypeScript，无 Vue、无宿主依赖，浏览器与 Node 均可运行；浏览器端静默打印 SDK 经子路径 `@worm-vue3-print/core/client` 提供 |
 | `@worm-vue3-print/canvas` | `packages/print-canvas` | npm | Vue 3 可视化设计器画布（原生控件，无 Element Plus；含 `PrintDesigner`、`PrintHtmlPreview` 组件） |
 | `@worm-vue3-print/common` | `packages/print-common` | 未发布 · **实验性** | ⚠️ 通用宿主适配设计器 `<print-designer>`（零框架运行时，实现为原生 Custom Element + Shadow DOM）：**支持多种运行时框架**，功能与样式对齐 `@worm-vue3-print/canvas`，供 React / Vue2 / jQuery 等非 Vue3 宿主接入（详见包内 `PARITY.md`）。**尚在实验阶段、未完全稳定测试，不建议用于生产**；Vue 3 项目请继续使用 `@worm-vue3-print/canvas`（成熟方案） |
-| `@worm-vue3-print/render` | `services/print-render` | 内部 | 基于 Playwright（Headless Chromium）的服务端 PDF / 截图渲染微服务，Docker 部署；与浏览器预览、桌面客户端共用同一份渲染管线，保证三端出纸一致 |
+| `@worm-vue3-print/render` | `services/print-render` | 内部 | 基于 Playwright（Headless Chromium）的服务端 PDF 渲染微服务，Docker 部署；与浏览器预览、桌面客户端共用同一份渲染管线，保证三端出纸一致 |
 | `@worm-vue3-print/print-client` | `clients/print-client` | 内部 | 跨平台静默打印桌面客户端（Electron，回环 WebSocket + core 同构渲染 + `webContents.print` 静默出纸） |
 
 > 发布到 npm 的只有 `core` 与 `canvas` 两个包（`npm run publish:npm`）；`render` 与 `print-client` 为私有工作区包，分别以 Docker 镜像和安装包形式分发。`print-common` 与其示例 `demo-common` 为**实验性**产物，用于支持 Vue 3 / Vue 2 / React / jQuery 等多种运行时框架，**尚未完成稳定性测试**，目前只在工作区内构建使用，不建议应用到生产中，是否上 npm 尚未决定；Vue 3 项目请使用 `@worm-vue3-print/canvas`。
@@ -248,7 +248,7 @@ function onLoadDefaultLayout() {
   `is-edit`：是否编辑态。
 - `show-help`：帮助入口开关，默认开启，传 `false` 可关闭帮助按钮与帮助弹框。
 - `@preview` / `@save`：预览与保存事件，宿主持有 `getTemplateJson()`/`getTemplateJson` 之外的业务逻辑自理。
-- `getTemplateJson()`：通过 `ref` 获取当前画布模板 JSON，用于预览 / 保存 / 截图。
+- `getTemplateJson()`：通过 `ref` 获取当前画布模板 JSON，用于预览 / 保存。
 - 模板加载 / 重置（如「加载默认布局」）属于宿主业务：把新的 `TemplateData` 赋给
   `initial-template` 即可重载画布并记录一次历史（撤销可回退），设计器工具栏不内置该入口。
 - `PrintHtmlPreview`：同构预览组件，`template-json` 传画布模板 JSON，`print-data` 传业务数据，
@@ -302,7 +302,7 @@ client.pair(token)                            // 安全配对：客户端开启�
 ## 渲染服务
 
 服务端渲染位于本仓库 monorepo 的 `services/print-render`（私有服务包，不发布 npm）：
-基于 Playwright 提供服务端 PDF / 截图渲染微服务（`/render/pdf`、`/render/screenshot`），
+基于 Playwright 提供服务端 PDF 渲染微服务（`/render/pdf`），
 通过 workspace 本地软链依赖 `core` 渲染管线，与浏览器预览、桌面客户端共用同一份实现；测量、连续纸探针、码制渲染与出图由 core 的 DOM 执行器在页面上下文执行。
 
 ```bash
@@ -337,7 +337,7 @@ docker build -f services/print-render/Dockerfile -t worm-vue3-print-render .
 | `sortablejs` | MIT | canvas | 图层/列表拖拽排序 | 无限制 |
 | `lucide-vue-next` | ISC | canvas | 工具栏图标 | 无限制 |
 | `express` | MIT | render 服务 | HTTP 接口层 | 无限制 |
-| `playwright` | Apache-2.0 | render 服务 | Headless Chromium 输出 PDF/截图 | 无限制 |
+| `playwright` | Apache-2.0 | render 服务 | Headless Chromium 输出 PDF | 无限制 |
 | `ws` | MIT | 桌面客户端 | 本地 WebSocket 静默打印通道 | 无限制 |
 
 ### 审计结论

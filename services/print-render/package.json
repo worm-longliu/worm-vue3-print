@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "基于 Playwright(Headless Chromium) 的 PDF/截图打印渲染微服务（monorepo 服务包，Docker 部署）",
+  "description": "基于 Playwright(Headless Chromium) 的 PDF 打印渲染微服务（monorepo 服务包，Docker 部署）",
   "license": "MIT",
   "engines": {
     "node": ">=20"

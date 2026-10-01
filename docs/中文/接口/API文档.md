@@ -93,13 +93,13 @@ import {
 | API | 说明 |
 |---|---|
 | `createDomHostRuntime(driverFactory)` | 三端共用的 DOM 宿主编排 runtime |
-| `prepareDocument`、`renderPdf`、`renderScreenshot`（`pipeline.ts`） | 管线阶段函数 |
-| `buildPdfTargetSpec`、`toElectronPrintToPdfOptions`、`toPlaywrightPdfOptions`、`buildScreenshotTargetSpec` | PDF/截图目标规格与平台参数映射 |
+| `prepareDocument`、`renderPdf`（`pipeline.ts`） | 管线阶段函数 |
+| `buildPdfTargetSpec`、`toElectronPrintToPdfOptions`、`toPlaywrightPdfOptions` | PDF 目标规格与平台参数映射 |
 | `resolvePaperMm`、`escapeHeightMm`、`paperViewportPx` | 纸张解析、逃生门、视口换算 |
 | `normalizeMeasurements` | 测量结果 px→mm 归一化 |
 | `PrintFailure`、`toPrintFailure`、`withTimeout` | 统一错误与超时 |
 | 拼版（`tiling.ts` / `tile-compose.ts`） | `computeTileLayout`、`validateTiling`、`computeMaxColumns`、`tilePosition`、`resolveSheetMm`、`normalizeTilingOptions`、`composeTiledHtml`、`TILE_DEFAULTS`、`TilingError`（见下文「拼版打印」） |
-| 类型 | `PrintJob`、`PreparedDocument`、`RenderPdfResult`、`PageDriver`、`PrintRuntime`、`PrintSession`、`RawMeasurement`、`PdfTargetSpec`、`ScreenshotTargetSpec`、`PaperMm`、`ViewportPx`、`CodeSpec`、`PrintFailureCode` |
+| 类型 | `PrintJob`、`PreparedDocument`、`RenderPdfResult`、`PageDriver`、`PrintRuntime`、`PrintSession`、`RawMeasurement`、`PdfTargetSpec`、`PaperMm`、`ViewportPx`、`CodeSpec`、`PrintFailureCode` |
 
 主要数据类型（主入口导出）：`PrintTemplateData`、`PrintTemplateElement`、`PaperSize`、`PageLayout`、
 `PageSection`、`MeasuredElement`、`RenderRow`、`RenderCell`、`RenderRequest`、`MultiPageTemplateData`、
@@ -145,7 +145,7 @@ import {
 
 - 每个页面模板各自跑一遍完整的「绑定 → 测量 → 分页」，共用同一份数据；
 - 每个页面模板**必定从新的一页开始**（无需额外分页元素），整份文档**一次出图**；
-- `{pageIndex}` / `{totalPages}` 在**份内全局连续**（按前序模板页数累计 `pageOffset`）；`firstPageOverlay` 在每个模板自己的首页叠加（单模板时与旧语义等价）；
+- `{pageIndex}` / `{totalPages}` 在**份内全局连续**（按前序模板页数累计 `pageOffset`）；
 - `PreparedDocument.pageCount` = 份内全部模板页数之和，`paperMm` 取首页（各页纸张已强制一致）；
 - 多页面 × 批量（数组数据）时：每份 = 一份完整的多页文档，页码每份重置。
 
@@ -166,7 +166,7 @@ import {
 | `composeBatchHtml(copies)` | 纯字符串合并器（入参 `BatchCopyInput[]`）：固定纸共用 `@page` + 份间分页，连续纸走命名页（各份高度可不同） |
 
 产物：`PreparedDocument.copies` 为份数，批量时另有每份的物理纸张尺寸 `copyPaperMm`。
-渲染服务 PDF/截图接口与桌面客户端 `print` 协议同样接受数组并按同一上限校验；浏览器适配器的
+渲染服务 PDF 接口与桌面客户端 `print` 协议同样接受数组并按同一上限校验；浏览器适配器的
 `renderHtmlPages(template, printData)` 也支持数组。
 
 ### 拼版打印（多行多列）
@@ -274,8 +274,7 @@ interface BrowserRenderResult {
 import type { TemplateData, RuntimeElement, PrintBusinessField } from '@worm-vue3-print/core/designer'
 ```
 
-导出面：模板模型类型（`TemplateData`、`RuntimeElement`、`PrintBusinessField`、`WatermarkOptions`、
-`ScreenshotRequest` 等）、宿主能力契约（`RequestScreenshotFn`、`UploadImageFn`），
+导出面：模板模型类型（`TemplateData`、`RuntimeElement`、`PrintBusinessField`、`WatermarkOptions` 等）、宿主能力契约（`UploadImageFn`），
 以及单位/缩放/旧模板迁移/默认配置/表格矩阵/元素工厂/标尺/预设色/字段分组/绑定等纯工具，
 吸附（adsorb）、对齐、组合、键盘、缩放等纯交互算法。
 
@@ -286,8 +285,7 @@ import type { TemplateData, RuntimeElement, PrintBusinessField } from '@worm-vue
 ```ts
 import { PrintDesigner, PrintHtmlPreview, renderHtmlPages, browserCodeRenderer } from '@worm-vue3-print/canvas'
 import type {
-  TemplateData, RuntimeElement, PrintBusinessField,
-  ScreenshotRequest, RequestScreenshotFn, UploadImageFn, UploadDesignBackgroundFn,
+  TemplateData, RuntimeElement, PrintBusinessField, UploadImageFn, UploadDesignBackgroundFn,
 } from '@worm-vue3-print/canvas'
 // 发布包对外只有一个样式入口（源码别名模式才用 native-controls.css）
 import '@worm-vue3-print/canvas/style.css'
@@ -307,7 +305,6 @@ Props：
 | `initialElements` | `RuntimeElement[]` | 运行时元素初始化（高级） |
 | `fields` | `PrintBusinessField[]` | 业务字段，字段树/绑定唯一数据源 |
 | `isEdit` | `boolean` | 编辑态 |
-| `requestScreenshot` | `RequestScreenshotFn` | 叠层对比截图适配器 |
 | `uploadImage` | `UploadImageFn` | 图片上传适配器 |
 | `uploadDesignBackground` | `UploadDesignBackgroundFn` | 设计背景上传适配器，返回完整图片路径；背景仅设计画布显示，预览/打印不输出 |
 | `showHelp` | `boolean` | 帮助入口开关，默认 true |
@@ -406,10 +403,5 @@ interface PrintOptions {
 - 失败：`{ code, message }`，code：`UNAUTHORIZED`(401)、`INVALID_REQUEST`(400)、
   `RENDER_TIMEOUT`(504)、`RENDER_FAILED`(500)
 - 限制：请求体 10MB，单请求 30s
-
-### `POST /render/screenshot`
-
-请求/鉴权同上；成功返回 `200 image/png`（单页截图，不分页），失败 code 为 `SCREENSHOT_FAILED`。
-`templateJson` 同样支持多页面模板；多页面模板的截图会按真实分页渲染整份文档后全页截图。
 
 环境变量：`PORT`（默认 3001）、`RENDER_API_KEY`、`PLAYWRIGHT_CHROME_PATH`。

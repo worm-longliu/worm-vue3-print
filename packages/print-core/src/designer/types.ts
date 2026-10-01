@@ -117,7 +117,7 @@ export type VerticalAlign = 'top' | 'middle' | 'bottom'
 /** 缩放手柄方向 */
 export type ResizePoint = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
 
-/** 设计背景（定位底图）：仅设计画布显示，预览/PDF/打印/截图均不输出 */
+/** 设计背景（定位底图）：仅设计画布显示，预览/PDF/打印均不输出 */
 export interface DesignBackground {
   /** 宿主上传接口返回的完整图片路径，可直接用于 <img src> */
   src: string

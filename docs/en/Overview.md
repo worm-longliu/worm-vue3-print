@@ -31,7 +31,7 @@ Layout is authored in millimetres with `pt` for line and font units, against fix
 |---|---|---|---|
 | `@worm-vue3-print/core` | `packages/print-core` | npm | Expression engine + isomorphic rendering pipeline; browser silent-print SDK at `/client` |
 | `@worm-vue3-print/canvas` | `packages/print-canvas` | npm | Vue 3 visual designer (`PrintDesigner`) and preview component (`PrintHtmlPreview`), native controls, no UI kit |
-| `@worm-vue3-print/render` | `services/print-render` | Docker | Server-side PDF / screenshot renderer built on Playwright (Headless Chromium) |
+| `@worm-vue3-print/render` | `services/print-render` | Docker | Server-side PDF renderer built on Playwright (Headless Chromium) |
 | `@worm-vue3-print/print-client` | `clients/print-client` | installer | Cross-platform Electron silent-print client (loopback WebSocket + `webContents.print`) |
 
 Only `core` and `canvas` are published to npm.
@@ -94,7 +94,7 @@ import '@worm-vue3-print/canvas/style.css'
 Key contract:
 
 - `initial-template` (`TemplateData`), `fields` (`PrintBusinessField[]`), `is-edit`.
-- `getTemplateJson()` via `ref` — read the current canvas for preview, save, or screenshot.
+- `getTemplateJson()` via `ref` — read the current canvas for preview and save.
 - `@save` hands the host a template JSON string; persistence is the host's job.
 - Loading or resetting a template is host business: assign a new `TemplateData` to `initial-template`. The designer toolbar does not embed such entry points.
 - `PrintHtmlPreview` renders without saving; `ref.print()` triggers the browser print flow.
