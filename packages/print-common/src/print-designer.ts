@@ -1139,8 +1139,11 @@ export class PrintDesignerElement extends HTMLElement {
         } else {
           s.adsorbGuides = []
         }
-        const offsetX = snapped ? snapped.left - rect!.left : dx
-        const offsetY = snapped ? snapped.top - rect!.top : dy
+        // canvas 的 useDrag 直接取吸附后的绝对坐标（newLeft = result.left），位移是「修正后坐标 - 起始坐标」；
+        // 若写成 snapped - rect 就只剩吸附修正量、丢掉 dx，元素会被钉死在原位拖不动
+        const base = first ? this.drag.origin.get(first.id) : undefined
+        const offsetX = snapped && base ? snapped.left - base.left : dx
+        const offsetY = snapped && base ? snapped.top - base.top : dy
         for (const id of this.drag.ids) {
           const o = this.drag.origin.get(id)
           if (!o) continue
