@@ -1,6 +1,6 @@
 # @worm-vue3-print/render
 
-基于 Playwright（Headless Chromium）的 PDF/截图打印渲染微服务，位于 monorepo 的
+基于 Playwright（Headless Chromium）的 PDF 打印渲染微服务，位于 monorepo 的
 `services/print-render`（`private` 服务包，不发布 npm，仅 Docker 部署）。
 通过 npm workspace 本地软链依赖同仓库的 `@worm-vue3-print/core`（表达式引擎与渲染管线），
 修改 core 无需发版即可在本服务生效。
@@ -49,7 +49,7 @@ npx playwright install chromium
 npm run dev:render                        # 开发运行（tsx 直跑 src/server.ts）
 npm run build -w @worm-vue3-print/render   # tsc 编译到 services/print-render/dist/
 npm run start -w @worm-vue3-print/render   # 生产运行（node dist/server.js）
-npm run test -w @worm-vue3-print/render    # vitest（截图/分页用例需可启动浏览器）
+npm run test -w @worm-vue3-print/render    # vitest（分页用例需可启动浏览器）
 ```
 
 > `BrowserPool` 自动探测系统浏览器（env 覆盖 → PATH → 常见安装路径），找不到才回退
