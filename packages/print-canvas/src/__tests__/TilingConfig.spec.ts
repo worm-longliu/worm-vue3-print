@@ -18,7 +18,6 @@ function labelTemplate(overrides: Partial<TemplateData> = {}): TemplateData {
     margins: { top: 3, right: 3, bottom: 3, left: 3 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [],
     ...overrides,
   } as TemplateData

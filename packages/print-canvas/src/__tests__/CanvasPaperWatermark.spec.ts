@@ -15,7 +15,6 @@ function makeTemplate(watermark: Record<string, any> | undefined): TemplateData 
     margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 10, elements: [] },
     footer: { height: 10, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [],
     watermark: watermark as TemplateData['watermark'],
   } as TemplateData

@@ -78,7 +78,7 @@ const props = defineProps<{
   /** 设计态下无边框表格单元格的虚拟虚线开关（透传给 TableElement） */
   showTableGhostBorder?: boolean
   /** 元素所在区域（影响设计态边框颜色） */
-  zone?: 'content' | 'header' | 'footer' | 'overlay'
+  zone?: 'content' | 'header' | 'footer'
   /** 由 CanvasPaper 层吸附管理器提供：同步返回吸附修正结果并渲染引导线 */
   adsorbHandler?: (rect: ElementRect) => AdsorbResult
   clearAdsorbGuides?: () => void
@@ -349,10 +349,6 @@ onUnmounted(() => {
 .print-element.design-mode.zone-header,
 .print-element.design-mode.zone-footer {
   outline: 1px dashed var(--pd-ink-green, #67c23a);
-}
-/* 首页叠加区域元素：青色虚线 */
-.print-element.design-mode.zone-overlay {
-  outline: 1px dashed #06B6D4;
 }
 .print-element.selected {
   outline: 1.5px solid var(--pd-accent, #165DFF);

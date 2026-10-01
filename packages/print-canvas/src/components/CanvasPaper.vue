@@ -116,14 +116,6 @@
         :class="{ 'design-mode': designMode }"
         :style="layerStyle(zoneRectsMM.content)"
       >
-        <!-- 首页叠加占位（本次不可编辑） -->
-        <div
-          v-if="designMode && templateData.firstPageOverlay.height > 0"
-          class="zone-overlay"
-          :style="{ height: templateData.firstPageOverlay.height + 'mm' }"
-        >
-          <span class="zone-label">首页叠加</span>
-        </div>
         <BaseElement
           v-for="el in contentElements"
           :key="el.id"
@@ -541,17 +533,6 @@ defineExpose({ contentRef })
 }
 .zone-layer.zone-content.design-mode {
   outline: 1px dashed #C3C9D6;
-}
-.zone-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  outline: 1px dashed #06B6D4;
-  background: rgba(6, 182, 212, 0.04);
-  box-sizing: border-box;
-  pointer-events: none;
-  z-index: 1;
 }
 .zone-label {
   position: absolute;

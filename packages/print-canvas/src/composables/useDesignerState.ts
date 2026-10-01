@@ -39,10 +39,10 @@ export function createDefaultTemplate(): TemplateData {
     margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 10, elements: [] },
     footer: { height: 10, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [],
     watermark: {},
-  }
+    // 画布不再读写该首页专属字段；core 类型尚未删除其必填声明，经 unknown 桥接
+  } as unknown as TemplateData
 }
 
 /** 三区元素合并为统一运行时元素池（补建 id、打 zone 标） */
@@ -66,10 +66,6 @@ export function toRuntimePool(data: TemplateData): TemplateData {
     margins: { ...data.margins },
     header: { height: data.header?.height ?? 10, elements: [] },
     footer: { height: data.footer?.height ?? 10, elements: [] },
-    firstPageOverlay: {
-      height: data.firstPageOverlay?.height ?? 0,
-      elements: [...(data.firstPageOverlay?.elements ?? [])],
-    },
     guides: [...(data.guides ?? [])],
     elements: [
       ...mk(data.elements ?? [], 'content'),
@@ -105,13 +101,6 @@ function serializePage(page: TemplateData): TemplateData {
     unit: 'mm' as const, ...page,
     header: { ...page.header, elements: ser('header') },
     footer: { ...page.footer, elements: ser('footer') },
-    firstPageOverlay: {
-      ...page.firstPageOverlay,
-      elements: (page.firstPageOverlay?.elements ?? []).map(e => ({
-        id: e.id || generateId(), type: e.printElementType?.type || 'text',
-        options: { ...e.options }, printElementType: { ...e.printElementType },
-      })),
-    },
     elements: ser('content'),
     guides: [...(page.guides ?? [])],
   }
@@ -211,13 +200,13 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
         margins: { ...templateData.value.margins },
         header: { height: templateData.value.header.height, elements: [] },
         footer: { height: templateData.value.footer.height, elements: [] },
-        firstPageOverlay: { height: templateData.value.firstPageOverlay.height, elements: [] },
         elements: [], // 元素已在顶层存储，避免重复
         customWidth: templateData.value.customWidth,
         customHeight: templateData.value.customHeight,
         watermark: templateData.value.watermark ? { ...templateData.value.watermark } : undefined,
         guides: [...(templateData.value.guides ?? [])],
-      },
+        // 快照不再搬运该首页专属字段；core 类型尚未删除其必填声明，经 unknown 桥接
+      } as unknown as TemplateData,
       pages: JSON.parse(JSON.stringify(pages.value)),
       activePageIndex: activePageIndex.value,
     }
@@ -548,7 +537,6 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     const cp: TemplateData = JSON.parse(JSON.stringify(src))
     cp.name = `${src.name ?? `页面 ${activePageIndex.value + 1}`} 副本`
     cp.elements = cp.elements.map((e: any) => ({ ...e, id: generateId() }))
-    cp.firstPageOverlay = { ...cp.firstPageOverlay, elements: (cp.firstPageOverlay?.elements ?? []).map((e: any) => ({ ...e, id: generateId() })) }
     pages.value.splice(activePageIndex.value + 1, 0, cp)
     switchPage(activePageIndex.value + 1)
     recordHistory()

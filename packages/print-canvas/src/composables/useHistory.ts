@@ -73,13 +73,13 @@ export function useHistory(options?: UseHistoryOptions) {
         margins: { ...td.margins },
         header: { height: td.header.height, elements: [] },
         footer: { height: td.footer.height, elements: [] },
-        firstPageOverlay: { height: td.firstPageOverlay.height, elements: [] },
         elements: [], // 元素已在顶层存储
         customWidth: td.customWidth,
         customHeight: td.customHeight,
         watermark: td.watermark ? { ...td.watermark } : undefined,
         guides: td.guides ? [...td.guides] : undefined,
-      }
+        // 快照不再搬运该首页专属字段；core 类型尚未删除其必填声明，经 unknown 桥接
+      } as unknown as TemplateData
     }
     return result
   }

@@ -74,8 +74,6 @@
           <button class="tb-btn tb-menu-row" :class="{ on: snapToGrid }" data-tip="开启/关闭元素吸附到网格" @click="$emit('toggle-snap')">
             <span class="dot" /> 吸附
           </button>
-          <span class="tb-menu-sep" />
-          <button class="tb-btn tb-menu-row" data-tip="添加一个仅在首页叠加显示的页眉/页脚元素" @click="$emit('add-overlay-element')">首页专属</button>
           <button class="tb-btn tb-menu-row" :class="{ warn: overlayVisible }" data-tip="叠加显示渲染截图，与设计稿对比效果" @click="$emit('toggle-overlay')">叠层对比</button>
         </div>
       </ToolbarDropdown>
@@ -181,7 +179,6 @@ defineEmits<{
   'toggle-overlay': []
   group: []
   ungroup: []
-  'add-overlay-element': []
   'fit-window': []
   zoom: [delta: number]
   help: []

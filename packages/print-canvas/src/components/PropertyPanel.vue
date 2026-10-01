@@ -150,15 +150,12 @@
             </div>
           </div>
 
-          <h3 class="pd-divider">三区高度 (mm)</h3>
+          <h3 class="pd-divider">页眉/页脚高度 (mm)</h3>
           <div class="pd-field"><span class="pd-label">页眉高度</span>
             <StepperInput :model-value="headerHeight" :min="0" :max="100" :step="0.1" @update:model-value="onHeaderHeightChange" />
           </div>
           <div class="pd-field"><span class="pd-label">页脚高度</span>
             <StepperInput :model-value="footerHeight" :min="0" :max="100" :step="0.1" @update:model-value="onFooterHeightChange" />
-          </div>
-          <div class="pd-field"><span class="pd-label">首页叠加高度</span>
-            <StepperInput :model-value="overlayHeight" :min="0" :max="200" @update:model-value="onOverlayHeightChange" />
           </div>
         </form>
 
@@ -357,7 +354,6 @@ const marginRight = computed(() => props.templateData?.margins.right ?? 10)
 
 const headerHeight = computed(() => props.templateData?.header.height ?? 10)
 const footerHeight = computed(() => props.templateData?.footer.height ?? 10)
-const overlayHeight = computed(() => props.templateData?.firstPageOverlay.height ?? 0)
 
 const customWidth = computed(() => props.templateData?.customWidth ?? PAPER_PRESETS[paperSizeModel.value]?.width ?? 210)
 const customHeight = computed(() => props.templateData?.customHeight ?? 297)
@@ -472,13 +468,6 @@ function onHeaderHeightChange(v: number | undefined) {
 function onFooterHeightChange(v: number | undefined) {
   if (v === undefined) return
   emitUpdate({ footer: { ...props.templateData!.footer, height: v } })
-}
-
-function onOverlayHeightChange(v: number | undefined) {
-  if (v === undefined) return
-  emitUpdate({
-    firstPageOverlay: { ...props.templateData!.firstPageOverlay, height: v },
-  })
 }
 
 const currentTab = computed(() => props.activeTab || 'page')

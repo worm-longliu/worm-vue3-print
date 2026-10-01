@@ -29,7 +29,6 @@
       @toggle-overlay="toggleOverlay"
       @group="onGroup"
       @ungroup="onUngroup"
-      @add-overlay-element="onAddOverlayElement"
       @fit-window="onFitWindow"
       @zoom="onToolbarZoom"
       @help="helpVisible = true"
@@ -424,18 +423,6 @@ function warnZoneOverflow(zone: 'header' | 'footer') {
       || e.options.left + e.options.width > rect.width))
   if (overflow) {
     alert(`${zone === 'header' ? '页眉' : '页脚'}高度已小于区域内元素,请手动调整元素位置`)
-  }
-}
-
-function onAddOverlayElement() {
-  const overlay = templateData.value.firstPageOverlay
-  const newEl = {
-    options: { left: 0, top: 0, width: 50, height: 10, title: '首页叠加' },
-    printElementType: { type: 'text' as const, title: '首页叠加' },
-  }
-  templateData.value = {
-    ...templateData.value,
-    firstPageOverlay: { ...overlay, elements: [...overlay.elements, newEl] },
   }
 }
 

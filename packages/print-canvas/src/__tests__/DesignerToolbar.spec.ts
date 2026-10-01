@@ -49,10 +49,8 @@ describe('DesignerToolbar 视图下拉（标尺开关）', () => {
     expect(btn.classes()).not.toContain('on')
   })
 
-  it('首页专属与叠层对比收入视图下拉', async () => {
+  it('叠层对比收入视图下拉', async () => {
     const w = await mountViewOpened()
-    await w.findAll('button').find(b => b.text().includes('首页专属'))!.trigger('click')
-    expect(w.emitted('add-overlay-element')).toHaveLength(1)
     await w.findAll('button').find(b => b.text().includes('叠层对比'))!.trigger('click')
     expect(w.emitted('toggle-overlay')).toHaveLength(1)
   })

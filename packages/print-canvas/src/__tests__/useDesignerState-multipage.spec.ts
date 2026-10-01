@@ -8,7 +8,6 @@ function page(name: string, height: number): TemplateData {
     paperSize: 'A4', orientation: 'portrait', unit: 'mm',
     margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     name,
     elements: [{ id: `${name}-e`, type: 'text', options: { left: 0, top: 0, width: 50, height, formatter: 'x' }, printElementType: { type: 'text' } }],
   }
