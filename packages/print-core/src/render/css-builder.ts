@@ -196,7 +196,7 @@ ${pageSel} {
 }
 
 /**
- * 区域几何：页眉/页脚/内容区/首页叠加。
+ * 区域几何：页眉/页脚/内容区。
  * @param desc 后代前缀：单页 ''；作用域化时 '.mt-N '
  */
 function areaGeometryBlock(
@@ -208,7 +208,6 @@ function areaGeometryBlock(
   const { bottom: mb } = template.margins
   const headerH = template.header?.height ?? 0
   const footerH = template.footer?.height ?? 0
-  const overlayH = template.firstPageOverlay?.height ?? 0
   const contentWidth = paper.width - ml - mr
   return `
 /* ── 页眉 ── */
@@ -235,13 +234,6 @@ ${desc}.content-area {
   width: ${mm(contentWidth)};
   position: relative;
   overflow: visible;
-}
-
-/* ── 首页叠加区域 ── */
-${desc}.first-page-overlay {
-  width: ${mm(contentWidth)};
-  height: ${mm(overlayH)};
-  position: relative;
 }
 `
 }

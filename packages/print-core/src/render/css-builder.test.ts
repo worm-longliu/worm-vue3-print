@@ -16,7 +16,6 @@ function tpl(paperSize: 'A4' | 'CONTINUOUS'): TemplateData {
     margins: { top: 0, right: 0, bottom: 2, left: 0 },
     header: { height: 0, elements: [] },
     footer: { height: 4, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [],
   } as unknown as TemplateData
 }
@@ -92,7 +91,6 @@ function fixture(over: Partial<TemplateData>): TemplateData {
     margins: { top: 10, right: 12, bottom: 8, left: 14 },
     header: { height: 15, elements: [] },
     footer: { height: 12, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     ...over,
   }
 }
@@ -108,19 +106,16 @@ describe('多页面模板：buildPageCss 重构零回归', () => {
     paperSize: 'A4', orientation: 'landscape',
     margins: { top: 5, right: 5, bottom: 5, left: 5 },
     header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 20, elements: [] },
   })
   const t3 = fixture({
     paperSize: 'CUSTOM', orientation: 'portrait', customWidth: 120, customHeight: 80,
     margins: { top: 3, right: 4, bottom: 5, left: 6 },
     header: { height: 8, elements: [] }, footer: { height: 6, elements: [] },
-    firstPageOverlay: { height: 10, elements: [] },
   })
   const t4 = fixture({
     paperSize: 'CONTINUOUS', orientation: 'portrait', customWidth: 80,
     margins: { top: 2, right: 2, bottom: 10, left: 2 },
     header: { height: 5, elements: [] }, footer: { height: 8, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
   })
 
   it('A4 竖版与 fixture 逐字一致', () => {
@@ -143,7 +138,6 @@ describe('多页面模板：作用域几何 CSS', () => {
       paperSize: 'A4', orientation: 'landscape',
       margins: { top: 5, right: 5, bottom: 5, left: 5 },
       header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 20, elements: [] },
     })
     const css = `${buildBasePageCss()}\n${buildPageGeometryCss(t, '.mt-1')}`
     expect(css).toContain('.mt-1.print-page {')
@@ -155,7 +149,7 @@ describe('多页面模板：作用域几何 CSS', () => {
     expect(css).toContain('.mt-1 .page-header {')
     expect(css).toContain('.mt-1 .page-footer {')
     expect(css).toContain('.mt-1 .content-area {')
-    expect(css).toContain('.mt-1 .first-page-overlay {')
+    expect(css).not.toContain('.first-page-overlay')
   })
 
   it('同一纸张不同边距的多页模板：作用域规则互不干扰', () => {
