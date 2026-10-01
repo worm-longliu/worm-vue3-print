@@ -49,9 +49,6 @@ export function renderToolbar(ctx: ShellCtx, formatSection: unknown) {
       menuRow('网格', s.showGrid, 'toggle-grid', '显示/隐藏网格背景'),
       menuRow('虚框', s.showTableGhostBorder, 'toggle-table-ghost-border', '显示/隐藏无边框表格的虚拟虚线'),
       menuRow('吸附', s.snapToGrid, 'toggle-snap', '开启/关闭元素吸附到网格'),
-      h('span', { class: 'tb-menu-sep' }),
-      menuRow('首页专属', false, 'add-overlay-element', '添加一个仅在首页叠加显示的页眉/页脚元素'),
-      menuRow('叠层对比', false, 'toggle-overlay', '叠加显示渲染截图，与设计稿对比效果'),
     ]),
   ]
 

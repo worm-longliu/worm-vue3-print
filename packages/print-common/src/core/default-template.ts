@@ -9,8 +9,8 @@ export function createDefaultTemplate(): TemplateData {
     margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 10, elements: [] },
     footer: { height: 10, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [],
     watermark: {},
-  }
+    // 画布不再读写该字段；core 类型尚未删除其必填声明，经 unknown 桥接
+  } as unknown as TemplateData
 }

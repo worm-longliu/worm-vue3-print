@@ -275,10 +275,9 @@ function pagePane(ctx: ShellCtx) {
       numField(ctx, '左', t.margins.left, v => patch({ margins: { ...t.margins, left: v } }), { min: 0, max: 50 }),
       numField(ctx, '右', t.margins.right, v => patch({ margins: { ...t.margins, right: v } }), { min: 0, max: 50 }),
     ]),
-    divider('三区高度 (mm)'),
+    divider('页眉/页脚高度 (mm)'),
     numField(ctx, '页眉高度', t.header.height ?? 10, v => patch({ header: { ...t.header, height: v } }), { min: 0, max: 100, step: 0.1 }),
     numField(ctx, '页脚高度', t.footer.height ?? 10, v => patch({ footer: { ...t.footer, height: v } }), { min: 0, max: 100, step: 0.1 }),
-    numField(ctx, '首页叠加高度', t.firstPageOverlay.height ?? 0, v => patch({ firstPageOverlay: { ...t.firstPageOverlay, height: v } }), { min: 0, max: 200 }),
     watermarkSection(ctx),
   ].filter(Boolean))
 }

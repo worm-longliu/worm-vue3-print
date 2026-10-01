@@ -40,7 +40,7 @@
 | 状态栏 `.status-bar` | 1440×31 | 1440×31 | ✅ 完全一致 |
 
 宽度已逐像素对齐；1px 级高度差来自 demo 页面自身外壳（两侧顶栏/边栏高度不同）与滚动条取整，不来自设计器样式。
-样式来源同一（`scripts/gen-styles.mjs` 从 canvas 构建 CSS 剥离 `[data-v-*]` 派生，506 条规则 / 60.6 kB，末尾追加手写泄漏修正层 `styles/scope-patches.css`），
+样式来源同一（`scripts/gen-styles.mjs` 从 canvas 构建 CSS 剥离 `[data-v-*]` 派生，500 条规则 / 61.5 kB，末尾追加手写泄漏修正层 `styles/scope-patches.css`），
 `:host` 基线只补块级尺寸（见 §八 第 7 条）。
 
 ## 二、外壳与编排
@@ -49,7 +49,7 @@
 |---|---|---|
 | 工具栏分组顺序（文件标识 / 撤销重做 / 格式区段 / 排列 / 视图 / 缩放 / 剪贴板 / 帮助 / 预览保存） | ✅ | lucide 图标由 `scripts/gen-icons.mjs` 从 canvas 的导入清单派生，35 个同名图标 |
 | 排列下拉：对齐 8 + 层级 4 + 组合 2，无选中常驻置灰 | ✅ | `data-tip` 全量覆盖（含禁用原因） |
-| 视图下拉：标尺/网格/虚框/吸附 + 首页专属/叠层对比 | ✅ | 叠层对比依赖宿主回传截图 |
+| 视图下拉：标尺/网格/虚框/吸附 | ✅ | 2.0.0 起不再有「首页专属」与「叠层对比」 |
 | 格式刷：单击刷一次、双击连续刷、Esc 退出 | ✅ | `core/format.ts`（移植自 `useFormatToolbar` + `useFormatPainter`） |
 | 字体 / 字号 / 粗 / 下划线 / 删除线 / 字色 / 底色 / 对齐 / 边框面板 | ✅ | 混选占位、单元格上下文、hline/vline 只吃边框等口径照抄 |
 | 颜色选择 | ✅ | `shell/color-picker.ts` 整段移植 `PresetColorPicker.vue`：`.preset-color-trigger` + `.preset-color-panel`（`.picker-preview` / `.picker-current` / `.picker-hex` / `.picker-area` + `.picker-handle` / `.picker-hue` / `.picker-heading` / `.picker-clear` / `.preset-color-grid` 逐项同结构同类名），单测 15 项覆盖 hex↔hsv 往返、非法输入不回写、清除/收起/Esc/外部点击与重绘保活 |
@@ -66,13 +66,12 @@
 
 | 能力 | 状态 | 说明 |
 |---|---|---|
-| 三区（页眉/内容/页脚）+ 首页叠加占位 | ✅ | 区域矩形算法与 `CanvasPaper.zoneRectsMM` 一致 |
+| 三区（页眉/内容/页脚） | ✅ | 区域矩形算法与 `CanvasPaper.zoneRectsMM` 一致 |
 | 元素归区（拖拽/缩放结束 + 素材与字段落点） | ✅ | 全走 core `zone-layout`：`dragStart()` 存几何快照、`dragStop()` 只对**变化过**的元素按中心点 `finalizeElementZone`（跨区换算坐标并改写 `zone`、页眉页脚内 `clampToZone`、`ZONE_ALLOWED_TYPES` 之外退回内容区并 `alert('该元素类型不能放入页眉/页脚')`）；素材/字段拖入用 `placeAtDropPoint`（不允许的类型**不入元素池**）。早期本包完全不做归区：拖进页眉带的元素仍留在 `content`，纸面看着对、导出的模板 JSON 却把页眉元素留在正文区 —— 由 ops 第 10/11 步揭穿 |
 | 拖拽/缩放期间自由跟手 | ✅ | 与 canvas `useDrag.computePos` 同：中途**不做 0 钳制**（可拖出纸面左上角），越界只在结束时由归区/clamp 收敛。早期 Common 把 live 坐标钳到 `>=0`，导致永远拖不进页眉带、护栏提示也永远不弹 |
 | 坐标精度与缩放算式（导出逐字段对齐的前提） | ✅ | 拖拽/缩放/落点全部走 canvas 同一套浮点算式：像素→mm 一律 `deltaPx / (scale * mmToPx(1))`（先乘后除，与 canvas 的运算顺序一致；换写法会得到 `17.208333333333332` vs `17.208333333333343` 这类 1e-14 尾差），**全程不取整**（早期本包 `toFixed(1)` 到 0.1mm，纸面看不出、导出全变）。缩放矩形直接调 core `calcResizeRect(point, startRect, dx, dy, 3.5, 3.5)`，最小尺寸下限与 canvas 同为 **3.5mm**；落点 `pointToPaperMm` 返回原始 mm 且**负值返回 null**（canvas `toPaperPoint` 的语义是「越界即不落」，不是钳到 0） |
-| 新增元素的默认尺寸 / 首页叠加元素 | ✅ | 落点新增只传落点，尺寸一律取 core `createDefaultOptions(type)` 的分类型默认（早期本包硬编码 60×12，横线/表格/条码落地尺寸与 canvas 不同）；工具栏「添加叠加元素」按 canvas `onAddOverlayElement` 同串（往 `firstPageOverlay.elements` 追加 `left:0,top:0,50×10`、`title:'首页叠加'`），差别只在会多一条可撤销历史（见 §八.3） |
+| 新增元素的默认尺寸 | ✅ | 落点新增只传落点，尺寸一律取 core `createDefaultOptions(type)` 的分类型默认（早期本包硬编码 60×12，横线/表格/条码落地尺寸与 canvas 不同）；写回历史粒度差异（见 §八.3） |
 | 页眉/页脚高度拖拽 + mm 提示 | ✅ | |
-| 首页叠加区 | ✅ | 两侧同为「只读占位 + 标签」（canvas 源码注释即「本次不可编辑」），Common 不做超出 canvas 的能力 |
 | 缩放（transform scale + wrapper 占位）/ 适应窗口 / Ctrl+滚轮 | ✅ | 与 canvas 同一套算式：滚轮与工具栏按钮都是**乘性步进** `nextWheelScale`（×1.1/÷1.1，交互下限 25%），放大不设上限；`applyZoom` 以「鼠标点 / 视口几何中心」为不动点，按 `.canvas-area` 的实际 padding（44/28/32/44）校正 `scrollLeft/Top`。适应窗口按 canvas 同口径扣两侧 padding、纸张 mm→px 后再算 `computeFitScale`，可低到 5% |
 | 网格背景、水印瓦片、设计背景底图 | ✅ | 水印走 core `resolveWatermarkLayout` |
 | 视口固定标尺（canvas 绘制、DPR、刻度密度、纸张边界） | ✅ | `shell/ruler.ts`，刻度函数走 core `buildRulerTicks`；画布区尺寸变化（字体到位重排、面板折叠、宿主改宽）后由 `ResizeObserver` 重画，同 canvas |
@@ -119,7 +118,7 @@
 | 页面：纸张预设（分组下拉）、自定义宽高、方向、内容旋转、页面背景色 | ✅ | |
 | 页面：设计背景（上传、旋转、移除） | ✅ | 上传走宿主 `uploadDesignBackground`（与 canvas 同契约）；未注入时入口禁用，不再回落本地 data URL |
 | 页面：拼版（开关、目标纸、留白、间距、列数、校验与摘要） | ✅ | 数字与告警全部走 core 纯函数；`tiling-parity.mjs` 12 步对拍（含连续纸禁用态与非法拼版的保存拦截文案）。三处 canvas 专属语义已补齐：**打开开关即按纸面收敛列数** `patch({ ...TILE_DEFAULTS, columns: min(2, columnMax) })`（否则小目标纸一开就非法到保存都被拦）、**切 CUSTOM 只补空值**（`sheetCustomWidth ?? current.width`，保留用户已填的自定义目标纸尺寸）、**拼版启用时隐藏「内容旋转角度」**（canvas `!continuousPaper && !tilingEnabled`） |
-| 页面：页边距、三区高度、水印 | ✅ | 「三区高度 (mm)」与 canvas 同串同值域：页眉高度 / 页脚高度（0–100，**步长 0.1**）+ **首页叠加高度**（0–200，写 `firstPageOverlay.height`）。本包早期是自造的「页眉 / 页脚 (mm)」两字段网格（max 200、无叠加高度），由 `tiling-parity` 的可见页签字段清单断言揭穿。水印整段移植 `WatermarkConfig.vue`（`shell/watermark.ts`）：表达式/测试值/旋转/颜色/透明度/密度预设/自定义瓦片，落盘口径与 canvas 的 `onChange` 一致（表达式写 `binding`、静态文本写 `content`） |
+| 页面：页边距、三区高度、水印 | ✅ | 「页眉/页脚高度 (mm)」与 canvas 同串同值域：页眉高度 / 页脚高度（0–100，**步长 0.1**）。本包早期是自造的「页眉 / 页脚 (mm)」两字段网格（max 200、无叠加高度），由 `tiling-parity` 的可见页签字段清单断言揭穿。水印整段移植 `WatermarkConfig.vue`（`shell/watermark.ts`）：表达式/测试值/旋转/颜色/透明度/密度预设/自定义瓦片，落盘口径与 canvas 的 `onChange` 一致（表达式写 `binding`、静态文本写 `content`） |
 
 ## 六、宿主接口
 
@@ -132,15 +131,13 @@
 | 保存前校验：非法拼版弹提示并带到「页面属性」，多页模板走 core `normalizeTemplate` 归一化 | ✅ | 与 canvas `handleSave` 同口径，非法即阻断 |
 | `validateTemplate()` | ✅ | 当前为拼版配置校验（canvas 同名方法亦仅此口径） |
 | 选中元素即切到「元素属性」页签、清空即回「页面属性」 | ✅ | 对应 canvas 的 `selectedElement` watch |
-| `setOverlay(url)` 叠层对比 | ✅ | |
 | `isEdit` / `showHelp` | ✅ | attribute 口径 |
 | `uploadImage` 注入（图片元素上传入口） | ✅ | 与 canvas 的 ImageContentUpload 同结构同文案：`.image-content-upload > label.pd-button.small.upload-label[.disabled] > svg.pd-icon + 文字 + input.visually-hidden`，另有 `.upload-tip`；未注入时置灰，四类提示（非图片 / 未配置 / 失败 / 抛错）逐字一致 |
 | `uploadDesignBackground` 注入（设计背景上传） | ✅ | 同 canvas：未注入时入口 `.disabled`，提示文案「设计背景上传能力未配置」等逐字一致 |
-| `fonts: PrintFontDeclaration[]`（property 或 `fonts` attribute 传 JSON） | ✅ | 与 canvas 同类型：① shadow root 内注入 `buildFontFaceCss(fonts)` 的 `@font-face`；② 字体下拉候选（含 `label` 展示名）；③ 保存 / 导出 / 截图统一走 `templateJsonWithFonts()`，多页模板逐页写入 `fonts` |
-| `requestScreenshot(req): Promise<Blob>` | ✅ | 与 canvas 同签名（`{ templateJson: 当前激活页, printData: DEFAULT_DEMO_DATA }`）；未注入弹「截图服务未配置」，空模板弹「模板数据为空」，抛错弹「截图生成失败」，成功用 `URL.createObjectURL` 并在下次取图前 `revokeObjectURL` |
+| `fonts: PrintFontDeclaration[]`（property 或 `fonts` attribute 传 JSON） | ✅ | 与 canvas 同类型：① shadow root 内注入 `buildFontFaceCss(fonts)` 的 `@font-face`；② 字体下拉候选（含 `label` 展示名）；③ 保存 / 导出统一走 `templateJsonWithFonts()`，多页模板逐页写入 `fonts` |
 | 面板折叠持久化 | ✅ | 复用 canvas `useStudioChrome` 的 localStorage 键 `print-studio:left` / `print-studio:right`（值 `'1'/'0'`），同一浏览器里两侧设计器偏好互通 |
 | `preview` 事件 | ✅ | canvas 无载荷；本包额外在 `detail` 放一份含字体声明的模板 JSON 字符串（载荷超集，宿主可忽略） |
-| `PrintHtmlPreview`（canvas 的宿主侧打印预览组件） | ⬜ 不移植 | 它是 canvas 的**公开导出**（demo 的「打印输出」弹窗在用），不属于设计器界面；本包的预览口径是派发 `preview` 事件 + `requestScreenshot`，宿主自行渲染。派生 CSS 里的 `.print-html-preview*` 规则因此在本包无挂点，属预期 |
+| `PrintHtmlPreview`（canvas 的宿主侧打印预览组件） | ⬜ 不移植 | 它是 canvas 的**公开导出**（demo 的「打印输出」弹窗在用），不属于设计器界面；本包的预览口径是派发 `preview` 事件，宿主自行渲染。派生 CSS 里的 `.print-html-preview*` 规则因此在本包无挂点，属预期 |
 
 ## 七、构建与体积
 
@@ -160,7 +157,7 @@
 
 1. **快捷键的实例接管**：canvas 的 `useKeyboard` 绑在 `document`（页面任意处 Ctrl+Z 都生效）。本包也绑 `document`，但额外加一层「最后交互的实例」仲裁：宿主内 `pointerdown`/`focusin` 即接管，未有人接管时由最先连接的实例兜底，因此同页挂多个设计器不会互相抢键，而**焦点掉回 `body` 时快捷键仍然有效**（早期绑在宿主元素上，点过工具栏按钮后 Ctrl+Z/Ctrl+1 会整体失效 —— 由 ops 脚本揭穿）。判定「是否在为输入」用 `composedPath()[0]` 取 shadow 内真实 target（document 上拿到的 target 已被重定向成宿主）。
 2. **文本输入的提交时机**：canvas 用 `@input` 实时提交；Common 的属性台文本框统一用 `change`（失焦或回车提交）。原因：无框架版每次 store 变更会整体重绘属性台，边打边提交会把光标顶回开头，无法连续输入。
-3. **少数写回入口多一条历史**：canvas 直接改 `options.tablePagination/pagination`、直接给 `templateData.firstPageOverlay` 追加叠加元素，都不入撤销栈；Common 走 `updateElement`/`updateTemplateData` 必然记一条历史（改完可 Ctrl+Z）。终态与序列化结果两侧一致。
+3. **少数写回入口多一条历史**：canvas 直接改 `options.tablePagination/pagination`，不入撤销栈；Common 走 `updateElement`/`updateTemplateData` 必然记一条历史（改完可 Ctrl+Z）。终态与序列化结果两侧一致。
 4. **表达式弹窗的层叠上下文**：弹窗渲染进 shadow root（`.designer-container` 的兄弟节点），保留 `position: fixed; z-index: 2000`。宿主页面若存在更高层叠元素、或祖先带 `transform/filter/contain`，需要宿主把遮罩改为 absolute 挂到自己 `position: relative` 的容器里（类名不变）。**浮层令牌对齐**：canvas 的弹窗渲染在 `.designer-container` 子树内（`ExpressionEditor.vue` 无 Teleport），能继承该容器 scoped 声明的 `--pd-*` 变量；本包浮层是其兄弟节点继承不到，早期整卡塌陷（底色透明/文字纯黑/页签无选中态，实测 24 个选择器 computed style 不一致）。现由 `gen-styles.mjs` 从 canvas CSS 提取同一 token 块在 `:host` 上再声明一次（同源零漂移），表达式弹窗 31 选择器 × 27 属性 computed style diff 归零；帮助弹窗同受其益。
 5. **单元格表达式入口多一处**：canvas 只有纸面单元格双击；Common 在「单元格」分组的内容输入框上也挂了双击（同一编辑器、同一写回路径）。
 6. **表达式写回后的撤销步数**：与 canvas 同序（先改后 `recordHistory`），因此 Ctrl+Z 第一次不产生可见变化、第二次才回到改动前 —— 这是两边一致的既有行为，不是 Common 独有偏差。

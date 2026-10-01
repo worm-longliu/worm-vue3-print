@@ -2,12 +2,12 @@
 // 状态在 core/store.ts，格式栏语义在 core/format.ts，DOM 结构在 shell/*。
 // 类名与 print-canvas 对齐的原因见 shell/controls.ts 顶部说明。
 import {
-  calcResizeRect, computeFitScale, computeAdsorb, DEFAULT_DEMO_DATA, findMainCell, FIT_SCALE_MIN_PERCENT,
+  calcResizeRect, computeFitScale, computeAdsorb, findMainCell, FIT_SCALE_MIN_PERCENT,
   generateId, getPaperDimensions, MIN_SCALE_PERCENT, mmToPx, nextWheelScale, pxToMm,
 } from '@worm-vue3-print/core/designer'
 import { buildFontFaceCss, normalizeTemplate, validateTiling } from '@worm-vue3-print/core'
 import { fitTextNode } from '@worm-vue3-print/core/browser'
-import type { AlignLine, ElementType, MultiPageTemplateData, RequestScreenshotFn, ResizePoint, RuntimeElement, TemplateData, UploadDesignBackgroundFn, UploadImageFn } from '@worm-vue3-print/core/designer'
+import type { AlignLine, ElementType, MultiPageTemplateData, ResizePoint, RuntimeElement, TemplateData, UploadDesignBackgroundFn, UploadImageFn } from '@worm-vue3-print/core/designer'
 import type { PrintFontDeclaration } from '@worm-vue3-print/core'
 import { clear, h, render } from './core/h'
 import { DesignerStore } from './core/store'
@@ -105,7 +105,6 @@ export class PrintDesignerElement extends HTMLElement {
   private scrollPos = { x: 0, y: 0 }
   private marquee = { visible: false, x: 0, y: 0, w: 0, h: 0 }
   private menu = { visible: false, x: 0, y: 0, flipX: 0, flipY: 0, targetId: null as string | null }
-  private overlay = { visible: false, url: null as string | null, opacity: 0.5 }
   private guidePreview: { type: 'vertical' | 'horizontal'; position: number } | null = null
   private zoneResizing: 'header' | 'footer' | null = null
   /** 表格右键菜单状态：由 shell/table.ts 读写，每帧随 renderTableContextMenu 一起出图 */
@@ -129,8 +128,6 @@ export class PrintDesignerElement extends HTMLElement {
   uploadImage?: UploadImageFn
   /** 宿主注入：设计背景图上传，返回可直接 <img src> 的完整路径（对应 canvas 的 UPLOAD_DESIGN_BACKGROUND_KEY） */
   uploadDesignBackground?: UploadDesignBackgroundFn
-  /** 宿主注入：按模板 JSON + 演示数据请求渲染截图 Blob，用于「叠层对比」（与 canvas 的 requestScreenshot 同签名） */
-  requestScreenshot?: RequestScreenshotFn
   /** 模板级字体声明（对应 canvas 的 fonts prop）：注入 @font-face、列出字体候选、随保存/导出写回模板 */
   private _fonts?: readonly PrintFontDeclaration[]
   set fonts(v: readonly PrintFontDeclaration[] | undefined) {
@@ -264,7 +261,7 @@ export class PrintDesignerElement extends HTMLElement {
   }
 
   // ─── 宿主 API ───
-  /** 与 canvas 的 templateJsonWithFonts 同口径：宿主字体声明随保存/导出/截图一起出图 */
+  /** 与 canvas 的 templateJsonWithFonts 同口径：宿主字体声明随保存/导出一起出图 */
   private templateJsonWithFonts(): TemplateData | MultiPageTemplateData {
     const json = JSON.parse(this.store.getTemplateJson()) as TemplateData | MultiPageTemplateData
     const fonts = this.fonts
@@ -301,43 +298,6 @@ export class PrintDesignerElement extends HTMLElement {
   validateTemplate() {
     const t = this.store.templateData
     return t.tiling?.enabled === true ? validateTiling(t as never) : []
-  }
-  /** 宿主回传渲染截图：用于「叠层对比」 */
-  setOverlay(url: string | null) {
-    this.overlay.url = url
-    this.overlay.visible = !!url
-    this.repaint()
-  }
-
-  /** 叠层对比：与 canvas 的 toggleOverlay 同签名同提示，截图对象取当前激活页 */
-  private async toggleOverlay() {
-    if (this.overlay.visible) {
-      this.overlay.visible = false
-      this.repaint()
-      return
-    }
-    const templateJson = this.templateJsonWithFonts()
-    if (!templateJson) {
-      window.alert('模板数据为空')
-      return
-    }
-    if (!this.requestScreenshot) {
-      window.alert('截图服务未配置')
-      return
-    }
-    try {
-      const mp = templateJson as MultiPageTemplateData
-      const active: TemplateData = Array.isArray(mp.pages)
-        ? mp.pages[this.store.activePageIndex]!
-        : (templateJson as TemplateData)
-      const blob = await this.requestScreenshot({ templateJson: active, printData: DEFAULT_DEMO_DATA })
-      if (this.overlay.url) URL.revokeObjectURL(this.overlay.url)
-      this.overlay.url = URL.createObjectURL(blob)
-      this.overlay.visible = true
-      this.repaint()
-    } catch {
-      window.alert('截图生成失败')
-    }
   }
 
   private applyTemplate(v: unknown) {
@@ -488,9 +448,6 @@ export class PrintDesignerElement extends HTMLElement {
       marquee: this.marquee,
       contextMenu: this.menu,
       guidePreview: this.guidePreview,
-      overlayVisible: this.overlay.visible,
-      overlayUrl: this.overlay.url,
-      overlayOpacity: this.overlay.opacity,
       zoneResizing: this.zoneResizing,
       scrollX: this.scrollPos.x,
       scrollY: this.scrollPos.y,
@@ -645,8 +602,6 @@ export class PrintDesignerElement extends HTMLElement {
       case 'toggle-grid': s.showGrid = !s.showGrid; this.repaint(); break
       case 'toggle-snap': s.snapToGrid = !s.snapToGrid; this.repaint(); break
       case 'toggle-table-ghost-border': s.showTableGhostBorder = !s.showTableGhostBorder; this.repaint(); break
-      case 'toggle-overlay': void this.toggleOverlay(); break
-      case 'add-overlay-element': this.addOverlayElement(); break
       case 'fit-window': this.fitToWindow(); break
       case 'zoom': this.zoomByStep((arg as number) > 0 ? 1 : -1); break
       case 'preview':
@@ -709,20 +664,6 @@ export class PrintDesignerElement extends HTMLElement {
       case 'scroll': this.onScroll(); break
       default: break
     }
-  }
-
-  /** 工具栏「添加叠加元素」（对应 canvas onAddOverlayElement）：直接进 firstPageOverlay，尺寸/标题同串 */
-  private addOverlayElement() {
-    const overlay = this.store.templateData.firstPageOverlay
-    this.store.updateTemplateData({
-      firstPageOverlay: {
-        ...overlay,
-        elements: [...overlay.elements, {
-          options: { left: 0, top: 0, width: 50, height: 10, title: '首页叠加' },
-          printElementType: { type: 'text', title: '首页叠加' },
-        }],
-      },
-    } as never)
   }
 
   // ─── 画布交互 ───

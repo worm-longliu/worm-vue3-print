@@ -14,9 +14,6 @@ export interface CanvasUI {
   marquee: { visible: boolean; x: number; y: number; w: number; h: number }
   contextMenu: { visible: boolean; x: number; y: number; flipX: number; flipY: number; targetId: string | null }
   guidePreview: { type: 'vertical' | 'horizontal'; position: number } | null
-  overlayVisible: boolean
-  overlayUrl: string | null
-  overlayOpacity: number
   zoneResizing: 'header' | 'footer' | null
   scrollX: number
   scrollY: number
@@ -91,12 +88,6 @@ function zoneLayer(ctx: ShellCtx, ui: CanvasUI, zone: 'header' | 'content' | 'fo
   const s = ctx.store
   const children: unknown[] = []
   if (zone !== 'content') children.push(h('span', { class: 'zone-label', text: zone === 'header' ? '页眉' : '页脚' }))
-  if (zone === 'content' && (s.templateData.firstPageOverlay?.height ?? 0) > 0) {
-    children.push(h('div', {
-      class: 'zone-overlay',
-      style: { height: `${s.templateData.firstPageOverlay!.height}mm` },
-    }, [h('span', { class: 'zone-label', text: '首页叠加' })]))
-  }
   children.push(...els.map(el => renderDesignElement(ctx, el)))
   if (zone !== 'content') {
     const dir = zone === 'header' ? 'bottom' : 'top'
@@ -204,11 +195,6 @@ export function renderCanvasArea(ctx: ShellCtx, ui: CanvasUI) {
           position: 'relative',
         },
       }, [paperEl]),
-      ui.overlayVisible && ui.overlayUrl
-        ? h('div', { class: 'overlay-layer' }, [
-          h('img', { class: 'overlay-image', src: ui.overlayUrl, style: { opacity: String(ui.overlayOpacity) } }),
-        ])
-        : '',
     ].filter(Boolean)),
   ]
 

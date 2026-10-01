@@ -41,7 +41,6 @@ export function toRuntimePool(data: TemplateData): TemplateData {
     margins: { ...data.margins },
     header: { height: data.header?.height ?? 10, elements: [] },
     footer: { height: data.footer?.height ?? 10, elements: [] },
-    firstPageOverlay: { height: data.firstPageOverlay?.height ?? 0, elements: [...(data.firstPageOverlay?.elements ?? [])] },
     guides: [...(data.guides ?? [])],
     elements: [
       ...mk(data.elements ?? [], 'content'),
@@ -62,13 +61,6 @@ export function serializePage(page: TemplateData): TemplateData {
     ...page,
     header: { ...page.header, elements: ser('header') },
     footer: { ...page.footer, elements: ser('footer') },
-    firstPageOverlay: {
-      ...page.firstPageOverlay,
-      elements: (page.firstPageOverlay?.elements ?? []).map((e) => ({
-        id: e.id || generateId(), type: e.printElementType?.type || 'text',
-        options: { ...e.options }, printElementType: { ...e.printElementType },
-      })),
-    },
     elements: ser('content'),
     guides: [...(page.guides ?? [])],
   }

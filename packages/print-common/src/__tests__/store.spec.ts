@@ -36,7 +36,6 @@ describe('DesignerStore：模板与运行时池', () => {
       margins: { top: 10, bottom: 10, left: 10, right: 10 },
       header: { height: 10, elements: [el('h1', 'hline', 5)] },
       footer: { height: 10, elements: [el('f1', 'text', 5)] },
-      firstPageOverlay: { height: 0, elements: [] },
       elements: [el('c1', 'text', 20)],
       guides: [],
     } as never)
