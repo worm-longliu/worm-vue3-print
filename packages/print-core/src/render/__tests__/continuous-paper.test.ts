@@ -12,7 +12,6 @@ function continuousTemplate(over: Partial<TemplateData> = {}): TemplateData {
     margins: { top: 5, right: 5, bottom: 3, left: 5 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [],
     customWidth: 80,
     ...over,
@@ -51,15 +50,14 @@ describe('CONTINUOUS 纸型', () => {
     expect(pages).toHaveLength(1)
   })
 
-  it('composeContinuousHeight：探针底边 + footer + mb（探针底边已含 mt/header/overlay/内容偏移）', () => {
+  it('composeContinuousHeight：探针底边 + footer + mb（探针底边已含 mt/header/内容偏移）', () => {
     const t = continuousTemplate({
       margins: { top: 5, right: 5, bottom: 3, left: 5 },
       header: { height: 8, elements: [] },
-      firstPageOverlay: { height: 4, elements: [] },
       footer: { height: 6, elements: [] },
     })
-    // 探针测得内容区最大底边相对纸顶 = mt5 + header8 + overlay4 + 内容底80 = 97
-    expect(composeContinuousHeight(t, 97)).toBe(106)
+    // 探针测得内容区最大底边相对纸顶 = mt5 + header8 + 内容底80 = 93
+    expect(composeContinuousHeight(t, 93)).toBe(102)
   })
 
   it('推导高度最小钳制 25.4mm（探针底边为 0 的空模板）', () => {

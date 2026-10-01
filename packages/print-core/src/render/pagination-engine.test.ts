@@ -40,7 +40,6 @@ function makeTemplate(tableEl: Record<string, any>): TemplateData {
     margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [tableEl as any],
   }
 }
@@ -126,7 +125,6 @@ describe('分页配置读取位置（options 内）', () => {
       paperSize: 'A4', orientation: 'portrait',
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
       elements: [{
         id: 'e1', type: 'text',
         options: { left: 10, top: 10, width: 50, height: 300, pagination: { pageable: false, keepWithNext: false } },
@@ -144,7 +142,6 @@ describe('分页配置读取位置（options 内）', () => {
       paperSize: 'A4', orientation: 'portrait',
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
       elements: [{
         id: 't1', type: 'table',
         options: {
@@ -205,7 +202,6 @@ function makeFollowTemplate(followEls: Record<string, any>[]): TemplateData {
     margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: [table as any, ...followEls],
   }
 }
@@ -322,7 +318,6 @@ describe('方案 A+B：表格下方跟随区 flow-group', () => {
       paperSize: 'A4', orientation: 'portrait',
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
       elements: [tableA, followA, tableB, followB],
     }
     const measured = new Map<string, MeasuredElement>([
@@ -350,7 +345,6 @@ describe('换页后内容从页顶开始（renderTop）', () => {
       paperSize: 'A4', orientation: 'portrait',
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
       elements: [
         { id: 'tbl-static', type: 'table', options: { left: 0, top: 10, width: 100, _renderRows: mkRows(3, 8), _repeatHeaderCount: 0 }, tablePagination: { enabled: true } },
         { id: 'tbl-dyn', type: 'table', options: { left: 0, top: 40, width: 100, _renderRows: mkRows(12, 50), _repeatHeaderCount: 0 }, tablePagination: { enabled: true } },
@@ -376,7 +370,6 @@ describe('换页后内容从页顶开始（renderTop）', () => {
       paperSize: 'A4', orientation: 'portrait',
       margins: { top: 10, right: 10, bottom: 10, left: 10 },
       header: { height: 0, elements: [] }, footer: { height: 0, elements: [] },
-      firstPageOverlay: { height: 0, elements: [] },
       elements: [
         { id: 'e0', type: 'text', options: { left: 0, top: 10, width: 50, height: 200 } },
         { id: 'e1', type: 'text', options: { left: 0, top: 220, width: 50, height: 100 } },
@@ -466,7 +459,6 @@ function makeFreeTemplate(elements: Array<Record<string, any>>): TemplateData {
     margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: elements as any,
   }
 }
@@ -489,10 +481,20 @@ function makeCustomPaperTemplate(
     margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: elements as any,
   }
 }
+
+describe('首页预算与后续页一致（2.0.0 起无首页叠加扣减）', () => {
+  it('自定义纸 100×100、边距 10 → 内容高 80、可用 78，三段共 65mm 全落首页', () => {
+    const tpl = makeCustomPaperTemplate(100, 100, [
+      freeEl('e0', 0, 22), freeEl('e1', 22, 22), freeEl('e2', 44, 21),
+    ])
+    const pages = paginate(tpl, measureFree([['e0', 22], ['e1', 22], ['e2', 21]]))
+    expect(pages).toHaveLength(1)
+    expect(pages[0].sections.map(s => s.elementId)).toEqual(['e0', 'e1', 'e2'])
+  })
+})
 
 describe('堆叠元素：纵向重叠按并集计高，不重复扣高', () => {
   it('两个重叠元素并集 240mm 放得下 → 同页，不被错误拆分（旧逻辑会拆成 2 页）', () => {

@@ -202,7 +202,7 @@ function buildPaginationUnits(
  * 1. 计算页面可用高度（contentHeight / availableHeight）
  * 2. 按 Y 坐标顺序遍历内容区元素
  * 3. 表格：逐行切片；非表格：元素级不拆分
- * 4. 处理 keepWithNext、单行超高、首页叠加等边界
+ * 4. 处理 keepWithNext、单行超高、表格跟随等边界
  * 5. 表格下方跟随区：与最后一片同页时包成 flow-group；放不下整体移下一页
  */
 export function paginate(
@@ -213,7 +213,6 @@ export function paginate(
   const { top: mt, bottom: mb } = template.margins
   const headerH = template.header?.height ?? 0
   const footerH = template.footer?.height ?? 0
-  const overlayH = template.firstPageOverlay?.height ?? 0
 
   // PRD 4.3: contentHeight = paperHeight - marginTop - marginBottom - headerHeight - footerHeight
   const continuous = isContinuousPaper(template)
@@ -271,8 +270,7 @@ export function paginate(
 
   const pages: PageLayout[] = []
   let currentPage: PageSection[] = []
-  let remaining = contentHeight - overlayH - SAFETY_MARGIN
-  let isFirstPage = true
+  let remaining = contentHeight - SAFETY_MARGIN
   // 是否已发生换页：换页后内容从新页内容区顶部(0)排布，不再使用设计坐标
   let pageBroken = false
 
@@ -290,11 +288,9 @@ export function paginate(
     return Math.max(0, fullPageHeight() - remaining)
   }
 
-  /** 获取当前页完整可用高度 */
+  /** 当前页完整可用高度（2.0.0 起首页与后续页同预算） */
   function fullPageHeight(): number {
-    return isFirstPage
-      ? contentHeight - overlayH - SAFETY_MARGIN
-      : contentHeight - SAFETY_MARGIN
+    return contentHeight - SAFETY_MARGIN
   }
 
   /**
@@ -333,7 +329,6 @@ export function paginate(
     pushPage()
     currentPage = []
     remaining = contentHeight - SAFETY_MARGIN
-    isFirstPage = false
     pageBroken = true
     overflowOnCurrent = false
   }

@@ -13,7 +13,6 @@ function tpl(elements: Array<Record<string, any>>): TemplateData {
     margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: elements as any,
   }
 }
@@ -25,7 +24,6 @@ function tplCustom(paperH: number, elements: Array<Record<string, any>>): Templa
     margins: { top: 10, right: 10, bottom: 10, left: 10 },
     header: { height: 0, elements: [] },
     footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
     elements: elements as any,
   } as TemplateData
 }
