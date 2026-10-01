@@ -45,7 +45,7 @@ npm install @worm-vue3-print/canvas    # Vue 3 designer
 
 The browser-side silent-print SDK ships inside `core`; import it from `@worm-vue3-print/core/client`. It requires the desktop client to be running on the same machine.
 
-Current version: `1.3.4`.
+Current version: `1.3.5`.
 
 ## Quick start
 

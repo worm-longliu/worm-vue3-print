@@ -1,6 +1,6 @@
 {
   "name": "@worm-vue3-print/common",
-  "version": "1.3.4",
+  "version": "1.3.5",
   "type": "module",
   "description": "【实验性，不建议用于生产】打印模板设计器的通用宿主适配包：任意框架或无框架宿主均可直接接入（实现为零框架原生 Custom Elements + Shadow DOM），零 Vue/React 依赖，直接消费 @worm-vue3-print/core；Vue 3 项目请使用 @worm-vue3-print/canvas",
   "main": "./dist/index.cjs",
@@ -45,7 +45,7 @@
     "test": "npm run styles && vitest run"
   },
   "dependencies": {
-    "@worm-vue3-print/core": "^1.3.4",
+    "@worm-vue3-print/core": "^1.3.5",
     "dompurify": "^3.4.12",
     "jsbarcode": "^3.12.3",
     "qrcode": "^1.5.4"

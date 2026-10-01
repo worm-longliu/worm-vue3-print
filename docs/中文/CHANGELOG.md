@@ -2,6 +2,28 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [1.3.5] - 2026-10-01
+
+### 修复
+
+- `@worm-vue3-print/canvas`：**右键菜单弹出后所有动作点了没反应**。根因是画布「外点即关」的 `mousedown` 监听会在菜单项的 `click` 之前移除菜单 DOM，元素菜单 8 项与表格菜单 12 项全部落空。现改为菜单根节点 `@mousedown.stop` + `contains` 守卫 + 菜单代次计数（连续右键两处不会互相关闭），动作统一经 `closeContextMenu` 解绑后再派发；表格菜单同理由 `mousedown` 改 `mouseup` 关闭。**行为变更**：此前依赖「右键弹菜单但动作无效」这一表象写的宿主代码会开始真的执行复制 / 粘贴 / 删除 / 层级等操作。
+- `@worm-vue3-print/canvas`：**表格单元格右键无反应**。单元格层原本带「表格未选中即忽略」守卫，且 `stopPropagation` 已挡住元素菜单，导致未选中表格时右键完全静默。现改为右键命中即先单选该表格再弹表格菜单，与「单元格右键不要求先选中」的口径一致。
+- `@worm-vue3-print/canvas`：**右键不再改变选中态导致操作静默失效**。复制 / 剪切 / 删除 / 层级只作用于当前选中集，而此前点空白取消选中后再右键元素仍是未选中态，操作看似无反应。现右键命中非选中元素时先单选该元素（命中已选中的多选成员不打断多选），元素菜单「粘贴」补剪贴板守卫，与空白菜单口径统一。
+
+### 变更
+
+- **npm 分发署名与产物体积**：`@worm-vue3-print/core`、`@worm-vue3-print/canvas` 补 `LICENSE` 文件与 `author` / `repository` / `readme` 元数据；构建产物统一注入 MIT 版权头（core 由 tsup banner 覆盖 esm / cjs / minify / iife，canvas 由 vite 插件覆盖 lib 产物，类型声明由 `scripts/inject-license-banner.mjs` 兜底）。canvas 关闭 sourcemap，tarball 由 606.9 kB 降至 203.6 kB，且不再随包发布未混淆源码。
+- **样式引入入口口径修正**：npm 宿主必须 `import '@worm-vue3-print/canvas/style.css'`。此前文档中的 `@worm-vue3-print/canvas/native-controls.css` 不在包的 `exports` 声明内，Node 解析直接报 `ERR_PACKAGE_PATH_NOT_EXPORTED`；该路径只有源码 / 别名接入方式可用。共修正 7 处文档示例。
+
+### 新增
+
+- 文档：新增英文首页 `docs/en/Overview.md`（页首声明由 AI 依据中文文档生成、中文版为权威版本）；README 新增「依赖开源协议」章节（含 dev 依赖逐包审计，无 GPL / AGPL / LGPL 污染，`dompurify` 按 Apache-2.0 分支使用）。
+- demo：新增「双列卷纸标签」示例（60×45 mm 标签拼版到 122 mm 宽卷纸，页高 = 单枚标签高，份数由渲染管线按 `perSheet` 自动分页）；新增竖屏口播视频流水线（`demo/video/portrait`，1080×1920 成品与 ASS / SRT 字幕）。示例计数修正为 10 份。
+
+### 实验性（不在 npm 发布范围内）
+
+- `@worm-vue3-print/common`（工作区包 `packages/print-common`）与多宿主示例 `demo-common/` 为**实验性质、尚未完成稳定性测试**，只在工作区内构建，未发布 npm；用于以零框架运行时形态（原生自定义元素 `<print-designer>`）向 Vue 3 / Vue 2 / React / jQuery 等多种运行时框架（含无框架宿主）提供设计器。Vue 3 项目请使用 `@worm-vue3-print/canvas`。本版本内该包对齐 canvas 的右键口径，并把双击改走 `mousedown` 判定器（画布重绘会断掉原生 `dblclick`），新增与 `dblclick-element` 对称的宿主事件 `dblclick-cell`；示例库与样式由 `scripts/sync-demo-samples.mjs`、`scripts/sync-demo-styles.mjs` 从 `demo/` 同源生成，五个宿主工程顶栏提供互跳入口。
+
 ## [1.3.4] - 2026-09-27
 
 ### 修复

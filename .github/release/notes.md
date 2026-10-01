@@ -1,4 +1,4 @@
-## v1.3.3（2026-09-27） · Release Notes
+## v1.3.5（2026-10-01） · Release Notes
 
 语言导航：**[简体中文](#简体中文)** ｜ **[English](#english)**
 
@@ -6,106 +6,119 @@
 
 <a id="简体中文"></a>
 
-## v1.3.3（2026-09-27）—— 简体中文
+## v1.3.5（2026-10-01）—— 简体中文
 
-自 `v1.3.2` 以来的功能版本：5 次提交、37 个文件、约 3750 行新增。三件主干事情：**元素级边框体系落地**（画布与出纸同口径、支持逐边）、**设计器格式工具栏与格式刷**（仿 Word / WPS）、**demo 教学视频流水线**。
-
-> 版本号取 `1.3.3`（补丁位），但本版本包含**新增可选字段**与一项**出纸行为变更**（元素级边框开始生效）。严格按语义化版本更接近 `1.4.0`；若下游用 `^1.3.x` 自动升级且不希望吃到该行为变更，请临时锁到 `~1.3.2`。
+自 `v1.3.4` 以来的修复版本：7 次提交。三件主干事情：**画布右键菜单全线恢复**（此前能弹出、点了没反应）、**npm 分发补齐 MIT 署名并瘦身产物**、**样式引入入口口径修正**（此前文档给的子路径根本不在包 `exports` 里）。
 
 ### 安装与升级
 
 ```bash
-npm install @worm-vue3-print/core@^1.3.3 @worm-vue3-print/canvas@^1.3.3
+npm install @worm-vue3-print/core@^1.3.5 @worm-vue3-print/canvas@^1.3.5
 ```
 
-发布到 npm 的仍然只有 `core`（渲染引擎与表达式系统）与 `canvas`（Vue 3 设计器）两个包。渲染服务 `services/print-render` 与桌面客户端 `clients/print-client` 在仓库内同仓维护，不发布 npm。
+发布到 npm 的仍然只有 `core`（渲染引擎与表达式系统）与 `canvas`（Vue 3 设计器）两个包。渲染服务 `services/print-render`、桌面客户端 `clients/print-client` 与实验性的 `packages/print-common` 在仓库内维护，不发布 npm。
 
-### 元素级边框（core）
+### 右键菜单修复（canvas，本版本主体）
 
-- **统一判定口径**：新增 `render/element-border`（`resolveElementBorder` / `ELEMENT_BORDER_SIDES` / `acceptsElementBorder`），设计器画布与出纸调用同一函数，边框所见即所得；经 `/designer` 子路径导出供设计器复用。口径为 **px**（表格单元格边框仍是 pt），`box-sizing: border-box`，加边框不改变元素几何。
-- **全量生效**：文本、长文本、图片、条形码、二维码、HTML、页码等元素都可携带边框。`rect` / `oval` / `hline` / `vline`（用 border 画自身本体）与 `table`（走单元格边框）排除在外，避免双重边框。
-- **支持逐边**：`ElementOptions` 新增可选字段 `borders`（`top` / `right` / `bottom` / `left`），在整圈 `borderWidth` / `borderStyle` / `borderColor` 之上逐边覆盖；未设整圈时只有这些边生效。
-- **不凭空长边框**：宽度未设、≤0 或非法值一律视为无边框，不兜底成默认边框。
+三处根因，两宿主（canvas 与实验性的 print-common）同步对齐口径：
 
-### 格式工具栏与格式刷（canvas）
+- **菜单动作全部落空**：画布「外点即关」的 `mousedown` 监听会在菜单项 `click` 之前移除菜单 DOM，元素菜单 8 项与表格菜单 12 项都能弹出、都没反应。现改为菜单根节点 `@mousedown.stop` + `contains` 守卫 + 菜单代次计数（连续右键两处不会互相关闭），动作统一经 `closeContextMenu` 解绑后派发；表格菜单同理由 `mousedown` 改 `mouseup` 关闭。
+- **右键不改选中态导致操作静默无效**：复制 / 剪切 / 删除 / 层级只作用于当前选中集，先点空白取消选中、再右键元素后操作等于没选中。现右键命中非选中元素时先单选该元素（命中已选中的多选成员不打断多选），元素菜单「粘贴」补剪贴板守卫，与空白菜单口径统一。
+- **表格单元格右键无反应**：单元格层原带「表格未选中即忽略」守卫，且 `stopPropagation` 已挡住元素菜单，未选中表格时右键完全静默。现先单选该表格再弹表格菜单。
 
-- **格式工具栏**（仿 Word / WPS）：字体、字号、加粗 / 下划线 / 删除线、文字颜色、背景颜色、水平与垂直对齐、边框（预设「所有 / 外侧 / 内部 / 无」+ 上下左右逐边开关 + 线型 / 线宽 / 颜色），一次作用于全部选中元素或表格单元格；多选样式不一致时以「混合」占位显示。
-- **合并进顶部单行**：原第二行格式工具栏并入顶部工具栏，对齐 / 边框（格式工具栏）与排列 / 视图（顶部工具栏）收进下拉分组；过去随选中状态显隐的分组改为**常驻 + 置灰**，禁用按钮悬停提示会说明原因。
-- **格式刷**：从单个源元素捕获格式快照，单击刷一次、双击连续刷、`Esc` 或清空选中退出，待刷态下画布全域显示「复制」光标。写入按目标类型过滤（文本样式只落文本 / 长文本，元素级边框只落在可携带边框的类型，背景色全类型通用），分边边框深拷贝不与源共享引用，框选多目标一次提交只记一次历史。
+### 分发与产物（core / canvas）
 
-### 行为变更（存量模板出纸效果会变）
+- 两个包补 `LICENSE` 文件与 `author` / `repository` / `readme` 元数据；构建产物统一注入 MIT 版权头（core 用 tsup banner 覆盖 esm / cjs / minify / iife，canvas 用 vite 插件覆盖 lib 产物，类型声明由 `scripts/inject-license-banner.mjs` 兜底 —— tsup 的 dts 与 `vue-tsc` 都没有 banner 能力）。
+- canvas 关闭 sourcemap：tarball 由 606.9 kB 降至 203.6 kB，且不再随包发布未混淆源码。
 
-- **元素级边框开始生效**：以前给文本、图片等非形状元素写入过 `borderWidth` / `borderStyle` / `borderColor` 的模板，画布与纸上都不显示边框，升级后会真的画出边框。不需要请把宽度改成 0 或选「无」。矩形 / 椭圆 / 线条 / 表格不受影响。
-- **设计器 DOM 结构变化**：格式工具栏不再是独立第二行，部分按钮收进下拉。宿主若对设计器内部 DOM / 类名写了选择器依赖（自动化测试、样式覆盖），需重新核对。
+### 样式引入方式修正（重要）
 
-### 兼容性与迁移
+npm 宿主必须写：
 
-- 模板 JSON 向后兼容：`borders` 为新增可选字段，旧模板不写即维持原状，无需迁移脚本。
-- 三端同源：浏览器预览、服务端 PDF（print-render）、桌面客户端（print-client）共用 core 渲染管线，边框表现一致。
+```ts
+import '@worm-vue3-print/canvas/style.css'
+```
+
+此前 7 处文档示例给的 `@worm-vue3-print/canvas/native-controls.css` **不在包的 `exports` 声明内**，Node 解析实测报 `ERR_PACKAGE_PATH_NOT_EXPORTED`；该文件只在源码 / 别名接入方式下存在（Vite 构建 demo 时会自动注入，故示例里看不到显式引入）。
+
+### 行为变更与影响面
+
+- **右键菜单开始真正执行动作**：若宿主此前按「菜单能弹但点了没用」这一表象写过兜底逻辑，升级后会真的执行复制 / 粘贴 / 删除 / 层级等操作。
+- **右键会改变选中态**：右键非选中元素时选中集被替换为该元素（多选成员被右键时不替换）。依赖「右键不改变选中」的自动化脚本需重新核对。
+- 模板 JSON 无任何字段变更，存量模板无需迁移。
+
+### 文档与示例
+
+- 新增英文首页 `docs/en/Overview.md`，页首声明由 AI 依据中文文档生成、中文版为权威版本。
+- README 新增「依赖开源协议」章节：含 dev 依赖逐包审计（545 包），无 GPL / AGPL / LGPL 污染，`dompurify` 按其 Apache-2.0 分支使用，商用无风险。
+- demo 新增「双列卷纸标签」示例：60×45 mm 标签拼版到 122 mm 宽卷纸，页高 = 单枚标签高（每页 2 枚），份数由渲染管线按 `perSheet` 自动分页（实测 20 枚 → 10 页），贴合标签机逐截走纸；示例计数修正为 10 份。
+- demo 新增竖屏口播视频流水线（`demo/video/portrait`）：`script.json` 驱动 voice → cards → check-layout → compose → check-subs 五段，1080×1920 竖版成品与 ASS / SRT 字幕。
+
+### 实验性（不在 npm 发布范围内）
+
+- `@worm-vue3-print/common`（`packages/print-common`）与多宿主示例 `demo-common/` 为**实验性质、尚未完成稳定性测试**，只在工作区内构建，未发布 npm（npm 上查询为 404）。它把设计器以零框架运行时的原生自定义元素 `<print-designer>` 提供给 **Vue 3 / Vue 2 / React / jQuery 等多种运行时框架**（含无框架宿主），不打包 Vue 运行时。
+- 本周期内该包对齐了 canvas 的右键口径，并把双击改走 `mousedown` 判定器（画布是 `clear(shell)` 全量重建，第一击选中后旧节点即被替换，Chrome 不会再对新节点派发原生 `dblclick`），新增与 `dblclick-element` 对称的宿主事件 `dblclick-cell`。
+- **Vue 3 项目请继续使用 `@worm-vue3-print/canvas`（成熟方案）**。
 
 ### 质量
 
-- 新增/补充测试：canvas 51 个文件 389 项、core 61 个文件 814 项全部通过；覆盖元素级边框判定与出纸、格式工具栏读写与混合态、格式刷捕获 / 过滤 / 深拷贝 / 连续刷 / 历史计数。
-
-### 已知限制
-
-- 格式刷源只能是**单个**元素（多选时按钮置灰），且表格单元格上下文下不可用；单元格的批量样式请用格式工具栏。
-- 元素级边框宽度为 px，单元格边框为 pt，两套口径并存（沿用历史设计），面板标签已分别标注。
+- 四工作区测试 1439 项全绿：core 816 / canvas 416 / common 117 / print-client 90。
+- 新增右键与双击回归：canvas `CanvasAreaContextMenu.spec.ts`（18 项，含「菜单内按下不误关」）、`TableElement.spec.ts` 表格菜单块（9 项，逐命令断言行列矩阵与尺寸同步、置灰判定、历史与选区清理）；common `context-menu.spec.ts`（10 项）、`expression-dblclick.spec.ts`（8 项）。
+- `npm run lint:print-architecture`（三端重复实现守卫）通过。
 
 ---
 
 <a id="english"></a>
 
-## v1.3.3 (2026-09-27) — English
+## v1.3.5 (2026-10-01) — English
 
-Feature release since `v1.3.2`: 5 commits, 37 files, ~3.75k added lines. Three headline items: **element-level borders land end to end** (one basis for canvas and paper, per-side support), **a format toolbar plus format painter in the designer** (Word / WPS style), and the **demo teaching-video pipeline**.
-
-> The version is `1.3.3` (patch), but it adds an **optional schema field** and contains one **print behavior change** (element-level borders now actually render). Semantically this is closer to `1.4.0`; if you consume `^1.3.x` and want to avoid the behavior change for now, pin to `~1.3.2`.
+Patch release since `v1.3.4`: 7 commits. Three headline items: **the canvas context menu works again end to end** (it opened but every item was a no-op), **npm artifacts now carry proper MIT attribution and a slimmer tarball**, and **the documented stylesheet entry was wrong**.
 
 ### Install / upgrade
 
 ```bash
-npm install @worm-vue3-print/core@^1.3.3 @worm-vue3-print/canvas@^1.3.3
+npm install @worm-vue3-print/core@^1.3.5 @worm-vue3-print/canvas@^1.3.5
 ```
 
-Only `core` (engine + expression pipeline) and `canvas` (Vue 3 designer) are published to npm. The render service (`services/print-render`) and desktop client (`clients/print-client`) remain in-repo and unpublished.
+Only `core` and `canvas` are published to npm. The render service, the desktop client and the experimental `print-common` package remain in-repo.
 
-### Element-level borders (core)
+### Context menu fixes (canvas, the substance of this release)
 
-- **One source of truth**: new `render/element-border` (`resolveElementBorder` / `ELEMENT_BORDER_SIDES` / `acceptsElementBorder`) — the canvas and the print pipeline call the same function, so what you see is what prints; re-exported through `/designer` for the designer. Units are **px** (table cell borders remain pt) with `box-sizing: border-box`, so adding a border never changes element geometry.
-- **Applies to every element type**: text, long text, image, barcode, QR code, HTML and page number can all carry a border now. `rect` / `oval` / `hline` / `vline` (they draw themselves with a border) and `table` (cell borders) are excluded to avoid double borders.
-- **Per side**: `ElementOptions` gained the optional `borders` field (`top` / `right` / `bottom` / `left`) which overrides the whole-loop `borderWidth` / `borderStyle` / `borderColor` edge by edge; with no whole loop set, only those sides render.
-- **No phantom borders**: a missing, ≤0 or invalid width means "no border" — it never falls back to a default.
+Three root causes, aligned across both hosts (canvas and the experimental print-common):
 
-### Format toolbar & format painter (canvas)
+- **Every menu action was dropped**: the canvas "close on outside press" `mousedown` listener removed the menu DOM before the item's `click` could fire, so all 8 element-menu and 12 table-menu items looked usable but did nothing. The menu root now stops `mousedown`, the outside handler is guarded with `contains`, and a generation counter stops two consecutive right-clicks from closing each other; actions dispatch through `closeContextMenu` after unbinding. The table menu switched from `mousedown` to `mouseup` for the same reason.
+- **Right-click left the target unselected**: copy / cut / delete / layer act on the current selection, so right-clicking after clearing the selection silently did nothing. Right-clicking an unselected element now selects it first (right-clicking a member of a multi-selection keeps it intact), and "Paste" in the element menu gained the clipboard guard the blank-canvas menu already had.
+- **Right-clicking a table cell was dead**: the cell handler required the table to be selected while `stopPropagation` suppressed the element menu. The table is now selected first, then the table menu opens.
 
-- **Format toolbar** (Word / WPS style): font, font size, bold / underline / strikethrough, text and background color, horizontal and vertical alignment, borders (presets "all / outer / inner / none" plus per-edge toggles and line style / width / color), applied to the whole selection of elements or table cells at once; mixed values show a "混合" (mixed) placeholder.
-- **Merged into one top row**: the second-row format toolbar was folded into the top toolbar; alignment / border (format toolbar) and arrange / view (top toolbar) moved into dropdowns. Groups that used to appear and disappear with the selection are now **always present and greyed out**, and disabled buttons explain why in their hover tip.
-- **Format painter**: captures a snapshot from a single source element — single click paints once, double click paints repeatedly, `Esc` or clearing the selection exits, and a `copy` cursor covers the canvas while armed. Application is filtered per target type (text styles only onto text / long text, element borders only onto types that accept them, background color onto everything), per-side borders are deep-copied, and a marquee over several targets records history once.
+### Distribution & artifacts (core / canvas)
 
-### Demo video pipeline
+- Both packages ship a `LICENSE` file plus `author` / `repository` / `readme` metadata; build artifacts carry an MIT banner (tsup banner for core, a Vite plugin for canvas lib output, `scripts/inject-license-banner.mjs` for type declarations).
+- Canvas sourcemaps are disabled: the tarball went from 606.9 kB to 203.6 kB and no longer publishes readable source.
 
-- `npm run video` chains Playwright recording → edge-tts voiceover → ffmpeg composition, including a proof-sheet style intro cover (3 s intro spliced with subtitle offset) and 16:9 1920×1080 framing.
-- `VIDEO_SCRIPT` switches scripts (toolbar / expression / group lessons); the recorder supports `dblclick` / `key` / `type` / `reload` / `countAssert` steps and a cross-platform `Mod` key; `npm run video:check` validates subtitle/voiceover sync.
+### Stylesheet entry corrected (important)
 
-### Behavior changes (existing templates will print differently)
+npm hosts must use `import '@worm-vue3-print/canvas/style.css'`. The `@worm-vue3-print/canvas/native-controls.css` path shown in 7 documentation examples is not in the package `exports` and Node resolves it as `ERR_PACKAGE_PATH_NOT_EXPORTED`; that file only exists in source / alias setups.
 
-- **Element-level borders now render**: templates that previously stored `borderWidth` / `borderStyle` / `borderColor` on non-shape elements showed nothing on canvas or paper; those borders now appear. Set the width to 0 or choose "none" to remove them. Shapes, lines and tables are unaffected.
-- **Designer DOM changed**: the format toolbar is no longer a separate second row and some buttons live in dropdowns. Hosts with selector dependencies on the designer's internal DOM / class names (tests, style overrides) need to re-check them.
+### Behavior changes
 
-### Compatibility & migration
+- **Context menu actions now run**: hosts that wrote workarounds around "menu opens but items do nothing" will now see real copy / paste / delete / layer operations.
+- **Right-click changes the selection**: right-clicking an unselected element replaces the selection with it.
+- Template JSON is unchanged — no migration needed.
 
-- Template JSON stays backward compatible: `borders` is a new optional field, old templates simply omit it — no migration script needed.
-- Identical across browser preview, server-side PDF (print-render) and the desktop client (print-client), since all three share core's render pipeline.
+### Docs & samples
+
+- New English landing page `docs/en/Overview.md`, marked at the top as AI-generated from the authoritative Chinese docs.
+- README gained a "Dependency licenses" section (per-package audit of 545 packages including dev dependencies; no GPL / AGPL / LGPL contamination; `dompurify` used under its Apache-2.0 branch).
+- demo gained a two-up roll-label sample (60×45 mm labels ganged onto 122 mm roll stock, page height = one label, copies paginated by `perSheet` — 20 labels measured as 10 pages) and a portrait voice-over video pipeline (`demo/video/portrait`, 1080×1920 with ASS / SRT subtitles).
+
+### Experimental (outside the npm release scope)
+
+- `@worm-vue3-print/common` and the `demo-common/` multi-host samples are **experimental and not yet stability-tested**; they build inside the workspace only and are not published (npm returns 404). They expose the designer as the zero-framework native custom element `<print-designer>` for Vue 3 / Vue 2 / React / jQuery and framework-less hosts, without bundling Vue. This cycle it matched the canvas context-menu semantics and moved double-click detection to a `mousedown` judge (full repaints break native `dblclick`), adding the host event `dblclick-cell`.
+- **Vue 3 projects should keep using `@worm-vue3-print/canvas`.**
 
 ### Quality
 
-- New and extended tests: 389 canvas tests (51 files) and 814 core tests (61 files) all pass, covering border resolution and print output, format toolbar read/write and mixed state, and painter capture / filtering / deep copy / repeat painting / history count.
-
-### Known limitations
-
-- The painter source must be a **single** element (the button greys out on multi-select) and is unavailable in the table-cell context — use the format toolbar for bulk cell styling.
-- Element borders use px while table cell borders use pt; both bases coexist for historical reasons and the panels label them separately.
+- 1439 tests pass across the four workspaces: core 816 / canvas 416 / common 117 / print-client 90, including new context-menu and double-click regression specs on both hosts.
 
 ---
 
