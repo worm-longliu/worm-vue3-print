@@ -55,7 +55,7 @@
           </div>
         </div>
       </ToolbarDropdown>
-      <!-- 视图下拉：标尺/网格/虚框/吸附开关 + 首页专属 / 叠层对比 -->
+      <!-- 视图下拉：标尺/网格/虚框/吸附开关 + 叠层对比 -->
       <ToolbarDropdown test-id="view-dd" tip="视图">
         <template #trigger>
           <Eye :size="15" />
@@ -370,11 +370,6 @@ defineEmits<{
 .tb-menu-row {
   justify-content: flex-start;
   width: 100%;
-}
-.tb-menu-sep {
-  height: 1px;
-  margin: 4px 0;
-  background: var(--pd-border-soft, #e9ecf2);
 }
 .btn-primary,
 .btn-secondary {
