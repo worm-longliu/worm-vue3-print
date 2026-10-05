@@ -34,11 +34,3 @@ function openEditor() {
   editorVisible.value = true
 }
 </script>
-
-<style scoped>
-.binding-control {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-</style>

@@ -6,7 +6,7 @@ import {
   isContinuousPaper,
   isContinuousPaperSize,
 } from '../render/types.js'
-import type { PaperSize, SheetPaperSize } from '../render/types.js'
+import type { PaperSize } from '../render/types.js'
 
 /** 拼版配置（模板级，随模板保存） */
 export interface TilingOptions {

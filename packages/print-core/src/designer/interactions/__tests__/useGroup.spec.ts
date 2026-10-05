@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { useGroup, generateGroupId } from '../useGroup.js'
-import type { RuntimeElement } from '../types.js'
+import type { RuntimeElement } from '../../types.js'
 
 function makeEl(id: string, groupId?: string): RuntimeElement {
   return { id, options: { left: 0, top: 0, width: 10, height: 10, groupId }, printElementType: { type: 'text', title: '文本' } }

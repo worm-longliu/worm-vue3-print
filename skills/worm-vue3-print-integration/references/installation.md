@@ -18,7 +18,7 @@ npm install @worm-vue3-print/core@^1.3.0
 npm install @worm-vue3-print/core@^1.3.0 @worm-vue3-print/canvas@^1.3.0
 ```
 
-- `canvas` 会自动带入 `dompurify`、`jsbarcode`、`qrcode`、`sortablejs` 等依赖。
+- `canvas` 会自动带入 `dompurify`、`jsbarcode`、`qrcode` 等依赖。
 - 宿主必须满足 `vue@^3.5.0`。
 - 建议提交锁文件，避免 NPM 侧依赖升级引入构建差异。
 - 已发布的当前版本为 `1.3.0`（canvas 与 core 版本号同步发布；canvas 内部以 `^1.0.0` 声明对 core 的依赖，宿主显式安装同版本 core 即可，锁文件会统一解析）。
@@ -85,7 +85,7 @@ npm install <仓库路径>/packages/print-core <仓库路径>/packages/print-can
 
 ```bash
 npm install -D @vitejs/plugin-vue
-npm install dompurify jsbarcode qrcode sortablejs
+npm install dompurify jsbarcode qrcode
 ```
 
 2. 在 `vite.config.ts` 中配置别名；CSS 子路径必须排在包名别名之前：

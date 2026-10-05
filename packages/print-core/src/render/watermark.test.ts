@@ -18,7 +18,6 @@ import {
   MM_PER_PX,
 } from './watermark.js'
 import type { TemplateData, PageLayout } from './types.js'
-import type { WatermarkOptions } from '../designer/types.js'
 
 /** A4（210×297mm） */
 const A4 = { width: 210, height: 297 }

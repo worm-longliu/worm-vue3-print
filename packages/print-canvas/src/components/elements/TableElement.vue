@@ -143,7 +143,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'dblclick-element': [id: string]
   'dblclick-cell': [elementId: string, r: number, c: number]
 }>()
 
@@ -569,13 +568,6 @@ onUnmounted(() => {
 .data-placeholder {
   color: #909399;
   font-style: italic;
-}
-.cell-editor {
-  width: 100%;
-  border: none;
-  outline: none;
-  background: #fffbe6;
-  font: inherit;
 }
 .row-badges {
   position: absolute;

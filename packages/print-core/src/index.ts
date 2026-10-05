@@ -1,9 +1,9 @@
 // packages/print-core/src/index.ts
-import type { ASTNode, ExprFunction, EngineOptions } from './types.js'
+import type { ExprFunction, EngineOptions } from './types.js'
 import { tokenize } from './lexer.js'
 import { parse } from './parser.js'
 import { evaluate } from './evaluator.js'
-import { parseTemplate, renderTemplate, compileTemplate } from './template-parser.js'
+import { compileTemplate } from './template-parser.js'
 
 export class TemplateEngine {
   private functions: Record<string, ExprFunction> = {}

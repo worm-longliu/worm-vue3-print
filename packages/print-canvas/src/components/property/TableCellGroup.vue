@@ -376,10 +376,4 @@ defineExpose({ openFormatterEditor })
   display: flex;
   gap: 8px;
 }
-.field-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-}
 </style>

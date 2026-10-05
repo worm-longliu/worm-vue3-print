@@ -1,8 +1,7 @@
 // 唯一一份 DOM 执行器：浏览器进程内直接调用，服务端/客户端以 IIFE 注入后调用。
 import { renderCodeSvg } from './browser-code-renderer.js'
-import { applyTextFit, fitTextNode } from './text-fit-dom.js'
+import { applyTextFit } from './text-fit-dom.js'
 import type { CodeSpec, RawMeasurement } from '../print/types.js'
-import type { FitFontSize } from '../render/text-fit.js'
 
 /** 执行器版本：注入失败时用于日志定位产物不匹配 */
 export const EXECUTOR_VERSION = '2'

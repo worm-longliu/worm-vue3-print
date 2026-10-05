@@ -1,5 +1,5 @@
 // packages/print-core/src/template-parser.ts
-import type { ASTNode, TemplateAST, TemplatePart, ExprFunction } from './types.js'
+import type { TemplateAST, TemplatePart, ExprFunction } from './types.js'
 import { tokenize } from './lexer.js'
 import { parse } from './parser.js'
 import { evaluate } from './evaluator.js'

@@ -55,7 +55,7 @@ npm run build       # 生产构建
 
 与 `web` 宿主一致：设计器/核心包走 monorepo 源码消费（`vite.config.ts` 中 alias
 指向 `packages/print-canvas/src`、`packages/print-core/src`，由 Vite 直接编译包内
-`.vue/.ts`）；包内 `jsbarcode / qrcode / dompurify / sortablejs` 等依赖由宿主声明。
+`.vue/.ts`）；包内 `jsbarcode / qrcode / dompurify` 等依赖由宿主声明。
 
 ## 线上部署
 

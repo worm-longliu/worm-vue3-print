@@ -1,6 +1,6 @@
 import { PrintFailure, toPrintFailure, withTimeout } from './errors.js'
 import { DEFAULT_READINESS_MS, DEFAULT_TIMEOUT_MS } from './ports.js'
-import type { DriverFactory, ExecutorBundle, PageDriver } from './driver.js'
+import type { DriverFactory, ExecutorBundle } from './driver.js'
 import type { PrintRuntime, PrintSession, SessionBudget, MeasureResult } from './ports.js'
 import type {
   CodeSpec,

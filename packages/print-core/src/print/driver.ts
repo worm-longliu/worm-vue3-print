@@ -1,4 +1,4 @@
-import type { PdfTargetSpec, RawMeasurement, ViewportPx } from './types.js'
+import type { PdfTargetSpec, ViewportPx } from './types.js'
 
 /** 执行器可被宿主调用的方法名（与 browser/dom-executor.ts 一一对应） */
 export type ExecutorMethod =

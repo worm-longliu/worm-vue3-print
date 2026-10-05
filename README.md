@@ -334,7 +334,6 @@ docker build -f services/print-render/Dockerfile -t worm-vue3-print-render .
 | `jsbarcode` | MIT | core / canvas | 一维条码渲染 | 无限制 |
 | `qrcode` | MIT | core / canvas | 二维码渲染 | 无限制 |
 | `dompurify` | MPL-2.0 **或** Apache-2.0（双许可，可选） | canvas | HTML 富文本 XSS 净化 | 无限制 |
-| `sortablejs` | MIT | canvas | 图层/列表拖拽排序 | 无限制 |
 | `lucide-vue-next` | ISC | canvas | 工具栏图标 | 无限制 |
 | `express` | MIT | render 服务 | HTTP 接口层 | 无限制 |
 | `playwright` | Apache-2.0 | render 服务 | Headless Chromium 输出 PDF | 无限制 |

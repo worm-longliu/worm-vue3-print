@@ -1,5 +1,5 @@
 // packages/print-core/src/lexer.ts
-import type { Token, TokenType } from './types.js'
+import type { Token } from './types.js'
 
 const DANGEROUS_PROPS = new Set([
   'constructor', '__proto__', 'prototype',

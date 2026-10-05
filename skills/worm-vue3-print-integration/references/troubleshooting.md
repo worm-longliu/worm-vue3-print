@@ -44,7 +44,7 @@ npm ls @worm-vue3-print/core @worm-vue3-print/canvas
    - `packages/print-canvas/src/styles/native-controls.css`
 3. 确认 Vite 的 `server.fs.allow` 允许读取 monorepo 目录。
 4. 确认宿主安装并启用了 `@vitejs/plugin-vue`。
-5. 源码别名模式下，宿主需要声明 `dompurify`、`jsbarcode`、`qrcode`、`sortablejs`。
+5. 源码别名模式下，宿主需要声明 `dompurify`、`jsbarcode`、`qrcode`。
 
 ## `file:` 源码修改没有生效
 

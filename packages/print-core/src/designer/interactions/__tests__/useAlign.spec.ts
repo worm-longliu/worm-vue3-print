@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { useAlign } from '../useAlign.js'
-import type { RuntimeElement } from '../types.js'
+import type { RuntimeElement } from '../../types.js'
 
 function makeEl(id: string, left: number, top: number, width: number, height: number): RuntimeElement {
   return { id, options: { left, top, width, height }, printElementType: { type: 'text', title: '文本' } }

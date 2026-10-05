@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest'
 import { bindData } from './data-binder.js'
 import { paginate } from './pagination-engine.js'
 import { generateHtml } from './html-generator.js'
-import type { TemplateData, MeasuredElement, PageLayout } from './types.js'
+import type { TemplateData, MeasuredElement } from './types.js'
 
 const cell = (formatter: string, span: Partial<{ rowspan: number; colspan: number; merged: boolean }> = {}) =>
   ({ id: 'c', formatter, rowspan: 1, colspan: 1, merged: false, ...span })

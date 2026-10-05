@@ -1,7 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { WebSocket as WsClient } from 'ws'
 import { createServer } from 'node:net'
-import type { AddressInfo } from 'node:net'
 import { WsServer } from './ws-server.js'
 import { ProtocolFailure } from './protocol-error.js'
 

@@ -24,7 +24,6 @@
 }
 .pd-input,
 .pd-select,
-.pd-color,
 textarea.pd-input {
   width: 100%;
   height: 26px;
@@ -48,18 +47,13 @@ textarea.pd-input {
   resize: vertical;
 }
 .pd-input:focus,
-.pd-select:focus,
-.pd-color:focus {
+.pd-select:focus {
   outline: none;
   border-color: var(--pd-accent, #165DFF);
   box-shadow: 0 0 0 2px rgb(22 93 255 / 12%);
 }
 .pd-select {
   appearance: auto;
-}
-.pd-color {
-  padding: 1px;
-  height: 26px;
 }
 .pd-switch {
   appearance: none;
@@ -102,13 +96,11 @@ textarea.pd-input {
   gap: 6px;
 }
 /* 两列网格布局：选项每行两个（如内容旋转角度） */
-.pd-radio-group--2col,
-.pd-checkbox-group--2col {
+.pd-radio-group--2col {
   display: grid;
   grid-template-columns: 1fr 1fr;
 }
-.pd-radio-group--2col > .pd-radio,
-.pd-checkbox-group--2col > .pd-checkbox {
+.pd-radio-group--2col > .pd-radio {
   width: 60%;
   justify-content: flex-start;
 }
@@ -216,13 +208,6 @@ textarea.pd-input {
   color: var(--pd-text-muted, #909399);
   text-align: center;
 }
-.pd-badge {
-  padding: 0 4px;
-  border-radius: 3px;
-  background: rgb(103 194 58 / 12%);
-  color: #529b2e;
-  font-size: 10px;
-}
 .pd-dialog-overlay {
   position: fixed;
   inset: 0;
@@ -242,9 +227,6 @@ textarea.pd-input {
   border-radius: 12px;
   box-shadow: var(--pd-shadow-md, 0 12px 40px rgba(23, 32, 60, .18));
 }
-.pd-dialog-small {
-  width: min(400px, 92vw);
-}
 .pd-dialog-large {
   width: min(950px, 90vw);
 }
@@ -262,12 +244,6 @@ textarea.pd-input {
 .pd-dialog-footer {
   justify-content: flex-end;
   border-top: 1px solid var(--pd-border-soft, #ebeef5);
-}
-.pd-dialog-body {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 16px;
 }
 .pd-close {
   width: 22px;
