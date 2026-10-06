@@ -48,18 +48,53 @@ npm run build -w @worm-vue3-print/print-client # electron-vite 三环境构建�
 
 ### 安装包（macOS 上交叉打包 mac + win）
 
-macOS 上可同时产出**当前系统安装包**与**交叉构建的 Windows 安装包**（`win.nsis` 目标；Linux 安装包只能在 Linux 上构建）：
+macOS 上可同时产出 **Intel 与 Apple Silicon 两份 mac 安装包**与**交叉构建的 Windows 安装包**（`win.nsis` 目标；Linux 安装包只能在 Linux 上构建）。要构建的架构由 `electron-builder.yml` 的 `mac.target.arch` 声明，命令行无需指定：
 
 ```bash
-npm run pack:client        # 在仓库根目录：先构建 core 与 SDK 的 dist，再 electron-builder --mac --win
+npm run pack:client          # 只产出安装包（先构建 core 与 client 的 dist）
+npm run pack:client:release  # 额外生成 SHA256SUMS.txt 并打印发行版附件上传命令
 ```
 
-产物：
+> 首次构建另一架构 / 另一平台时，electron-builder 要去 GitHub 拉对应平台的 Electron 包与 NSIS 工具链；直连会卡在 `Timeout awaiting 'request' for 600000ms`。国内网络先设镜像：
+>
+> ```bash
+> export ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+> export ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
+> ```
 
-- macOS：`clients/print-client/dist/mac-arm64/*.dmg|*.zip`（Apple Silicon）或 `dist/mac/*.dmg|*.zip`（Intel）
-- Windows：`clients/print-client/dist/win-unpacked/` + `*.exe`（NSIS 安装程序，可选择安装目录/创建桌面快捷方式）
+产物（`clients/print-client/dist/`，目录 `dist/` 已被 `.gitignore` 排除，安装包不入库）：
 
-> 未配置代码签名与自定义图标，产物为未签名 + Electron 默认图标；分发前请补充 `build/` 资源（`icon.icns`/`icon.ico`）与签名证书。
+| 文件 | 用途 |
+| --- | --- |
+| `WormPrintClient-<version>-mac-x64.dmg` | Intel Mac 安装镜像 |
+| `WormPrintClient-<version>-mac-arm64.dmg` | Apple Silicon Mac 安装镜像 |
+| `WormPrintClient-<version>-win-x64.exe` | Windows NSIS 安装程序（可选择安装目录 / 创建桌面快捷方式） |
+| `SHA256SUMS.txt` | 上述安装包的校验和清单，与安装包一起上传 |
+| `*-mac-*.zip`、`*.blockmap` | electron-updater 差量更新用；本客户端未接自动更新，**不要挂进发行版** |
+
+图标：`build/icon.png`（1024 圆角 RGBA）是唯一入库的源图，electron-builder 会就地派生 macOS 的 `icon.icns` 与 Windows 的 `.ico`，仓库不保存派生产物。
+
+> **代码签名**：本机无 Developer ID / Windows 签名证书，产物**未经 Developer ID 签名、未经公证**。Electron 官方预编译二进制自带的 ad-hoc（linker-signed）签名保留在主程序、Helper 与 `Electron Framework` 上，因此 arm64 包满足 Apple Silicon「至少 ad-hoc」的执行前提；缺的是 bundle 级资源封印（`codesign --verify --deep --strict` 会报 `code has no resources but signature indicates they must be present`），后果只体现在 Gatekeeper 拦截提示上。分发时用户首次打开需要绕过：
+>
+> - 与系统版本无关的做法：`xattr -dr com.apple.quarantine /Applications/WormPrintClient.app`。
+> - macOS 旧版本可右键图标 →「打开」；macOS 15（Sequoia）起该入口在部分场景已取消，改为 系统设置 → 隐私与安全性 →「仍要打开」。
+> - Windows：SmartScreen 提示「未知发布者」→「更多信息」→「仍要运行」。
+> - 在 Intel 机上构建的 arm64 包，其在 Apple Silicon 真机的实际启动**未经真机验证**（本机无法执行 arm64 切片）；要根除拦截提示需补 Apple Developer ID 证书 + 公证（`mac.notarize`）。
+
+### 挂到 GitHub 发行版
+
+发行版的附件（Assets）就是给需要静默打印客户端的用户直接下载的安装包，产物本身不入库：
+
+```bash
+gh auth login   # 仅首次
+gh release upload v1.3.5 \
+  clients/print-client/dist/WormPrintClient-1.3.5-mac-x64.dmg \
+  clients/print-client/dist/WormPrintClient-1.3.5-mac-arm64.dmg \
+  clients/print-client/dist/WormPrintClient-1.3.5-win-x64.exe \
+  clients/print-client/dist/SHA256SUMS.txt --clobber
+```
+
+文件名以 `npm run pack:client:release` 输出的命令为准（它按 `dist/` 里的实际产物拼装）。注意 `SHA256SUMS.txt` 里记录的是**裸文件名**，所以下载方要与安装包放在同一目录里校验：`shasum -a 256 -c SHA256SUMS.txt`（Linux 为 `sha256sum -c`）。未装或未登录 `gh` 时，在 GitHub 发行版的编辑页面把同一批文件拖进 Assets 区域即可。`.github/workflows/release.yml` 创建发行版时不传 `files:`，附件必须由本步骤单独上传。
 
 ### 绿色目录版（免安装）
 

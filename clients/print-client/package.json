@@ -1,6 +1,6 @@
 {
   "name": "@worm-vue3-print/print-client",
-  "version": "0.1.0",
+  "version": "1.3.5",
   "private": true,
   "type": "module",
   "description": "worm-vue3-print 跨平台静默打印桌面客户端（Electron，本地 WebSocket + core 同构渲染）",

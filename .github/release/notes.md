@@ -73,6 +73,19 @@ import '@worm-vue3-print/canvas/style.css'
 - 本周期内该包对齐了 canvas 的右键口径，并把双击改走 `mousedown` 判定器（画布是 `clear(shell)` 全量重建，第一击选中后旧节点即被替换，Chrome 不会再对新节点派发原生 `dblclick`），新增与 `dblclick-element` 对称的宿主事件 `dblclick-cell`。
 - **Vue 3 项目请继续使用 `@worm-vue3-print/canvas`（成熟方案）**。
 
+### 桌面客户端安装包（本版本起随发行版提供）
+
+不发布 npm 的桌面客户端 `clients/print-client`（Electron 静默打印，回环 WebSocket 默认端口 17521）从本版本起以安装包附件的形式挂在本发行版页面：
+
+| 附件 | 适用系统 |
+| --- | --- |
+| `WormPrintClient-1.3.5-mac-x64.dmg` | Intel Mac |
+| `WormPrintClient-1.3.5-mac-arm64.dmg` | Apple Silicon Mac |
+| `WormPrintClient-1.3.5-win-x64.exe` | Windows 10 / 11 x64（NSIS 安装程序，可选择安装目录、创建桌面快捷方式） |
+| `SHA256SUMS.txt` | 以上安装包的 SHA-256 校验和 |
+
+> ⚠️ **安装包未做 Developer ID 签名与公证**（本项目没有 Apple Developer ID 与 Windows 签名证书）。主程序、Helper 与 `Electron Framework` 保留 Electron 官方预编译自带的 ad-hoc 签名，所以 arm64 包在 Apple Silicon 上不缺执行前提；缺的只是 bundle 级资源封印，表现为 macOS 首次打开被 Gatekeeper 拦截。绕过方式：`xattr -dr com.apple.quarantine /Applications/WormPrintClient.app`（与系统版本无关），或 macOS 15 起在 系统设置 → 隐私与安全性 点「仍要打开」。Windows 会在 SmartScreen 提示「未知发布者」，点「更多信息」→「仍要运行」。arm64 包在 Apple Silicon 真机的实际启动**未经真机验证**（构建机为 Intel）。打包与上传步骤见 [客户端 README](https://github.com/worm-longliu/worm-vue3-print/blob/master/clients/print-client/README.md)。
+
 ### 质量
 
 - 四工作区测试 1439 项全绿：core 814 / canvas 415 / common 120 / print-client 90。
@@ -143,6 +156,19 @@ npm hosts must use `import '@worm-vue3-print/canvas/style.css'`. The `@worm-vue3
 
 - `@worm-vue3-print/common` and the `demo-common/` multi-host samples are **experimental and not yet stability-tested**; they build inside the workspace only and are not published (npm returns 404). They expose the designer as the zero-framework native custom element `<print-designer>` for Vue 3 / Vue 2 / React / jQuery and framework-less hosts, without bundling Vue. This cycle it matched the canvas context-menu semantics and moved double-click detection to a `mousedown` judge (full repaints break native `dblclick`), adding the host event `dblclick-cell`.
 - **Vue 3 projects should keep using `@worm-vue3-print/canvas`.**
+
+### Desktop client installers (new with this release)
+
+The desktop client `clients/print-client` (Electron silent printing over a loopback WebSocket, port 17521) is not published to npm. From this release on, its installers are attached to this release page:
+
+| Asset | Target |
+| --- | --- |
+| `WormPrintClient-1.3.5-mac-x64.dmg` | Intel Mac |
+| `WormPrintClient-1.3.5-mac-arm64.dmg` | Apple Silicon Mac |
+| `WormPrintClient-1.3.5-win-x64.exe` | Windows 10 / 11 x64 (NSIS, selectable install dir and desktop shortcut) |
+| `SHA256SUMS.txt` | SHA-256 checksums for the installers above |
+
+> ⚠️ **The installers carry no Developer ID signature and are not notarized** — the project holds no Apple Developer ID or Windows signing certificate. The main executable, the Helpers and `Electron Framework` keep the ad-hoc signature that ships inside Electron's official prebuilds, so the arm64 package is not missing any execution prerequisite on Apple Silicon; what is missing is the bundle-level resource seal, which surfaces as a Gatekeeper prompt on first launch. Bypass it with `xattr -dr com.apple.quarantine /Applications/WormPrintClient.app` (works on every macOS version), or on macOS 15 via System Settings → Privacy & Security → "Open Anyway". On Windows, SmartScreen reports an unknown publisher → More info → Run anyway. Launching the arm64 build on real Apple Silicon hardware has **not been verified** (the build machine is Intel). Packaging and upload steps live in the [client README](https://github.com/worm-longliu/worm-vue3-print/blob/master/clients/print-client/README.md).
 
 ### Quality
 
