@@ -45,6 +45,9 @@ npm version 1.2.3 -w @worm-vue3-print/canvas
 #    - docs/en/CHANGELOG.en.md
 #    - packages/print-canvas/src/help-content/changelog.ts（设计器帮助弹窗「更新记录」）
 #    - README.md 的「当前版本」
+#    版本标题格式统一为 `## V1.3.5(2026-10-01)`（大写 V、半角括号紧贴日期），
+#    changelog.ts 内为 `<h2>V1.3.5<small>(2026-10-01)</small></h2>`；
+#    本仓库标题形态为本地口径，勿改回 Keep a Changelog 的 `## [1.3.5] - 2026-10-01`。
 
 # 3. 更新 GitHub Release 正文模板
 #    .github/release/notes.md   ← 工作流会将其作为 Release 正文，
