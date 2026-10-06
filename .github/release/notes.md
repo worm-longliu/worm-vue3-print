@@ -8,7 +8,9 @@
 
 ## v1.3.5（2026-10-01）—— 简体中文
 
-自 `v1.3.4` 以来的修复版本：7 次提交。三件主干事情：**画布右键菜单全线恢复**（此前能弹出、点了没反应）、**npm 分发补齐 MIT 署名并瘦身产物**、**样式引入入口口径修正**（此前文档给的子路径根本不在包 `exports` 里）。
+自 `v1.3.4` 以来 31 次提交。**本版本包含破坏性移除**：设计器的「首页专属」叠加区与「叠层对比」连同服务端截图链路一并下线。其余三件主干事情：**画布右键菜单全线恢复**（此前能弹出、点了没反应）、**npm 分发补齐 MIT 署名并瘦身产物**、**样式引入入口口径修正**（此前文档给的子路径根本不在包 `exports` 里）。
+
+> ⚠️ 版本号口径：本次移除以补丁版本 `1.3.5` 发布，而不是 major 版本。这样 npm 上的版本序列不跳号，代价是 `^1.3.4` 的自动升级会直接拿到这些移除。**升级前请先按下面「破坏性移除」一节自查。**
 
 ### 安装与升级
 
@@ -17,6 +19,15 @@ npm install @worm-vue3-print/core@^1.3.5 @worm-vue3-print/canvas@^1.3.5
 ```
 
 发布到 npm 的仍然只有 `core`（渲染引擎与表达式系统）与 `canvas`（Vue 3 设计器）两个包。渲染服务 `services/print-render`、桌面客户端 `clients/print-client` 与实验性的 `packages/print-common` 在仓库内维护，不发布 npm。
+
+### 破坏性移除（core / canvas）
+
+四项移除，canvas 与实验性的 print-common 两宿主同步下线：
+
+- **「首页专属」首页叠加区整体移除**：core 的 `TemplateData.firstPageOverlay` 字段、分页引擎的首页预算扣减、`.first-page-overlay` CSS 与首页叠加层 HTML 全部删除；工具栏「首页专属」入口、画布叠加区占位、属性面板「首页叠加高度」字段同步移除。
+- **「叠层对比」下线**：canvas 的 `requestScreenshot` prop 与 `ScreenshotRequest` / `RequestScreenshotFn` 类型删除，print-common 的 `requestScreenshot` 属性与 `setOverlay()` 公开方法删除。宿主无需再注入截图适配器，改用「预览」核对出纸效果。
+- **服务端截图能力移除**：core 的 `renderScreenshot` / `buildScreenshotTargetSpec` / `ScreenshotTargetSpec` / `PrintSession.toScreenshot` / `PageDriver.screenshot`，以及渲染服务的 `POST /render/screenshot` 端点删除。PDF 链路（`renderPdf`、`POST /render/pdf`）与浏览器打印 / 服务端 PDF / 桌面静默打印三条出纸口径均不受影响。
+- **`PrintFailureCode` 移除成员 `'SCREENSHOT_FAILED'`**：这是对外公开联合类型的成员删除，任何对该值的 `switch` 分支、赋值、类型标注都会编译报错。请删除对应分支或改用其余码值（`INVALID_PAPER` / `MEASURE_FAILED` / `RENDER_TIMEOUT` / `PDF_FAILED` / `UNSUPPORTED_RUNTIME` / `INTERNAL`）。
 
 ### 右键菜单修复（canvas，本版本主体）
 
@@ -45,7 +56,8 @@ import '@worm-vue3-print/canvas/style.css'
 
 - **右键菜单开始真正执行动作**：若宿主此前按「菜单能弹但点了没用」这一表象写过兜底逻辑，升级后会真的执行复制 / 粘贴 / 删除 / 层级等操作。
 - **右键会改变选中态**：右键非选中元素时选中集被替换为该元素（多选成员被右键时不替换）。依赖「右键不改变选中」的自动化脚本需重新核对。
-- 模板 JSON 无任何字段变更，存量模板无需迁移。
+- **含首页叠加区的自有模板会改变出纸**：`firstPageOverlay.height > 0` 或该区域内放过元素的模板，叠加内容不再输出，首页内容区可用高度比 `1.3.4` 多出该叠加高度，请按新口径复核版式。导入含该字段的旧模板时由 `normalizeTemplateUnits` 自动剥离，不会报错。
+- 除 `firstPageOverlay` 的剥离外，模板 JSON 无其他字段变更。
 
 ### 文档与示例
 
@@ -53,6 +65,7 @@ import '@worm-vue3-print/canvas/style.css'
 - README 新增「依赖开源协议」章节：含 dev 依赖逐包审计（545 包），无 GPL / AGPL / LGPL 污染，`dompurify` 按其 Apache-2.0 分支使用，商用无风险。
 - demo 新增「双列卷纸标签」示例：60×45 mm 标签拼版到 122 mm 宽卷纸，页高 = 单枚标签高（每页 2 枚），份数由渲染管线按 `perSheet` 自动分页（实测 20 枚 → 10 页），贴合标签机逐截走纸；示例计数修正为 10 份。
 - demo 新增竖屏口播视频流水线（`demo/video/portrait`）：`script.json` 驱动 voice → cards → check-layout → compose → check-subs 五段，1080×1920 竖版成品与 ASS / SRT 字幕。
+- **已知落后**：`demo/video/` 的工具栏演示视频仍包含「首页专属」「叠层对比」两个按钮的镜头，本版未重录，看视频时请以实际工具栏为准。
 
 ### 实验性（不在 npm 发布范围内）
 
@@ -62,7 +75,8 @@ import '@worm-vue3-print/canvas/style.css'
 
 ### 质量
 
-- 四工作区测试 1439 项全绿：core 816 / canvas 416 / common 117 / print-client 90。
+- 四工作区测试 1439 项全绿：core 814 / canvas 415 / common 120 / print-client 90。
+- 移除链以「零残留」判据收口：全仓（排除 `node_modules`、`dist`）不存在任何写入 `firstPageOverlay` 的模板与生成路径，`renderScreenshot` 等截图原语与两端「叠层对比」标识已无功能引用，仅剩 `normalizeTemplateUnits` 的废弃键剥离分支与其回归用例。
 - 新增右键与双击回归：canvas `CanvasAreaContextMenu.spec.ts`（18 项，含「菜单内按下不误关」）、`TableElement.spec.ts` 表格菜单块（9 项，逐命令断言行列矩阵与尺寸同步、置灰判定、历史与选区清理）；common `context-menu.spec.ts`（10 项）、`expression-dblclick.spec.ts`（8 项）。
 - `npm run lint:print-architecture`（三端重复实现守卫）通过。
 
@@ -72,7 +86,9 @@ import '@worm-vue3-print/canvas/style.css'
 
 ## v1.3.5 (2026-10-01) — English
 
-Patch release since `v1.3.4`: 7 commits. Three headline items: **the canvas context menu works again end to end** (it opened but every item was a no-op), **npm artifacts now carry proper MIT attribution and a slimmer tarball**, and **the documented stylesheet entry was wrong**.
+31 commits since `v1.3.4`. **This release contains breaking removals**: the designer's "first-page-only" overlay area and "overlay compare" are gone, together with the server-side screenshot pipeline. The other three headline items: **the canvas context menu works again end to end** (it opened but every item was a no-op), **npm artifacts now carry proper MIT attribution and a slimmer tarball**, and **the documented stylesheet entry was wrong**.
+
+> ⚠️ Versioning note: these removals ship as the patch version `1.3.5` rather than a major bump, so the npm version sequence stays uninterrupted. The trade-off is that a `^1.3.4` automatic upgrade receives them directly. **Check the "Breaking removals" section before upgrading.**
 
 ### Install / upgrade
 
@@ -81,6 +97,15 @@ npm install @worm-vue3-print/core@^1.3.5 @worm-vue3-print/canvas@^1.3.5
 ```
 
 Only `core` and `canvas` are published to npm. The render service, the desktop client and the experimental `print-common` package remain in-repo.
+
+### Breaking removals (core / canvas)
+
+Four removals, taken offline in both hosts (canvas and the experimental print-common):
+
+- **The "first-page-only" overlay area is gone**: `TemplateData.firstPageOverlay` in core, the first-page budget deduction in the pagination engine, the `.first-page-overlay` CSS and the overlay HTML are deleted; so are the toolbar entry, the canvas placeholder and the "first-page overlay height" property-panel field.
+- **"Overlay compare" is gone**: canvas's `requestScreenshot` prop and the `ScreenshotRequest` / `RequestScreenshotFn` types, plus Common's `requestScreenshot` attribute and public `setOverlay()` method, are deleted. Hosts no longer need a screenshot adapter — use "Preview" to check the output.
+- **Server-side screenshotting is gone**: core's `renderScreenshot` / `buildScreenshotTargetSpec` / `ScreenshotTargetSpec` / `PrintSession.toScreenshot` / `PageDriver.screenshot` and the render service's `POST /render/screenshot` endpoint are deleted. The PDF path (`renderPdf`, `POST /render/pdf`) and all three output paths — browser printing, server-side PDF, desktop silent printing — are unaffected.
+- **`PrintFailureCode` lost the `'SCREENSHOT_FAILED'` member**: a member of a public union type is gone, so any `switch` branch, assignment or type annotation referencing it now fails to compile. Drop the branch or use the remaining codes (`INVALID_PAPER` / `MEASURE_FAILED` / `RENDER_TIMEOUT` / `PDF_FAILED` / `UNSUPPORTED_RUNTIME` / `INTERNAL`).
 
 ### Context menu fixes (canvas, the substance of this release)
 
@@ -103,13 +128,16 @@ npm hosts must use `import '@worm-vue3-print/canvas/style.css'`. The `@worm-vue3
 
 - **Context menu actions now run**: hosts that wrote workarounds around "menu opens but items do nothing" will now see real copy / paste / delete / layer operations.
 - **Right-click changes the selection**: right-clicking an unselected element replaces the selection with it.
-- Template JSON is unchanged — no migration needed.
+- **Templates that used the overlay area print differently**: with `firstPageOverlay.height > 0` or elements inside it, the overlay content is no longer emitted and the first page's usable height grows by that overlay height compared to `1.3.4` — re-check your layout. Importing such a template strips the field via `normalizeTemplateUnits` without erroring.
+- Apart from that stripping, the template JSON format is otherwise unchanged.
 
 ### Docs & samples
 
 - New English landing page `docs/en/Overview.md`, marked at the top as AI-generated from the authoritative Chinese docs.
 - README gained a "Dependency licenses" section (per-package audit of 545 packages including dev dependencies; no GPL / AGPL / LGPL contamination; `dompurify` used under its Apache-2.0 branch).
 - demo gained a two-up roll-label sample (60×45 mm labels ganged onto 122 mm roll stock, page height = one label, copies paginated by `perSheet` — 20 labels measured as 10 pages) and a portrait voice-over video pipeline (`demo/video/portrait`, 1080×1920 with ASS / SRT subtitles).
+
+- **Known gap**: the toolbar demo videos under `demo/video/` still show the "first-page-only" and "overlay compare" buttons; they were not re-recorded for this release, so trust the actual toolbar over the footage.
 
 ### Experimental (outside the npm release scope)
 
@@ -118,7 +146,8 @@ npm hosts must use `import '@worm-vue3-print/canvas/style.css'`. The `@worm-vue3
 
 ### Quality
 
-- 1439 tests pass across the four workspaces: core 816 / canvas 416 / common 117 / print-client 90, including new context-menu and double-click regression specs on both hosts.
+- 1439 tests pass across the four workspaces: core 814 / canvas 415 / common 120 / print-client 90, including new context-menu and double-click regression specs on both hosts.
+- The removal chain is closed out with a zero-residue criterion: no template or generator in the repo still writes `firstPageOverlay`, the screenshot primitives and the "overlay compare" identifiers have no functional references left in either host, and what remains is only the deprecated-key stripping branch in `normalizeTemplateUnits` plus its regression cases.
 
 ---
 
