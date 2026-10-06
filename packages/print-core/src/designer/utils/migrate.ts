@@ -21,7 +21,7 @@ function round2(n: number): number {
 }
 
 export function normalizeTemplateUnits(data: TemplateData): TemplateData {
-  // 2.0.0 起首页叠加区已移除：残留该键的旧模板一律剥离，既不换算也不再进渲染
+  // 1.3.5 起首页叠加区已移除：残留该键的旧模板一律剥离，既不换算也不再进渲染
   const rest: Record<string, unknown> = { ...data }
   delete rest.firstPageOverlay
   if (rest.unit === 'mm') return rest as unknown as TemplateData

@@ -2,18 +2,16 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
-## [2.0.0] - 2026-10-01
+## [1.3.5] - 2026-10-01
 
 ### ⚠️ 破坏性变更（移除功能）
 
 - **移除「首页专属」首页叠加区**：`@worm-vue3-print/core` 的 `TemplateData.firstPageOverlay` 字段、分页引擎的首页预算扣减、`.first-page-overlay` CSS 与首页叠加层 HTML 全部删除；`@worm-vue3-print/canvas` 与 `@worm-vue3-print/common` 的工具栏「首页专属」入口、画布叠加区占位、属性面板「首页叠加高度」字段同步移除。**行为变更**：`firstPageOverlay.height > 0` 或含元素的用户自有模板，出纸排版回归「无首页叠加区」——首页内容区可用高度比 1.x 多出该叠加高度，请按新口径复核版式。导入含该字段的旧模板时由 `normalizeTemplateUnits` 自动剥离，不会报错。
 - **移除设计器「叠层对比」**：canvas 的 `requestScreenshot` prop 与 `ScreenshotRequest` / `RequestScreenshotFn` 类型、Common 的 `requestScreenshot` 属性与 `setOverlay()` 公开方法删除。宿主无需再注入截图适配器。
 - **移除服务端截图能力**：`@worm-vue3-print/core` 的 `renderScreenshot` / `buildScreenshotTargetSpec` / `ScreenshotTargetSpec` / `PrintSession.toScreenshot` / `PageDriver.screenshot` 与 `@worm-vue3-print/render` 的 `POST /render/screenshot` 端点删除。PDF 链路（`renderPdf`、`POST /render/pdf`）以及浏览器打印、服务端 PDF、桌面静默打印三条出纸口径均不受影响。
-- **`PrintFailureCode` 联合类型移除成员 `'SCREENSHOT_FAILED'`**：该成员随截图管线一并删除。这是对外公开类型的成员删除——从 npm 升级到 2.0.0 后，任何对该成员值的引用（`switch` 分支、赋值、类型标注）都会编译报错，请删除对应分支或改用其余码值（`INVALID_PAPER` / `MEASURE_FAILED` / `RENDER_TIMEOUT` / `PDF_FAILED` / `UNSUPPORTED_RUNTIME` / `INTERNAL`）。
+- **`PrintFailureCode` 联合类型移除成员 `'SCREENSHOT_FAILED'`**：该成员随截图管线一并删除。这是对外公开类型的成员删除——从 npm 升级到 1.3.5 后，任何对该成员值的引用（`switch` 分支、赋值、类型标注）都会编译报错，请删除对应分支或改用其余码值（`INVALID_PAPER` / `MEASURE_FAILED` / `RENDER_TIMEOUT` / `PDF_FAILED` / `UNSUPPORTED_RUNTIME` / `INTERNAL`）。
 - `skills/print-template-json` 的模板生成器不再补齐 `firstPageOverlay` 骨架字段；内置示例模板已同步剥离。
 - 已知落后：`demo/video/` 的工具栏演示视频仍包含「首页专属」「叠层对比」两个按钮的镜头，本版未重录。
-
-## [1.3.5] - 2026-10-01
 
 ### 修复
 

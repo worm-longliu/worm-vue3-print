@@ -288,7 +288,7 @@ export function paginate(
     return Math.max(0, fullPageHeight() - remaining)
   }
 
-  /** 当前页完整可用高度（2.0.0 起首页与后续页同预算） */
+  /** 当前页完整可用高度（1.3.5 起首页与后续页同预算） */
   function fullPageHeight(): number {
     return contentHeight - SAFETY_MARGIN
   }

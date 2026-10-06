@@ -49,7 +49,7 @@
 |---|---|---|
 | 工具栏分组顺序（文件标识 / 撤销重做 / 格式区段 / 排列 / 视图 / 缩放 / 剪贴板 / 帮助 / 预览保存） | ✅ | lucide 图标由 `scripts/gen-icons.mjs` 从 canvas 的导入清单派生，35 个同名图标 |
 | 排列下拉：对齐 8 + 层级 4 + 组合 2，无选中常驻置灰 | ✅ | `data-tip` 全量覆盖（含禁用原因） |
-| 视图下拉：标尺/网格/虚框/吸附 | ✅ | 2.0.0 起不再有「首页专属」与「叠层对比」 |
+| 视图下拉：标尺/网格/虚框/吸附 | ✅ | 1.3.5 起不再有「首页专属」与「叠层对比」 |
 | 格式刷：单击刷一次、双击连续刷、Esc 退出 | ✅ | `core/format.ts`（移植自 `useFormatToolbar` + `useFormatPainter`） |
 | 字体 / 字号 / 粗 / 下划线 / 删除线 / 字色 / 底色 / 对齐 / 边框面板 | ✅ | 混选占位、单元格上下文、hline/vline 只吃边框等口径照抄 |
 | 颜色选择 | ✅ | `shell/color-picker.ts` 整段移植 `PresetColorPicker.vue`：`.preset-color-trigger` + `.preset-color-panel`（`.picker-preview` / `.picker-current` / `.picker-hex` / `.picker-area` + `.picker-handle` / `.picker-hue` / `.picker-heading` / `.picker-clear` / `.preset-color-grid` 逐项同结构同类名），单测 15 项覆盖 hex↔hsv 往返、非法输入不回写、清除/收起/Esc/外部点击与重绘保活 |
