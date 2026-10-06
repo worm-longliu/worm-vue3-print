@@ -1,4 +1,4 @@
-## v1.3.5（2026-10-01） · Release Notes
+## v1.3.5（2026-10-05） · Release Notes
 
 语言导航：**[简体中文](#简体中文)** ｜ **[English](#english)**
 
@@ -6,7 +6,7 @@
 
 <a id="简体中文"></a>
 
-## v1.3.5（2026-10-01）—— 简体中文
+## v1.3.5（2026-10-05）—— 简体中文
 
 自 `v1.3.4` 以来 31 次提交。**本版本包含破坏性移除**：设计器的「首页专属」叠加区与「叠层对比」连同服务端截图链路一并下线。其余三件主干事情：**画布右键菜单全线恢复**（此前能弹出、点了没反应）、**npm 分发补齐 MIT 署名并瘦身产物**、**样式引入入口口径修正**（此前文档给的子路径根本不在包 `exports` 里）。
 
@@ -97,7 +97,7 @@ import '@worm-vue3-print/canvas/style.css'
 
 <a id="english"></a>
 
-## v1.3.5 (2026-10-01) — English
+## v1.3.5 (2026-10-05) — English
 
 31 commits since `v1.3.4`. **This release contains breaking removals**: the designer's "first-page-only" overlay area and "overlay compare" are gone, together with the server-side screenshot pipeline. The other three headline items: **the canvas context menu works again end to end** (it opened but every item was a no-op), **npm artifacts now carry proper MIT attribution and a slimmer tarball**, and **the documented stylesheet entry was wrong**.
 

@@ -2,7 +2,7 @@ export default {
   id: 'changelog',
   title: '更新记录',
   content: `
-<h2>V1.3.5<small>(2026-10-01)</small></h2>
+<h2>V1.3.5<small>(2026-10-05)</small></h2>
 
 <h3>移除</h3>
 <ul>
