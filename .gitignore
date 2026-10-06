@@ -11,6 +11,9 @@ demo/public/fonts/*
 !demo/public/fonts/ZCOOLKuaiLe-Regular.ttf
 !demo/public/fonts/ZCOOLQingKeHuangYou-Regular.ttf
 
+# 教学视频流水线（录屏脚本 + 剧本 + 成品）：作者本地私有工具链，整目录不入库
+.video/
+
 # AI 生成图片临时目录，不入库
 vibe_images/
 

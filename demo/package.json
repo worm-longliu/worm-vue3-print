@@ -7,23 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
-    "video:voice": "node video/voiceover.mjs",
-    "video:cover": "node video/cover.mjs",
-    "video:record": "node video/record.mjs",
-    "video:compose": "node video/compose.mjs",
-    "video:check": "node video/check-sync.mjs",
-    "video": "npm run video:voice && npm run video:cover && npm run video:record && npm run video:compose",
-    "video:expression": "VIDEO_SCRIPT=script-expression.json npm run video",
-    "video:group": "VIDEO_SCRIPT=script-group.json npm run video",
-    "video:toolbar": "VIDEO_SCRIPT=script-toolbar.json npm run video",
-    "video:roll-label": "VIDEO_SCRIPT=script-roll-label.json npm run video",
-    "video:portrait:voice": "node video/portrait/voice.mjs",
-    "video:portrait:cards": "node video/portrait/cards.mjs",
-    "video:portrait:compose": "node video/portrait/compose.mjs",
-    "video:portrait:check": "node video/portrait/check-layout.mjs",
-    "video:portrait:subs": "node video/portrait/check-subs.mjs",
-    "video:portrait": "npm run video:portrait:voice && npm run video:portrait:cards && npm run video:portrait:check && npm run video:portrait:compose && npm run video:portrait:subs"
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@worm-vue3-print/canvas": "file:../packages/print-canvas",

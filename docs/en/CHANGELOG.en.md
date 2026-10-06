@@ -13,7 +13,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - **Removed server-side screenshotting**: `renderScreenshot` / `buildScreenshotTargetSpec` / `ScreenshotTargetSpec` / `PrintSession.toScreenshot` / `PageDriver.screenshot` in `@worm-vue3-print/core` and the `POST /render/screenshot` endpoint in `@worm-vue3-print/render` are deleted. The PDF path (`renderPdf`, `POST /render/pdf`) and the three output paths — browser printing, server-side PDF, desktop silent printing — are unaffected.
 - **`PrintFailureCode` lost the `'SCREENSHOT_FAILED'` member**: removed alongside the screenshot pipeline. This deletes a member of a public union type — after upgrading to 1.3.5 from npm, any reference to that value (a `switch` branch, an assignment, a type annotation) fails to compile; drop the branch or use the remaining codes (`INVALID_PAPER` / `MEASURE_FAILED` / `RENDER_TIMEOUT` / `PDF_FAILED` / `UNSUPPORTED_RUNTIME` / `INTERNAL`).
 - `skills/print-template-json` no longer fills in the `firstPageOverlay` skeleton field; the bundled sample templates have been stripped to match.
-- Known gap: the toolbar demo videos under `demo/video/` still show the "first-page-only" and "overlay compare" buttons and were not re-recorded in this release.
+- Known gap: the toolbar demo videos still show the "first-page-only" and "overlay compare" buttons and were not re-recorded in this release.
 
 ### Fixed
 
@@ -29,7 +29,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 ### Added
 
 - Docs: English landing page `docs/en/Overview.md` (states at the top that it is AI-generated from the Chinese docs, which remain authoritative); README gained a "Dependency licenses" section (per-package audit including dev dependencies, no GPL / AGPL / LGPL contamination, `dompurify` used under its Apache-2.0 branch).
-- demo: new "two-up roll label" sample (60×45 mm labels ganged onto 122 mm wide roll stock, page height = one label, copies paginated automatically by `perSheet`); new portrait voice-over video pipeline (`demo/video/portrait`, 1080×1920 with ASS / SRT subtitles). Sample count corrected to 10.
+- demo: new "two-up roll label" sample (60×45 mm labels ganged onto 122 mm wide roll stock, page height = one label, copies paginated automatically by `perSheet`); new portrait voice-over video pipeline (1080×1920 with ASS / SRT subtitles). Sample count corrected to 10.
 
 ### Experimental (outside the npm release scope)
 
@@ -48,7 +48,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - `@worm-vue3-print/core`: **element-level borders now apply to every element type and per side**. A single source of truth was added at `render/element-border` (`resolveElementBorder` / `ELEMENT_BORDER_SIDES` / `acceptsElementBorder`) and shared by the canvas and the print pipeline (px units, `box-sizing: border-box`, borders never change element geometry); it is also re-exported through the `/designer` subpath for the designer. `ElementOptions` gained the per-side `borders` field (`top` / `right` / `bottom` / `left`, overriding the whole-loop `borderWidth` / `borderStyle` / `borderColor`; with no whole loop set, only those sides render). `rect` / `oval` / `hline` / `vline` (they draw themselves with a border) and `table` (cell borders) are excluded to avoid double borders; a missing, ≤0 or invalid width means "no border" and never falls back to a default. **Behavior change**: existing templates that already carried an element-level `borderWidth` on non-shape elements (text, long text, image, barcode, QR code, HTML, page number) printed without a border before and now show it; shapes, lines and tables are unaffected.
 - `@worm-vue3-print/canvas`: **format toolbar** (Word / WPS style). Font, font size, bold / underline / strikethrough, text and background color, horizontal and vertical alignment, borders (presets "all / outer / inner / none" plus per-edge toggles and line style / width / color) apply to the whole selection of elements or table cells at once; mixed values show a "混合" (mixed) placeholder.
 - `@worm-vue3-print/canvas`: **format painter**. Single click paints once, double click paints repeatedly, `Esc` or clearing the selection exits. The snapshot is captured from one source element and filtered per target type (text fields only onto text / long text, element borders only onto types that accept them, background color onto everything); per-side borders are deep-copied, and a marquee selection of several targets records history once.
-- demo: **teaching video pipeline**. `npm run video` chains Playwright recording → edge-tts voiceover → ffmpeg composition, with a proof-sheet style intro cover, multi-script switching via `VIDEO_SCRIPT` (toolbar / expression / group lessons) and subtitle sync validation.
+- demo: **teaching video pipeline**. Chains Playwright recording → edge-tts voiceover → ffmpeg composition, with a proof-sheet style intro cover, multi-script switching via `VIDEO_SCRIPT` (toolbar / expression / group lessons) and subtitle sync validation.
 
 ### Changed
 

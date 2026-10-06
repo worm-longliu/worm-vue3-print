@@ -11,7 +11,7 @@
 - **移除服务端截图能力**：`@worm-vue3-print/core` 的 `renderScreenshot` / `buildScreenshotTargetSpec` / `ScreenshotTargetSpec` / `PrintSession.toScreenshot` / `PageDriver.screenshot` 与 `@worm-vue3-print/render` 的 `POST /render/screenshot` 端点删除。PDF 链路（`renderPdf`、`POST /render/pdf`）以及浏览器打印、服务端 PDF、桌面静默打印三条出纸口径均不受影响。
 - **`PrintFailureCode` 联合类型移除成员 `'SCREENSHOT_FAILED'`**：该成员随截图管线一并删除。这是对外公开类型的成员删除——从 npm 升级到 1.3.5 后，任何对该成员值的引用（`switch` 分支、赋值、类型标注）都会编译报错，请删除对应分支或改用其余码值（`INVALID_PAPER` / `MEASURE_FAILED` / `RENDER_TIMEOUT` / `PDF_FAILED` / `UNSUPPORTED_RUNTIME` / `INTERNAL`）。
 - `skills/print-template-json` 的模板生成器不再补齐 `firstPageOverlay` 骨架字段；内置示例模板已同步剥离。
-- 已知落后：`demo/video/` 的工具栏演示视频仍包含「首页专属」「叠层对比」两个按钮的镜头，本版未重录。
+- 已知落后：工具栏演示视频仍包含「首页专属」「叠层对比」两个按钮的镜头，本版未重录。
 
 ### 修复
 
@@ -27,7 +27,7 @@
 ### 新增
 
 - 文档：新增英文首页 `docs/en/Overview.md`（页首声明由 AI 依据中文文档生成、中文版为权威版本）；README 新增「依赖开源协议」章节（含 dev 依赖逐包审计，无 GPL / AGPL / LGPL 污染，`dompurify` 按 Apache-2.0 分支使用）。
-- demo：新增「双列卷纸标签」示例（60×45 mm 标签拼版到 122 mm 宽卷纸，页高 = 单枚标签高，份数由渲染管线按 `perSheet` 自动分页）；新增竖屏口播视频流水线（`demo/video/portrait`，1080×1920 成品与 ASS / SRT 字幕）。示例计数修正为 10 份。
+- demo：新增「双列卷纸标签」示例（60×45 mm 标签拼版到 122 mm 宽卷纸，页高 = 单枚标签高，份数由渲染管线按 `perSheet` 自动分页）；新增竖屏口播视频流水线（1080×1920 成品与 ASS / SRT 字幕）。示例计数修正为 10 份。
 
 ### 实验性（不在 npm 发布范围内）
 
@@ -46,7 +46,7 @@
 - `@worm-vue3-print/core`：**元素级边框全量生效并支持分边**。新增 `render/element-border`（`resolveElementBorder` / `ELEMENT_BORDER_SIDES` / `acceptsElementBorder`）作为元素边框的唯一判定口径，画布与出纸共用同一函数（px 口径，`box-sizing: border-box`，边框不改变元素几何），并经 `/designer` 子路径导出供设计器复用。`ElementOptions` 新增 `borders` 分边字段（`top` / `right` / `bottom` / `left`，在整圈 `borderWidth` / `borderStyle` / `borderColor` 之上逐边覆盖；未设整圈时仅这些边生效）。`rect` / `oval` / `hline` / `vline`（用 border 画自身本体）与 `table`（走单元格边框）排除在外，避免双重边框；宽度未设、≤0 或非法值一律视为无边框，不兜底成默认边框。**行为变更**：存量模板里已写入元素级 `borderWidth` 的非形状元素（文本、长文本、图片、条码、二维码、HTML、页码）此前画布与出纸都不显边框，升级后会真的画出边框；形状、线条与表格不受影响。
 - `@worm-vue3-print/canvas`：**格式工具栏**（仿 Word / WPS）。字体、字号、加粗 / 下划线 / 删除线、文字色 / 背景色、水平与垂直对齐、边框（预设「所有 / 外侧 / 内部 / 无」+ 单边开关 + 线型 / 线宽 / 颜色）可一次作用于全部选中元素或表格单元格；多选样式不一致时以「混合」占位显示。
 - `@worm-vue3-print/canvas`：**格式刷**。单击刷一次、双击连续刷、`Esc` 或清空选中退出；从单个源元素捕获格式，按目标类型过滤写入（文本字段仅落文本 / 长文本，元素级边框仅落在可携带边框的类型，背景色各类型通用），分边边框深拷贝，框选多目标一次提交只记一次历史。
-- demo：**教学视频流水线**。`npm run video` 串起 Playwright 录制 → edge-tts 配音 → ffmpeg 合成，含打样单风格片头封面、`VIDEO_SCRIPT` 多剧本切换（工具栏 / 表达式 / 组合教学）与字幕同步校验。
+- demo：**教学视频流水线**。串起 Playwright 录制 → edge-tts 配音 → ffmpeg 合成，含打样单风格片头封面、`VIDEO_SCRIPT` 多剧本切换（工具栏 / 表达式 / 组合教学）与字幕同步校验。
 
 ### 变更
 

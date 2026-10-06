@@ -64,8 +64,8 @@ import '@worm-vue3-print/canvas/style.css'
 - 新增英文首页 `docs/en/Overview.md`，页首声明由 AI 依据中文文档生成、中文版为权威版本。
 - README 新增「依赖开源协议」章节：含 dev 依赖逐包审计（545 包），无 GPL / AGPL / LGPL 污染，`dompurify` 按其 Apache-2.0 分支使用，商用无风险。
 - demo 新增「双列卷纸标签」示例：60×45 mm 标签拼版到 122 mm 宽卷纸，页高 = 单枚标签高（每页 2 枚），份数由渲染管线按 `perSheet` 自动分页（实测 20 枚 → 10 页），贴合标签机逐截走纸；示例计数修正为 10 份。
-- demo 新增竖屏口播视频流水线（`demo/video/portrait`）：`script.json` 驱动 voice → cards → check-layout → compose → check-subs 五段，1080×1920 竖版成品与 ASS / SRT 字幕。
-- **已知落后**：`demo/video/` 的工具栏演示视频仍包含「首页专属」「叠层对比」两个按钮的镜头，本版未重录，看视频时请以实际工具栏为准。
+- demo 新增竖屏口播视频流水线：`script.json` 驱动 voice → cards → check-layout → compose → check-subs 五段，1080×1920 竖版成品与 ASS / SRT 字幕。
+- **已知落后**：工具栏演示视频仍包含「首页专属」「叠层对比」两个按钮的镜头，本版未重录，看视频时请以实际工具栏为准。
 
 ### 实验性（不在 npm 发布范围内）
 
@@ -135,9 +135,9 @@ npm hosts must use `import '@worm-vue3-print/canvas/style.css'`. The `@worm-vue3
 
 - New English landing page `docs/en/Overview.md`, marked at the top as AI-generated from the authoritative Chinese docs.
 - README gained a "Dependency licenses" section (per-package audit of 545 packages including dev dependencies; no GPL / AGPL / LGPL contamination; `dompurify` used under its Apache-2.0 branch).
-- demo gained a two-up roll-label sample (60×45 mm labels ganged onto 122 mm roll stock, page height = one label, copies paginated by `perSheet` — 20 labels measured as 10 pages) and a portrait voice-over video pipeline (`demo/video/portrait`, 1080×1920 with ASS / SRT subtitles).
+- demo gained a two-up roll-label sample (60×45 mm labels ganged onto 122 mm roll stock, page height = one label, copies paginated by `perSheet` — 20 labels measured as 10 pages) and a portrait voice-over video pipeline (1080×1920 with ASS / SRT subtitles).
 
-- **Known gap**: the toolbar demo videos under `demo/video/` still show the "first-page-only" and "overlay compare" buttons; they were not re-recorded for this release, so trust the actual toolbar over the footage.
+- **Known gap**: the toolbar demo videos still show the "first-page-only" and "overlay compare" buttons; they were not re-recorded for this release, so trust the actual toolbar over the footage.
 
 ### Experimental (outside the npm release scope)
 
