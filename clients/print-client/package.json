@@ -5,6 +5,8 @@
   "type": "module",
   "description": "worm-vue3-print 跨平台静默打印桌面客户端（Electron，本地 WebSocket + core 同构渲染）",
   "license": "MIT",
+  "homepage": "https://github.com/worm-longliu/worm-vue3-print",
+  "author": "worm-longliu <worm-longliu@example.com>",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
