@@ -175,6 +175,10 @@ try {
 
 客户端是 monorepo 内私有工作区包 `clients/print-client`（Electron，**不发布 npm**）。
 
+**优先直接下载安装包**：成品安装包挂在 [GitHub Releases](https://github.com/worm-longliu/worm-vue3-print/releases)（点击下载无需登录），按工位系统取 `WormPrintClient-<版本>-mac-x64.dmg`（Intel Mac）/ `-mac-arm64.dmg`（Apple Silicon）/ `-win-x64.exe`（Windows x64），并可用同页 `SHA256SUMS.txt` 校验。Gitee 发行版附件单文件上限 100MB，安装包体积超限，只走 GitHub。首次打开需绕过系统拦截（macOS `xattr -dr com.apple.quarantine /Applications/WormPrintClient.app`；Windows SmartScreen「更多信息」→「仍要运行」）。
+
+只有需要改造客户端或内网离线定制时才从源码构建：
+
 ```bash
 # 仓库根：先构建 core 与 SDK dist，再 electron-builder --mac --win
 npm run pack:client

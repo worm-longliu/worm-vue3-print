@@ -94,7 +94,7 @@ worm-vue3-print/
 | `@worm-vue3-print/render` | `services/print-render` | 内部 | 基于 Playwright（Headless Chromium）的服务端 PDF 渲染微服务，Docker 部署；与浏览器预览、桌面客户端共用同一份渲染管线，保证三端出纸一致 |
 | `@worm-vue3-print/print-client` | `clients/print-client` | 内部 | 跨平台静默打印桌面客户端（Electron，回环 WebSocket + core 同构渲染 + `webContents.print` 静默出纸） |
 
-> 发布到 npm 的只有 `core` 与 `canvas` 两个包（`npm run publish:npm`）；`render` 与 `print-client` 为私有工作区包，分别以 Docker 镜像和安装包形式分发。`print-common` 与其示例 `demo-common` 为**实验性**产物，用于支持 Vue 3 / Vue 2 / React / jQuery 等多种运行时框架，**尚未完成稳定性测试**，目前只在工作区内构建使用，不建议应用到生产中，是否上 npm 尚未决定；Vue 3 项目请使用 `@worm-vue3-print/canvas`。
+> 发布到 npm 的只有 `core` 与 `canvas` 两个包（`npm run publish:npm`）；`render` 与 `print-client` 为私有工作区包，分别以 Docker 镜像和安装包形式分发，客户端安装包挂在 [GitHub Releases](https://github.com/worm-longliu/worm-vue3-print/releases)（见下文[下载客户端安装包](#下载客户端安装包)）。`print-common` 与其示例 `demo-common` 为**实验性**产物，用于支持 Vue 3 / Vue 2 / React / jQuery 等多种运行时框架，**尚未完成稳定性测试**，目前只在工作区内构建使用，不建议应用到生产中，是否上 npm 尚未决定；Vue 3 项目请使用 `@worm-vue3-print/canvas`。
 
 ## 功能特性
 
@@ -263,7 +263,30 @@ function onLoadDefaultLayout() {
 - **浏览器端 SDK**（core 子路径 `@worm-vue3-print/core/client`，无需单独安装）：浏览器页面通过 WebSocket（默认从 `127.0.0.1:17521` 起端口探测，占用则 +1）
   连接本机运行的客户端，完成端口探测 / 自动重连 / 打印机枚举 / 静默打印。
 
-### 安装并运行客户端
+### 下载客户端安装包
+
+安装包**不在 npm 发布，也不入仓库**，而是作为 GitHub 发行版（Releases）的附件提供：
+
+> **[GitHub Releases 页面](https://github.com/worm-longliu/worm-vue3-print/releases)** —— 点击下载，无需登录。当前最新版本为 `v1.3.5`。
+
+| 附件 | 适用系统 |
+| --- | --- |
+| `WormPrintClient-<版本>-mac-x64.dmg` | Intel Mac |
+| `WormPrintClient-<版本>-mac-arm64.dmg` | Apple Silicon Mac |
+| `WormPrintClient-<版本>-win-x64.exe` | Windows 10 / 11 x64（NSIS 安装程序，可选择安装目录、创建桌面快捷方式） |
+| `SHA256SUMS.txt` | 上述安装包的 SHA-256 校验和 |
+
+下载后可与安装包放在同一目录校验完整性（Linux 用 `sha256sum -c`）：
+
+```bash
+shasum -a 256 -c SHA256SUMS.txt
+```
+
+- **安装包未做 Developer ID 签名与公证**（本项目没有 Apple Developer ID 与 Windows 签名证书），首次打开会被系统拦截：macOS 执行 `xattr -dr com.apple.quarantine /Applications/WormPrintClient.app`，或在 系统设置 → 隐私与安全性 点「仍要打开」；Windows 在 SmartScreen 提示「未知发布者」页点「更多信息」→「仍要运行」。
+- 发行版里同批出现的 `*.zip` 与 `*.blockmap` 是自动更新用的中间产物，客户端未接自动更新，**请下载 `.dmg` / `.exe`**。
+- **Gitee 用户请前往上面的 GitHub 地址下载**：Gitee 发行版附件单文件上限 100MB，超过该体积的安装包只能挂在 GitHub。
+
+### 从源码构建客户端
 
 客户端是 monorepo 内的私有工作区包（不发布 npm），产物为绿色目录或安装包，需在工位电脑安装并运行：
 
