@@ -5,6 +5,7 @@
   "type": "module",
   "description": "基于 Playwright(Headless Chromium) 的 PDF 打印渲染微服务（monorepo 服务包，Docker 部署）",
   "license": "MIT",
+  "author": "worm <liu_long_qqcom@qq.com>",
   "engines": {
     "node": ">=20"
   },

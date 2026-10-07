@@ -346,7 +346,7 @@ docker build -f services/print-render/Dockerfile -t worm-vue3-print-render .
 
 ## 依赖与开源协议（商用合规说明）
 
-本项目采用 **MIT 协议**，商用、二次分发、闭源集成、修改后对外提供服务、二次销售均**无需授权申请、无需付费、无需开源你的业务代码**，唯一义务是保留本项目版权声明（`Copyright (c) 2026 Worm Base AI`）。
+本项目采用 **MIT 协议**，商用、二次分发、闭源集成、修改后对外提供服务、二次销售均**无需授权申请、无需付费、无需开源你的业务代码**，唯一义务是保留本项目版权声明（`Copyright (c) 2026 worm <liu_long_qqcom@qq.com>`）。
 
 ### 运行时依赖清单与协议
 

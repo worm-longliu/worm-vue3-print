@@ -17,8 +17,8 @@ if (!target) {
 const pkg = JSON.parse(readFileSync(new URL('package.json', `file://${process.cwd()}/`), 'utf-8'))
 const banner = `/*!
  * ${pkg.name} v${pkg.version}
- * Copyright (c) 2026 Worm Base AI
- * SPDX-FileCopyrightText: 2026 Worm Base AI
+ * Copyright (c) 2026 worm <liu_long_qqcom@qq.com>
+ * SPDX-FileCopyrightText: 2026 worm <liu_long_qqcom@qq.com>
  * SPDX-License-Identifier: MIT
  */\n`
 

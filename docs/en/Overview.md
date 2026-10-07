@@ -133,4 +133,4 @@ English: this page plus [CHANGELOG](./CHANGELOG.en.md).
 
 ## License
 
-MIT — see [LICENSE](../../LICENSE) and the repository [README](../../README.md). Commercial use, redistribution, modification, closed-source integration and resale are all permitted without fee or authorization; the sole obligation is retaining the copyright notice (`Copyright (c) 2026 Worm Base AI`). Dependency license audit is documented in the README section "依赖与开源协议（商用合规说明）": no GPL/AGPL/LGPL copyleft contamination.
+MIT — see [LICENSE](../../LICENSE) and the repository [README](../../README.md). Commercial use, redistribution, modification, closed-source integration and resale are all permitted without fee or authorization; the sole obligation is retaining the copyright notice (`Copyright (c) 2026 worm <liu_long_qqcom@qq.com>`). Dependency license audit is documented in the README section "依赖与开源协议（商用合规说明）": no GPL/AGPL/LGPL copyleft contamination.

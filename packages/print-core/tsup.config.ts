@@ -6,8 +6,8 @@ const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 
 // 产物版权头：npm 分发链路（含 minify 的 iife）唯一能留存署名的位置
 const banner = `/*!
  * ${pkg.name} v${pkg.version}
- * Copyright (c) 2026 Worm Base AI
- * SPDX-FileCopyrightText: 2026 Worm Base AI
+ * Copyright (c) 2026 worm <liu_long_qqcom@qq.com>
+ * SPDX-FileCopyrightText: 2026 worm <liu_long_qqcom@qq.com>
  * SPDX-License-Identifier: MIT
  */`
 

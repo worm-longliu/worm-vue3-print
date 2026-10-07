@@ -17,9 +17,7 @@
   "files": [
     "dist"
   ],
-  "author": {
-    "name": "Worm Base AI"
-  },
+  "author": "worm <liu_long_qqcom@qq.com>",
   "repository": {
     "type": "git",
     "url": "git+https://gitee.com/liulong_oschina/worm-vue3-print.git"
