@@ -41,12 +41,15 @@ function lookupDemoPath(path: string): any {
 }
 
 /**
- * 设计态条码/二维码单元格取值：{field} 占位符替换为 demo 数据
- * （列表字段取数据源首项，全局字段按路径取），无匹配回退通用示例码值
+ * 设计态条码/二维码取值：{field} 占位符替换为 demo 数据
+ * （列表字段取数据源首项，全局字段按路径取），求不到值回退 fallback。
+ * fallback 缺省为通用示例码值（表格单元格沿用），元素级传 testData / 空串以保留
+ * 「testData 只在内容取不到值时当示例」的语义——否则 factory 预置的占位码值会永久遮住作者内容。
  */
 export function resolveBarcodeDesignValue(
   formatter: string | undefined,
   listSource?: Record<string, any>[],
+  fallback = '1234567890128',
 ): string {
   const first = listSource?.[0]
   const resolved = (formatter ?? '')
@@ -58,5 +61,5 @@ export function resolveBarcodeDesignValue(
       return v == null ? '' : String(v)
     })
     .trim()
-  return resolved || '1234567890128'
+  return resolved || fallback
 }

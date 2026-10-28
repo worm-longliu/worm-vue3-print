@@ -10,6 +10,7 @@ import {
   barcodeQuietZoneModules,
   barcodeUnitsPerModule,
   layoutBarcodeSize,
+  resolveBarcodeDesignValue,
 } from '@worm-vue3-print/core/designer'
 import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 import { h } from '../core/h'
@@ -24,7 +25,8 @@ const FIT_TO_PAR: Record<string, string> = {
 
 function codeText(el: RuntimeElement): string {
   const o = el.options
-  return String(o.testData || o.formatter || o.title || '') || '条码'
+  // 与 canvas 元素级、表格单元格同口径：内容先按 demo 数据求值，求不到才拿 testData/title 当示例码值
+  return resolveBarcodeDesignValue(o.formatter, undefined, String(o.testData || o.title || '')) || '条码'
 }
 
 export function renderQrcode(el: RuntimeElement) {
@@ -93,7 +95,7 @@ function drawBarcode(el: RuntimeElement, svg: SVGSVGElement) {
 
 function drawQrcode(el: RuntimeElement, box: HTMLElement) {
   const o = el.options
-  const text = String(o.testData || o.formatter || o.title || '') || '二维码'
+  const text = resolveBarcodeDesignValue(o.formatter, undefined, String(o.testData || o.title || '')) || '二维码'
   box.replaceChildren()
   try {
     // 与出纸同源（core/browser）：同一份 SVG、同一静区，矢量图形不随元素盒大小重出图

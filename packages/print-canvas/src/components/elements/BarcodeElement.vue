@@ -7,7 +7,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import JsBarcode from 'jsbarcode'
-import { resolveTextBinding } from '@worm-vue3-print/core/designer'
+import { resolveBarcodeDesignValue, resolveTextBinding } from '@worm-vue3-print/core/designer'
 import {
   BARCODE_MARGIN_BOTTOM_MODULES,
   BARCODE_TEXT_FONT_SIZE_MODULES,
@@ -59,7 +59,10 @@ function render() {
   if (!svgRef.value) return
   const svg = svgRef.value
   const o = props.element.options
-  const value = (props.designMode ? (o.testData || o.formatter) : resolveTextBinding(o, props.data)) || '条码'
+  // 与二维码、单元格同口径：先按 demo 数据求「内容」，求不到才拿 testData 当示例码值
+  const value = (props.designMode
+    ? resolveBarcodeDesignValue(o.formatter, props.data, o.testData ?? '')
+    : resolveTextBinding(o, props.data)) || '条码'
   const unitPerModule = barcodeUnitsPerModule(o.barWidth)
   const quietModules = barcodeQuietZoneModules(o.barQuietZone)
   /** 生成一趟码面并读回 viewBox，条区模块数交给 core 的条高布局决定（未填条高只走一趟） */

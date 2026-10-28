@@ -1,7 +1,7 @@
 // 设计态二维码：图形必须与出纸同源，且铺满元素盒
 import { describe, it, expect } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { reactive } from 'vue'
+import { nextTick, reactive } from 'vue'
 import { browserCodeRenderer } from '@worm-vue3-print/core/browser'
 import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 import QrcodeElement from '../components/elements/QrcodeElement.vue'
@@ -67,5 +67,38 @@ describe('QrcodeElement 铺满元素盒', () => {
     expect(decodeURIComponent(src.slice(SVG_SRC_PREFIX.length))).toBe(
       browserCodeRenderer.render('https://example.com/order/123', 'qrcode', { qrCodeLevel: 'H', qrQuietZone: 1 }),
     )
+  })
+})
+
+/** 取 img 里那份同源 SVG 原文（比对码值而非尺寸） */
+function svgOf(wrapper: ReturnType<typeof mount>): string {
+  const src = wrapper.find('img').attributes('src') ?? ''
+  expect(src.startsWith(SVG_SRC_PREFIX), `应出同源 SVG，实际 src 前缀：${src.slice(0, 40)}`).toBe(true)
+  return decodeURIComponent(src.slice(SVG_SRC_PREFIX.length))
+}
+
+// 元素工厂给二维码预置了 testData 占位码值，且属性台「内容」写的是 formatter：
+// 取值优先级一旦把 testData 摆在前面，作者内容就被永久遮住（画布不随改内容而变）
+describe('QrcodeElement 设计态内容实时刷新', () => {
+  it('testData 与 formatter 并存时按 formatter 出图，改 formatter 立即重绘', async () => {
+    const element = reactive(makeElement({ formatter: 'HELLO' }))
+    const wrapper = mount(QrcodeElement, { props: { element, designMode: true } })
+    await flushPromises()
+    expect(svgOf(wrapper)).toBe(browserCodeRenderer.render('HELLO', 'qrcode', {}))
+
+    element.options.formatter = 'WORLD'
+    await nextTick()
+    await flushPromises()
+    expect(svgOf(wrapper)).toBe(browserCodeRenderer.render('WORLD', 'qrcode', {}))
+  })
+
+  it('内容是 {字段} 表达式时按 demo 数据求值出图，与出纸态同值', async () => {
+    const wrapper = await mountQrcode({ formatter: '{order.no}' })
+    expect(svgOf(wrapper)).toBe(browserCodeRenderer.render('PO20260801001', 'qrcode', {}))
+  })
+
+  it('表达式取不到值才回退 testData（示例码值语义保留）', async () => {
+    const wrapper = await mountQrcode({ formatter: '{不存在字段}' })
+    expect(svgOf(wrapper)).toBe(browserCodeRenderer.render('qrcode', 'qrcode', {}))
   })
 })

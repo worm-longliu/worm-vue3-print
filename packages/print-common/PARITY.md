@@ -95,8 +95,9 @@
 |---|---|---|
 | text / longText | ✅ | 设计态显示 `testData \|\| formatter`，与 canvas `displayText` 同口径；`textFit` 三态 |
 | hline / vline / rect / oval | ✅ | 线宽 pt、`borderStyle`、椭圆 50% 圆角 |
-| barcode | ✅ | 条宽→模块→dpi 吸附→框内等比缩，全部复用 core；`shape-rendering: crispEdges` |
-| qrcode | ✅ | `toDataURL` 出 `<img>`，与出图端同参数 |
+| barcode | ✅ | 条宽→模块→dpi 吸附→框内等比缩，全部复用 core；`shape-rendering: crispEdges`；设计态码值走 core `resolveBarcodeDesignValue`（见下「设计态码值」一行） |
+| qrcode | ✅ | `browserCodeRenderer` 出同源 SVG `<img>` 铺满元素盒，与出纸同参数；设计态码值走 core `resolveBarcodeDesignValue`（见下「设计态码值」一行） |
+| 设计态码值（barcode / qrcode，元素级 + 单元格级） | ✅ | 单一来源 core `resolveBarcodeDesignValue`：`{字段}` 按 demo 数据求值，求不到才回退 `testData`（单元格回退通用示例码值）。2026-10-28 前元素级两侧都是 `testData \|\| formatter`，而工厂给每个码元素预置了 `testData` 占位码值，属性台「内容」写的却是 `formatter`——占位值把作者内容永久遮住（改内容画布不动，Gitee PR #1 报告）；出纸路径本就是 `formatter ?? testData`，现设计态与出纸态同优先级 |
 | image | ✅ | `{字段}` 表达式经 core `evaluateTemplate + DEFAULT_DEMO_DATA` 求值，与 canvas ImageElement 同口径 |
 | table | ✅ | 矩阵渲染 + 选区 + 合并拆分 + 行类型 + 单元格内嵌码图/图片；`table-parity.mjs` 同脚本跑两侧 12/12 对拍通过 |
 | html | ✅ | `evaluateTemplate` 后走 `dompurify` 消毒注入，与 canvas HtmlElement 同链路 |

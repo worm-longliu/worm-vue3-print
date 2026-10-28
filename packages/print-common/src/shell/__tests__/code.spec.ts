@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 // 元素级码类绘制：二维码图形必须与出纸同源，且铺满元素盒
 import { describe, it, expect, beforeAll } from 'vitest'
+import JsBarcode from 'jsbarcode'
 import { browserCodeRenderer } from '@worm-vue3-print/core/browser'
 import type { RuntimeElement, TableRow } from '@worm-vue3-print/core/designer'
 import { DesignerStore } from '../../core/store'
@@ -408,3 +409,44 @@ describe('common 条宽推荐提示（两端属性台）', () => {
     expect(paintCellProps({}, 'barcode').host.textContent).not.toContain('推荐条宽倍率')
   })
 })
+
+// 元素工厂给码类元素预置了 testData 占位码值，而属性台「内容」写的是 formatter：
+// 设计态取值一旦把 testData 摆在前面，作者内容就被永久遮住（改内容画布不动）
+describe('common 设计态码值实时刷新（元素级）', () => {
+  /** 解码 img 里的同源 SVG，用于逐字比对码值 */
+  function svgOf(host: HTMLElement): string {
+    const src = qrcodeImg(host).getAttribute('src') ?? ''
+    return decodeURIComponent(src.slice(src.indexOf(',') + 1))
+  }
+
+  it('testData 与 formatter 并存时按 formatter 出图', async () => {
+    expect(svgOf(await paintQrcode({ formatter: 'HELLO' })))
+      .toBe(browserCodeRenderer.render('HELLO', 'qrcode', {}))
+  })
+
+  it('{字段} 表达式按 demo 数据求值出图', async () => {
+    expect(svgOf(await paintQrcode({ formatter: '{order.no}' })))
+      .toBe(browserCodeRenderer.render('PO20260801001', 'qrcode', {}))
+  })
+
+  it('表达式取不到值才回退 testData（示例码值语义保留）', async () => {
+    expect(svgOf(await paintQrcode({ formatter: '{不存在字段}' })))
+      .toBe(browserCodeRenderer.render('qrcode', 'qrcode', {}))
+  })
+
+  /** 独立测一趟 CODE128 的模块数（不带静区），避免把期望写成脑算值 */
+  function modulesOf(value: string): number {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    JsBarcode(svg, value, { format: 'CODE128', width: 1, height: 10, margin: 0, displayValue: false })
+    return Number(String(svg.getAttribute('viewBox')).split(/[\s,]+/)[2])
+  }
+
+  it('条形码同口径：formatter 覆盖 testData 占位码值', async () => {
+    // 参照系自证：占位码值 '12345678' + 左右各 10 模块静区 = 既有基线 99
+    expect(modulesOf('12345678') + 20).toBe(99)
+    expect((await paintBarcode({ formatter: 'HELLO' })).userUnits).toBe(modulesOf('HELLO') + 20)
+    expect((await paintBarcode({ formatter: '{不存在字段}' })).userUnits, '取不到值应回退 testData')
+      .toBe(99)
+  })
+})
+

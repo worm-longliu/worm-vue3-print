@@ -95,6 +95,37 @@ describe('BarcodeElement 宽/高/条码设置变更即时重渲染', () => {
   })
 })
 
+// 元素工厂给条形码预置了 testData 占位码值，而属性台「内容」写的是 formatter：
+// 设计态取值一旦把 testData 摆在前面，作者内容就被永久遮住（画布不随改内容而变）
+describe('BarcodeElement 设计态内容实时刷新', () => {
+  /** 最近一次 JsBarcode 入参里的码值 */
+  function lastValue(): string {
+    const calls = vi.mocked(JsBarcode).mock.calls
+    return String(calls[calls.length - 1]![1])
+  }
+
+  it('testData 与 formatter 并存时按 formatter 出图，改 formatter 立即重绘', async () => {
+    const { element } = mountBarcode({ formatter: 'HELLO' })
+    expect(lastValue()).toBe('HELLO')
+
+    const callsBefore = vi.mocked(JsBarcode).mock.calls.length
+    element.options.formatter = 'WORLD'
+    await nextTick()
+    expect(vi.mocked(JsBarcode).mock.calls.length).toBeGreaterThan(callsBefore)
+    expect(lastValue()).toBe('WORLD')
+  })
+
+  it('内容是 {字段} 表达式时按 demo 数据求值出图，与出纸态同值', () => {
+    mountBarcode({ formatter: '{order.no}' })
+    expect(lastValue()).toBe('PO20260801001')
+  })
+
+  it('表达式取不到值才回退 testData（示例码值语义保留）', () => {
+    mountBarcode({ formatter: '{不存在字段}' })
+    expect(lastValue()).toBe('12345678')
+  })
+})
+
 describe('BarcodeElement 等比填满元素框', () => {
   it('svg 带 preserveAspectRatio="xMidYMid meet" 以等比缩放适配元素框', () => {
     const { wrapper } = mountBarcode()

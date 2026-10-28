@@ -7,7 +7,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { browserCodeRenderer } from '@worm-vue3-print/core/browser'
-import { resolveTextBinding } from '@worm-vue3-print/core/designer'
+import { resolveBarcodeDesignValue, resolveTextBinding } from '@worm-vue3-print/core/designer'
 import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 
 const props = defineProps<{
@@ -34,7 +34,11 @@ const imgStyle = computed(() => {
 
 function render() {
   const o = props.element.options
-  const value = (props.designMode ? (o.testData || o.formatter) : resolveTextBinding(o, props.data)) || '二维码'
+  // 与单元格同源：先按 demo 数据求「内容」，求不到才拿 testData 当示例码值。
+  // testData 是工厂预置的占位码值，摆在前头会永久遮住作者后来填的内容。
+  const value = (props.designMode
+    ? resolveBarcodeDesignValue(o.formatter, props.data, o.testData ?? '')
+    : resolveTextBinding(o, props.data)) || '二维码'
   try {
     const svg = browserCodeRenderer.render(value, 'qrcode', {
       qrCodeLevel: String(o.qrCodeLevel ?? 'M'),
