@@ -106,7 +106,7 @@
 
 ### P3-B 元素级 `rotate` 零文档载体（发布前必补）
 
-- 已核对：`docs/中文/接口/API文档.md`、`docs/中文/指南/模板设计器.md`、两宿主 `help-content/faq.ts`、`docs/中文/CHANGELOG.md`（V1.3.12 段 3 条）与 `docs/en/CHANGELOG.en.md` **都没有元素级 `rotate` 的条目**；拼版 `outputRotation` 的四份载体（API 文档第 214 行、CHANGELOG V1.3.12、模板设计器 110/214 行、FAQ 第 11 行）与实现口径**一致**，已对账通过。
+- 已核对：`docs/中文/接口/API文档.md`、`docs/中文/指南/模板设计器.md`、两宿主 `help-content/faq.ts`、`docs/中文/CHANGELOG.md`（V1.4.0 段 3 条）与 `docs/en/CHANGELOG.en.md` **都没有元素级 `rotate` 的条目**；拼版 `outputRotation` 的四份载体（API 文档第 214 行、CHANGELOG V1.4.0、模板设计器 110/214 行、FAQ 第 11 行）与实现口径**一致**，已对账通过。
 - 风险：走 `check:release-carriers` 与打 tag 前若漏登记，会出现「功能已发、文档全无」。
 
 ### 撤回：P3-C「parity:cross-end 无参 exit 0 假绿」不成立
@@ -155,7 +155,7 @@ node .lab-rotation/vf-ui-common2.mjs                  # common 恢复默认值�
 | P2-B 横向越界静默裁切 | **成立**（横向盲区是存量，整页旋转换了表现方向） | 分页末尾新增 `noteHorizontalOverflow()`：按横向结算盒（旋转取外接盒、表格按列宽和）比对纸宽，越左/右缘各记一条 `warnings`；**不动 `overflow` 语义**，出纸 HTML 逐字不变 | `pagination-rotation.test.ts` 新增 5 条（50mm 专条、贴边不误报、左侧越界、旋转按外接盒 12.43mm、sections/overflow 不变）；真实管线 G8：0°/90°/270° 三档横向越界均出「超出纸面右侧 50mm」，恰好放得下的对照档为「无」 |
 | P2-A warnings 零宿主消费 | **成立**（spec 判据 5 要求校验输出可见） | 按用户裁决两面条都做：① core 新增 `collectPrintWarnings()`（编辑期预估，复用 paginate）+ `collectLayoutWarnings()`（真实分页去重）；② canvas `<PrintHtmlPreview>` 保留 `pageLayouts` 并常驻 `.print-html-preview-warn` 提示条；③ 两宿主保存闸门给一次**不阻断**提示并各暴露 `getGeometryWarnings()`；④ 零框架宿主 `renderInBrowser()` 返回值补 `warnings`（四宿主同步） | core `geometry-warnings.spec.ts` 6 条、canvas `print-designer-geometry.spec.ts` 5 条（保存仍放行 + 拼版非法优先 + expose）、common `geometry-warnings.spec.ts` 4 条；UI 级实测：把元素宽度改成 400mm → 预览层常驻「出纸提示：元素 font1 超出纸面右侧 113mm」，点保存弹「出纸提示（不影响保存）：…」且保存事件照常派发 |
 | P3-A/契约五 码类置灰与 tip | **成立**（契约五要求置灰 + 指定文案，实现里没有；tip 另有过承诺） | core 出 `isRotationExcludedType` / `isFreeAngleEditable` / `CODE_OBLIQUE_NOTE`；两宿主属性台对无 ≥385dpi 承诺的条码/二维码置灰自由角度（↺/↻ 仍可用）并挂常驻提示行；`PROPERTY_REGISTRY` 的 ap-rotate tip 重写为与实测一致（含跟随区成员不支持、未声明分辨率按声明角出纸） | canvas 5 条 + common 4 条置灰用例（203/缺省置灰、385 放开、二维码同口径、置灰下仍可 ±90° 步进）；canvas/common `help-modal.spec.ts` 14 条盯住两宿主帮助文案逐字一致 |
-| P3-B 元素级 rotate 零文档载体 | **成立** | 已补六份载体：`docs/中文/CHANGELOG.md` V1.3.12（新增 3 条 + 修复 1 条）、`docs/en/CHANGELOG.en.md` 英文薄层、两宿主 `help-content/changelog.ts` 与 `faq.ts`（帮助弹框）、`docs/中文/接口/API文档.md`（渲染管线 API 表 + `<PrintDesigner>`/`<PrintHtmlPreview>` 段）、`docs/中文/指南/模板设计器.md`（元素旋转 + 出纸提示两条能力）、`docs/中文/指南/使用指南.md`（`rotate` 口径段）；技能侧 `skills/print-template-json/references/template-schema.md` 加 `rotate` 行、`skills/worm-vue3-print-integration/references/integration-api.md` 加「元素级旋转与出纸裁切提示」小节（含判据命令与版本边界 V1.3.12） | `check:release-carriers` 绿；`help-modal.spec.ts` 逐字一致绿 |
+| P3-B 元素级 rotate 零文档载体 | **成立** | 已补六份载体：`docs/中文/CHANGELOG.md` V1.4.0（新增 3 条 + 修复 1 条）、`docs/en/CHANGELOG.en.md` 英文薄层、两宿主 `help-content/changelog.ts` 与 `faq.ts`（帮助弹框）、`docs/中文/接口/API文档.md`（渲染管线 API 表 + `<PrintDesigner>`/`<PrintHtmlPreview>` 段）、`docs/中文/指南/模板设计器.md`（元素旋转 + 出纸提示两条能力）、`docs/中文/指南/使用指南.md`（`rotate` 口径段）；技能侧 `skills/print-template-json/references/template-schema.md` 加 `rotate` 行、`skills/worm-vue3-print-integration/references/integration-api.md` 加「元素级旋转与出纸裁切提示」小节（含判据命令与版本边界 V1.4.0） | `check:release-carriers` 绿；`help-modal.spec.ts` 逐字一致绿 |
 | P3-C parity 脚本假绿 | **不成立，撤回** | 实测 `node …cross-end.parity.mjs` 与 `npm run parity:cross-end` 均 `exit 2`（脚本第 33–35 行本就有缺参退出）。错因：我把后台命令整体退出码（末尾 `tail` 的码）当成了门禁结果 | 已在第四节就地标注撤回 |
 
 ### 变异自证（证明新判据真被盯住）
@@ -167,7 +167,7 @@ node .lab-rotation/vf-ui-common2.mjs                  # common 恢复默认值�
 - **语义贴合度**：四条修法的口径都取自 `docs/superpowers/specs/2026-10-27-element-rotation-design.md` 契约四/五与判据 5，不是新发明；`collectFollowMemberIds` / `collectPrintWarnings` 是把已有私有判据升级为公开单点，符合本仓「同源边界用工具强制、重复实现收编替换」的约定。
 - **可能看得见的变化**：① 表格跟随区成员的元素台不再显示「旋转 (°)」行、画布也不再旋转该成员（此前画布会转）；模板里已写的 `rotate` 保留但出纸与画布都忽略。② 条码/二维码未声明打印头分辨率时角度输入框置灰（此前可填任意值，但出纸本就不该斜）。③ 二维码斜角在低分辨率打印机上被吸附成水平（此前照转）。④ 元素超出纸面左右缘、或旋转顶越页首时，保存会多一次不阻断提示、预览层多一条常驻提示。⑤ `PageLayout.warnings` 覆盖面扩大（新增横向越界条目），只读该字段的宿主会拿到更多文案。
 - **产物零变化面**：未旋转、未越界的存量模板出纸 HTML 逐字不变（`warnings` 为空、`rotate` 声明不输出）；拼版与元素旋转叠加的四档几何、连续纸 128.46/134.03mm、90° PDF 矩阵在修复后与修复前一致（G1/G2/G4/G7 复跑数字未变）。
-- **版本建议**：`core` / `canvas` 按 **minor** 走（新增能力 + 上述可见行为，无破坏性 API 变更），随主线升 `1.3.12`；`common` 仍走预览号 `1.3.7-beta.N`（与主线不同步）。
+- **版本建议**：`core` / `canvas` 按 **minor** 走（新增能力 + 上述可见行为，无破坏性 API 变更），随主线升 `1.4.0`；`common` 仍走预览号 `1.3.7-beta.N`（与主线不同步）。
 
 ### 本轮仍未做
 

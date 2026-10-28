@@ -1,4 +1,4 @@
-# 交接文档：拼版模式支持内容整体旋转角度（V1.3.12）
+# 交接文档：拼版模式支持内容整体旋转角度（V1.4.0）
 
 > 本文档自包含，供接手 agent 续作。写作时点：2026-10-27，工作区改动**未提交**。
 > 接手前必读第六节（工作区混有另一会话的 in-flight 改动，禁动）。
@@ -37,7 +37,7 @@
 - `src/components/PropertyPanel.vue`：旋转控件显示条件 `!continuousPaper && !tilingEnabled` → `!continuousPaper`；提示改三元，拼版开启时显示每格口径文案。
 - `src/components/property/TilingConfig.vue`：摘要追加 `· 每格 ${l.tile.width}×${l.tile.height}mm`。
 - 测试：`src/__tests__/paper-preset-select.spec.ts`（新 describe 3 例）、`src/__tests__/TilingConfig.spec.ts`（摘要每格尺寸 1 例）。
-- `src/help-content/faq.ts` + `src/help-content/changelog.ts`：补拼版旋转说明与 V1.3.12 段（**必须与 common 侧逐字同源**）。
+- `src/help-content/faq.ts` + `src/help-content/changelog.ts`：补拼版旋转说明与 V1.4.0 段（**必须与 common 侧逐字同源**）。
 
 ### packages/print-common（零框架外壳）
 
@@ -55,7 +55,7 @@
 
 - `docs/中文/接口/API文档.md`（拼版小节加「内容旋转按每格生效」段）、`docs/中文/指南/使用指南.md`、`docs/中文/指南/模板设计器.md`（2 处）、`packages/print-core/README.md`。
 - `skills/worm-vue3-print-integration/references/integration-api.md`、`skills/print-template-json/references/template-schema.md` §6。
-- `docs/中文/CHANGELOG.md` + `docs/en/CHANGELOG.en.md`：新增 `## V1.3.12(2026-10-27)` 段（标题风格大写 V+半角括号；**package.json 版本号未动**，发布时统一升）。
+- `docs/中文/CHANGELOG.md` + `docs/en/CHANGELOG.en.md`：新增 `## V1.4.0(2026-10-27)` 段（标题风格大写 V+半角括号；**package.json 版本号未动**，发布时统一升）。
 
 ## 四、已验证证据
 
@@ -99,7 +99,7 @@ npm run lint:print-architecture
 1. **提交**：中文描述式提交信息（不加 Conventional 前缀）。`designer/types.ts` 是混改文件——只提交 `outputRotation` 注释 hunk，**不得**带走 `rotate?: number` hunk；用临时索引 + `commit-tree` 拆分（仓库已有先例），每笔 add 后 `git diff --cached --stat` 对账、提交后 `git show --stat` 复核。新测试文件 `tiling-rotation.spec.ts` 一并入库。
 2. **提交后**重建 core dist 并快验 canvas/common 测试（它们消费 dist）。
 3. **可选（问用户）**：同步 `~/.agents/skills` 全局副本（两个 skill references 已改；仓库是权威源，覆盖前先备份、逐文件 md5 收尾）。
-4. **发布未授权**：V1.3.12 号段已写进 CHANGELOG，但发版（tag / npm / 安装包）需用户按 `project-release-workflow-manual` 流程单独授权，接手 agent 不得自行发布。
+4. **发布未授权**：V1.4.0 号段已写进 CHANGELOG，但发版（tag / npm / 安装包）需用户按 `project-release-workflow-manual` 流程单独授权，接手 agent 不得自行发布。
 
 ## 六、工作区他人 in-flight 改动（禁动、禁提交）
 

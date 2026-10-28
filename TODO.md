@@ -1,5 +1,6 @@
 # TODO — 待办与对账台账
 
+> **2026-10-28 V1.4.0 发版（进行中）**：版本号已升 `1.4.0`（九处 version + 三处 core 依赖范围 + 六份 lock，common 保持 `1.3.7-beta.0` 不随主线）；CHANGELOG 里**从未发布过**的 V1.3.12 段整体改为 `V1.4.0(2026-10-28)`，并补「并排紧尺寸标签重复计高」修复一条到四载体；`.github/release/notes.md` 已换成本版中英底稿，README 直链切到 v1.4.0。待回填：构建/测试数字、tag 落点、GitHub/Gitee 发行版 id、七件安装包 digest 对账。
 > 取证基线：`master` @ `d913e32`（含 T-26 的 `8bac872`；本轮 C1/T-27/T-15 改动尚在工作区未提交）。上一轮全量复验基线 `cd6e7c1`（tag `v1.3.10`）；包版本 core/canvas/print-client `1.3.10`、common `1.3.7-beta.0`。
 > **2026-10-26 交接口径（最新）**：本轮全部改动已双推，`origin`/`github` 同指 `1eed485`，工作区干净。
 > **V1.3.11 已发布到除 npm 外的全部渠道**：annotated tag `v1.3.11`（落点 `f728137`）、GitHub Release（七件附件 digit 7/7 对账）、Gitee 发行版（id `1242392`，正文 4889 字）、README 七条直链实测可达。

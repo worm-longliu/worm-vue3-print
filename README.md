@@ -143,7 +143,7 @@ npm install @worm-vue3-print/canvas
 
 静默打印浏览器端 SDK 随 core 提供，无需单独安装，从 `@worm-vue3-print/core/client` 导入（需配合本机运行的桌面打印客户端）。
 
-> core / canvas 当前版本：`1.3.11`。
+> core / canvas 当前版本：`1.4.0`。
 
 ## 更新
 
@@ -267,19 +267,19 @@ function onLoadDefaultLayout() {
 
 安装包**不在 npm 发布，也不入仓库**，而是作为 GitHub 发行版（Releases）的附件提供：
 
-> **[GitHub Releases 页面](https://github.com/worm-longliu/worm-vue3-print/releases)** —— 点击下载，无需登录。当前最新版本为 `v1.3.11`。
+> **[GitHub Releases 页面](https://github.com/worm-longliu/worm-vue3-print/releases)** —— 点击下载，无需登录。当前最新版本为 `v1.4.0`。
 
-下表是 `v1.3.11` 各安装包的完整直链，可直接点击或复制；发版后请同步更新行内的版本号与文件名（可用 `gh release view v1.3.11 --json assets --jq '.assets[].name'` 核对包名是否对得上）。
+下表是 `v1.4.0` 各安装包的完整直链，可直接点击或复制；发版后请同步更新行内的版本号与文件名（可用 `gh release view v1.4.0 --json assets --jq '.assets[].name'` 核对包名是否对得上）。
 
 | 安装包直链 | 适用系统 |
 | --- | --- |
-| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.3.11/WormPrintClient-1.3.11-mac-x64.dmg](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.3.11/WormPrintClient-1.3.11-mac-x64.dmg) | Intel Mac |
-| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.3.11/WormPrintClient-1.3.11-mac-arm64.dmg](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.3.11/WormPrintClient-1.3.11-mac-arm64.dmg) | Apple Silicon Mac |
-| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.3.11/WormPrintClient-1.3.11-win-x64.exe](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.3.11/WormPrintClient-1.3.11-win-x64.exe) | Windows 10 / 11 x64（NSIS 安装程序，可选择安装目录、创建桌面快捷方式） |
-| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.3.11/WormPrintClient-1.3.11-linux-amd64.deb](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.3.11/WormPrintClient-1.3.11-linux-amd64.deb) | Debian / Ubuntu x64（`sudo apt install ./<文件>`） |
-| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.3.11/WormPrintClient-1.3.11-linux-x86_64.rpm](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.3.11/WormPrintClient-1.3.11-linux-x86_64.rpm) | Fedora / RHEL / openSUSE x64（`sudo rpm -i <文件>`） |
-| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.3.11/WormPrintClient-1.3.11-linux-x86_64.AppImage](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.3.11/WormPrintClient-1.3.11-linux-x86_64.AppImage) | 任意 x64 发行版，免安装单文件（需 `libfuse2`） |
-| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.3.11/SHA256SUMS.txt](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.3.11/SHA256SUMS.txt) | 上述安装包的 SHA-256 校验和 |
+| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.0/WormPrintClient-1.4.0-mac-x64.dmg](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.0/WormPrintClient-1.4.0-mac-x64.dmg) | Intel Mac |
+| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.0/WormPrintClient-1.4.0-mac-arm64.dmg](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.0/WormPrintClient-1.4.0-mac-arm64.dmg) | Apple Silicon Mac |
+| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.0/WormPrintClient-1.4.0-win-x64.exe](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.0/WormPrintClient-1.4.0-win-x64.exe) | Windows 10 / 11 x64（NSIS 安装程序，可选择安装目录、创建桌面快捷方式） |
+| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.0/WormPrintClient-1.4.0-linux-amd64.deb](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.0/WormPrintClient-1.4.0-linux-amd64.deb) | Debian / Ubuntu x64（`sudo apt install ./<文件>`） |
+| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.0/WormPrintClient-1.4.0-linux-x86_64.rpm](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.0/WormPrintClient-1.4.0-linux-x86_64.rpm) | Fedora / RHEL / openSUSE x64（`sudo rpm -i <文件>`） |
+| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.0/WormPrintClient-1.4.0-linux-x86_64.AppImage](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.0/WormPrintClient-1.4.0-linux-x86_64.AppImage) | 任意 x64 发行版，免安装单文件（需 `libfuse2`） |
+| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.0/SHA256SUMS.txt](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.0/SHA256SUMS.txt) | 上述安装包的 SHA-256 校验和 |
 
 下载不动或速度很慢时（GitHub 附件在国内直连常掉速，大文件容易中途断开）：
 

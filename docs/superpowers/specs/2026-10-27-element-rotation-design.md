@@ -1,6 +1,6 @@
 # 元素级任意角度旋转 — 设计说明
 
-日期：2026-10-27　影响版本：`@worm-vue3-print/{core,canvas}` 1.3.11 → 1.3.12（新增能力，非破坏）；`@worm-vue3-print/common` 预览版随主线单独升号
+日期：2026-10-27　影响版本：`@worm-vue3-print/{core,canvas}` 1.3.11 → 1.4.0（新增能力，非破坏）；`@worm-vue3-print/common` 预览版随主线单独升号
 
 ## 一、需求与裁决
 

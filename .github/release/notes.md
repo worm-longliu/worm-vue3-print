@@ -1,42 +1,47 @@
-# Worm Print V1.3.11 (2026-10-26)
+# Worm Print V1.4.0 (2026-10-28)
 
-V1.3.11 是一个 minor 版本：补上元素级「保留换行符」能力，并修掉两条出纸不一致（表格跟随区的竖线、长文本关「自动换行」）。自 v1.3.10 以来 28 次提交。
+V1.4.0 是一个 minor 版本：设计器支持元素级任意角度旋转与拼版按每格内容旋转，出纸新增裁切提示；打印预览默认改为 100%，并修掉二维码漏判打印分辨率、并排紧尺寸标签重复计高两条缺陷。自 v1.3.11 以来 5 次提交。
 
 ## 新增
-- **文本 / 长文本「保留换行符」档**（`keepLineBreaks`，缺省关）。打开后内容里手打的 `\n` 各占一行、行首空格与连续空格原样保留，同时仍按框宽自动换行；与「自动换行」同时关掉时单行优先。属性台在「自动换行」下方新增一行，画布与零框架宿主（print-common）同位置同文案。起因是 Gitee #IKPXQL 的需求2。
-- **示例库新增「文本换行与跟随示例」**（示例数 13 → 14）：一份 A4 模板同时演示本版四条出纸口径。落地时实测撞出两处资产缺陷并当场修掉（缺 `unit: 'mm'` 导致跟随区判定失效、静态表格未设 `tableMode: 'static'` 导致纸面只剩表头），`verify-demo` 相应加 9 条断言、由 42 项增至 51 项。
+- **元素级任意角度旋转**。元素新增 `options.rotate`（度，绕自身中心，归一到 0~359）：出纸按旋转后的外接盒分页与结算，底部放不下自动移页并按外接盒顶修正落点，连续纸推导高度天然计入外接盒。表格、流式列表与表格下方跟随区的元素 v1 不支持旋转（属性台不出该行、画布也不转，所见即所打）。条码与二维码的任意角度需 385dpi 以上打印头，低分辨率按 90° 步进出纸；模板未声明打印头分辨率时自由角度输入置灰、只留 ↺/↻ 两个步进按钮。渲染走 CSS 独立属性 `rotate`，不占用 `transform`，旧模板残留的 `transform` 键被忽略。
+- **拼版按每格内容旋转**。拼版启用时「内容旋转角度」不再隐藏：0°/180° 格位不变、仅内容旋转/翻转；90°/270° 时每格占位宽高互换，列数、行数与每格数按互换后重算，切换档位时列数自动铺满新档位的上限。未设旋转的拼版模板产物逐字不变。
+- **出纸裁切提示**。分页引擎按页产出 `PageLayout.warnings`：旋转后顶越页首、或元素（含旋转外接盒）超出纸面左右缘时给出「打印将被裁切」提示。只提示不阻断，不改 `overflow` 语义与出纸产物；Vue3 预览层顶部常驻提示条，保存时给一次不阻断提示，零框架宿主 `renderInBrowser()` 返回值新增 `warnings` 字段。
+
+## 变更
+- **打印预览默认按 100% 显示**。此前模板填了 `printerDpi` 默认落「点阵」档、没填落「适配」档，打开是一张被放大的纸；现默认恒为 100%（CSS 真实尺寸），五档档位与「点阵」入口不变。100% 档下细条码在屏幕上仍会塌缩，core 新增 `viewZoomHint(dpi, currentKey)`，模板声明了打印头分辨率且不在点阵档时在档位条内提示切档，切到点阵档自动收起。**出纸产物、分页与模板契约零变化。**
 
 ## 修复
-- **表格跟随区里的竖线出纸高度为 0（整条消失）**。跟随区此前只给矩形/椭圆/图片回传设计高度，而竖线的长度完全依赖 `height`，于是「表格下方放一条竖线并跟着表格走」在纸上不存在。横线未受影响（它的长度走宽度，`height:0` 是有意行为）。
-- **长文本关掉「自动换行」在出纸端不生效**。`autoHeight` 分支提前返回，把单行声明整条吞掉，导致设计器里单行、纸面上照样多行折。现与画布/宿主同形。**行为变更提示**：凡关掉自动换行又没显式设溢出形式的文本/长文本，出纸从多行折行变单行；该组合的形态是「单行溢出」而非省略号（省略号只在「截断」形式下画得出）。仓库内 13 份示例与技能模板全部逐字未变——没有资产使用该组合。
-- **长文本缺省行高与设计器对齐**。未单独设行高的长文本，此前纸面比设计器紧约 9%（实测每行 22px vs 24px），现按设计器同口径 1.5 倍排版。
-  **行为变更提示**：凡未设行高的长文本，出纸行距变松——自适应行高的元素会长一点，截断档同一个框能少显示一行；仓库 13 份示例与技能模板未变。
-- **表格旁侧的元素不再被「跟随」误拖走**。跟随区此前只看纵向位置，表格右边另一栏的元素也会被吸进来随表格底部漂移；现只保留「与表格横向相交」的元素，同列正下方的照旧跟随。
-- **`@worm-vue3-print/common` 的 `latest` 指向预览版**。npm 会给新包首次发布自动打 `latest`，`--tag next` 挡不住这一步，所以裸写 `npm i @worm-vue3-print/common` 不会报错而是静默装到实验包。已按实测更正 README / 包内 README / 集成技能三处口径，并新增发布面自检 `npm run publish:common:check`（退出码 0/1/2 分级，已串进预览版发布脚本）。
+- **拼版整页旋转与元素旋转叠加时二维码不受打印头分辨率约束**。斜角吸附原先只对条码生效，203dpi 工位机上二维码斜角照样出纸；现由 `resolveElementRotation()` 自取元素分辨率，条码与二维码走同一条判定。
+- **并排的紧尺寸标签被重复计高挤到第二页**。纵向预算按「横向相交分列」累计，左右并排的二维码与信息行各占一列，下方整宽尾行把两列高度扣了两次，称签 / 资产 / 卷纸三份紧尺寸示例被挤到第二页、拼版模板因此拒纸。现给并排块补同一 `options.groupId`（整组同页、纵向只扣一次并集高度，组合不改几何）；三份示例、四宿主 `templates.js` 与技能资产同批改齐，技能侧 `validate_template.py` 新增 `predict_pages` 复刻引擎记账，八份技能模板 0 ERROR / 0 WARN。
 
 ## 工程与验收
-- 新增 `scripts/check-release-carriers.mjs`（`npm run check:release-carriers`）：发版前后各跑一次，核对版本号同号、版本段折叠、两份内置更新记录、Release 正文底稿、README 安装包直链表、客户端 dist 是否混旧包、改动是否命中 core 渲染管线（命中则七件安装包需重打）。
-- 测试：core 77 文件 1147 例 / canvas 73 文件 688 例 / common 27 文件 323 例 / print-client 14 文件 110 例 / 渲染服务 10 文件 34 例（真实 Chromium）全绿；`demo-common` 四宿主 `verify-demo` 51/51 ×4。
+- 测试：core 80 文件 1200 例 / canvas 75 文件 714 例 / common 30 文件 344 例 / print-client 14 文件 110 例，共 **199 文件 2368 例全绿**。
+- `demo-common` 四宿主 `verify-demo` 52/52 ×4 全绿（含默认档 100% 与点阵切档提示两条断言）。
+- core 渲染管线有改动，桌面客户端 7 件安装包（mac x64/arm64 dmg、win x64 exe、linux deb/rpm/AppImage）按本版重打，附 `SHA256SUMS.txt`。
+
+> 明细见 `docs/中文/CHANGELOG.md` 的 V1.4.0 段。安装包由本次发版重打后上传，上传前本页与 README 的 v1.4.0 直链会 404。
 
 ---
 
-# Worm Print V1.3.11 (2026-10-26)
+# Worm Print V1.4.0 (2026-10-28)
 
-V1.3.11 is a minor release: it adds element-level "keep line breaks" and fixes two paper-vs-designer inconsistencies (vertical lines inside a table's follow region, and long text with auto wrap turned off).
+V1.4.0 is a minor release: the designer gains free-angle per-element rotation and per-tile content rotation in tiling, output now carries clipping warnings, print preview defaults to 100%, and two defects are fixed (QR codes bypassing the print-head resolution gate, and side-by-side tight labels being double-counted onto a second page). Five commits since v1.3.11.
 
 ## Added
-- **"保留换行符" (keep line breaks) for text / long-text** (`keepLineBreaks`, off by default): explicit `\n` each start a line, leading and repeated spaces are preserved, and wrapping by box width still applies; when auto wrap is off, the single line wins. A new row appears under "自动换行" in the property panel, identical on the Vue 3 canvas and the zero-framework host.
-- **New demo sample "文本换行与跟随示例"** (samples 13 → 14): one A4 template that demonstrates all four paper rules of this release at once. Two asset defects were caught live while landing it and fixed on the spot (missing `unit: 'mm'` disabled the follow-region check; a data-less static table without `tableMode: 'static'` printed only its header row); `verify-demo` gained 9 assertions, 42 → 51 items.
+- **Free-angle per-element rotation.** Elements gained `options.rotate` (degrees around the element centre, normalized to 0–359): pagination and paper-height derivation settle on the rotated axis-aligned box, so an element that no longer fits moves to the next page and lands by its box top; continuous paper height includes the box. Tables, flow lists and elements inside a table's follow region do not rotate in v1 (the property row is hidden and the canvas keeps them level). Barcode/QR free angles need a ≥385dpi head and snap to 90° steps below that; with no declared resolution the free-angle input is greyed out with only the ↺/↻ step buttons. Rendering uses the standalone CSS `rotate` property (never `transform`), and a legacy `transform` key is ignored.
+- **Per-tile content rotation in tiling.** The "content rotation" row is no longer hidden when tiling is on: 0°/180° keep the grid and rotate/flip content only; 90°/270° swap each tile's footprint and recompute columns, rows and tiles per sheet, with the column count auto-filling the new tier's cap on a tier switch. Tiling templates without rotation stay byte-identical.
+- **Print clipping warnings.** The pagination engine emits per-page `PageLayout.warnings` when a rotated element's box crosses the page head or an element (rotated box included) exceeds the paper's left/right edge. Advisory only: `overflow` semantics and rendered HTML are untouched. The Vue3 preview shows a persistent notice strip, saving gives one non-blocking notice, and `renderInBrowser()` in all four zero-framework hosts returns a `warnings` field.
+
+## Changed
+- **Print preview now defaults to 100%.** Templates with `printerDpi` used to land on the "dots" preset and the rest on "fit", opening an enlarged sheet; the default is now always 100% (true CSS size), with the five presets and the "dots" entry unchanged. Thin barcodes still collapse at 100% on screen, so core gained `viewZoomHint(dpi, currentKey)`, which shows a switch hint inside the preset bar whenever a template declares print-head resolution and a non-dots preset is active; it disappears on the dots preset. **Printed output, pagination and the template contract are unchanged.**
 
 ## Fixed
-- **Vertical lines below a table printed with zero height (they vanished).** The follow region only passed the design height to `rect`/`oval`/`image`, while a vline takes its whole length from `height`. Horizontal lines are unaffected (their `height:0` is intentional).
-- **Turning off "自动换行" on a long text had no effect on paper.** The `autoHeight` branch returned early and swallowed the nowrap declaration, so the designer showed one line while the sheet still wrapped. All three renderers now agree. **Behaviour change**: any text/long-text with auto wrap off and no explicit overflow form now prints as a single line; that combination prints as a single overflowing line (an ellipsis needs the "截断" form). All 13 demo samples and the skill's template assets are byte-for-byte unchanged — none uses that combination.
-- **Default line height of long text now matches the designer.** Long texts without an explicit line height used to print about 9% tighter than the designer (measured 22 px vs 24 px per line); paper now uses the same 1.5x. **Behaviour change**: those long texts get looser leading — `autoHeight` elements grow, `clip` forms show one line fewer; all 13 demo samples and the skill templates are unchanged.
-- **Elements beside a table are no longer dragged away by the follow region.** The rule only looked at vertical position, so a column placed to the right of a table was absorbed and drifted with it; now only horizontally intersecting elements follow, while elements directly below in the same column still do.
-- **`@worm-vue3-print/common` had `latest` pointing at the preview build.** npm stamps `latest` on a package's first publish and `--tag next` cannot stop it, so a bare `npm i @worm-vue3-print/common` silently installs the experimental package. Three doc surfaces were corrected against the measurement, and an exit-code-graded self-check (`npm run publish:common:check`) now runs inside the preview publish script.
+- **QR codes bypassed the print-head resolution gate when page and element rotation were combined.** Oblique-angle snapping only applied to barcodes, so a QR code printed at an angle on a 203dpi station; `resolveElementRotation()` now reads the element's own resolution and both code types share one rule.
+- **Side-by-side tight labels were double-counted onto a second page.** The vertical budget accumulates per horizontally intersecting column, so a QR code and an info row side by side each occupied a column and the full-width row below subtracted both heights twice. The weight-tag / asset-tag / roll-label tight-size samples spilled onto page 2 and tiling templates rejected them. Those blocks now share one `options.groupId` (the group stays on one page and the union height is charged once, with no geometry change); the three samples, the four hosts' `templates.js` and the skill assets were updated together, and `validate_template.py` gained `predict_pages`, which mirrors the engine's accounting — all eight skill templates report 0 ERROR / 0 WARN.
 
 ## Engineering
-- New `scripts/check-release-carriers.mjs` (`npm run check:release-carriers`) to verify release carriers before and after a release.
-- Tests green: core 77 files / 1147 cases, canvas 73 / 688, common 27 / 323, print-client 14 files / 110 cases, render service 10 files / 34 cases (real Chromium), `verify-demo` 51/51 across four hosts.
+- Tests: core 80 files / 1200 cases, canvas 75 / 714, common 30 / 344, print-client 14 / 110 — **199 files / 2368 cases, all green**.
+- `verify-demo` across the four `demo-common` hosts: 52/52 ×4 green (including the new 100% default and dots-switch hint assertions).
+- Core's render pipeline changed, so all seven desktop-client installers (mac x64/arm64 dmg, win x64 exe, linux deb/rpm/AppImage) were rebuilt for this release, with `SHA256SUMS.txt`.
 
-> 明细见 `docs/中文/CHANGELOG.md` 的 V1.3.11 段。安装包由本次发版重打后上传，上传前本页与 README 的 v1.3.11 直链会 404。
+> Details in the V1.4.0 section of `docs/en/CHANGELOG.en.md` (the Chinese changelog is authoritative). Installers are rebuilt and uploaded with this release; the v1.4.0 links in this page and the README 404 until then.

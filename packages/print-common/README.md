@@ -22,7 +22,7 @@ npm i @worm-vue3-print/common@next @worm-vue3-print/core
 ```
 
 `@next` 是预览版的 dist-tag，安装必须带上它。注意 `latest` 目前被 npm 在首次发布时自动打在了同一个预览版上（红灯判据：`npm run publish:common:check`），所以省略 `@next` 不会报错，而是**静默装到实验包**；维护者摘除 `latest` 后省略才会显式失败。
-`core` 装正式版即可（本包依赖 `^1.3.11`），出纸链路也要直接用它。
+`core` 装正式版即可（本包依赖 `^1.4.0`），出纸链路也要直接用它。
 
 四种宿主形态各自的依赖与插件（本包零框架运行时，宿主框架按需装）：
 
