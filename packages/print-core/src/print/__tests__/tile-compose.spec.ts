@@ -32,11 +32,11 @@ function tpl(): TemplateData {
 }
 
 /** 每份恰好 1 页的最小输入；bound 走真实 bindData，保证文本已求值 */
-function inputs(count: number): TileInput[] {
+function inputs(count: number, template: TemplateData = tpl()): TileInput[] {
   const pageLayouts: PageLayout[] = [{ pageIndex: 0, sections: [{ elementId: 't1', type: 'element' }] }]
   return Array.from({ length: count }, (_, i) => {
     const data = { title: `L${String(i + 1).padStart(2, '0')}` }
-    return { bound: bindData(tpl(), data), pageLayouts, data }
+    return { bound: bindData(template, data), pageLayouts, data }
   })
 }
 
@@ -84,5 +84,34 @@ describe('composeTiledHtml', () => {
     expect(typeof html).toBe('string')
     expect(html).toContain('<!DOCTYPE html>')
     expect(html).toContain('</html>')
+  })
+
+  it('90°：每格占位互换为 40×70，格内带转子，格位按新尺寸排', () => {
+    const rotated = { ...tpl(), outputRotation: 90, tiling: { ...TILING, columns: 4 } } as TemplateData
+    const { html, sheetCount } = composeTiledHtml({
+      copies: inputs(12, rotated),
+      layout: computeTileLayout(rotated),
+    })
+    expect(sheetCount).toBe(1)
+    // .print-tile 按旋转后的每格尺寸定宽高
+    expect(html).toContain('width: 40mm;\n  height: 70mm;')
+    // 格内页面带转子，页面本身也是 40×70
+    expect(html).toContain('print-page-rotor-90')
+    expect((html.match(/class="print-tile"/g) ?? []).length).toBe(12)
+    // 列距 42（40+2）、行距 72（70+2）
+    expect(html).toContain('style="left:52mm;top:10mm"')
+    expect(html).toContain('style="left:136mm;top:10mm"')
+    expect(html).toContain('style="left:10mm;top:82mm"')
+  })
+
+  it('180°：格位与 0° 一致，格内带 180° 转子', () => {
+    const rotated = { ...tpl(), outputRotation: 180 } as TemplateData
+    const { html } = composeTiledHtml({
+      copies: inputs(12, rotated),
+      layout: computeTileLayout(rotated),
+    })
+    expect(html).toContain('style="left:82mm;top:10mm"')
+    expect(html).toContain('style="left:82mm;top:220mm"')
+    expect(html).toContain('print-page-rotor-180')
   })
 })

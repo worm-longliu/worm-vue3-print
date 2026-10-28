@@ -218,7 +218,7 @@ const summary = computed(() => {
   const dir = cfg.value.sheetPaperSize === 'CUSTOM'
     ? ''
     : (cfg.value.sheetOrientation === 'landscape' ? ' 横向' : ' 纵向')
-  return `目标纸 ${name}${dir} ${s.width}×${s.height}mm · ${l.columns} 列 × ${l.rows} 行 = 每张 ${l.perSheet} 格`
+  return `目标纸 ${name}${dir} ${s.width}×${s.height}mm · ${l.columns} 列 × ${l.rows} 行 = 每张 ${l.perSheet} 格 · 每格 ${l.tile.width}×${l.tile.height}mm`
 })
 
 function patch(partial: Partial<TilingOptions>) {

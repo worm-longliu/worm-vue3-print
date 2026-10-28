@@ -221,7 +221,8 @@ async function openPreview(templateJson) {
     // iframe 一直在 DOM 里，等这一帧写完再灌产物，避免用户看到上一份内容
     await nextFrame()
     writeHtmlToFrame(document.getElementById('preview-frame'), rendered.html)
-    setNotice('#preview-subtitle', `${rendered.pageCount} 页`)
+    setNotice('#preview-subtitle', `${rendered.pageCount} 页`
+      + (rendered.warnings.length ? ` · 出纸提示：${rendered.warnings.join('；')}` : ''))
     // 新文档不带上次的缩放守卫，等一帧后重算补写
     await nextFrame()
     refreshPreviewZoom()

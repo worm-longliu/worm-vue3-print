@@ -261,6 +261,42 @@ describe('拼版打印', () => {
     }
     await expect(prepareDocument(job, runtime)).rejects.toThrow(/最多可放 2 列/)
   })
+
+  it('拼版 + 90°（4 列）：每格互换为 40×70，12 条 → 1 张且带转子', async () => {
+    const { runtime } = runtimeOf({ measurements: [{ id: 'a', heightPx: 10 }] })
+    const result = await prepareDocument({
+      templateJson: labelTpl({
+        outputRotation: 90,
+        tiling: { ...TILING, columns: 4 },
+      } as Partial<TemplateData>),
+      printData: list(12),
+    }, runtime)
+    expect(result.copies).toBe(12)
+    expect(result.pageCount).toBe(1)
+    expect(result.paperMm).toEqual({ width: 210, height: 297 })
+    expect(result.html).toContain('print-page-rotor-90')
+    expect((result.html.match(/class="print-tile"/g) ?? []).length).toBe(12)
+  })
+
+  it('拼版 + 90°（2 列）：每张 6 格，12 条 → 2 张', async () => {
+    const { runtime } = runtimeOf({ measurements: [{ id: 'a', heightPx: 10 }] })
+    const result = await prepareDocument({
+      templateJson: labelTpl({ outputRotation: 90 } as Partial<TemplateData>),
+      printData: list(12),
+    }, runtime)
+    expect(result.pageCount).toBe(2)
+  })
+
+  it('拼版 + 90°：列数仍按旋转后的格宽校验（5 列超宽）', async () => {
+    const { runtime } = runtimeOf({ measurements: [{ id: 'a', heightPx: 10 }] })
+    await expect(prepareDocument({
+      templateJson: labelTpl({
+        outputRotation: 90,
+        tiling: { ...TILING, columns: 5 },
+      } as Partial<TemplateData>),
+      printData: list(1),
+    }, runtime)).rejects.toThrow(/最多可放 4 列/)
+  })
 })
 
 function multiTemplate() {

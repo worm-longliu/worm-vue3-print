@@ -124,6 +124,7 @@
           :print-data="printData"
           :scale="scale"
           :all-elements="contentElements"
+          :follow-member-ids="contentFollowIds"
           :snap-to-grid="snapToGrid"
           :show-table-ghost-border="showTableGhostBorder"
           zone="content"
@@ -208,7 +209,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onUnmounted } from 'vue'
 import type { RuntimeElement, TemplateData, ElementRect, ElementZone, AlignLine } from '@worm-vue3-print/core/designer'
-import { getPaperDimensions } from '@worm-vue3-print/core/designer'
+import { getPaperDimensions, collectFollowMemberIds } from '@worm-vue3-print/core/designer'
 import { mmToPx } from '@worm-vue3-print/core/designer'
 import { resolveWatermarkLayout } from '@worm-vue3-print/core'
 import BaseElement from './elements/BaseElement.vue'
@@ -341,6 +342,8 @@ const zoneElements = computed(() => {
 const headerElements = computed(() => zoneElements.value.header)
 const footerElements = computed(() => zoneElements.value.footer)
 const contentElements = computed(() => zoneElements.value.content)
+/** 表格跟随区成员（core collectFollowMemberIds 单点判据）：成员的元素级旋转出纸被忽略，画布同步不转 */
+const contentFollowIds = computed(() => collectFollowMemberIds(contentElements.value))
 
 // 吸附管理器：仅同区元素间吸附，引导线通过 Vue 响应式渲染
 let currentDragZone: ElementZone = 'content'

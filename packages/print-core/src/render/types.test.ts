@@ -91,10 +91,17 @@ describe('getOutputPaperDimensions / getOutputRotationAngle / shouldApplyOutputR
     expect(shouldApplyOutputRotation(t)).toBe(false)
   })
 
-  it('拼版忽略旋转（无旋转、纸张不变）', () => {
+  it('拼版下仍按 outputRotation 生效：90° 交换每格出纸尺寸，旋转交给每格内容', () => {
     const t = makeTemplate({ orientation: 'landscape', outputRotation: 90, tiling: { enabled: true } })
+    expect(getOutputPaperDimensions(t)).toEqual({ width: 210, height: 297 })
+    expect(getOutputRotationAngle(t)).toBe(90)
+    expect(shouldApplyOutputRotation(t)).toBe(true)
+  })
+
+  it('拼版下 180°：出纸尺寸不变、角度 180', () => {
+    const t = makeTemplate({ orientation: 'landscape', outputRotation: 180, tiling: { enabled: true } })
     expect(getOutputPaperDimensions(t)).toEqual({ width: 297, height: 210 })
-    expect(getOutputRotationAngle(t)).toBe(0)
-    expect(shouldApplyOutputRotation(t)).toBe(false)
+    expect(getOutputRotationAngle(t)).toBe(180)
+    expect(shouldApplyOutputRotation(t)).toBe(true)
   })
 })

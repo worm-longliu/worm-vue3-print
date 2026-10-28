@@ -52,7 +52,7 @@ import { useDrag } from '../../composables/useDrag'
 import type { DragOptions } from '../../composables/useDrag'
 import { generateId } from '@worm-vue3-print/core/designer'
 import { useResize, RESIZE_POINTS } from '@worm-vue3-print/core/designer'
-import { mmToPx, resolveElementBorder, ELEMENT_BORDER_SIDES } from '@worm-vue3-print/core/designer'
+import { mmToPx, resolveElementBorder, ELEMENT_BORDER_SIDES, resolveElementRotation } from '@worm-vue3-print/core/designer'
 
 import { SELECTED_IDS_KEY, PREVIEW_IDS_KEY } from '../../composables/useSelection'
 import TextElement from './TextElement.vue'
@@ -80,6 +80,11 @@ const props = defineProps<{
   showTableGhostBorder?: boolean
   /** 元素所在区域（影响设计态边框颜色） */
   zone?: 'content' | 'header' | 'footer'
+  /**
+   * 表格跟随区成员 id 集合（由 CanvasPaper 用 core collectFollowMemberIds 一次算好下发）：
+   * 成员 v1 忽略元素级旋转（出纸不转），画布必须同样不转，否则所见 ≠ 所打。
+   */
+  followMemberIds?: Set<string>
   /** 由 CanvasPaper 层吸附管理器提供：同步返回吸附修正结果并渲染引导线 */
   adsorbHandler?: (rect: ElementRect) => AdsorbResult
   clearAdsorbGuides?: () => void
@@ -162,7 +167,17 @@ const elementStyle = computed(() => {
     height: o.height + 'mm',
     zIndex: o.zIndex || 'auto',
     ...borderStyles,
+    // 元素级旋转：与出纸端同一 CSS 独立属性 rotate（绕盒中心），不占 transform——
+    // 拖拽预览写 style.transform，两者互不覆盖；选中框/缩放手柄仍按设计盒（v1 口径）
+    ...(rotateStyle.value ? { rotate: rotateStyle.value } : {}),
   }
+})
+
+/** 画布旋转声明：与出纸端同一判据（排除类型、跟随区成员不转、码类低档吸附直角），0 不出声明 */
+const rotateStyle = computed(() => {
+  if (props.followMemberIds?.has(props.element.id)) return ''
+  const angle = resolveElementRotation(props.element.printElementType.type, props.element.options)
+  return angle === undefined ? '' : `${angle}deg`
 })
 
 const posLabel = computed(() => {

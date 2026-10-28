@@ -147,7 +147,7 @@ import '../styles/native-controls.css'
 import { ref, watch, provide, computed, onMounted, onUnmounted } from 'vue'
 import type { RuntimeElement, PrintBusinessField, TemplateData, TableCell, UploadImageFn, UploadDesignBackgroundFn, MultiPageTemplateData } from '@worm-vue3-print/core/designer'
 import type { PrintFontDeclaration, PrintTemplateData, MultiPageTemplateData as PrintMultiPageTemplateData } from '@worm-vue3-print/core'
-import { buildFontFaceCss, validateTiling, normalizeTemplate } from '@worm-vue3-print/core'
+import { buildFontFaceCss, validateTiling, normalizeTemplate, collectPrintWarnings } from '@worm-vue3-print/core'
 import { useDesignerState } from '../composables/useDesignerState'
 import { useFormatToolbar } from '../composables/useFormatToolbar'
 import { useFormatPainter } from '../composables/useFormatPainter'
@@ -487,6 +487,15 @@ const tilingIssues = computed(() => {
   return validateTiling(t)
 })
 
+/**
+ * 出纸裁切提示（旋转外接盒顶越页首、元素超出纸面左右缘）。
+ * 口径是**预估**：编辑期没有浏览器实测高，自适应行高按设计盒估算，故只提示不阻断保存；
+ * 判据与出纸同源（core 的 paginate），不另写一套几何。
+ */
+const geometryWarnings = computed(() =>
+  templateData.value ? collectPrintWarnings(templateData.value) : [],
+)
+
 defineExpose({
   getTemplateJson: templateJsonWithFonts,
   /**
@@ -494,6 +503,8 @@ defineExpose({
    * 宿主在导出/另存链路需自行调用本方法拦截非法配置。
    */
   validateTemplate: () => tilingIssues.value,
+  /** 出纸裁切提示（预估、不阻断）：宿主在导出/另存旁路可自行展示同一批文案 */
+  getGeometryWarnings: () => geometryWarnings.value,
 })
 
 function handleSave() {
@@ -504,6 +515,9 @@ function handleSave() {
     activePropertyTab.value = 'page'
     return
   }
+  // 出纸裁切提示（预估口径）：不阻断保存，但点保存时必须被看见一次
+  const warnings = geometryWarnings.value
+  if (warnings.length) alert(`出纸提示（不影响保存）：\n${warnings.join('\n')}`)
   const json = templateJsonWithFonts()
   // 多页模板：保存前做归一化校验（纸张尺寸一致、禁连续纸/拼版），非法则阻断
   if (Array.isArray((json as MultiPageTemplateData).pages)) {

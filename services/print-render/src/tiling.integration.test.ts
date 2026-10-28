@@ -53,9 +53,11 @@ interface PdfPage {
   widthMm: number
   heightMm: number
   text: string
+  /** 首个文本项的变换矩阵前四项：正立 a/d 非零、90/270 交叉项 b/c 非零、180 全负 */
+  firstItem: { str: string; a: number; b: number; c: number; d: number } | null
 }
 
-/** 用 pdfjs 解析 PDF：逐页取尺寸（mm）与文本。坐标/尺寸均为标准 pt 且按页重置 */
+/** 用 pdfjs 解析 PDF：逐页取尺寸（mm）、文本与首个文本项变换。坐标/尺寸均为标准 pt 且按页重置 */
 async function parsePdf(buf: Buffer): Promise<PdfPage[]> {
   // pdfjs v6：析构入口在 loadingTask 上，PDFDocumentProxy 已无 destroy()
   const task = getDocument({ data: new Uint8Array(buf), useSystemFonts: false })
@@ -65,10 +67,19 @@ async function parsePdf(buf: Buffer): Promise<PdfPage[]> {
     const page = await doc.getPage(i)
     const viewport = page.getViewport({ scale: 1 })
     const { items } = await page.getTextContent()
+    const texts = items.filter(it => 'str' in it && it.str.trim())
+    const first = texts[0] as { str: string; transform: number[] } | undefined
     pages.push({
       widthMm: viewport.width / PT_PER_MM,
       heightMm: viewport.height / PT_PER_MM,
-      text: items.map(it => ('str' in it ? it.str : '')).join(''),
+      text: texts.map(it => ('str' in it ? it.str : '')).join(''),
+      firstItem: first
+        ? {
+          str: first.str,
+          a: first.transform[0], b: first.transform[1],
+          c: first.transform[2], d: first.transform[3],
+        }
+        : null,
     })
   }
   await task.destroy()
@@ -158,5 +169,97 @@ describe('拼版打印端到端', () => {
       expect(Math.abs(r.wMm - 70)).toBeLessThan(0.5)
       expect(Math.abs(r.hMm - 40)).toBeLessThan(0.5)
     })
+  }, 90000)
+})
+
+describe('拼版 + 内容旋转端到端', () => {
+  /** 90°/270° 用 4 列才放满 12 格；180° 沿用 2 列 */
+  const rotated = (rotation: 0 | 90 | 180 | 270, tiling: TilingOptions = TILING) =>
+    ({ ...labelTemplate(tiling), outputRotation: rotation })
+
+  it('90°（4 列）：每格 40×70，12 条 → 1 张，PDF 文本真旋转 90°', async () => {
+    const job = { templateJson: rotated(90, { ...TILING, columns: 4 }), printData: labelList(12) }
+    const { pdf } = await coreRenderPdf(job, runtime)
+    const pages = await parsePdf(Buffer.from(pdf))
+    expect(pages).toHaveLength(1)
+    expect(Math.abs(pages[0].widthMm - 210)).toBeLessThan(0.5)
+    expect(Math.abs(pages[0].heightMm - 297)).toBeLessThan(0.5)
+    expect(pages[0].text).toContain('L01')
+    expect(pages[0].text).toContain('L12')
+    const item = pages[0].firstItem!
+    expect(Math.abs(item.a)).toBeLessThan(0.01)
+    expect(Math.abs(item.d)).toBeLessThan(0.01)
+    expect(Math.abs(item.b)).toBeGreaterThan(1)
+    expect(Math.abs(item.c)).toBeGreaterThan(1)
+  }, 90000)
+
+  it('90°（2 列）：每张 6 格 → 12 条分 2 张', async () => {
+    const job = { templateJson: rotated(90), printData: labelList(12) }
+    const { pdf } = await coreRenderPdf(job, runtime)
+    const pages = await parsePdf(Buffer.from(pdf))
+    expect(pages).toHaveLength(2)
+    expect(pages[0].text).toContain('L06')
+    expect(pages[0].text).not.toContain('L07')
+    expect(pages[1].text).toContain('L07')
+    expect(pages[1].text).not.toContain('L01')
+  }, 90000)
+
+  it('180°：格位不变（1 张 12 格），PDF 文本翻转 180°', async () => {
+    const job = { templateJson: rotated(180), printData: labelList(12) }
+    const { pdf } = await coreRenderPdf(job, runtime)
+    const pages = await parsePdf(Buffer.from(pdf))
+    expect(pages).toHaveLength(1)
+    expect(pages[0].text).toContain('L01')
+    expect(pages[0].text).toContain('L12')
+    expect(pages[0].firstItem!.a).toBeLessThan(-1)
+    expect(pages[0].firstItem!.d).toBeLessThan(-1)
+  }, 90000)
+
+  it('90°：12 格落在 4×3 网格上，格内页面带 90° 转子（print media 实测）', async () => {
+    const prepared = await prepareDocument(
+      { templateJson: rotated(90, { ...TILING, columns: 4 }), printData: labelList(12) },
+      runtime,
+    )
+    const pool = BrowserPool.getInstance()
+    const page = await pool.acquire()
+    let rects: Array<{ leftMm: number; topMm: number; wMm: number; hMm: number }> = []
+    let rotorCount = 0
+    try {
+      await page.setContent(prepared.html, { waitUntil: 'domcontentloaded' })
+      await page.emulateMedia({ media: 'print' })
+      const measured = await page.evaluate(() => {
+        const PX_PER_MM = 96 / 25.4
+        return {
+          rects: Array.from(document.querySelectorAll('.print-tile')).map(el => {
+            const r = el.getBoundingClientRect()
+            return {
+              leftMm: r.left / PX_PER_MM,
+              topMm: r.top / PX_PER_MM,
+              wMm: r.width / PX_PER_MM,
+              hMm: r.height / PX_PER_MM,
+            }
+          }),
+          rotorCount: document.querySelectorAll('.print-tile .print-page-rotor-90').length,
+        }
+      })
+      rects = measured.rects
+      rotorCount = measured.rotorCount
+    } finally {
+      await pool.release(page)
+    }
+
+    expect(rects).toHaveLength(12)
+    // 行优先：列距 42mm（40+2）、行距 72mm（70+2）、起始 (10,10)
+    const expected = Array.from({ length: 12 }, (_, i) => ({
+      leftMm: 10 + (i % 4) * 42,
+      topMm: 10 + Math.floor(i / 4) * 72,
+    }))
+    rects.forEach((r, i) => {
+      expect(Math.abs(r.leftMm - expected[i].leftMm)).toBeLessThan(0.5)
+      expect(Math.abs(r.topMm - expected[i].topMm)).toBeLessThan(0.5)
+      expect(Math.abs(r.wMm - 40)).toBeLessThan(0.5)
+      expect(Math.abs(r.hMm - 70)).toBeLessThan(0.5)
+    })
+    expect(rotorCount).toBe(12)
   }, 90000)
 })

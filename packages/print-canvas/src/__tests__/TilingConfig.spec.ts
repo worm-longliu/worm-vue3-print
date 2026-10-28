@@ -155,4 +155,20 @@ describe('TilingConfig', () => {
     expect((wrapper.find(SWITCH).element as HTMLInputElement).disabled).toBe(true)
     expect(wrapper.text()).toContain('连续纸不支持拼版')
   })
+
+  it('摘要含每格尺寸；内容旋转 90° 时按互换后的格尺寸显示', () => {
+    const zero = mount(TilingConfig, {
+      props: { templateData: labelTemplate(), modelValue: { ...TILE_DEFAULTS } },
+    })
+    expect(zero.find('.tiling-summary').text()).toContain('每格 70×40mm')
+
+    const rotated = mount(TilingConfig, {
+      props: {
+        templateData: labelTemplate({ outputRotation: 90 }),
+        modelValue: { ...TILE_DEFAULTS, columns: 4 },
+      },
+    })
+    expect(rotated.find('.tiling-summary').text()).toContain('4 列 × 3 行 = 每张 12 格')
+    expect(rotated.find('.tiling-summary').text()).toContain('每格 40×70mm')
+  })
 })

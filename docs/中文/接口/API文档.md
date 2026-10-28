@@ -47,6 +47,12 @@ import {
   bindData, injectSystemVariables, resolveSystemVariables,
   generateHtml, buildPageCss, elementPositionStyle, mm,
   paginate, tableDesignBottom,
+  // 元素级旋转口径单点（外接盒、角度归一、码类分辨率档、表格跟随区归属）
+  resolveElementRotation, getRotatedAabb, normalizeRotationAngle,
+  isRotationExcludedType, isFreeAngleEditable, CODE_ROTATION_MIN_DPI, CODE_OBLIQUE_NOTE,
+  collectFollowMemberIds,
+  // 出纸裁切提示（编辑期预估，不依赖浏览器实测高）
+  collectPrintWarnings, collectLayoutWarnings,
   evaluateTemplate, safeEval,
   getPaperDimensions, PAPER_DIMENSIONS, isContinuousPaper, isContinuousPaperSize,
   composeContinuousHeight, MIN_CONTINUOUS_HEIGHT_MM,
@@ -73,6 +79,11 @@ import {
 | `generateHtml(template, options?: GenerateOptions)` | 由模板生成 HTML |
 | `buildPageCss` / `elementPositionStyle` / `mm` | 页面 CSS、元素定位样式、mm 换算 |
 | `paginate(...)` / `tableDesignBottom(...)` | 分页算法、表格设计态底边计算 |
+| `resolveElementRotation(type, options, dpi?)` | 元素的有效旋转角（度）或 `undefined`（不旋转）。归一到 [0,360)；`table` / `flowList` 恒 `undefined`；`barcode` / `qrcode` 直角档（90/180/270）全分辨率放行，斜角需 `dpi ≥ 385`（`CODE_ROTATION_MIN_DPI`），低于门槛吸附到最近直角档。**缺省取元素自身的 `options.printerDpi`**，显式传入的 `dpi` 优先（出纸端按已知打印头分辨率覆盖）。渲染、分页、两宿主画布共用这一个判据 |
+| `getRotatedAabb(box, height, angle)` / `normalizeRotationAngle(angle)` | 旋转后轴对齐外接盒（mm，围绕设计盒中心；0/180 逐字退化回原盒，90/270 精确交换宽高）与角度归一 |
+| `isRotationExcludedType(type)` / `isFreeAngleEditable(type, options)` / `CODE_OBLIQUE_NOTE` | 属性台门禁的同一份判据：类型是否参与旋转、码类自由角度输入是否可用（无 ≥385dpi 承诺即置灰）、置灰时的常驻文案 |
+| `collectFollowMemberIds(elements)` | **表格跟随区成员 id 集合**（与分页内部同一实现：设计底部以下 + 与表格列横向相交 + 非显式编组成员）。成员的元素级旋转在出纸被忽略，宿主属性台与画布据此不出行、不转，避免「画布会转、出纸不转」。设计器侧元素 id 可缺省（草稿元素自动跳过） |
+| `collectPrintWarnings(template)` / `collectLayoutWarnings(pageLayouts)` | 出纸裁切提示：元素旋转后顶越页首、或（含外接盒）超出纸面左右缘。`collectPrintWarnings` 是**编辑期预估**（无实测高，自适应行高按设计盒算），入参兼容设计器/出纸两种 TemplateData 形状与 `{ pages }` 多页模板；`collectLayoutWarnings` 从真实分页结果去重汇总。均只返回中文文案数组，**不阻断出纸** |
 | `evaluateTemplate(text, ctx)` | 渲染管线模板求值（含 SUM/AVG 等聚合预处理，失败保留原文） |
 | `safeEval(expr, ctx)` | 受限沙箱内求值单个表达式 |
 | `getPaperDimensions(template)` / `PAPER_DIMENSIONS` / `isContinuousPaper({ paperSize })` / `isContinuousPaperSize(paperSize)` | 纸张解析；连续纸判定（含小票纸） |
@@ -211,6 +222,8 @@ import {
 
 **目标纸张解析优先级**：调用时 `PrintJob.paperOverride` → `tiling.sheetCustomWidth/Height`（CUSTOM 时）→ `PAPER_PRESETS` → 缺省 A4 纵向。
 
+**内容旋转（`TemplateData.outputRotation`）在拼版下按每格生效**：90/270 时每格占位宽高互换（70×40 标签变成 40×70 的格），`computeTileLayout` 返回的 `tile` 即旋转后的占位尺寸，`maxColumns` / `rows` / `perSheet` 一并按互换后重算；`COLUMNS_OVERFLOW` 与 `LABEL_TOO_TALL` 的文案会注明「内容旋转 N°，每格 W×Hmm」。目标纸、留白与格间距不受影响；0/180 不改变格位几何；连续纸仍无旋转概念。
+
 **`pageCount` 语义变更**（拼版开启时）：由「份数」变为**实际输出张数**；`copies` 仍为数据条数。
 标签内部的 `{pageIndex}` / `{totalPages}` 仍是标签自身的页序，不受影响。
 
@@ -310,7 +323,9 @@ Props：
 | `showHelp` | `boolean` | 帮助入口开关，默认 true |
 
 事件：`@save(json: string)`（序列化为字符串）、`@preview()`。
-方法（ref）：`getTemplateJson(): TemplateData`（返回模板对象；保存时由宿主自行 `JSON.stringify`）。
+方法（ref）：`getTemplateJson(): TemplateData`（返回模板对象；保存时由宿主自行 `JSON.stringify`）、
+`validateTemplate(): TilingIssue[]`（非法配置拦截）、`getGeometryWarnings(): string[]`（出纸裁切提示，
+**预估口径**、不阻断保存；宿主在导出/另存旁路可自行展示。设计器自身也会在点保存时给一次提示）。
 
 ### `<PrintHtmlPreview>`
 
@@ -322,6 +337,9 @@ Props：`templateJson`（模板对象）、`printData`（对象或数组）、`b
 |---|---|
 | `print()` | 唤起 iframe 内浏览器原生打印（可手动另存 PDF），不产出 PDF 文件 |
 | `rerender()` | 强制重新渲染 |
+
+渲染产物含超出纸面或顶越页首的元素时，预览层顶部常驻一条「出纸提示」（`.print-html-preview-warn`，
+按真实分页与实测高结算，只提示不阻断）；渲染失败的红字优先于它显示。
 
 ---
 

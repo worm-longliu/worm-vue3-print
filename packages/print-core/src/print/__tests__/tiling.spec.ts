@@ -184,3 +184,68 @@ describe('validateTiling', () => {
     }
   })
 })
+
+describe('拼版内容旋转（outputRotation）', () => {
+  /** 旋转 + 拼版配置；默认沿用 baseCfg（2 列） */
+  function rotated(rotation: 0 | 90 | 180 | 270, tiling?: Partial<TilingOptions>): TemplateData {
+    return {
+      ...labelTemplate({ ...baseCfg(), ...(tiling ?? {}) }),
+      outputRotation: rotation,
+    } as unknown as TemplateData
+  }
+
+  it('90°：每格占位宽高互换，列上限 / 行数 / 每张按互换后重算', () => {
+    const layout = computeTileLayout(rotated(90, { columns: 4 }))
+    expect(layout.tile).toEqual({ width: 40, height: 70 })
+    expect(layout.maxColumns).toBe(4) // floor((190+2)/(40+2))
+    expect(layout.rows).toBe(3) // floor((277+2)/(70+2))
+    expect(layout.perSheet).toBe(12)
+    expect(computeMaxColumns(rotated(90))).toBe(4)
+  })
+
+  it('90°：格位按互换后的格宽高排（列距 42、行距 72）', () => {
+    const layout = computeTileLayout(rotated(90, { columns: 4 }))
+    expect(tilePosition(layout, 0)).toEqual({ left: 10, top: 10 })
+    expect(tilePosition(layout, 1)).toEqual({ left: 52, top: 10 })
+    expect(tilePosition(layout, 3)).toEqual({ left: 136, top: 10 })
+    expect(tilePosition(layout, 4)).toEqual({ left: 10, top: 82 })
+  })
+
+  it('270°：与 90° 一样交换每格占位', () => {
+    expect(computeTileLayout(rotated(270, { columns: 4 })).tile).toEqual({ width: 40, height: 70 })
+  })
+
+  it('180°：格位几何与 0° 完全一致（仅内容翻转）', () => {
+    const zero = computeTileLayout(rotated(0))
+    const flipped = computeTileLayout(rotated(180))
+    expect(flipped).toMatchObject({ tile: { width: 70, height: 40 }, maxColumns: 2, rows: 6, perSheet: 12 })
+    expect(tilePosition(flipped, 1)).toEqual(tilePosition(zero, 1))
+    expect(tilePosition(flipped, 11)).toEqual(tilePosition(zero, 11))
+  })
+
+  it('90° 列数超宽：文案按旋转后格宽计算，并注明旋转与每格尺寸', () => {
+    const issues = validateTiling(rotated(90, { columns: 5 }))
+    expect(issues).toHaveLength(1)
+    expect(issues[0].code).toBe('COLUMNS_OVERFLOW')
+    expect(issues[0].message).toContain('最多可放 4 列')
+    expect(issues[0].message).toContain('当前 5 列 40mm 标签')
+    expect(issues[0].message).toContain('内容旋转 90°')
+    expect(issues[0].message).toContain('每格 40×70mm')
+  })
+
+  it('90° 标签过高：文案按旋转后格高计算，并注明旋转与每格尺寸', () => {
+    // 目标纸 100×60：旋转后每格 40×70，70 > 可用高 60
+    const t = rotated(90, {
+      columns: 1,
+      sheetPaperSize: 'CUSTOM',
+      sheetCustomWidth: 100,
+      sheetCustomHeight: 60,
+      sheetMargin: { top: 0, right: 0, bottom: 0, left: 0 },
+    })
+    const issues = validateTiling(t)
+    expect(issues[0].code).toBe('LABEL_TOO_TALL')
+    expect(issues[0].message).toContain('标签高度 70mm')
+    expect(issues[0].message).toContain('内容旋转 90°')
+    expect(issues[0].message).toContain('每格 40×70mm')
+  })
+})

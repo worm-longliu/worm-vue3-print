@@ -21,7 +21,7 @@
           <PropertySearch @search="onSearch" />
           <div class="property-content">
             <PositionSizeGroup v-if="filteredGroups.includes('position-size') && !isTableCellSelected" :element="element" :matched-keys="matchedKeys" :searching="searching" />
-            <AppearanceGroup v-if="filteredGroups.includes('appearance')" :element="element" :is-text-type="isTextType" :matched-keys="matchedKeys" :searching="searching" />
+            <AppearanceGroup v-if="filteredGroups.includes('appearance')" :element="element" :is-text-type="isTextType" :matched-keys="matchedKeys" :searching="searching" :follow-member-ids="followMemberIds" />
             <!-- 条码/二维码设置（码制、条宽、缩放模式、最大宽高等） -->
             <CodeGroup v-if="filteredGroups.includes('code') && isCodeType" :element="element" :matched-keys="matchedKeys" :searching="searching" @change="recordHistory?.()" />
             <PropertyGroup v-if="filteredGroups.includes('binding') && !isMultiCellSelection" title="内容" icon="Document" default-expanded group-key="binding">
@@ -112,14 +112,14 @@
             </div>
             <p class="pd-hint">切换即交换纸张长宽（设计稿内容随之铺在该尺寸上）</p>
           </div>
-          <div class="pd-field" v-if="!continuousPaper && !tilingEnabled"><span class="pd-label">内容旋转角度</span>
+          <div class="pd-field" v-if="!continuousPaper"><span class="pd-label">内容旋转角度</span>
             <div class="pd-radio-group pd-radio-group--2col" role="radiogroup">
               <label class="pd-radio"><input type="radio" value="0" :checked="outputRotationModel === 0" @change="onOutputRotationChange(($event.target as HTMLInputElement).value)"><span>0°</span></label>
               <label class="pd-radio"><input type="radio" value="90" :checked="outputRotationModel === 90" @change="onOutputRotationChange(($event.target as HTMLInputElement).value)"><span>90°</span></label>
               <label class="pd-radio"><input type="radio" value="180" :checked="outputRotationModel === 180" @change="onOutputRotationChange(($event.target as HTMLInputElement).value)"><span>180°</span></label>
               <label class="pd-radio"><input type="radio" value="270" :checked="outputRotationModel === 270" @change="onOutputRotationChange(($event.target as HTMLInputElement).value)"><span>270°</span></label>
             </div>
-            <p class="pd-hint">整页内容旋转对应角度出纸；90°/270° 时纸张长宽互换以贴合内容，内容不变形不裁切；0° 为不旋转（默认）</p>
+            <p class="pd-hint">{{ tilingEnabled ? '拼版时每个标签的内容按该角度旋转；90°/270° 时每格占位宽高互换，列数自动铺满新档位上限，行数按互换后重算；0° 为不旋转（默认）' : '整页内容旋转对应角度出纸；90°/270° 时纸张长宽互换以贴合内容，内容不变形不裁切；0° 为不旋转（默认）' }}</p>
           </div>
           <div class="pd-field"><span class="pd-label"><span class="pd-label-t">页面背景色</span>
             <ResetButton :target="{ pageBackground: templateData?.pageBackground }" :base="{ pageBackground: undefined }"
@@ -178,7 +178,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { RuntimeElement, PrintBusinessField, TemplateData, TableSelection } from '@worm-vue3-print/core/designer'
-import { PAPER_PRESETS, isContinuousPaperSize, isLabelPaperSize, labelPaperDefaults, resolveCellGroupMode } from '@worm-vue3-print/core/designer'
+import { PAPER_PRESETS, isContinuousPaperSize, isLabelPaperSize, labelPaperDefaults, resolveCellGroupMode, collectFollowMemberIds } from '@worm-vue3-print/core/designer'
+import { computeMaxColumns } from '@worm-vue3-print/core'
 import { searchProperties } from '@worm-vue3-print/core/designer'
 import PropertySearch from './property/PropertySearch.vue'
 import ResetButton from './property/ResetButton.vue'
@@ -357,9 +358,14 @@ const orientationModel = computed(() => props.templateData?.orientation || 'port
 const tilingEnabled = computed(() => !!props.templateData?.tiling?.enabled)
 /**
  * 内容旋转角度：缺省 0（不旋转）；可设为 90/180/270，整页内容旋转对应角度出纸。
- * 渲染端仅在固定纸（非连续纸、非拼版）场景按角度旋转整页。
+ * 固定纸按整页旋转；启用拼版时按**每格内容**旋转（90/270 每格占位宽高互换），连续纸仍无旋转概念。
  */
 const outputRotationModel = computed(() => props.templateData?.outputRotation ?? 0)
+
+/** 表格跟随区成员（core 单点判据）：成员 v1 忽略元素级旋转，属性台不出「旋转」行 */
+const followMemberIds = computed(() =>
+  collectFollowMemberIds(props.templateData?.elements ?? []),
+)
 
 const pageBackgroundModel = computed({
   get: () => props.templateData?.pageBackground || '#ffffff',
@@ -440,7 +446,18 @@ function onOrientationChange(val: string | number | boolean | undefined) {
 }
 
 function onOutputRotationChange(val: string | number | boolean | undefined) {
-  emitUpdate({ outputRotation: Number(val) as TemplateData['outputRotation'] })
+  if (!props.templateData) return
+  const outputRotation = Number(val) as TemplateData['outputRotation']
+  // 拼版启用且每格占位宽高互换性变化（0/180 ↔ 90/270）时，列数自动铺满新档位上限；
+  // 同档位内切换占位不变，不重排——作者手动改小的列数得以保留
+  const tiling = props.templateData.tiling
+  const swapped = (r: TemplateData['outputRotation']) => r === 90 || r === 270
+  if (tiling?.enabled && swapped(outputRotation) !== swapped(props.templateData.outputRotation)) {
+    const maxColumns = computeMaxColumns({ ...props.templateData, outputRotation })
+    emitUpdate({ outputRotation, tiling: { ...tiling, columns: Math.max(maxColumns, 1) } })
+    return
+  }
+  emitUpdate({ outputRotation })
 }
 
 function onPageBackgroundChange(v: string) {

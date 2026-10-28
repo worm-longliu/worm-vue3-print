@@ -5,7 +5,7 @@ import {
   calcResizeRect, computeFitScale, computeAdsorb, findMainCell, FIT_SCALE_MIN_PERCENT,
   generateId, getPaperDimensions, MIN_SCALE_PERCENT, mmToPx, nextWheelScale, pxToMm,
 } from '@worm-vue3-print/core/designer'
-import { buildFontFaceCss, normalizeTemplate, validateTiling } from '@worm-vue3-print/core'
+import { buildFontFaceCss, normalizeTemplate, validateTiling, collectPrintWarnings } from '@worm-vue3-print/core'
 import { fitTextNode } from '@worm-vue3-print/core/browser'
 import type { AlignLine, ElementType, MultiPageTemplateData, ResizePoint, RuntimeElement, TemplateData, UploadDesignBackgroundFn, UploadImageFn } from '@worm-vue3-print/core/designer'
 import type { PrintFontDeclaration } from '@worm-vue3-print/core'
@@ -295,6 +295,9 @@ export class PrintDesignerElement extends HTMLElement {
       this.repaint()
       return
     }
+    // 出纸裁切提示（预估口径）：与 canvas 一致——不阻断保存，但点保存时必须被看见一次
+    const warnings = this.getGeometryWarnings()
+    if (warnings.length) window.alert(`出纸提示（不影响保存）：\n${warnings.join('\n')}`)
     const json = this.templateJsonWithFonts()
     if (Array.isArray((json as MultiPageTemplateData).pages)) {
       try { normalizeTemplate(json as never) }
@@ -309,6 +312,14 @@ export class PrintDesignerElement extends HTMLElement {
   validateTemplate() {
     const t = this.store.templateData
     return t.tiling?.enabled === true ? validateTiling(t as never) : []
+  }
+
+  /**
+   * 出纸裁切提示（旋转外接盒顶越页首、元素超出纸面左右缘），与 canvas 同名同口径。
+   * 预估口径：编辑期无实测高，自适应行高按设计盒估算 ⇒ 只提示、不阻断保存。
+   */
+  getGeometryWarnings(): string[] {
+    return collectPrintWarnings(this.store.templateData)
   }
 
   private applyTemplate(v: unknown) {

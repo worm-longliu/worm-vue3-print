@@ -6,18 +6,20 @@
 // 搜索门控（filteredGroups / matchedKeys / searching）见 shell/property-search.ts，口径同 canvas。
 import {
   PAPER_PRESETS, isContinuousPaperSize, resolveElementTextFit, propertyTip, IMAGE_FIT_OPTIONS,
-  resolveDesignImageSrc, barcodeBarWidthRecommendText,
+  resolveDesignImageSrc, barcodeBarWidthRecommendText, normalizeRotationAngle,
   acceptsElementBorder, applyElementBorderPreset, elementBorderEdgeVisible, effectiveElementBorderSpec,
   resolveElementBorderDisplay, setElementBorderEdgeVisible, setElementBorderField, BORDER_LINE_STYLES,
   ELEMENT_BORDER_APPLY_HINT,
   resolveFlowColumns, resolveFlowGapX, resolveFlowMaxSpan, resolveFlowRowHeight, suggestFlowColumns,
   resolveCellGroupMode,
 } from '@worm-vue3-print/core/designer'
+import { computeMaxColumns } from '@worm-vue3-print/core'
 import type { BorderPreset, ElementBorderFieldKey, ElementBorderSide, ElementOptions, RuntimeElement } from '@worm-vue3-print/core/designer'
 import { h } from '../core/h'
 import type { El } from '../core/h'
 import { colorTrigger, divider, field, fieldHelp, radioGroup, resetButton, stepper } from './controls'
 import { createDefaultOptions, propertyDefault } from '@worm-vue3-print/core/designer'
+import { isRotationExcludedType, isFreeAngleEditable, CODE_OBLIQUE_NOTE, collectFollowMemberIds } from '@worm-vue3-print/core/designer'
 import { designBackgroundSection, tilingSection } from './page-extras'
 import { bindingGroup } from './binding'
 import { renderFontSelect } from './font-select'
@@ -102,7 +104,6 @@ function elementPane(ctx: ShellCtx, el: RuntimeElement) {
     ]))
   }
 
-  // canvas 的 AppearanceGroup 恒渲染：非文本元素出空态提示，表格元素只留空 form（分组标题仍在）
   /** 落点派生自该元素类型的出厂值：未预置的键 ⇒ undefined ⇒ 写回即删键；预置了字面值的键
    *  （text 的 fontSize、longText 的 lineHeight、image 的 fit）⇒ 写回字面值。一条规则覆盖两种
    *  相反的正确行为。reset 一律挂在外层 field/fieldHelp 上，不挂进 radioGroup 等控件构造参数。 */
@@ -115,6 +116,43 @@ function elementPane(ctx: ShellCtx, el: RuntimeElement) {
       write: () => patch({ [key]: FACTORY[key] } as never),
     })
   }
+
+  // canvas 的 AppearanceGroup 恒渲染：非文本元素出空态提示，表格元素只留空 form（分组标题仍在）
+  /** 元素级旋转行（判据一律取 core 单点，画布所见必须等于出纸）：
+   *  排除类型与表格跟随区成员都不出行（契约四）；码类无 ≥385dpi 承诺时自由角度置灰、
+   *  只留 90° 步进（契约五，出纸端同门槛会把斜角吸附成直角）；
+   *  数值输入复用 stepper（± 按钮由 .pd-rotate-stepper 派生样式藏掉），两侧为 90° 步进按钮；
+   *  0 与未设同义（写 undefined 删键），归一口径与画布一致 */
+  const rotateCurrent = typeof o.rotate === 'number' && Number.isFinite(o.rotate) && o.rotate !== 0
+    ? normalizeRotationAngle(o.rotate)
+    : undefined
+  const rotateCommit = (v: number | undefined): void =>
+    patch({ rotate: v === undefined || v === 0 ? undefined : normalizeRotationAngle(v) })
+  const angleEditable = isFreeAngleEditable(type, o)
+  const rotateBlocked = isRotationExcludedType(type)
+    || collectFollowMemberIds(s.elements).has(el.id)
+  const rotateRow = rotateBlocked ? '' : gateItem(ctx, 'ap-rotate', fieldHelp('旋转 (°)',
+    h('div', { class: 'pd-rotate-row' }, [
+      h('button', {
+        type: 'button', class: 'pd-rotate-btn',
+        title: '逆时针 90°', 'aria-label': '逆时针旋转 90 度', text: '↺',
+        onClick: () => rotateCommit((rotateCurrent ?? 0) - 90),
+      }),
+      h('div', { class: 'pd-rotate-stepper' }, [stepper({
+        value: rotateCurrent, min: 0, max: 359, placeholder: '0', disabled: !angleEditable,
+        onCommit: v => rotateCommit(v),
+      })]),
+      h('button', {
+        type: 'button', class: 'pd-rotate-btn',
+        title: '顺时针 90°', 'aria-label': '顺时针旋转 90 度', text: '↻',
+        onClick: () => rotateCommit((rotateCurrent ?? 0) + 90),
+      }),
+    ]),
+    propertyTip('ap-rotate'), reset('rotate', 'ap-rotate')))
+  /** 置灰原因常驻说明（与 canvas 的 .pd-rotate-note 同文案，出自 core 单点常量） */
+  const rotateNote = rotateBlocked || angleEditable
+    ? ''
+    : h('p', { class: 'pd-hint pd-rotate-note', text: CODE_OBLIQUE_NOTE })
 
   rows.push(group(ctx, 'appearance', '外观', 'Brush', [
     h('form', { class: 'pd-form', onSubmit: (ev: Event) => ev.preventDefault() }, isText ? [
@@ -154,6 +192,8 @@ function elementPane(ctx: ShellCtx, el: RuntimeElement) {
       type === 'longText' ? gateItem(ctx, 'ap-long-text-indent', fieldHelp('首行缩进 (字符)', stepper({ value: o.longTextIndent, min: 0, max: 10, placeholder: '默认 0', onCommit: v => patch({ longTextIndent: v || undefined }) }), propertyTip('ap-long-text-indent'), reset('longTextIndent', 'ap-long-text-indent'))) : '',
       gateItem(ctx, 'ap-word-wrap', switchField(ctx, '自动换行', o.wordWrap !== false, v => patch({ wordWrap: v ? undefined : false }), reset('wordWrap', 'ap-word-wrap'))),
       gateItem(ctx, 'ap-keep-line-breaks', switchField(ctx, '保留换行符', o.keepLineBreaks === true, v => patch({ keepLineBreaks: v ? true : undefined }), reset('keepLineBreaks', 'ap-keep-line-breaks'))),
+      rotateRow,
+      rotateNote,
     ] : [
       // 平铺条件项：不能在这里套数组，common 的 h() 不摊平嵌套子节点（会让 paint 递归抛 TypeError）
       type === 'image' ? gateItem(ctx, 'ap-img-fit', selectField(ctx, '缩放模式', String(o.fit ?? 'contain'), IMAGE_FIT_OPTIONS,
@@ -169,7 +209,10 @@ function elementPane(ctx: ShellCtx, el: RuntimeElement) {
         resetAnchor: reset('objectPosition', 'ap-img-object-position'),
         resetScale: reset('fitScale', 'ap-img-fit-scale'),
       })) : '',
-      !isTable && type !== 'image' ? h('p', { class: 'pd-empty', text: '当前元素不支持外观设置' }) : '',
+      rotateRow,
+      rotateNote,
+      // 旋转行已覆盖全部可旋转的非文本类型，空态只剩不支持旋转的 flowList（表格走上方空 form）
+      type === 'flowList' ? h('p', { class: 'pd-empty', text: '当前元素不支持外观设置' }) : '',
     ].filter(Boolean)),
   ]))
 
@@ -383,6 +426,18 @@ function pagePane(ctx: ShellCtx) {
   const s = ctx.store
   const t = s.templateData
   const patch = (p: Record<string, unknown>) => s.updateTemplateData(p as never)
+  // 拼版启用且每格占位宽高互换性变化（0/180 ↔ 90/270）时，列数自动铺满新档位上限（与 canvas 同口径）；
+  // 同档位内切换占位不变，不重排——作者手动改小的列数得以保留
+  const patchOutputRotation = (v: number) => {
+    const tiling = t.tiling
+    const swapped = (r: unknown) => r === 90 || r === 270
+    if (tiling?.enabled && swapped(v) !== swapped(t.outputRotation)) {
+      const maxColumns = computeMaxColumns({ ...t, outputRotation: v } as never)
+      patch({ outputRotation: v, tiling: { ...tiling, columns: Math.max(maxColumns, 1) } })
+      return
+    }
+    patch({ outputRotation: v })
+  }
   const groups: { group: string; items: { key: string; label: string }[] }[] = []
   for (const [key, preset] of Object.entries(PAPER_PRESETS)) {
     const name = preset.group ?? '其他'
@@ -413,12 +468,14 @@ function pagePane(ctx: ShellCtx) {
       { value: 'portrait', label: '纵向' }, { value: 'landscape', label: '横向' },
     ], t.orientation === 'landscape' ? 'landscape' : 'portrait', v => patch({ orientation: v })),
       '切换即交换纸张长宽（设计稿内容随之铺在该尺寸上）') : '',
-    // canvas：连续纸或已启用拼版时隐藏内容旋转（拼版有自己的铺排几何）
-    !continuous && !t.tiling?.enabled ? field('内容旋转角度', radioGroup('rot', [
+    // canvas：连续纸隐藏内容旋转（无旋转概念）；拼版启用时按每格内容旋转
+    !continuous ? field('内容旋转角度', radioGroup('rot', [
       { value: '0', label: '0°' }, { value: '90', label: '90°' },
       { value: '180', label: '180°' }, { value: '270', label: '270°' },
-    ], String(t.outputRotation ?? 0), v => patch({ outputRotation: Number(v) }), true),
-      '整页内容旋转对应角度出纸；90°/270° 时纸张长宽互换以贴合内容，内容不变形不裁切；0° 为不旋转（默认）') : '',
+    ], String(t.outputRotation ?? 0), v => patchOutputRotation(Number(v)), true),
+      t.tiling?.enabled
+        ? '拼版时每个标签的内容按该角度旋转；90°/270° 时每格占位宽高互换，列数自动铺满新档位上限，行数按互换后重算；0° 为不旋转（默认）'
+        : '整页内容旋转对应角度出纸；90°/270° 时纸张长宽互换以贴合内容，内容不变形不裁切；0° 为不旋转（默认）') : '',
     field('页面背景色', h('div', { class: 'page-bg-row' }, [
       colorTrigger(t.pageBackground, v => patch({ pageBackground: v }), '页面背景色', 'page-bg-picker'),
     ]), undefined, resetButton({

@@ -124,7 +124,7 @@ export function tilingSection(ctx: ShellCtx) {
       const s = resolveSheetMm(withTiling as never)
       const name = cfg.sheetPaperSize === 'CUSTOM' ? '自定义' : (cfg.sheetPaperSize ?? 'A4')
       const dir = cfg.sheetPaperSize === 'CUSTOM' ? '' : (cfg.sheetOrientation === 'landscape' ? ' 横向' : ' 纵向')
-      summary = `目标纸 ${name}${dir} ${s.width}×${s.height}mm · ${l.columns} 列 × ${l.rows} 行 = 每张 ${l.perSheet} 格`
+      summary = `目标纸 ${name}${dir} ${s.width}×${s.height}mm · ${l.columns} 列 × ${l.rows} 行 = 每张 ${l.perSheet} 格 · 每格 ${l.tile.width}×${l.tile.height}mm`
     } catch { summary = '' }
   }
 

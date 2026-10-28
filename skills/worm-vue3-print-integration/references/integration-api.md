@@ -176,12 +176,22 @@ const templateJson = {
 要点：
 
 - **行数自动、列数手工**；按「列 × 行」整块切片，**行不会跨页**，最后一张的空余格留白。
+- **内容旋转按每格生效**：模板的 `outputRotation` 在拼版下旋转每个格位的内容，90/270 时每格占位宽高互换、行列容量重算（`computeTileLayout().tile` 即旋转后的格尺寸）；设计器切换旋转档位时拼版列数自动铺满新档位上限；0/180 不改变格位几何。
 - 拼版要求**每份数据恰好 1 页**；超出时报错并指明第几份，请缩小内容或调高标签纸张高度。
 - **连续纸模板不支持拼版**（设计器里开关置灰）。
 - 开启拼版后 `PreparedDocument.pageCount` 表示**张数**（`copies` 仍是数据条数）。
 - 设计器「页面属性 → 拼版打印」可配置；列数超出纸面宽度时**不允许保存**，提示「最多可放 N 列」。
   宿主自行消费 `getTemplateJson()` 的链路上，用 `designerRef.value.validateTemplate()` 做同样的拦截。
 - 字段细节与错误码见 `docs/中文/接口/API文档.md` 的「拼版打印」小节。
+
+### 元素级旋转与出纸裁切提示（V1.3.12 起）
+
+- 元素 `options.rotate`（度，绕自身中心，归一 0~359，**0 与缺省同形**）：出纸按旋转后的**外接方框**分页与结算，底部放不下自动移页并按外接框顶落位；连续纸推导高度天然计入外接框。渲染走 CSS 独立属性 `rotate`，**不占 `transform`**（设计器拖拽与出纸互不覆盖），残留 `transform` 数字键被忽略。
+- **排除项**（写了不生效、不报错）：`table`、`flowList`、以及**表格下方跟随区成员**。归属判据在 core 单点 `collectFollowMemberIds(elements)`，两宿主属性台与画布共用——所以这三类**属性台不出「旋转 (°)」行**，画布也不转，所见即所打。宿主自绘属性台时要一并接这个函数，否则会出现「画布能转、出纸不转」。
+- **条码与二维码**：直角档全分辨率放行；斜角需 `printerDpi ≥ 385`（`CODE_ROTATION_MIN_DPI`），不足则吸附到最近直角档；**模板未声明 `printerDpi` 时按声明角出纸**（设计器无承诺即置灰自由角度，只留 ±90° 步进）。判据由 `resolveElementRotation(type, options, dpi?)` 自取 `options.printerDpi`，出纸端可传显式 `dpi` 覆盖。
+- **出纸裁切提示**：`PageLayout.warnings`（顶越页首 / 超出纸面左右缘）是**只提示不阻断**的中文文案，出纸 HTML 不受影响。两个入口：`collectLayoutWarnings(pageLayouts)`（真实分页结果，去重）与 `collectPrintWarnings(template)`（编辑期预估，无实测高，自适应行高按设计盒算，故可能偏保守）。已接的面：`<PrintHtmlPreview>` 顶部常驻提示条（`.print-html-preview-warn`）、两宿主点保存时的一次提示与 `getGeometryWarnings()`（canvas 走 `designerRef`，零框架宿主走 `<print-designer>` 元素方法）。零框架宿主的 `renderInBrowser()` 返回值含 `warnings`，宿主自绘预览层时直接展示。
+
+
 
 ## 仅使用 core 的服务端/同构管线
 

@@ -10,6 +10,7 @@ import {
   evaluateTemplate,
   mmToPx,
   resolveElementBorder,
+  resolveElementRotation,
   resolveElementTextFit,
   resolveElementWhiteSpace,
   resolveElementNowrap,
@@ -29,7 +30,7 @@ const V_ALIGN_FLEX: Record<string, string> = { top: 'flex-start', middle: 'cente
 const H_ALIGN_FLEX: Record<string, string> = { left: 'flex-start', center: 'center', right: 'flex-end' }
 
 /** 元素几何与边框（对齐 BaseElement.elementStyle） */
-export function elementStyle(el: RuntimeElement): Record<string, string> {
+export function elementStyle(el: RuntimeElement, followMemberIds?: Set<string>): Record<string, string> {
   const o = el.options
   const borders = resolveElementBorder(el.printElementType.type, o)
   const borderStyles: Record<string, string> = {}
@@ -53,7 +54,16 @@ export function elementStyle(el: RuntimeElement): Record<string, string> {
     height: `${o.height}mm`,
     zIndex: String(o.zIndex || 'auto'),
     ...borderStyles,
+    // 元素级旋转：与 BaseElement/出纸端同一 CSS 独立属性 rotate（排除类型、跟随区成员不转、码类低档吸附直角）
+    ...rotateStyleRecord(el, followMemberIds),
   }
+}
+
+/** 画布旋转声明：与出纸端同一判据（core 单点），0/不适用不出键 */
+function rotateStyleRecord(el: RuntimeElement, followMemberIds?: Set<string>): Record<string, string> {
+  if (followMemberIds?.has(el.id)) return {}
+  const angle = resolveElementRotation(el.printElementType.type, el.options)
+  return angle === undefined ? {} : { rotate: `${angle}deg` }
 }
 
 /** 文本与长文本共用的行内样式：与 canvas 的 TextElement / LongTextElement 逐项一致（差异按类型分支） */
@@ -232,7 +242,7 @@ export function positionLabel(o: { left: number; top: number; width: number; hei
   return `x:${Math.round(o.left)} y:${Math.round(o.top)} ${Math.round(o.width)}×${Math.round(o.height)}mm`
 }
 
-export function renderDesignElement(ctx: ShellCtx, el: RuntimeElement) {
+export function renderDesignElement(ctx: ShellCtx, el: RuntimeElement, followMemberIds?: Set<string>) {
   const s = ctx.store
   const selected = s.selectedIds.has(el.id)
   const previewed = s.previewIds.has(el.id)
@@ -263,7 +273,7 @@ export function renderDesignElement(ctx: ShellCtx, el: RuntimeElement) {
       o.locked ? 'locked' : '',
       o.visible === false ? 'hidden' : '',
     ].filter(Boolean).join(' '),
-    style: elementStyle(el),
+    style: elementStyle(el, followMemberIds),
     dataset: { elId: el.id },
     onMousedown: (ev: Event) => ctx.fire('element-mousedown', { event: ev as MouseEvent, id: el.id }),
     // 双击判定在 print-designer 的 element-mousedown 分支（paint 全量重建会断掉原生 dblclick）

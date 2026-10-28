@@ -226,6 +226,52 @@ describe('出纸旋转（outputRotation）整页旋转', () => {
     const css = buildPageCss(fixture({ paperSize: 'CONTINUOUS', orientation: 'portrait', outputRotation: 90 }))
     expect(css).not.toContain('.print-page-rotor')
   })
+
+  it('拼版启用时也输出转子：.print-page 用互换后的每格尺寸，转子仍按设计稿尺寸', () => {
+    const t = fixture({
+      paperSize: 'CUSTOM',
+      customWidth: 70,
+      customHeight: 40,
+      orientation: 'portrait',
+      margins: { top: 3, right: 3, bottom: 3, left: 3 },
+      outputRotation: 90,
+      tiling: {
+        enabled: true, columns: 2, gapX: 2, gapY: 2, sheetPaperSize: 'A4',
+        sheetMargin: { top: 10, right: 10, bottom: 10, left: 10 },
+      },
+    } as Partial<TemplateData>)
+    const css = buildPageCss(t)
+    // 每格（.print-page）按旋转后的 40×70 出纸，边距交给转子
+    expect(css).toContain('@page { size: 40mm 70mm; margin: 0; }')
+    expect(css).toMatch(/\.print-page\s*\{[^}]*width:\s*40mm/)
+    expect(css).toMatch(/\.print-page\s*\{[^}]*min-height:\s*70mm/)
+    expect(css).toMatch(/\.print-page\s*\{[^}]*padding:\s*0;/)
+    // 转子承载设计稿 70×40 并整页旋转填入
+    expect(css).toMatch(/\.print-page-rotor\s*\{[^}]*width:\s*70mm/)
+    expect(css).toMatch(/\.print-page-rotor\s*\{[^}]*height:\s*40mm/)
+    expect(css).toContain('.print-page-rotor-90 {')
+    expect(css).toContain('transform: translate(40mm, 0mm) rotate(90deg);')
+    // 内容区仍按设计稿宽度：70 - 3 - 3 = 64mm
+    expect(css).toMatch(/\.content-area\s*\{[^}]*width:\s*64mm/)
+  })
+
+  it('拼版 + 180°：每格尺寸不变，转子翻转 180°', () => {
+    const t = fixture({
+      paperSize: 'CUSTOM',
+      customWidth: 70,
+      customHeight: 40,
+      margins: { top: 3, right: 3, bottom: 3, left: 3 },
+      outputRotation: 180,
+      tiling: {
+        enabled: true, columns: 2, gapX: 2, gapY: 2, sheetPaperSize: 'A4',
+        sheetMargin: { top: 10, right: 10, bottom: 10, left: 10 },
+      },
+    } as Partial<TemplateData>)
+    const css = buildPageCss(t)
+    expect(css).toContain('@page { size: 70mm 40mm; margin: 0; }')
+    expect(css).toContain('.print-page-rotor-180 {')
+    expect(css).toContain('transform: translate(70mm, 40mm) rotate(180deg);')
+  })
 })
 
 describe('.print-table 单元格断行兜底', () => {

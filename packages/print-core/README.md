@@ -34,6 +34,7 @@ print-core/
 - 拼版：`computeTileLayout` / `validateTiling` / `computeMaxColumns` / `tilePosition` / `resolveSheetMm` /
   `composeTiledHtml`（标签多行多列铺到目标纸，如 70×40 标签铺满 A4）。配置为模板级 `TemplateData.tiling`，
   目标纸可由用户自定义；页尺寸经 `PreparedDocument.paperMm` 透出，**服务端与客户端零协议改动**；
+  内容旋转 `outputRotation` 在拼版下按**每格**生效（90/270 时每格占位宽高互换，行列容量重算）；
 - DOM 能力：`@worm-vue3-print/core/browser` 导出执行器与 iframe driver；`@worm-vue3-print/core/node` 的
   `loadExecutorBundle()` 供 Node 宿主读取 `dist/dom-executor.iife.global.js` 注入页面。
 

@@ -2,7 +2,7 @@
 // .canvas-area > .canvas-scroll > .paper-wrapper > .hiprint-printPaper > .hiprint-printPaper-content
 //   > .design-background? / .grid-bg? / .watermark-layer? / .zone-layer×3 / .adsorb-guide×n / .manual-guide×n
 // 缩放口径：wrapper 用缩放后像素尺寸占位，纸张本体 width/height 用 mm + transform: scale(s)。
-import { getPaperDimensions, mmToPx, resolveWatermarkLayout } from '@worm-vue3-print/core'
+import { getPaperDimensions, mmToPx, resolveWatermarkLayout, collectFollowMemberIds } from '@worm-vue3-print/core'
 import type { AlignLine, RuntimeElement, TemplateData } from '@worm-vue3-print/core/designer'
 import { h } from '../core/h'
 import { renderDesignElement } from './elements'
@@ -88,7 +88,9 @@ function zoneLayer(ctx: ShellCtx, ui: CanvasUI, zone: 'header' | 'content' | 'fo
   const s = ctx.store
   const children: unknown[] = []
   if (zone !== 'content') children.push(h('span', { class: 'zone-label', text: zone === 'header' ? '页眉' : '页脚' }))
-  children.push(...els.map(el => renderDesignElement(ctx, el)))
+  // 跟随区成员（core 单点判据）：内容区一次算好下发，成员的元素级旋转出纸被忽略，画布同步不转
+  const followMemberIds = zone === 'content' ? collectFollowMemberIds(els) : undefined
+  children.push(...els.map(el => renderDesignElement(ctx, el, followMemberIds)))
   if (zone !== 'content') {
     const dir = zone === 'header' ? 'bottom' : 'top'
     children.push(h('div', {

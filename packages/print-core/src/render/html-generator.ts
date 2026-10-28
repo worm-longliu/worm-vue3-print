@@ -43,6 +43,7 @@ import { evaluateTemplate } from './expression-eval.js'
 import { renderWatermarkLayerHtml } from './watermark.js'
 import { tableDesignBottom } from './pagination-engine.js'
 import { barcodeAvailableBoxMm } from './barcode-dot.js'
+import { resolveElementRotation } from './rotation.js'
 
 /** 渲染上下文：贯穿两遍渲染的可选依赖 */
 export interface RenderCtx {
@@ -451,6 +452,13 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
       const e = elBorders.edges[side]
       if (e) style += `border-${side}:${e.borderWidth} ${e.borderStyle} ${e.borderColor};`
     }
+  }
+  // 元素级旋转：测量趟不转（实测高须是设计盒高，分页才不假溢出）；flow-group 跟随成员不转（v1 排除）。
+  // 用 CSS 独立属性 rotate（绕默认 transform-origin 即盒中心），不占 style.transform——设计器拖拽写 transform，两者互不覆盖。
+  // 条码/二维码的放行档由 resolveElementRotation 单点结算（低 dpi 斜角吸附直角，见 rotation.ts）。
+  if (!isMeasure && containerStyle === undefined) {
+    const rotateDeg = resolveElementRotation(type, opts)
+    if (rotateDeg !== undefined) style += `rotate:${rotateDeg}deg;`
   }
   const measureAttr = isMeasure ? ` data-measure-id="${el.id}"` : ''
   const fitAttr = fitAttrs(fit, el.id, opts.fontSize ?? 12, opts)

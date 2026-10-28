@@ -38,9 +38,10 @@ export interface TemplateData {
   /** 方向（纸张方向）= 当前纸张长宽；切换时直接交换纸张宽高（设计稿内容随之铺在该尺寸上） */
   orientation: 'portrait' | 'landscape'
   /**
-   * 出纸旋转角度（整页内容旋转出纸）：缺省 0（不旋转）。仅固定纸（非连续纸、非拼版）生效。
+   * 出纸旋转角度（整页内容旋转出纸）：缺省 0（不旋转）。仅固定纸（非连续纸）生效。
    * 0° 纸张不变、内容不旋转；180° 纸张不变、内容翻转；90°/270° 纸张长宽互换以贴合旋转后的内容包围盒，
    * 设计稿内容保持原方向不变，不被拉伸或裁切。
+   * 拼版启用时按**每格内容**旋转：90°/270° 时每格占位宽高互换，列数/行数按互换后重算。
    */
   outputRotation?: 0 | 90 | 180 | 270
   margins: { top: number; right: number; bottom: number; left: number } // mm
@@ -348,7 +349,13 @@ export interface ElementOptions {
   hideTitle?: boolean
   draggable?: boolean
   axis?: string
-  transform?: number
+  /**
+   * 元素级旋转角（度，围绕元素中心，归一化到 [0,360)；0/未设即不旋转）。
+   * 渲染走 CSS 独立属性 rotate（不占 transform，避免与设计器拖拽冲突）。
+   * 分页/连续纸按旋转后 AABB 结算（见 render/rotation.ts）。
+   * table、flowList、跟随区元素与条码非直角档（低 dpi 渲染端）忽略本值。
+   */
+  rotate?: number
   zIndex?: number
   groupId?: string
   // 分页属性（非表格元素）

@@ -16,6 +16,9 @@
       class="print-html-preview-iframe"
       title="打印预览"
     />
+    <div v-if="warnings.length && !rendering && !errorMsg" class="print-html-preview-warn" role="status">
+      <span>出纸提示：{{ warnings.join('；') }}</span>
+    </div>
     <div v-if="templateJson && !rendering && !errorMsg" class="print-html-preview-zoom">
       <button
         v-for="preset in presets"
@@ -34,6 +37,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import type { PrintTemplateData } from '@worm-vue3-print/core'
+import { collectLayoutWarnings } from '@worm-vue3-print/core'
 import { renderHtmlPages } from '@worm-vue3-print/core/browser'
 import { browserCodeRenderer } from '@worm-vue3-print/core/browser'
 import {
@@ -67,6 +71,8 @@ const iframeRef = ref<HTMLIFrameElement>()
 const rootRef = ref<HTMLDivElement>()
 const rendering = ref(false)
 const errorMsg = ref('')
+/** 出纸裁切提示（按真实分页与实测高结算，与保存闸门的预估同源不同口径）：只提示不阻断 */
+const warnings = ref<string[]>([])
 /** 渲染序列：过期的渲染结果丢弃，避免快速重渲染竞态 */
 let renderSeq = 0
 
@@ -107,8 +113,9 @@ async function rerender() {
   const seq = ++renderSeq
   rendering.value = true
   errorMsg.value = ''
+  warnings.value = []
   try {
-    const { html, pageCount, copies } = await renderHtmlPages(
+    const { html, pageCount, copies, pageLayouts } = await renderHtmlPages(
       props.templateJson as PrintTemplateData,
       props.printData,
       props.baseUrl,
@@ -116,6 +123,7 @@ async function rerender() {
       { fontBaseUrl: props.fontBaseUrl },
     )
     if (seq !== renderSeq) return
+    warnings.value = collectLayoutWarnings(pageLayouts ?? [])
     const doc = iframeRef.value?.contentWindow?.document
     if (doc) {
       doc.open()
@@ -197,6 +205,21 @@ defineExpose({ print, rerender, setViewZoom, zoomKey, presets })
 }
 .print-html-preview-error {
   color: #f56c6c;
+}
+/* 出纸裁切提示浮在预览左上：与错误遮层互斥（错误优先），不占布局 */
+.print-html-preview-warn {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  z-index: 2;
+  max-width: 62%;
+  padding: 4px 8px;
+  border: 1px solid #e6a23c;
+  border-radius: 4px;
+  background: rgba(250, 236, 209, 0.94);
+  color: #b88230;
+  font-size: 12px;
+  line-height: 1.5;
 }
 /* 缩放条浮在预览右上：不占布局，避免各宿主（demo 与设计器弹框）为它改容器结构 */
 .print-html-preview-zoom {

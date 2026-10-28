@@ -49,7 +49,8 @@ export type { SystemVariableContext } from './render/data-binder.js'
 export { generateHtml } from './render/html-generator.js'
 export type { GenerateOptions } from './render/html-generator.js'
 export { buildPageCss, elementPositionStyle, mm } from './render/css-builder.js'
-export { paginate, tableDesignBottom } from './render/pagination-engine.js'
+export { paginate, tableDesignBottom, collectFollowMemberIds } from './render/pagination-engine.js'
+export type { FollowJudgementInput } from './render/pagination-engine.js'
 export { evaluateTemplate, safeEval } from './render/expression-eval.js'
 export {
   getPaperDimensions,
@@ -58,6 +59,13 @@ export {
   isContinuousPaperSize,
 } from './render/types.js'
 export { composeContinuousHeight, MIN_CONTINUOUS_HEIGHT_MM } from './render/continuous-paper.js'
+export {
+  getRotatedAabb,
+  normalizeRotationAngle,
+  resolveElementRotation,
+  CODE_ROTATION_MIN_DPI,
+} from './render/rotation.js'
+export type { RotatedAabb } from './render/rotation.js'
 export {
   DEFAULT_SHRINK_MIN_FONT_SIZE_PT,
   MIN_SHRINK_FONT_SIZE_PT,

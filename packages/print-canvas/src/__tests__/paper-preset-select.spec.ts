@@ -143,3 +143,65 @@ describe('小票纸按连续纸处理', () => {
     expect(checked).toContain('0')
   })
 })
+
+describe('拼版下的内容旋转角度', () => {
+  const TILING = {
+    enabled: true, columns: 2, gapX: 2, gapY: 2,
+    sheetPaperSize: 'A4' as const,
+    sheetMargin: { top: 10, right: 10, bottom: 10, left: 10 },
+  }
+  /** 70×40mm 标签模板：拼版几何默认按它算 */
+  const labelPanel = (over: Partial<TemplateData> = {}) =>
+    mountPanel(pageTemplate({ paperSize: 'CUSTOM', customWidth: 70, customHeight: 40, ...over }))
+
+  it('启用拼版时仍显示四档（旋转按每格内容生效）', () => {
+    const wrapper = labelPanel({ tiling: TILING })
+    expect(wrapper.findAll('.pd-label').map(l => l.text())).toContain('内容旋转角度')
+    const radios = wrapper.findAll('input[type="radio"]').map(r => (r.element as HTMLInputElement).value)
+    expect(radios).toEqual(expect.arrayContaining(['0', '90', '180', '270']))
+  })
+
+  it('拼版开启时提示改讲每格口径，并说明 90°/270° 占位互换', () => {
+    const wrapper = labelPanel({ tiling: TILING, outputRotation: 90 })
+    expect(wrapper.text()).toContain('每个标签')
+    expect(wrapper.text()).toContain('占位宽高互换')
+  })
+
+  it('未启用拼版时沿用整页口径提示', () => {
+    expect(labelPanel().text()).toContain('整页内容旋转')
+  })
+
+  it('0°→90°：占位互换时列数自动铺满新上限（2→4）', async () => {
+    const wrapper = labelPanel({ tiling: TILING })
+    const radio90 = wrapper.findAll('input[type="radio"]')
+      .find(r => (r.element as HTMLInputElement).value === '90')!
+    await radio90.setValue('90')
+    const emitted = wrapper.emitted('update:templateData')!.at(-1)![0] as TemplateData
+    expect(emitted.outputRotation).toBe(90)
+    expect(emitted.tiling?.columns).toBe(4)
+  })
+
+  it('90°→0°：切回原档位列数按原上限回排（4→2）', async () => {
+    const wrapper = labelPanel({ tiling: { ...TILING, columns: 4 }, outputRotation: 90 })
+    const radio0 = wrapper.findAll('input[type="radio"]')
+      .find(r => (r.element as HTMLInputElement).value === '0')!
+    await radio0.setValue('0')
+    const emitted = wrapper.emitted('update:templateData')!.at(-1)![0] as TemplateData
+    expect(emitted.outputRotation).toBe(0)
+    expect(emitted.tiling?.columns).toBe(2)
+  })
+
+  it('0°→180°：每格占位不变，列数不被重排', async () => {
+    // 40×70 标签 0° 档最多可放 4 列，作者只设 3 列——180° 不得把它铺满成 4
+    const wrapper = labelPanel({
+      customWidth: 40, customHeight: 70,
+      tiling: { ...TILING, columns: 3 },
+    })
+    const radio180 = wrapper.findAll('input[type="radio"]')
+      .find(r => (r.element as HTMLInputElement).value === '180')!
+    await radio180.setValue('180')
+    const emitted = wrapper.emitted('update:templateData')!.at(-1)![0] as TemplateData
+    expect(emitted.outputRotation).toBe(180)
+    expect(emitted.tiling?.columns).toBe(3)
+  })
+})

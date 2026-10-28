@@ -16,6 +16,9 @@ export async function renderInBrowser(templateJson, printData, baseUrl) {
     paperMm: result.paperMm,
     continuous: result.continuous,
     pageCount: result.pageCount,
+    // 出纸裁切提示（旋转外接盒顶越页首、元素超出纸面左右缘）：与保存闸门同一份 core 判据，
+    // 预览层直接读它提示用户，不必再自己解析分页结果
+    warnings: [...new Set((result.pageLayouts ?? []).flatMap(l => l.warnings ?? []))],
   }
 }
 

@@ -2,7 +2,7 @@
 // 标签多行多列拼版：类型、校验、布局纯函数（无 DOM / 无 IO）
 import {
   PAPER_DIMENSIONS,
-  getPaperDimensions,
+  getOutputPaperDimensions,
   isContinuousPaper,
   isContinuousPaperSize,
 } from '../render/types.js'
@@ -48,6 +48,8 @@ export const TILE_DEFAULTS: TilingOptions = {
 export interface TilingTemplateInput {
   paperSize: PaperSize
   orientation: 'portrait' | 'landscape'
+  /** 内容旋转角度：拼版下按每格内容生效；90/270 时每格占位宽高互换 */
+  outputRotation?: 0 | 90 | 180 | 270
   customWidth?: number
   customHeight?: number
   tiling?: TilingOptions
@@ -96,6 +98,17 @@ export class TilingError extends Error {
 /** 保留一位小数：错误文案里的 mm 值可读性 */
 export function roundMm(value: number): number {
   return Math.round(value * 10) / 10
+}
+
+/**
+ * 几何文案补充：90/270 时每格占位已宽高互换，补一句说明，
+ * 避免用户把旋转后的尺寸误当设计稿尺寸。
+ */
+function rotationNote(t: TilingTemplateInput, tile: { width: number; height: number }): string {
+  const angle = t.outputRotation
+  return angle === 90 || angle === 270
+    ? `（内容旋转 ${angle}°，每格 ${tile.width}×${tile.height}mm）`
+    : ''
 }
 
 /** 配置归一化：缺省字段补 TILE_DEFAULTS，sheetMargin 做深合并 */
@@ -164,7 +177,8 @@ export function computeTileLayout(
 
   const cfg = normalizeTilingOptions(t)
   const sheet = resolveSheetMm(t, opts)
-  const label = getPaperDimensions(t)
+  // 每格占位：取旋转后的出纸尺寸（90/270 时与设计稿宽高互换）
+  const label = getOutputPaperDimensions(t)
   const avail = availableArea(sheet, cfg.sheetMargin)
   const rows = Math.floor((avail.h + cfg.gapY) / (label.height + cfg.gapY))
 
@@ -200,7 +214,8 @@ export function tilePosition(layout: TileLayout, index: number): { left: number;
 export function computeMaxColumns(t: TilingTemplateInput, opts?: TilingResolveOptions): number {
   const cfg = normalizeTilingOptions(t)
   const sheet = resolveSheetMm(t, opts)
-  const label = getPaperDimensions(t)
+  // 每格占位：取旋转后的出纸尺寸（90/270 时与设计稿宽高互换）
+  const label = getOutputPaperDimensions(t)
   const availW = sheet.width - cfg.sheetMargin.left - cfg.sheetMargin.right
   return calcMaxColumns(availW, label.width, cfg.gapX)
 }
@@ -242,7 +257,8 @@ export function validateTiling(t: TilingTemplateInput, opts?: TilingResolveOptio
   if (customSizeInvalid || sheetContinuous) return issues
 
   const sheet = resolveSheetMm(t, opts)
-  const label = getPaperDimensions(t)
+  // 每格占位：取旋转后的出纸尺寸（90/270 时与设计稿宽高互换）
+  const label = getOutputPaperDimensions(t)
   const avail = availableArea(sheet, cfg.sheetMargin)
   const marginLR = roundMm(cfg.sheetMargin.left + cfg.sheetMargin.right)
 
@@ -259,7 +275,7 @@ export function validateTiling(t: TilingTemplateInput, opts?: TilingResolveOptio
       message: '拼版列数 ' + cfg.columns + ' 超出纸面可用宽度：'
         + roundMm(sheet.width) + 'mm − 左右留白 ' + marginLR + 'mm = ' + roundMm(avail.w) + 'mm，'
         + '最多可放 ' + maxColumns + ' 列；当前 ' + cfg.columns + ' 列 '
-        + label.width + 'mm 标签含间距需要 ' + needW + 'mm',
+        + label.width + 'mm 标签含间距需要 ' + needW + 'mm' + rotationNote(t, label),
     })
   }
 
@@ -268,7 +284,7 @@ export function validateTiling(t: TilingTemplateInput, opts?: TilingResolveOptio
     issues.push({
       code: 'LABEL_TOO_TALL',
       message: '标签高度 ' + label.height + 'mm 超出纸面可用高度 ' + roundMm(avail.h)
-        + 'mm，拼版每张 0 行；请缩小标签高度或改用横向纸',
+        + 'mm，拼版每张 0 行；请缩小标签高度或改用横向纸' + rotationNote(t, label),
     })
   }
   return issues
