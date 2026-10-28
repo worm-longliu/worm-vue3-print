@@ -8,11 +8,12 @@
           <details class="demo-host-switch">
             <summary>宿主示例：Vue3 canvas</summary>
             <nav class="demo-host-switch-menu" aria-label="宿主示例互跳">
-              <a class="on" href="http://localhost:9303/" title="当前页面">Vue3 canvas（本仓库权威示例）</a>
-              <a href="http://localhost:9331/">Vue3 宿主</a>
-              <a href="http://localhost:9332/">Vue2 宿主</a>
-              <a href="http://localhost:9335/">React 宿主</a>
-              <a href="http://localhost:9334/">jQuery 宿主</a>
+              <a v-for="link in HOST_LINKS" :key="link.key"
+                 :class="{ on: link.key === CURRENT_HOST }"
+                 :href="link.href"
+                 :title="link.key === CURRENT_HOST ? '当前页面' : ''">
+                {{ link.label }}
+              </a>
             </nav>
           </details>
         </div>
@@ -167,6 +168,29 @@ import { deriveBatchData } from './batch-data'
 
 /** 相对路径图片（/docfiles/...）拼接基址：浏览器预览与打印保持一致，默认取当前站点 origin */
 const RENDER_BASE_URL = (import.meta.env.VITE_RENDER_BASE_URL as string | undefined) || window.location.origin
+
+/**
+ * 宿主互跳链接：dev 时各宿主独立 localhost 端口，Pages 时同域不同子路径。
+ * 运行时按 hostname 动态选择——避免硬编码 localhost 到生产 bundle。
+ */
+const _isLocalhost = typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(window.location.host)
+const _hostBase = _isLocalhost ? '' : '/worm-vue3-print'
+const HOST_LINKS: Array<{ key: string; label: string; href: string }> = _isLocalhost
+  ? [
+      { key: 'demo',   label: 'Vue3 canvas（本仓库权威示例）', href: 'http://localhost:9303/' },
+      { key: 'vue3',   label: 'Vue3 宿主',                   href: 'http://localhost:9331/' },
+      { key: 'vue2',   label: 'Vue2 宿主',                   href: 'http://localhost:9332/' },
+      { key: 'react',  label: 'React 宿主',                  href: 'http://localhost:9335/' },
+      { key: 'jquery', label: 'jQuery 宿主',                 href: 'http://localhost:9334/' },
+    ]
+  : [
+      { key: 'demo',   label: 'Vue3 canvas（本仓库权威示例）', href: `${_hostBase}/` },
+      { key: 'vue3',   label: 'Vue3 宿主',                   href: `${_hostBase}/common/vue3/` },
+      { key: 'vue2',   label: 'Vue2 宿主',                   href: `${_hostBase}/common/vue2/` },
+      { key: 'react',  label: 'React 宿主',                  href: `${_hostBase}/common/react/` },
+      { key: 'jquery', label: 'jQuery 宿主',                 href: `${_hostBase}/common/jquery/` },
+    ]
+const CURRENT_HOST = 'demo'
 
 /**
  * 相对路径字体基址：demo 的字体挂在 Vite 站点（public/fonts），与图片域（RENDER_BASE_URL）不同。

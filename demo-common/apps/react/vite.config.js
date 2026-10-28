@@ -6,7 +6,11 @@ import react from '@vitejs/plugin-react'
  * React 18 子 demo：只用 npm 包，集成代码全在 src/App.jsx。
  * 9335；/render-api 代理到本地 render 微服务。
  */
+/** Pages 子路径部署时的 base，本地 dev 默认 '/' */
+const base = process.env.PAGES_BASE || '/'
+
 export default defineConfig({
+  base,
   plugins: [react()],
   server: {
     port: 9335,

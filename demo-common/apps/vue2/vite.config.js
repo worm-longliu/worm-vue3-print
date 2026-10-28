@@ -7,7 +7,11 @@ import vue2 from '@vitejs/plugin-vue2'
  * 用的是 runtime-only 构建，不需要 `alias: vue/dist/vue.esm.js` 那条运行时编译器。
  * 9332；/render-api 代理到本地 render 微服务并注入密钥。
  */
+/** Pages 子路径部署时的 base，本地 dev 默认 '/' */
+const base = process.env.PAGES_BASE || '/'
+
 export default defineConfig({
+  base,
   plugins: [vue2()],
   server: {
     port: 9332,

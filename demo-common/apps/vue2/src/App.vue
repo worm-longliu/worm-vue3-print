@@ -14,6 +14,29 @@ import { initTopbarOverflow } from './topbar-overflow.js'
 const BASE_URL = window.location.origin
 
 /**
+ * 宿主互跳链接：dev 时各宿主独立 localhost 端口，Pages 时同域不同子路径。
+ * 运行时按 hostname 动态选择。
+ */
+const _isLocalhost = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(window.location.host)
+const _hostBase = _isLocalhost ? '' : '/worm-vue3-print'
+const HOST_LINKS = _isLocalhost
+  ? [
+      { key: 'demo',   label: 'Vue3 canvas（demo 权威示例）', href: 'http://localhost:9303/' },
+      { key: 'vue3',   label: 'Vue3 宿主',                   href: 'http://localhost:9331/' },
+      { key: 'vue2',   label: 'Vue2 宿主',                   href: 'http://localhost:9332/' },
+      { key: 'react',  label: 'React 宿主',                  href: 'http://localhost:9335/' },
+      { key: 'jquery', label: 'jQuery 宿主',                 href: 'http://localhost:9334/' },
+    ]
+  : [
+      { key: 'demo',   label: 'Vue3 canvas（demo 权威示例）', href: `${_hostBase}/` },
+      { key: 'vue3',   label: 'Vue3 宿主',                   href: `${_hostBase}/common/vue3/` },
+      { key: 'vue2',   label: 'Vue2 宿主',                   href: `${_hostBase}/common/vue2/` },
+      { key: 'react',  label: 'React 宿主',                  href: `${_hostBase}/common/react/` },
+      { key: 'jquery', label: 'jQuery 宿主',                 href: `${_hostBase}/common/jquery/` },
+    ]
+const CURRENT_HOST = 'vue2'
+
+/**
  * 当前示例的批量数据：示例自带 batchData 时优先使用（一枚一条的标签场景），
  * 否则由当前单份数据派生，避免自定义数据与批量内容脱节。
  * Vue 2 会把 data 里的对象深度响应式化，structuredClone 对 Proxy 会抛 DataCloneError，
@@ -45,6 +68,8 @@ export default {
   components: { SampleThumb },
   data() {
     return {
+      hostLinks: HOST_LINKS,
+      currentHost: CURRENT_HOST,
       samples: SAMPLES,
       groups: ['全部', '单据', '标签', '小票'],
       // 设计器数据源
@@ -536,11 +561,12 @@ export default {
       <span class="demo-ou" data-overflow-unit="host-switch"><details class="demo-host-switch">
         <summary>宿主示例：Vue2</summary>
         <nav class="demo-host-switch-menu" aria-label="宿主示例互跳">
-          <a href="http://localhost:9303/">Vue3 canvas（demo 权威示例）</a>
-          <a href="http://localhost:9331/">Vue3 宿主</a>
-          <a class="on" href="http://localhost:9332/" title="当前页面">Vue2 宿主</a>
-          <a href="http://localhost:9335/">React 宿主</a>
-          <a href="http://localhost:9334/">jQuery 宿主</a>
+          <a v-for="link in hostLinks" :key="link.key"
+             :class="{ on: link.key === currentHost }"
+             :href="link.href"
+             :title="link.key === currentHost ? '当前页面' : ''">
+            {{ link.label }}
+          </a>
         </nav>
       </details></span>
       <span class="demo-ou" data-overflow-unit="biz"><span class="demo-badge">业务类型：{{ currentSample ? currentSample.name : '空白模板' }}</span></span>

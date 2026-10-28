@@ -6,7 +6,11 @@ import vue from '@vitejs/plugin-vue'
  * Vue 3 子 demo：只依赖 npm 包（@worm-vue3-print/common 与 /core），没有任何共用壳层。
  * 9331；/render-api 由 dev 代理转发到本地 render 微服务并注入密钥，前端代码不带密钥。
  */
+/** Pages 子路径部署时的 base，本地 dev 默认 '/' */
+const base = process.env.PAGES_BASE || '/'
+
 export default defineConfig({
+  base,
   plugins: [
     vue({
       template: {

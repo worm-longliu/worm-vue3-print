@@ -3,16 +3,15 @@ name: Deploy Demo to GitHub Pages
 on:
   push:
     branches: [master]
-    # 仅在 demo、被 alias 直接编译的包源码或本工作流变更时部署
     paths:
       - demo/**
+      - demo-common/**
       - packages/print-core/src/**
       - packages/print-canvas/src/**
-      - packages/print-client-sdk/src/**
+      - packages/print-common/src/**
       - .github/workflows/pages.yml
   workflow_dispatch:
 
-# 允许同仓库的并发部署互相取消
 concurrency:
   group: pages
   cancel-in-progress: true
@@ -30,32 +29,87 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          # demo 有独立的 package-lock.json，缓存以 demo 为目标
-          cache: npm
-          cache-dependency-path: demo/package-lock.json
-      # demo 独立安装依赖；file: 指向的包目录已随 checkout 存在
+
+      # ── 1. 根工作区：构建 common 包（jquery 宿主直挂形态依赖 dist/common.js） ──
+      # workspaces 只包含 packages/* services/* clients/*，demo / demo-common 独立安装
+      - name: 根工作区 npm ci + 构建 common
+        run: |
+          npm ci
+          npm run build -w @worm-vue3-print/common
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+
+      # ── 2. 安装 demo（独立 package-lock）+ 软链根 node_modules 让 alias 源码可解析 ──
       - name: 安装 demo 依赖
-        run: npm ci
+        run: |
+          npm ci
+          ln -sf "$PWD/node_modules" "$PWD/../node_modules"
         working-directory: demo
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
-      # alias 直接编译的包源码在 packages/ 下（demo 目录之外），
-      # 裸包名解析会沿目录向上找 node_modules，软链到 demo 的依赖树
-      - name: 软链根 node_modules
-        run: ln -s "$PWD/demo/node_modules" "$PWD/node_modules"
-      # 子路径部署：仓库名为 worm-vue3-print，站点根为 /worm-vue3-print/
+
+      # ── 4. 同步示例模板 + 宿主样式到 demo-common/apps/*（生成 templates.js / demo-ui.css） ──
+      - name: 同步示例与样式
+        run: |
+          node scripts/sync-demo-samples.mjs
+          node scripts/sync-demo-styles.mjs
+        working-directory: demo-common
+
+      # ── 5. 安装四个宿主 ──
+      - name: 安装 demo-common 四宿主
+        run: node scripts/install-all.mjs
+        working-directory: demo-common
+
+      # ── 6. 构建 demo（站点根 /worm-vue3-print/） ──
       - name: 构建 demo
         run: npm run build -- --base=/worm-vue3-print/
         working-directory: demo
+
+      # ── 7. 构建三个 vite 宿主 ──
+      - name: 构建 vue3 宿主
+        run: PAGES_BASE=/worm-vue3-print/common/vue3/ npm run build
+        working-directory: demo-common/apps/vue3
+
+      - name: 构建 vue2 宿主
+        run: PAGES_BASE=/worm-vue3-print/common/vue2/ npm run build
+        working-directory: demo-common/apps/vue2
+
+      - name: 构建 react 宿主
+        run: PAGES_BASE=/worm-vue3-print/common/react/ npm run build
+        working-directory: demo-common/apps/react
+
+      # ── 8. jquery 宿主：直挂形态，资源已全部相对路径（./vendor ./src），无 vite build；准备产物 ──
+      - name: 准备 jquery 宿主产物
+        run: |
+          APP=demo-common/apps/jquery
+          OUT=deploy/common/jquery
+          mkdir -p "$OUT"
+          cp "$APP/index.html" "$OUT/"
+          cp -r "$APP/public"/* "$OUT/"
+          cp -r "$APP/src" "$OUT/"
+
+      # ── 9. 合并所有产物到 deploy/ ──
+      - name: 合并产物
+        run: |
+          mkdir -p deploy
+          # demo 作为站点根
+          cp -r demo/dist/* deploy/
+          # 三个 vite 宿主各自的 dist/ 放到对应子路径（vite base 已写入 index.html 的绝对路径）
+          cp -r demo-common/apps/vue3/dist deploy/common/vue3
+          cp -r demo-common/apps/vue2/dist deploy/common/vue2
+          cp -r demo-common/apps/react/dist deploy/common/react
+          # jquery 产物已在 deploy/common/jquery（步骤 8 写入）
+
+      # ── 10. 上传 Pages 产物 ──
       - name: 配置 Pages
         uses: actions/configure-pages@v5
         with:
-          # 仓库未启用 Pages 时自动启用（source 设为 GitHub Actions）
           enablement: true
+
       - name: 上传构建产物
         uses: actions/upload-pages-artifact@v3
         with:
-          path: demo/dist
+          path: deploy
 
   deploy:
     needs: build

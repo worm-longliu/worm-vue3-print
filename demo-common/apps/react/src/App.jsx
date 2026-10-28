@@ -13,6 +13,29 @@ import { createPreviewZoom, renderInBrowser, writeHtmlToFrame } from './browser-
 const BASE_URL = window.location.origin
 
 /**
+ * 宿主互跳链接：dev 时各宿主独立 localhost 端口，Pages 时同域不同子路径。
+ * 运行时按 hostname 动态选择。
+ */
+const _isLocalhost = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(window.location.host)
+const _hostBase = _isLocalhost ? '' : '/worm-vue3-print'
+const HOST_LINKS = _isLocalhost
+  ? [
+      { key: 'demo',   label: 'Vue3 canvas（demo 权威示例）', href: 'http://localhost:9303/' },
+      { key: 'vue3',   label: 'Vue3 宿主',                   href: 'http://localhost:9331/' },
+      { key: 'vue2',   label: 'Vue2 宿主',                   href: 'http://localhost:9332/' },
+      { key: 'react',  label: 'React 宿主',                  href: 'http://localhost:9335/' },
+      { key: 'jquery', label: 'jQuery 宿主',                 href: 'http://localhost:9334/' },
+    ]
+  : [
+      { key: 'demo',   label: 'Vue3 canvas（demo 权威示例）', href: `${_hostBase}/` },
+      { key: 'vue3',   label: 'Vue3 宿主',                   href: `${_hostBase}/common/vue3/` },
+      { key: 'vue2',   label: 'Vue2 宿主',                   href: `${_hostBase}/common/vue2/` },
+      { key: 'react',  label: 'React 宿主',                  href: `${_hostBase}/common/react/` },
+      { key: 'jquery', label: 'jQuery 宿主',                 href: `${_hostBase}/common/jquery/` },
+    ]
+const CURRENT_HOST = 'react'
+
+/**
  * 当前示例的批量数据：示例自带 batchData 时优先使用（一枚一条的标签场景），
  * 否则由当前单份数据派生，避免自定义数据与批量内容脱节。
  */
@@ -320,11 +343,14 @@ export default function App() {
         <span className="demo-ou" data-overflow-unit="host-switch"><details className="demo-host-switch">
           <summary>宿主示例：React</summary>
           <nav className="demo-host-switch-menu" aria-label="宿主示例互跳">
-            <a href="http://localhost:9303/">Vue3 canvas（demo 权威示例）</a>
-            <a href="http://localhost:9331/">Vue3 宿主</a>
-            <a href="http://localhost:9332/">Vue2 宿主</a>
-            <a className="on" href="http://localhost:9335/" title="当前页面">React 宿主</a>
-            <a href="http://localhost:9334/">jQuery 宿主</a>
+            {HOST_LINKS.map(link => (
+              <a key={link.key}
+                 className={link.key === CURRENT_HOST ? 'on' : ''}
+                 href={link.href}
+                 title={link.key === CURRENT_HOST ? '当前页面' : ''}>
+                {link.label}
+              </a>
+            ))}
           </nav>
         </details></span>
         <span className="demo-ou" data-overflow-unit="biz"><span className="demo-badge">业务类型：{currentSample ? currentSample.name : '空白模板'}</span></span>

@@ -9,9 +9,31 @@
       再加一份与 demo 同源的宿主样式 demo-ui.css（由 scripts/sync-demo-styles.mjs 从 demo 逐字抽取）。
       传统项目直接从制品库拿这两个文件丢进静态目录即可，不需要任何打包器。
     -->
-    <link rel="stylesheet" href="/vendor/worm-print-common.css" />
-    <link rel="stylesheet" href="/src/styles/demo-ui.css" />
-    <link rel="stylesheet" href="/src/styles/topbar-overflow.css" />
+    <link rel="stylesheet" href="./vendor/worm-print-common.css" />
+    <link rel="stylesheet" href="./src/styles/demo-ui.css" />
+    <link rel="stylesheet" href="./src/styles/topbar-overflow.css" />
+    <!-- host-links 运行时：dev 用 localhost:93xx，Pages 用 /worm-vue3-print/common/xxx/ -->
+    <script>
+    (function(){
+      var hosts = {
+        demo:   { port: 9303, path: '/' },
+        vue3:   { port: 9331, path: '/common/vue3/' },
+        vue2:   { port: 9332, path: '/common/vue2/' },
+        react:  { port: 9335, path: '/common/react/' },
+        jquery: { port: 9334, path: '/common/jquery/' },
+      };
+      var isLocal = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(location.host);
+      var base = isLocal ? '' : '/worm-vue3-print';
+      document.querySelectorAll('.host-link').forEach(function(a){
+        var key = a.getAttribute('data-host');
+        var info = hosts[key];
+        if (!info) return;
+        a.href = isLocal
+          ? 'http://' + location.hostname + ':' + info.port + '/'
+          : base + info.path;
+      });
+    })();
+    </script>
   </head>
   <body>
     <div class="demo-app">
@@ -22,11 +44,11 @@
         <span class="demo-ou" data-overflow-unit="host-switch"><details class="demo-host-switch">
           <summary>宿主示例：jQuery</summary>
           <nav class="demo-host-switch-menu" aria-label="宿主示例互跳">
-            <a href="http://localhost:9303/">Vue3 canvas（demo 权威示例）</a>
-            <a href="http://localhost:9331/">Vue3 宿主</a>
-            <a href="http://localhost:9332/">Vue2 宿主</a>
-            <a href="http://localhost:9335/">React 宿主</a>
-            <a class="on" href="http://localhost:9334/" title="当前页面">jQuery 宿主</a>
+            <a class="host-link" data-host="demo">Vue3 canvas（demo 权威示例）</a>
+            <a class="host-link" data-host="vue3">Vue3 宿主</a>
+            <a class="host-link" data-host="vue2">Vue2 宿主</a>
+            <a class="host-link" data-host="react">React 宿主</a>
+            <a class="host-link on" data-host="jquery" data-current="true" title="当前页面">jQuery 宿主</a>
           </nav>
         </details></span>
         <span class="demo-ou" data-overflow-unit="biz"><span class="demo-badge">业务类型：<span id="badge-biz">空白模板</span></span></span>
@@ -194,8 +216,8 @@
       </div>
     </div>
 
-    <script src="/vendor/jquery.min.js"></script>
-    <script src="/vendor/worm-print-common.js"></script>
-    <script type="module" src="/src/app.js"></script>
+    <script src="./vendor/jquery.min.js"></script>
+    <script src="./vendor/worm-print-common.js"></script>
+    <script type="module" src="./src/app.js"></script>
   </body>
 </html>

@@ -7,11 +7,12 @@
       <span class="demo-ou" data-overflow-unit="host-switch"><details class="demo-host-switch">
         <summary>宿主示例：Vue3</summary>
         <nav class="demo-host-switch-menu" aria-label="宿主示例互跳">
-          <a href="http://localhost:9303/">Vue3 canvas（demo 权威示例）</a>
-          <a class="on" href="http://localhost:9331/" title="当前页面">Vue3 宿主</a>
-          <a href="http://localhost:9332/">Vue2 宿主</a>
-          <a href="http://localhost:9335/">React 宿主</a>
-          <a href="http://localhost:9334/">jQuery 宿主</a>
+          <a v-for="link in HOST_LINKS" :key="link.key"
+             :class="{ on: link.key === CURRENT_HOST }"
+             :href="link.href"
+             :title="link.key === CURRENT_HOST ? '当前页面' : ''">
+            {{ link.label }}
+          </a>
         </nav>
       </details></span>
       <span class="demo-ou" data-overflow-unit="biz"><span class="demo-badge">业务类型：{{ currentSample ? currentSample.name : '空白模板' }}</span></span>
@@ -252,6 +253,29 @@ import { createPreviewZoom, renderInBrowser, writeHtmlToFrame } from './browser-
 
 /** 宿主基址：模板里的相对路径图片按它拼接 */
 const BASE_URL = window.location.origin
+
+/**
+ * 宿主互跳链接：dev 时各宿主独立 localhost 端口，Pages 时同域不同子路径。
+ * 运行时按 hostname 动态选择。
+ */
+const _isLocalhost = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(window.location.host)
+const _hostBase = _isLocalhost ? '' : '/worm-vue3-print'
+const HOST_LINKS = _isLocalhost
+  ? [
+      { key: 'demo',   label: 'Vue3 canvas（demo 权威示例）', href: 'http://localhost:9303/' },
+      { key: 'vue3',   label: 'Vue3 宿主',                   href: 'http://localhost:9331/' },
+      { key: 'vue2',   label: 'Vue2 宿主',                   href: 'http://localhost:9332/' },
+      { key: 'react',  label: 'React 宿主',                  href: 'http://localhost:9335/' },
+      { key: 'jquery', label: 'jQuery 宿主',                 href: 'http://localhost:9334/' },
+    ]
+  : [
+      { key: 'demo',   label: 'Vue3 canvas（demo 权威示例）', href: `${_hostBase}/` },
+      { key: 'vue3',   label: 'Vue3 宿主',                   href: `${_hostBase}/common/vue3/` },
+      { key: 'vue2',   label: 'Vue2 宿主',                   href: `${_hostBase}/common/vue2/` },
+      { key: 'react',  label: 'React 宿主',                  href: `${_hostBase}/common/react/` },
+      { key: 'jquery', label: 'jQuery 宿主',                 href: `${_hostBase}/common/jquery/` },
+    ]
+const CURRENT_HOST = 'vue3'
 
 const designerRef = ref(null)   // <print-designer> 自定义元素本体
 const fields = ref([])
