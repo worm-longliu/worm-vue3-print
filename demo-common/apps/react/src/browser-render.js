@@ -2,7 +2,8 @@
 // 产物既用于「打印预览」写入 iframe，也直送打印客户端，客户端不再执行模板渲染。
 import { renderHtmlPages, browserCodeRenderer } from '@worm-vue3-print/core/browser'
 import {
-  applyPreviewViewZoom, paperWidthPx, resolvePrinterDpi, resolveZoomKey, zoomPresets, zoomValueOf,
+  applyPreviewViewZoom, paperWidthPx, resolvePrinterDpi, resolveZoomKey,
+  viewZoomHint, zoomPresets, zoomValueOf,
 } from '@worm-vue3-print/core/designer'
 
 /**
@@ -46,7 +47,7 @@ export function createPreviewZoom({ getTemplate, measureContainer }) {
     const dpi = resolvePrinterDpi(template)
     presets = zoomPresets(dpi, measureContainer(), paperWidthPx(template))
     zoomKey = resolveZoomKey(presets, zoomKey, dpi)
-    return { presets: [...presets], zoomKey }
+    return { presets: [...presets], zoomKey, hint: viewZoomHint(dpi, zoomKey) }
   }
 
   /** 缩放只写进预览文档，不改渲染产物：规则自带 `@media print{zoom:1}`，打印与分页不受影响 */
@@ -60,5 +61,10 @@ export function createPreviewZoom({ getTemplate, measureContainer }) {
     return zoomKey
   }
 
-  return { sync, apply, setKey }
+  /** 当前档的切档提示：模板无点距、或已落在点阵档时为空串；宿主切档后重取 */
+  function hint() {
+    return viewZoomHint(resolvePrinterDpi(getTemplate()), zoomKey)
+  }
+
+  return { sync, apply, setKey, hint }
 }

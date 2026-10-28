@@ -46,7 +46,7 @@ export function createPreviewZoom({ getTemplate, measureContainer }) {
     const dpi = W.resolvePrinterDpi(template)
     presets = W.zoomPresets(dpi, measureContainer(), W.paperWidthPx(template))
     zoomKey = W.resolveZoomKey(presets, zoomKey, dpi)
-    return { presets: [...presets], zoomKey }
+    return { presets: [...presets], zoomKey, hint: W.viewZoomHint(dpi, zoomKey) }
   }
 
   /** 缩放只写进预览文档，不改渲染产物：规则自带 `@media print{zoom:1}`，打印与分页不受影响 */
@@ -60,5 +60,10 @@ export function createPreviewZoom({ getTemplate, measureContainer }) {
     return zoomKey
   }
 
-  return { sync, apply, setKey }
+  /** 当前档的切档提示：模板无点距、或已落在点阵档时为空串；宿主切档后重取 */
+  function hint() {
+    return W.viewZoomHint(W.resolvePrinterDpi(getTemplate()), zoomKey)
+  }
+
+  return { sync, apply, setKey, hint }
 }

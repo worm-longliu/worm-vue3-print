@@ -103,6 +103,7 @@ export default function App() {
   const [previewError, setPreviewError] = useState('')
   const [previewZoomPresets, setPreviewZoomPresets] = useState([])
   const [previewZoomKey, setPreviewZoomKey] = useState('')
+  const [previewZoomHint, setPreviewZoomHint] = useState('')
   /** 本次预览用的模板：档位表按它的 printerDpi 与纸宽结算 */
   const previewTemplateRef = useRef(null)
   const previewZoomRef = useRef(null)
@@ -119,12 +120,15 @@ export default function App() {
     const state = ctl.sync()
     setPreviewZoomPresets(state.presets)
     setPreviewZoomKey(state.zoomKey)
+    setPreviewZoomHint(state.hint)
     ctl.apply(previewFrameRef.current)
   }, [])
 
   const onPreviewZoom = useCallback((key) => {
-    setPreviewZoomKey(previewZoomRef.current.setKey(key))
-    previewZoomRef.current.apply(previewFrameRef.current)
+    const ctl = previewZoomRef.current
+    setPreviewZoomKey(ctl.setKey(key))
+    setPreviewZoomHint(ctl.hint())
+    ctl.apply(previewFrameRef.current)
   }, [])
 
   const openPreview = useCallback(async (templateJson) => {
@@ -393,6 +397,7 @@ export default function App() {
                       onClick={() => onPreviewZoom(preset.key)}
                     >{preset.label}</button>
                   ))}
+                  {previewZoomHint ? <span className="print-html-preview-zoom-hint">{previewZoomHint}</span> : null}
                   <span className="print-html-preview-zoom-note">仅屏幕缩放，打印不受影响</span>
                 </div>
               ) : null}

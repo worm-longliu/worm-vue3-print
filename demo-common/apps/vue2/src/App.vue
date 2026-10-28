@@ -63,6 +63,7 @@ export default {
       previewError: '',
       previewZoomPresets: [],
       previewZoomKey: '',
+      previewZoomHint: '',
       // 示例库弹窗
       galleryVisible: false,
       activeGroup: '全部',
@@ -312,10 +313,12 @@ export default {
       const state = this.previewZoomCtl.sync()
       this.previewZoomPresets = state.presets
       this.previewZoomKey = state.zoomKey
+      this.previewZoomHint = state.hint
       this.previewZoomCtl.apply(this.$refs.previewFrame)
     },
     onPreviewZoom(key) {
       this.previewZoomKey = this.previewZoomCtl.setKey(key)
+      this.previewZoomHint = this.previewZoomCtl.hint()
       this.previewZoomCtl.apply(this.$refs.previewFrame)
     },
     /** 「适配」档按容器宽算整数倍，窗口变化要重算（与 PrintHtmlPreview 的 resize 监听同口径） */
@@ -616,6 +619,7 @@ export default {
               :title="preset.tip"
               @click="onPreviewZoom(preset.key)"
             >{{ preset.label }}</button>
+            <span v-if="previewZoomHint" class="print-html-preview-zoom-hint">{{ previewZoomHint }}</span>
             <span class="print-html-preview-zoom-note">仅屏幕缩放，打印不受影响</span>
           </div>
         </div>

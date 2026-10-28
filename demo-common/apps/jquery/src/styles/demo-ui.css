@@ -919,6 +919,21 @@ body,
 .print-html-preview-error {
   color: #f56c6c;
 }
+/* 出纸裁切提示浮在预览左上：与错误遮层互斥（错误优先），不占布局 */
+.print-html-preview-warn {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  z-index: 2;
+  max-width: 62%;
+  padding: 4px 8px;
+  border: 1px solid #e6a23c;
+  border-radius: 4px;
+  background: rgba(250, 236, 209, 0.94);
+  color: #b88230;
+  font-size: 12px;
+  line-height: 1.5;
+}
 /* 缩放条浮在预览右上：不占布局，避免各宿主（demo 与设计器弹框）为它改容器结构 */
 .print-html-preview-zoom {
   position: absolute;
@@ -957,6 +972,11 @@ body,
 .print-html-preview-zoom-note {
   padding-right: 4px;
   color: var(--pd-text-muted, #909399);
+  font-size: 11px;
+}
+/* 切档提示：与缩放说明同处一条，只在「模板带点距 + 当前不是点阵档」时出现 */
+.print-html-preview-zoom-hint {
+  color: #b88230;
   font-size: 11px;
 }
 

@@ -15,6 +15,7 @@
 > **2026-10-26 发布前复核**：`npm pack` 三包产物里四条修复全在（`needsHeight` 含 `vline`、`overflow:visible;${nowrap}`、`keepLineBreaks`、`resolveElementNowrap`、`line-height:1.5`），canvas 内置更新记录含 V1.3.11；`npm publish --dry-run`：core 1.3.11 / 30 文件 / 346.0 kB / tag latest，canvas 1.3.11 / 86 文件 / 241.7 kB / tag latest，common 1.3.7-beta.0 / 44 文件 / 423.8 kB / tag next（需带脚本那组 flag）。**本机默认 registry 是 npmmirror**，手敲 publish 会发错源，已在 CONTRIBUTING 记红线。
 > **T-11 C2 已按口径 A 实施并双推**（相交才跟随；20/20 产物一致，变异自证红→绿）。原影响面记录：：资产级横向零交集成员 0 例（8 份模板/15 成员），复现确认 `far`/`over` 仍被吸收、`under` 应当跟随；口径 A/B 待你选，选完按「与 C3 同一轮」实施。待裁决新登记：**T-28**（longText 缺省行高 1.5 vs 出纸 normal）、**T-29**（`wordWrap:false` 三份手写实现待收编），以及原有 T-11 C2、T-24 定性、T-16/T-19b、T-22、T-25。
 
+> **2026-10-28 预览默认档（本轮）**：打印预览查看缩放按方案 B 改完——默认档从「有 `printerDpi` 落点阵、否则适配」改为**恒 100%**（core `defaultZoomKey` 单点），点阵档留在档位表首位并新增 core `viewZoomHint(dpi, currentKey)` 出切档提示，画布预览层与四宿主档位条同源显示。实测：canvas `PreviewZoom.spec` 改前 9/9、改后 10/10（两处变异各被 3 条/1 条断言抓住）；canvas 全量 75 文件/714 例、common 30 文件/344 例全绿；`verify-demo` 四宿主（9331/9332/9335/9334）**52/52 ×4**，其中「默认档为 100%（`active=100% zoom=1`）」与「带打印分辨率给点阵切档提示」是本轮把原「默认档与出纸文档缩放一致」一条拆成的两条（**改前 verify-demo 未单独跑基线**）。出纸产物与分页零变化（缩放只写预览文档，`@media print` 复位守卫不动）。
 > **本文件只挂未完成项。** 已完成条目压成文末「已完成归档」一行一条；原实施正文、批次记录、浏览器验证实测与探针坑明细
 > 已从本文件移出，可在 `git show HEAD:TODO.md`（截至 `cd6e7c1` 的 775 行版）与中英 CHANGELOG 里取回。
 >

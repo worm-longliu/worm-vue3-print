@@ -88,6 +88,7 @@
               :title="preset.tip"
               @click="onPreviewZoom(preset.key)"
             >{{ preset.label }}</button>
+            <span v-if="previewZoomHint" class="print-html-preview-zoom-hint">{{ previewZoomHint }}</span>
             <span class="print-html-preview-zoom-note">仅屏幕缩放，打印不受影响</span>
           </div>
         </div>
@@ -437,6 +438,7 @@ const previewFrameRef = ref(null)
 const previewBodyRef = ref(null)
 const previewZoomPresets = ref([])
 const previewZoomKey = ref('')
+const previewZoomHint = ref('')
 /** 本次预览用的模板：档位表要按它的 printerDpi 与纸宽结算 */
 let previewTemplate = null
 
@@ -450,11 +452,13 @@ function refreshPreviewZoom() {
   const state = previewZoom.sync()
   previewZoomPresets.value = state.presets
   previewZoomKey.value = state.zoomKey
+  previewZoomHint.value = state.hint
   previewZoom.apply(previewFrameRef.value)
 }
 
 function onPreviewZoom(key) {
   previewZoomKey.value = previewZoom.setKey(key)
+  previewZoomHint.value = previewZoom.hint()
   previewZoom.apply(previewFrameRef.value)
 }
 

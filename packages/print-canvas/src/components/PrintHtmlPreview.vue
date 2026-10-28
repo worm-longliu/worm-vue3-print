@@ -29,6 +29,7 @@
         :title="preset.tip"
         @click="zoomKey = preset.key"
       >{{ preset.label }}</button>
+      <span v-if="viewHint" class="print-html-preview-zoom-hint">{{ viewHint }}</span>
       <span class="print-html-preview-zoom-note">仅屏幕缩放，打印不受影响</span>
     </div>
   </div>
@@ -42,7 +43,7 @@ import { renderHtmlPages } from '@worm-vue3-print/core/browser'
 import { browserCodeRenderer } from '@worm-vue3-print/core/browser'
 import {
   applyPreviewViewZoom, defaultZoomKey, paperWidthPx, resolvePrinterDpi,
-  resolveZoomKey, zoomPresets, zoomValueOf,
+  resolveZoomKey, viewZoomHint, zoomPresets, zoomValueOf,
 } from '@worm-vue3-print/core/designer'
 
 const props = defineProps<{
@@ -85,6 +86,8 @@ const presets = computed(() =>
 )
 const zoomKey = ref(defaultZoomKey(printerDpi.value))
 const zoomValue = computed(() => zoomValueOf(presets.value, zoomKey.value))
+/** 100% 档下细条码仍会糊：带点距的模板给一句切档提示，判据与文案都在 core */
+const viewHint = computed(() => viewZoomHint(printerDpi.value, zoomKey.value))
 
 function measureContainer(): void {
   containerPx.value = rootRef.value?.clientWidth ?? 0
@@ -177,7 +180,7 @@ function setViewZoom(key: string): void {
   if (presets.value.some(p => p.key === key)) zoomKey.value = key
 }
 
-defineExpose({ print, rerender, setViewZoom, zoomKey, presets })
+defineExpose({ print, rerender, setViewZoom, zoomKey, presets, viewHint })
 </script>
 
 <style scoped>
@@ -259,6 +262,11 @@ defineExpose({ print, rerender, setViewZoom, zoomKey, presets })
 .print-html-preview-zoom-note {
   padding-right: 4px;
   color: var(--pd-text-muted, #909399);
+  font-size: 11px;
+}
+/* 切档提示：与缩放说明同处一条，只在「模板带点距 + 当前不是点阵档」时出现 */
+.print-html-preview-zoom-hint {
+  color: #b88230;
   font-size: 11px;
 }
 </style>

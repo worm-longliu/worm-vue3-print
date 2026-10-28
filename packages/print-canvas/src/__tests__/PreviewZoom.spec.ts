@@ -5,6 +5,7 @@ import {
   fitZoom,
   paperWidthPx,
   resolvePrinterDpi,
+  viewZoomHint,
   zoomPresets,
 } from '@worm-vue3-print/core/designer'
 
@@ -71,9 +72,15 @@ describe('预览缩放档位计算（判据在 core 的 designer/utils/preview-z
     expect(zoomPresets(null, 800, 95 * MM_TO_PX)[0]!.key).toBe('fit')
   })
 
-  it('默认档：能点对齐就先给点阵，否则适配', () => {
-    expect(defaultZoomKey(203)).toBe('dots')
-    expect(defaultZoomKey(null)).toBe('fit')
+  it('默认档恒为 100%：声明点距与否都不改变落点', () => {
+    expect(defaultZoomKey(203)).toBe('100')
+    expect(defaultZoomKey(null)).toBe('100')
+  })
+
+  it('切档提示只在「有点距 + 当前不是点阵档」时出现，且点名可切的档位', () => {
+    expect(viewZoomHint(203, '100')).toBe('条码看不清？切「点阵 203dpi」档（1 屏幕像素 = 1 打印点）')
+    expect(viewZoomHint(203, 'dots')).toBe('')
+    expect(viewZoomHint(null, '100')).toBe('')
   })
 })
 
@@ -87,18 +94,21 @@ describe('PrintHtmlPreview 档位状态', () => {
     return wrapper
   }
 
-  it('带 printerDpi 的模板默认落在点阵档，倍率 = dpi/96', async () => {
+  it('带 printerDpi 的模板默认落在 100% 档，并给出切点阵档的提示', async () => {
     const wrapper = await make(TEMPLATE_WITH_DPI)
-    expect(wrapper.vm.zoomKey).toBe('dots')
+    expect(wrapper.vm.zoomKey).toBe('100')
     const dots = wrapper.vm.presets.find((p: any) => p.key === 'dots')
     expect(dots!.value).toBeCloseTo(300 / 96, 6)
+    expect(wrapper.vm.viewHint).toBe('条码看不清？切「点阵 300dpi」档（1 屏幕像素 = 1 打印点）')
+    expect(wrapper.text()).toContain('点阵 300dpi')
     wrapper.unmount()
   })
 
-  it('没有 printerDpi 时不给点阵档，默认落到适配', async () => {
+  it('没有 printerDpi 时不给点阵档，默认 100% 且不出切档提示', async () => {
     const wrapper = await make({ elements: [{ options: {} }] })
-    expect(wrapper.vm.zoomKey).toBe('fit')
+    expect(wrapper.vm.zoomKey).toBe('100')
     expect(wrapper.vm.presets.some((p: any) => p.key === 'dots')).toBe(false)
+    expect(wrapper.vm.viewHint).toBe('')
     wrapper.unmount()
   })
 

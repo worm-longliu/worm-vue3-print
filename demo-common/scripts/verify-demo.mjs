@@ -241,6 +241,7 @@ const readPreview = () => page.evaluate(() => {
         labels: btns.map(b => b.textContent.trim()).join('/'),
         active: active ? active.textContent.trim() : '',
         note: document.querySelector('.print-html-preview-zoom-note')?.textContent.trim() ?? '',
+        hint: document.querySelector('.print-html-preview-zoom-hint')?.textContent.trim() ?? '',
         frameZoom: frame ? frame.style.zoom : '',
         computedZoom: css.zoom,
         printGuard,
@@ -287,13 +288,11 @@ check('预览渲染出纸面', single.pages > 0, `${single.pages} 页`)
 // 预览缩放档位（T-19b）：五档齐、有激活档、说明文案与「打印不受影响」守卫都在
 check('预览缩放档位五档齐', single.zoom.count === 5 && /点阵/.test(single.zoom.labels) && /适配/.test(single.zoom.labels) && /400%/.test(single.zoom.labels),
   `count=${single.zoom.count} ${single.zoom.labels}`)
-// 「点阵」档的期望缩放 = 打印机 dpi / 96；带 dpi 的模板必须精确命中，否则退化为「适配」时只要求为正
-const dpiHit = /(\d{2,3})dpi/.exec(single.zoom.active)
-const zoomOk = dpiHit
-  ? Math.abs(Number(single.zoom.computedZoom) - Number(dpiHit[1]) / 96) < 0.02
-  : Number(single.zoom.computedZoom) > 0
-check('预览默认档与出纸文档缩放一致', /点阵|适配/.test(single.zoom.active) && zoomOk,
-  `active=${single.zoom.active} zoom=${single.zoom.computedZoom} 期望=${dpiHit ? (Number(dpiHit[1]) / 96).toFixed(4) : '>0'}`)
+// 默认档恒为 100%（CSS 真实尺寸）：出纸文档上的 zoom 必须精确等于 1，与模板点距无关
+check('预览默认档为 100%', single.zoom.active === '100%' && Number(single.zoom.computedZoom) === 1,
+  `active=${single.zoom.active} zoom=${single.zoom.computedZoom}`)
+// 100% 档放不下纸面点距：带 printerDpi 的模板必须在档位条里给一句切点阵档的提示（文案源在 core）
+check('带打印分辨率的预览给点阵切档提示', /点阵\s*\d+dpi/.test(single.zoom.hint), `hint=${single.zoom.hint}`)
 check('缩放说明与打印复位守卫在位', /仅屏幕缩放/.test(single.zoom.note) && single.zoom.printGuard,
   `note=${single.zoom.note} guard=${single.zoom.printGuard}`)
 const expectedTexts = dataLeaves(FIRST_LABEL_SAMPLE.data).slice(0, 4)

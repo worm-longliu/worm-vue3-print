@@ -8,7 +8,7 @@ import * as CommonIndex from './index'
 import { getPaperDimensions, isContinuousPaperSize, getByPath } from '@worm-vue3-print/core'
 import {
   applyPreviewViewZoom, defaultZoomKey, paperWidthPx, resolvePrinterDpi,
-  resolveToolbarOverflow, resolveZoomKey, zoomPresets, zoomValueOf,
+  resolveToolbarOverflow, resolveZoomKey, viewZoomHint, zoomPresets, zoomValueOf,
 } from '@worm-vue3-print/core/designer'
 import { renderHtmlPages, browserCodeRenderer } from '@worm-vue3-print/core/browser'
 import { PrintClient, WormPrintError } from '@worm-vue3-print/core/client'
@@ -33,6 +33,7 @@ const WormPrintCommon = {
   defaultZoomKey,
   resolveZoomKey,
   zoomValueOf,
+  viewZoomHint,
   applyPreviewViewZoom,
   resolveToolbarOverflow,
 }
@@ -43,5 +44,5 @@ export { renderHtmlPages, browserCodeRenderer, PrintClient, WormPrintError }
 export { getPaperDimensions, isContinuousPaperSize, getByPath }
 export {
   applyPreviewViewZoom, defaultZoomKey, paperWidthPx, resolvePrinterDpi,
-  resolveToolbarOverflow, resolveZoomKey, zoomPresets, zoomValueOf,
+  resolveToolbarOverflow, resolveZoomKey, viewZoomHint, zoomPresets, zoomValueOf,
 }

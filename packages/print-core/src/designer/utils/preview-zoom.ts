@@ -73,8 +73,8 @@ export function fitZoom(containerPx: number, paperPx: number): number {
 }
 
 /**
- * 缩放档位表。点阵档放在最前：它是唯一能保证「预览所见 = 纸面所打」的档，
- * 默认也应落到它，否则用户仍会看到条粘连。
+ * 缩放档位表。点阵档仍排在最前：它是唯一能保证「预览所见 = 纸面所打」的档，
+ * 但默认不落在它上面（见 `defaultZoomKey`），把首档位置留给最容易看见的入口。
  */
 export function zoomPresets(dpi: number | null, containerPx: number, paperPx: number): ZoomPreset[] {
   const list: ZoomPreset[] = []
@@ -95,9 +95,23 @@ export function zoomPresets(dpi: number | null, containerPx: number, paperPx: nu
   return list
 }
 
-/** 默认档：能点对齐就给点阵，否则给适配 */
+/**
+ * 默认档恒为 100%（CSS 真实尺寸）：预览按纸张实际比例展开，不再随点距自动放大。
+ * `dpi` 形参已不参与判定，保留是因为这组函数登记在 core 的稳定面上、四宿主与 UMD 直挂
+ * 宿主都在按实参调用，删签名属于破坏性变更。
+ */
 export function defaultZoomKey(dpi: number | null): string {
-  return dpi ? 'dots' : 'fit'
+  return '100'
+}
+
+/**
+ * 「当前档看不出条码」的提示文案：模板声明了打印头分辨率、且当前不在点阵档时给出，
+ * 把点阵档的入口留在预览层里——默认改到 100% 后细条码在屏幕上仍会塌缩，
+ * 没有这条提示容易被当成打印质量缺陷。无提示时返回空串。
+ */
+export function viewZoomHint(dpi: number | null, currentKey: string): string {
+  if (!dpi || currentKey === 'dots') return ''
+  return `条码看不清？切「点阵 ${dpi}dpi」档（1 屏幕像素 = 1 打印点）`
 }
 
 /** 注入预览文档的缩放守卫样式 id：重渲染会换文档，靠它判断是否需要重新注入 */

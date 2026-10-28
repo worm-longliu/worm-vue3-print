@@ -239,6 +239,13 @@ const previewShown = () => {
   return !!mask && !mask.hasAttribute('hidden')
 }
 
+/** 切档提示（判据与文案在 core）：无点距或已在点阵档时收起 */
+function setZoomHint(text) {
+  const hint = document.getElementById('preview-zoom-hint')
+  hint.textContent = text
+  setVisible(hint, !!text)
+}
+
 /** 重算档位、重画档位条，并把缩放写进预览文档（渲染完成、切档、窗口变化三处同一入口） */
 function refreshPreviewZoom() {
   const bar = document.getElementById('preview-zoom')
@@ -247,6 +254,8 @@ function refreshPreviewZoom() {
   const state = previewZoom.sync()
   previewZoomKeys = state.presets.map(p => p.key)
   const note = bar.querySelector('.print-html-preview-zoom-note')
+  const hint = bar.querySelector('.print-html-preview-zoom-hint')
+  setZoomHint(state.hint)
   bar.querySelectorAll('.print-html-preview-zoom-btn').forEach(node => node.remove())
   for (const preset of state.presets) {
     const btn = document.createElement('button')
@@ -255,7 +264,8 @@ function refreshPreviewZoom() {
     btn.title = preset.tip
     btn.textContent = preset.label
     btn.dataset.zoomKey = preset.key
-    bar.insertBefore(btn, note)
+    // 插在提示与说明之前，保持与 canvas 档位条同序：按钮 → 提示 → 说明
+    bar.insertBefore(btn, hint)
   }
   // 出错或渲染中不出档位条（与 canvas 的 v-if="templateJson && !rendering && !errorMsg" 同判据）
   const errorShown = !document.getElementById('preview-error')?.hasAttribute('hidden')
@@ -271,6 +281,7 @@ function onPreviewZoomClick(event) {
   const key = btn.dataset.zoomKey
   if (!previewZoomKeys.includes(key)) return
   previewZoom.setKey(key)
+  setZoomHint(previewZoom.hint())
   btn.parentElement.querySelectorAll('.print-html-preview-zoom-btn')
     .forEach(node => node.classList.toggle('active', node === btn))
   previewZoom.apply(document.getElementById('preview-frame'))
