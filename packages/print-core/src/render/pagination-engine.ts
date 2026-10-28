@@ -237,14 +237,26 @@ function effectiveHeight(el: TemplateElement, measured: Map<string, MeasuredElem
   return Math.max(el.options?.height ?? 0, measured.get(el.id)?.measuredHeight ?? 0)
 }
 
+/** 1pt = 25.4/72 mm，线类 borderWidth 单位是 pt */
+const PT_TO_MM = 25.4 / 72
+
 /**
  * 元素横向占用区间（mm）：[left, left + width]。
- * 线类元素的编辑盒宽度即其版面占位，与画布所见一致；
  * 缺省宽度取 100，与渲染端 `opts.width ?? 100` 同口径，避免记账比实际出纸窄。
+ *
+ * vline 特殊处理：实际渲染为 width:0 + border-left，视觉横向占用 = borderWidth（pt → mm），
+ * 而非画布编辑盒的 options.width——否则与横向不相交的表格会被误判为同列、挤占版面（Gitee #IKQSRG）。
  */
 function xRange(el: TemplateElement): [number, number] {
   const o = el.options ?? {}
   const x0 = o.left ?? 0
+  const type = el.type || el.printElementType?.type || 'text'
+  if (type === 'vline') {
+    const borderWidthPt = o.borderWidth ?? 0.75
+    // border 以中心线向外扩展（CSS 默认 center 描边），左右各半；加 0.05mm 安全余量避免边相切
+    const halfW = (borderWidthPt * PT_TO_MM) / 2 + 0.05
+    return [x0 - halfW, x0 + halfW]
+  }
   return [x0, x0 + (o.width ?? 100)]
 }
 
