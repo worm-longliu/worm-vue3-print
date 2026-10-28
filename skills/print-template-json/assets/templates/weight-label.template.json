@@ -79,6 +79,7 @@
         "top": 13.5,
         "width": 28,
         "height": 4.8,
+        "groupId": "wt-weight-price",
         "formatter": "净重 {product.weight} kg",
         "fontSize": 9,
         "verticalAlign": "middle"
@@ -96,6 +97,7 @@
         "top": 13.5,
         "width": 28,
         "height": 4.8,
+        "groupId": "wt-weight-price",
         "formatter": "¥{MONEY(product.amount)}",
         "fontSize": 12,
         "fontWeight": "bold",

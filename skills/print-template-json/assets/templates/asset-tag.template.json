@@ -78,6 +78,7 @@
         "top": 10,
         "width": 20,
         "height": 19,
+        "groupId": "at-code-info",
         "formatter": "{asset.code}",
         "qrCodeLevel": "M"
       },
@@ -94,6 +95,7 @@
         "top": 10,
         "width": 34,
         "height": 4.2,
+        "groupId": "at-code-info",
         "formatter": "编号  {asset.code}",
         "fontSize": 8,
         "verticalAlign": "middle"
@@ -111,6 +113,7 @@
         "top": 14.2,
         "width": 34,
         "height": 4.2,
+        "groupId": "at-code-info",
         "formatter": "型号  {asset.model}",
         "fontSize": 8,
         "verticalAlign": "middle"
@@ -128,6 +131,7 @@
         "top": 18.4,
         "width": 34,
         "height": 4.2,
+        "groupId": "at-code-info",
         "formatter": "部门  {asset.dept}",
         "fontSize": 8,
         "verticalAlign": "middle"
@@ -145,6 +149,7 @@
         "top": 22.6,
         "width": 34,
         "height": 4.2,
+        "groupId": "at-code-info",
         "formatter": "责任人 {asset.keeper}",
         "fontSize": 8,
         "verticalAlign": "middle"
@@ -162,6 +167,7 @@
         "top": 26.8,
         "width": 34,
         "height": 3.6,
+        "groupId": "at-code-info",
         "formatter": "购置  {asset.boughtAt}",
         "fontSize": 8,
         "verticalAlign": "middle"

@@ -13,9 +13,11 @@
   3. 元素越界：left+width / top+height 超出内容区
   4. 分页安全余量：固定纸纵向留 2mm（引擎内建 SAFETY_MARGIN），贴边会被判到第二页；
      拼版模板更会直接报「拼版要求每份标签恰好 1 页」
-  5. 表格：列宽和 == 元素宽、行高和 == 元素高、每行单元格数 == 列数
-  6. 拼版：连续纸不支持、列数是否超出目标纸可用宽、标签是否超出可用高
-  7. 表达式：{} 是否配对、函数名是否在已知清单内
+  5. 分页预算预测：按引擎「横向相交分列累计」口径复算单份页数；左右并排块未组合时
+     整宽尾行会重复扣两列高度而超页（拼版模板报 ERROR，其余报 WARN；含表格/流式列表的模板跳过）
+  6. 表格：列宽和 == 元素宽、行高和 == 元素高、每行单元格数 == 列数
+  7. 拼版：连续纸不支持、列数是否超出目标纸可用宽、标签是否超出可用高
+  8. 表达式：{} 是否配对、函数名是否在已知清单内
 
 退出码：0 = 无 ERROR；1 = 存在 ERROR。
 """
@@ -219,6 +221,107 @@ def check_tiling(report: Report, t: Dict[str, Any]) -> None:
         report.error(scope, '标签高度 {:.1f}mm 超出纸面可用高度 {:.1f}mm，每张 0 行'.format(label_h, avail_h))
 
 
+def _rect(el: Dict[str, Any]) -> Dict[str, Any]:
+    o = el.get('options') or {}
+    left = float(o.get('left', 0))
+    width = float(o.get('width') if o.get('width') is not None else 100)
+    return {
+        'id': el.get('id') or '?',
+        'group': o.get('groupId'),
+        'x0': left,
+        'x1': left + width,
+        'top': float(o.get('top', 0)),
+        'height': float(o.get('height', 0)),
+    }
+
+
+def _intersect(a: Tuple[float, float], b: Tuple[float, float]) -> bool:
+    """区间严格相交（边相切不算），与分页引擎 xIntersects 同口径。"""
+    return a[0] < b[1] and b[0] < a[1]
+
+
+def predict_pages(items: List[Dict[str, Any]], budget: float) -> Tuple[int, Optional[str]]:
+    """
+    复刻分页引擎的二维占用预算：
+    - 同列（横向相交）按内容高度合计扣减，设计坐标间隙不计入；
+    - 显式编组与「横竖都相交」的隐式堆叠簇合成一个单元，纵向只扣一次并集高度；
+    - 单元放不进本列剩余即整组换页。
+    返回（预测页数, 首次换页的触发说明）。高度取模板声明值，实测更高的元素会更早换页。
+    """
+    parent = {it['id']: it['id'] for it in items}
+
+    def find(x: str) -> str:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a: str, b: str) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+
+    for i, a in enumerate(items):
+        for b in items[i + 1:]:
+            if a['group'] or b['group']:
+                # 显式编组只并按 groupId 合簇；未编组元素不会被隐式聚类拉进组（与引擎同口径）
+                if a['group'] and a['group'] == b['group']:
+                    union(a['id'], b['id'])
+                continue
+            v_overlap = a['top'] < b['top'] + b['height'] and b['top'] < a['top'] + a['height']
+            if v_overlap and _intersect((a['x0'], a['x1']), (b['x0'], b['x1'])):
+                union(a['id'], b['id'])
+
+    clusters: Dict[str, List[Dict[str, Any]]] = {}
+    for it in items:
+        clusters.setdefault(find(it['id']), []).append(it)
+
+    units = []
+    for members in clusters.values():
+        units.append({
+            'ids': [m['id'] for m in members],
+            'x0': min(m['x0'] for m in members),
+            'x1': max(m['x1'] for m in members),
+            'top': min(m['top'] for m in members),
+            'height': max(m['top'] + m['height'] for m in members) - min(m['top'] for m in members),
+        })
+    units.sort(key=lambda u: u['top'])
+
+    pages, occupied, trigger = 1, [], None
+    for u in units:
+        depth = sum(o['height'] for o in occupied if _intersect((u['x0'], u['x1']), (o['x0'], o['x1'])))
+        if depth + u['height'] > budget + EPS:
+            pages += 1
+            if trigger is None:
+                trigger = ('元素 {} 本列已占 {:.2f}mm + 自身 {:.2f}mm > 预算 {:.2f}mm'.format(
+                    '+'.join(u['ids']), depth, u['height'], budget))
+            occupied = []
+        occupied.append(u)
+    return pages, trigger
+
+
+def check_pagination(report: Report, t: Dict[str, Any], label: str, avail_h: float, continuous: bool) -> None:
+    """
+    分页预算预测（引擎口径）：只适用于「元素级版式」（无表格/流式列表）的固定纸模板。
+    拼版与标签类超页会被管线直接拒纸，按 ERROR 报；其余按 WARN 提示。
+    """
+    types = {el.get('type') for el in t['elements']}
+    if continuous or types & {'table', 'flowList'}:
+        return
+    budget = avail_h - SAFETY_MARGIN
+    items = [_rect(el) for el in t['elements']]
+    pages, trigger = predict_pages(items, budget)
+    if pages <= 1:
+        return
+    tiling = (t.get('tiling') or {}).get('enabled') is True
+    scope = '{} 分页预算'.format(label)
+    detail = '{}；把并排块组合（options.groupId）或压缩纵向高度即可收回一页'.format(trigger)
+    if tiling:
+        report.error(scope, '拼版要求每份标签恰好 1 页，预测出 {} 页（{}'.format(pages, detail))
+    else:
+        report.warn(scope, '按引擎预算预测单份会出 {} 页（{}'.format(pages, detail))
+
+
 def check_page(report: Report, t: Dict[str, Any], label: str) -> None:
     if not isinstance(t, dict):
         report.error(label, '页面不是对象')
@@ -266,6 +369,7 @@ def check_page(report: Report, t: Dict[str, Any], label: str) -> None:
         if el.get('type') == 'table':
             check_table(report, scope, o)
 
+    check_pagination(report, t, label, avail_h, continuous)
     check_tiling(report, t)
 
 

@@ -121,8 +121,9 @@ const WEIGHT_LABEL_TEMPLATE: TemplateData = {
     el('text', { left: 0, top: 0, width: 56, height: 4.2, formatter: '{shop.name}', fontSize: 8, textAlign: 'center', verticalAlign: 'middle' }),
     el('text', { left: 0, top: 4.2, width: 56, height: 5.4, formatter: '{product.name}', fontSize: 11, fontWeight: 'bold', verticalAlign: 'middle' }),
     el('text', { left: 0, top: 9.6, width: 56, height: 3.9, formatter: '单价 ¥{MONEY(product.unitPrice)} 元/500g', fontSize: 8, color: '#444444' }),
-    el('text', { left: 0, top: 13.5, width: 28, height: 4.8, formatter: '净重 {product.weight} kg', fontSize: 9, verticalAlign: 'middle' }),
-    el('text', { left: 28, top: 13.5, width: 28, height: 4.8, formatter: '¥{MONEY(product.amount)}', fontSize: 12, fontWeight: 'bold', color: '#c8211e', textAlign: 'right', verticalAlign: 'middle' }),
+    // 净重与金额左右并排：组合后纵向按并集只扣一次，否则下方两行会被合计高度挤到第二页
+    el('text', { left: 0, top: 13.5, width: 28, height: 4.8, groupId: 'wt-weight-price', formatter: '净重 {product.weight} kg', fontSize: 9, verticalAlign: 'middle' }),
+    el('text', { left: 28, top: 13.5, width: 28, height: 4.8, groupId: 'wt-weight-price', formatter: '¥{MONEY(product.amount)}', fontSize: 12, fontWeight: 'bold', color: '#c8211e', textAlign: 'right', verticalAlign: 'middle' }),
     el('hline', { left: 0, top: 18.8, width: 56, height: 0.2, borderWidth: 0.4, borderColor: '#9a9a9a' }),
     el('barcode', { left: 0, top: 19.3, width: 56, height: 7.7, formatter: '{product.barcode}', barcodeType: 'code128', barWidth: 2, printerDpi: 203, hideTitle: false }),
     el('text', { left: 0, top: 27.3, width: 56, height: 3.1, formatter: '包装 {product.packedAt}  保质至 {product.expireAt}', fontSize: 6.5 }),

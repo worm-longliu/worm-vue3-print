@@ -103,11 +103,12 @@ const ROLL_LABEL_TEMPLATE: TemplateData = {
     el('text', { left: 0, top: 3.6, width: 56, height: 5.4, formatter: '{material.name}', fontSize: 11, fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle' }),
     el('hline', { left: 0, top: 9.4, width: 56, height: 0.2, borderWidth: 0.4, borderColor: '#9a9a9a' }),
     el('barcode', { left: 0, top: 10, width: 56, height: 8.6, formatter: '{material.code}', barcodeType: 'code128', barWidth: 2, printerDpi: 203, hideTitle: false }),
-    el('qrcode', { left: 0, top: 19.6, width: 14, height: 14, formatter: '{material.qrcode}', qrCodeLevel: 'M' }),
-    el('text', { left: 16, top: 19.6, width: 40, height: 3.4, formatter: '规格  {material.spec}', fontSize: 8, verticalAlign: 'middle' }),
-    el('text', { left: 16, top: 23, width: 40, height: 3.4, formatter: '数量  {material.qty} {material.unit}', fontSize: 8, fontWeight: 'bold', verticalAlign: 'middle' }),
-    el('text', { left: 16, top: 26.4, width: 40, height: 3.4, formatter: '批次  {material.batchNo}', fontSize: 8, verticalAlign: 'middle' }),
-    el('text', { left: 16, top: 29.8, width: 40, height: 3.4, formatter: '日期  {material.date}', fontSize: 8, verticalAlign: 'middle' }),
+    // 二维码与右侧四行物料信息左右并排：组合后纵向按并集只扣一次，否则尾行「扫码查看」会被合计高度挤到第二页
+    el('qrcode', { left: 0, top: 19.6, width: 14, height: 14, groupId: 'rl-code-info', formatter: '{material.qrcode}', qrCodeLevel: 'M' }),
+    el('text', { left: 16, top: 19.6, width: 40, height: 3.4, groupId: 'rl-code-info', formatter: '规格  {material.spec}', fontSize: 8, verticalAlign: 'middle' }),
+    el('text', { left: 16, top: 23, width: 40, height: 3.4, groupId: 'rl-code-info', formatter: '数量  {material.qty} {material.unit}', fontSize: 8, fontWeight: 'bold', verticalAlign: 'middle' }),
+    el('text', { left: 16, top: 26.4, width: 40, height: 3.4, groupId: 'rl-code-info', formatter: '批次  {material.batchNo}', fontSize: 8, verticalAlign: 'middle' }),
+    el('text', { left: 16, top: 29.8, width: 40, height: 3.4, groupId: 'rl-code-info', formatter: '日期  {material.date}', fontSize: 8, verticalAlign: 'middle' }),
     el('text', { left: 0, top: 34.8, width: 56, height: 3, formatter: '扫码查看物料详情', fontSize: 6.5, color: '#888888', textAlign: 'center', verticalAlign: 'middle' }),
   ],
 }

@@ -6,6 +6,9 @@
 //    拼版模板更会直接报「拼版要求每份标签恰好 1 页」而拒绝出纸。
 // 2. 表格 tableColWidths 之和必须等于元素宽度、tableRows 行高之和必须等于元素高度，
 //    每行单元格数必须等于列数（设计器加载时会按列宽/行高重算尺寸）。
+// 3. 左右并排的元素块（横向不相交）要给同一个 options.groupId 组合起来：纵向预算按横向
+//    相交分列累计，未组合的并排两块会被整宽尾行合计扣两次，紧尺寸标签因此被挤到第二页
+//    （拼版模板则直接拒纸）。组合不改几何，只让整组同页、纵向只扣一次并集高度。
 import type { SampleGroup, SampleTemplate } from './types'
 import { PURCHASE_RECEIPT_SAMPLE } from './purchase-receipt'
 import { SALES_OUTBOUND_SAMPLE } from './sales-outbound'

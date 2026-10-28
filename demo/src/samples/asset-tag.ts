@@ -81,12 +81,13 @@ const ASSET_TAG_TEMPLATE: TemplateData = {
     // 纵向须留足分页安全余量（渲染管线为每页预留 2mm），否则末元素会被挤到第二页
     el('text', { left: 0, top: 0, width: 56, height: 3.8, formatter: '{company.name}', fontSize: 7.5, color: '#555555', textAlign: 'center', verticalAlign: 'middle' }),
     el('text', { left: 0, top: 3.8, width: 56, height: 5.5, formatter: '{asset.name}', fontSize: 11, fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle' }),
-    el('qrcode', { left: 0, top: 10, width: 20, height: 19, formatter: '{asset.code}', qrCodeLevel: 'M' }),
-    el('text', { left: 22, top: 10, width: 34, height: 4.2, formatter: '编号  {asset.code}', fontSize: 8, verticalAlign: 'middle' }),
-    el('text', { left: 22, top: 14.2, width: 34, height: 4.2, formatter: '型号  {asset.model}', fontSize: 8, verticalAlign: 'middle' }),
-    el('text', { left: 22, top: 18.4, width: 34, height: 4.2, formatter: '部门  {asset.dept}', fontSize: 8, verticalAlign: 'middle' }),
-    el('text', { left: 22, top: 22.6, width: 34, height: 4.2, formatter: '责任人 {asset.keeper}', fontSize: 8, verticalAlign: 'middle' }),
-    el('text', { left: 22, top: 26.8, width: 34, height: 3.6, formatter: '购置  {asset.boughtAt}', fontSize: 8, verticalAlign: 'middle' }),
+    // 二维码与右侧五行信息左右并排：组合后纵向按并集只扣一次，否则尾行「扫码查看」会被合计高度挤到第二页
+    el('qrcode', { left: 0, top: 10, width: 20, height: 19, groupId: 'at-code-info', formatter: '{asset.code}', qrCodeLevel: 'M' }),
+    el('text', { left: 22, top: 10, width: 34, height: 4.2, groupId: 'at-code-info', formatter: '编号  {asset.code}', fontSize: 8, verticalAlign: 'middle' }),
+    el('text', { left: 22, top: 14.2, width: 34, height: 4.2, groupId: 'at-code-info', formatter: '型号  {asset.model}', fontSize: 8, verticalAlign: 'middle' }),
+    el('text', { left: 22, top: 18.4, width: 34, height: 4.2, groupId: 'at-code-info', formatter: '部门  {asset.dept}', fontSize: 8, verticalAlign: 'middle' }),
+    el('text', { left: 22, top: 22.6, width: 34, height: 4.2, groupId: 'at-code-info', formatter: '责任人 {asset.keeper}', fontSize: 8, verticalAlign: 'middle' }),
+    el('text', { left: 22, top: 26.8, width: 34, height: 3.6, groupId: 'at-code-info', formatter: '购置  {asset.boughtAt}', fontSize: 8, verticalAlign: 'middle' }),
     el('text', { left: 0, top: 30.8, width: 56, height: 2.8, formatter: '扫码查看资产详情', fontSize: 6.5, color: '#888888', textAlign: 'center', verticalAlign: 'middle' }),
   ],
 }
