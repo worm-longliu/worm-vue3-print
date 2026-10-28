@@ -1,7 +1,8 @@
 # TODO — 待办与对账台账
 
 > **2026-10-28 V1.4.0 已发布（npm 除外）**：版本号 `1.4.0`（九处 version + 三处 core 依赖范围 + 六份 lock，common 保持 `1.3.7-beta.0`）；CHANGELOG 里从未发布过的 V1.3.12 段整体改为 `V1.4.0(2026-10-28)`，并补「并排紧尺寸标签重复计高」修复一条到四载体。annotated tag `v1.4.0` 落点 `174f8dd`，origin/github 双推。GitHub Release 7 附件（6 安装包 + SHA256SUMS），**GitHub digest 与本地 SHA256SUMS 6/6 一致**；Gitee 发行版 id `1248530`、正文 1787 字、target `174f8dd`；README 7 条直链实测全部 200。测试 core 80/1200、canvas 75/714、common 30/344、print-client 14/110（共 199 文件 2368 例），`verify-demo` 四宿主 52/52 ×4。构建坑复现：Electron 重新下载卡在代理（73KB/s）→ 设 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后正常；Docker 命名卷再次把 1.3.10/1.3.11 Linux 包带回 dist，已移出到 `~/print-client-dist/` 并重算 SHA256SUMS。
-> **仍待维护者**：npm 发布 `@worm-vue3-print/core` / `canvas` 1.4.0（本机 `whoami` 401），common 仍为 `1.3.7-beta.0` 且 `latest` 需摘除。
+> **2026-10-28 common 预览版已发布**：`1.4.0-beta.0` 已上传，dist-tag `next` 已指向它（GitHub Actions run 40649146822，发布步骤成功）；`latest` 仍指 `1.3.7-beta.0`，npm 发布令牌改 dist-tag 返回 403，需维护者本机 `npm dist-tag rm @worm-vue3-print/common latest --registry=https://registry.npmjs.org --otp=<OTP>` 收尾。
+> **仍待维护者**：common 的 `latest` 摘除需本机 OTP；core/canvas 1.4.0 已在 npm 线上（上一稿的 `whoami` 401 记录已过期）。
 > 取证基线：`master` @ `d913e32`（含 T-26 的 `8bac872`；本轮 C1/T-27/T-15 改动尚在工作区未提交）。上一轮全量复验基线 `cd6e7c1`（tag `v1.3.10`）；包版本 core/canvas/print-client `1.3.10`、common `1.3.7-beta.0`。
 > **2026-10-26 交接口径（最新）**：本轮全部改动已双推，`origin`/`github` 同指 `1eed485`，工作区干净。
 > **V1.3.11 已发布到除 npm 外的全部渠道**：annotated tag `v1.3.11`（落点 `f728137`）、GitHub Release（七件附件 digit 7/7 对账）、Gitee 发行版（id `1242392`，正文 4889 字）、README 七条直链实测可达。
@@ -39,16 +40,13 @@
 
 ## 一、待办清单
 
-### T-15 common 预览版发布面 —— **只剩维护者 npm 两步**（dist-tag 摘除 + 预览版重发）
+### T-15 common 预览版发布面 —— **只剩 latest 摘除（需本机 OTP）**
 
-- **dist-tag 实况未变**：官方 registry `@worm-vue3-print/common` 的 `latest` 与 `next` **同指 `1.3.7-beta.0`**（首次发布 npm 自动打了 latest）。
-  后果仍在：`npm i @worm-vue3-print/common`（不带 `@next`）装到的是预览版，与 `CONTRIBUTING.md`「方式三」的预览版定位冲突。
-  `latest` 要收回需 registry 上先存在别的稳定版可指向（当前没有）→ 要么改文档强制宿主带 `@next`，要么改发布脚本。
-  在此之前，「实验性、不建议用于生产」那句是最后防线，不能删。
-- **【新增】预览版已落后主线 40 个提交**：仓库内该包版本仍是 `1.3.7-beta.0`，而自 10-19 那次发布起 `packages/print-common`
-  已有 **40 笔提交**未随预览版发出（属性台 75 行「恢复默认值」、单元格台单选回显与边框三行回读、条码静区/字体候选按画布收口、
-  缩放档位挂 `WormPrintCommon`、`flowList` 等），而主线 core/canvas 已发到 `1.3.10`。
-  ⇒ **四个 common 宿主 demo 的观感 ≠ npm 上能装到的 common 的观感**。
+- **dist-tag 实况（2026-10-28）**：`next = 1.4.0-beta.0`（预览版已重发，含当前主线代码），`latest = 1.3.7-beta.0`。
+  发布令牌可 `npm publish`，但对 `dist-tag rm` 返回 403；需维护者本机登录后执行
+  `npm dist-tag rm @worm-vue3-print/common latest --registry=https://registry.npmjs.org --otp=<OTP>`（或 `node scripts/check-common-dist-tag.mjs --fix`）。
+  在此之前，裸写 `npm i @worm-vue3-print/common` 仍会静默装到旧预览版。
+- **【已解决】预览版曾落后主线 40 个提交**：2026-10-28 已重发 `1.4.0-beta.0`，四个 common 宿主 demo 与 npm 上的预览版恢复同源。
 - **【口径修正】原「`latest` 尚不存在，省略 `@next` 会报错」是假的**：README / 包内 README / 集成技能三处都这么写，
   2026-10-26 实测官方 registry 回 `{"latest":"1.3.7-beta.0","next":"1.3.7-beta.0"}` —— 裸写 `npm i @worm-vue3-print/common`
   **不报错、静默装到实验包**（npm 给新包首发自动打 `latest`，`--tag next` 挡不住）。三处文档已按实测更正。

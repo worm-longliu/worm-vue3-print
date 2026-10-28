@@ -99,7 +99,7 @@ npm publish -w @worm-vue3-print/canvas
 
 ### 方式三：发布 `@worm-vue3-print/common` 预览版（本地手工）
 
-`common`（零框架宿主适配设计器）尚未完成稳定性测试，因此**不进 `latest`**：版本号取 `主线号-beta.N`，dist-tag 固定 `next`，不接 GitHub Actions（避免和正式 tag 的节奏绑在一起）。
+`common`（零框架宿主适配设计器）尚未完成稳定性测试，因此**不进 `latest`**：版本号取 `主线号-beta.N`，dist-tag 固定 `next`；可由 `.github/workflows/publish-common.yml` 手动触发发布，也可走本地脚本，两者都不与正式 tag 的节奏绑定。
 
 ```bash
 # 1. 切预览号：手改两处（与主线发版同口径，npm version 不保证同步 lock）
@@ -138,6 +138,7 @@ node scripts/check-common-dist-tag.mjs --fix
 - **`--tag next` 是脚本内的硬约束**：手敲 `npm publish` 漏掉它会把实验包挂上 `latest`，非 Vue3 宿主一句 `npm i @worm-vue3-print/common` 就吃到预览版；
 - **本机默认 registry 是 `registry.npmmirror.com`**（2026-10-26 实测：不带 `--registry` 的 `npm publish --dry-run` 显示 `Publishing to https://registry.npmmirror.com`）——手敲发布必须显式带 `--registry=https://registry.npmjs.org`，`publish:npm` 与 `publish:common:beta` 里已经写死；
 - **`publishConfig.tag` 不是兜底**（实测 npm 11.19：不带 `--tag` 的 dry-run 仍报 `with tag latest`，而 `publishConfig.access/registry` 确实生效）——别指望它防住手敲发布，防线只有两条：脚本里的 `--tag next`，以及发布后 `--fix` 摘掉自动挂上的 `latest`；
+- **GitHub Actions 只能上传，删 `latest` 必须本机 OTP**：`publish-common.yml` 用的发布令牌可以 `npm publish`，但 npm 对 `dist-tag rm` 返回 403（要求登录态一次性密码）；发布后用本机 `npm login --registry=https://registry.npmjs.org` 再跑 `node scripts/check-common-dist-tag.mjs --fix`，或直接 `npm dist-tag rm @worm-vue3-print/common latest --registry=https://registry.npmjs.org --otp=<OTP>`；
 - **但 `--tag next` 只约束本次发布写入的 tag，挡不住 npm 给新包首发自动打的 `latest`**：首次发布后 `latest` 与 `next` 同指那个预览版，裸装不会报错而是静默装上实验包。`publish:common:beta` 已在发布后自动跑 `scripts/check-common-dist-tag.mjs --fix` 摘除 `latest`，单独复查用 `npm run publish:common:check`（exit 0 健康 / 1 红灯 / 2 读不到）；
 - 主线发版（方式一/二）不动 `common` 的 `version`，避免它被 `1.3.7` 这类正式号带上 `latest`；
 - npm 账号若开启 2FA，最后一步会交互式索取验证码（新包首次发布同样需要），照着 Authenticator 填即可；

@@ -3,7 +3,8 @@ name: Publish common preview
 # 仅手动触发；common 预览版固定 dist-tag next，不进 latest。
 # 触发：Actions → Publish common preview → Run workflow，或
 #   gh workflow run publish-common.yml -f version=1.4.0-beta.0 -f dry_run=true
-# 发布后自动摘除 latest（npm 首次发布会给预览版自动打 latest）。
+# 注意：npm 的发布令牌可以上传，但删除 latest 需要维护者本机 OTP，
+# 因此本工作流只复查并在日志里给出人工摘除命令，不代替维护者执行。
 on:
   workflow_dispatch:
     inputs:
@@ -79,13 +80,13 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: 摘除 latest 并复查 dist-tags
+      - name: 复查 dist-tags（latest 摘除需维护者 OTP）
         run: |
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            node scripts/check-common-dist-tag.mjs --warn-only
-          else
-            node scripts/check-common-dist-tag.mjs --fix
+          node scripts/check-common-dist-tag.mjs --warn-only
+          TAGS=$(npm view @worm-vue3-print/common dist-tags --json --registry=https://registry.npmjs.org)
+          echo "$TAGS"
+          if echo "$TAGS" | grep -q '"latest"'; then
+            echo "::warning::latest 仍存在；npm 发布令牌不能改 dist-tag，请维护者本机执行：npm dist-tag rm @worm-vue3-print/common latest --registry=https://registry.npmjs.org --otp=<OTP>"
           fi
-          npm view @worm-vue3-print/common dist-tags --json --registry=https://registry.npmjs.org
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
