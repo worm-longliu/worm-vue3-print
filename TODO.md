@@ -1,8 +1,8 @@
 # TODO — 待办与对账台账
 
-> **2026-10-28 V1.4.0 已发布（npm 除外）**：版本号 `1.4.0`（九处 version + 三处 core 依赖范围 + 六份 lock，common 保持 `1.3.7-beta.0`）；CHANGELOG 里从未发布过的 V1.3.12 段整体改为 `V1.4.0(2026-10-28)`，并补「并排紧尺寸标签重复计高」修复一条到四载体。annotated tag `v1.4.0` 落点 `174f8dd`，origin/github 双推。GitHub Release 7 附件（6 安装包 + SHA256SUMS），**GitHub digest 与本地 SHA256SUMS 6/6 一致**；Gitee 发行版 id `1248530`、正文 1787 字、target `174f8dd`；README 7 条直链实测全部 200。测试 core 80/1200、canvas 75/714、common 30/344、print-client 14/110（共 199 文件 2368 例），`verify-demo` 四宿主 52/52 ×4。构建坑复现：Electron 重新下载卡在代理（73KB/s）→ 设 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后正常；Docker 命名卷再次把 1.3.10/1.3.11 Linux 包带回 dist，已移出到 `~/print-client-dist/` 并重算 SHA256SUMS。
-> **2026-10-28 common 预览版已发布**：`1.4.0-beta.0` 已上传，dist-tag `next` 已指向它（GitHub Actions run 40649146822，发布步骤成功）；`latest` 仍指 `1.3.7-beta.0`，npm 发布令牌改 dist-tag 返回 403，需维护者本机 `npm dist-tag rm @worm-vue3-print/common latest --registry=https://registry.npmjs.org --otp=<OTP>` 收尾。
-> **仍待维护者**：common 的 `latest` 摘除需本机 OTP；core/canvas 1.4.0 已在 npm 线上（上一稿的 `whoami` 401 记录已过期）。
+> **2026-10-28 V1.4.0 已全渠道发布**：版本号 `1.4.0`（九处 version + 三处 core 依赖范围 + 六份 lock，common 随后按主线号发 `1.4.0` 正式版，见下条）；CHANGELOG 里从未发布过的 V1.3.12 段整体改为 `V1.4.0(2026-10-28)`，并补「并排紧尺寸标签重复计高」修复一条到四载体。annotated tag `v1.4.0` 落点 `174f8dd`，origin/github 双推。GitHub Release 7 附件（6 安装包 + SHA256SUMS），**GitHub digest 与本地 SHA256SUMS 6/6 一致**；Gitee 发行版 id `1248530`、正文 1787 字、target `174f8dd`；README 7 条直链实测全部 200。测试 core 80/1200、canvas 75/714、common 30/344、print-client 14/110（共 199 文件 2368 例），`verify-demo` 四宿主 52/52 ×4。构建坑复现：Electron 重新下载卡在代理（73KB/s）→ 设 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后正常；Docker 命名卷再次把 1.3.10/1.3.11 Linux 包带回 dist，已移出到 `~/print-client-dist/` 并重算 SHA256SUMS。
+> **2026-10-28 common 1.4.0 正式版已发布**：版本与主线同号，dist-tag `latest = 1.4.0`（GitHub Actions run 40651083013，发布步骤成功；registry 处理约 5 分钟后生效）；`next` 仍为上一轮 `1.4.0-beta.0`，不再作为安装入口。npm 主页面保留「实验性质、不建议用于生产」声明，并含 Vue 3 / Vue 2 / React 三段示例（已核对 tarball README）。
+> **仍待维护者**：如要把 `next` 同步到 1.4.0 或删除，需要本机 OTP（npm 令牌改 dist-tag 返回 403）；core/canvas 1.4.0 已在 npm 线上。
 > 取证基线：`master` @ `d913e32`（含 T-26 的 `8bac872`；本轮 C1/T-27/T-15 改动尚在工作区未提交）。上一轮全量复验基线 `cd6e7c1`（tag `v1.3.10`）；包版本 core/canvas/print-client `1.3.10`、common `1.3.7-beta.0`。
 > **2026-10-26 交接口径（最新）**：本轮全部改动已双推，`origin`/`github` 同指 `1eed485`，工作区干净。
 > **V1.3.11 已发布到除 npm 外的全部渠道**：annotated tag `v1.3.11`（落点 `f728137`）、GitHub Release（七件附件 digit 7/7 对账）、Gitee 发行版（id `1242392`，正文 4889 字）、README 七条直链实测可达。
@@ -40,12 +40,12 @@
 
 ## 一、待办清单
 
-### T-15 common 预览版发布面 —— **只剩 latest 摘除（需本机 OTP）**
+### T-15 common 发布面 —— **1.4.0 正式版已发 latest**
 
-- **dist-tag 实况（2026-10-28）**：`next = 1.4.0-beta.0`（预览版已重发，含当前主线代码），`latest = 1.3.7-beta.0`。
-  发布令牌可 `npm publish`，但对 `dist-tag rm` 返回 403；需维护者本机登录后执行
-  `npm dist-tag rm @worm-vue3-print/common latest --registry=https://registry.npmjs.org --otp=<OTP>`（或 `node scripts/check-common-dist-tag.mjs --fix`）。
-  在此之前，裸写 `npm i @worm-vue3-print/common` 仍会静默装到旧预览版。
+- **dist-tag 实况（2026-10-28）**：`latest = 1.4.0`（正式版），`next = 1.4.0-beta.0`（上一轮预发布，不再作为安装入口）。
+  安装直接 `npm i @worm-vue3-print/common`；npm 主页面保留实验性声明并提供 Vue 3 / Vue 2 / React 示例。
+- **预发布通路保留**：`publish:common:beta`（`--tag next`）只用于预发布；正式版走 `publish:common` 或 `publish-common.yml`。
+  仓库令牌可 publish，但 `dist-tag rm/add` 返回 403；如需调整 `next`，维护者本机 OTP 执行。
 - **【已解决】预览版曾落后主线 40 个提交**：2026-10-28 已重发 `1.4.0-beta.0`，四个 common 宿主 demo 与 npm 上的预览版恢复同源。
 - **【口径修正】原「`latest` 尚不存在，省略 `@next` 会报错」是假的**：README / 包内 README / 集成技能三处都这么写，
   2026-10-26 实测官方 registry 回 `{"latest":"1.3.7-beta.0","next":"1.3.7-beta.0"}` —— 裸写 `npm i @worm-vue3-print/common`
