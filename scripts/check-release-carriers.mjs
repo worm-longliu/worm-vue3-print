@@ -75,22 +75,25 @@ add(notes.includes(latestSection.replace('V', '')) || notes.includes(latestSecti
   ? 'PASS' : 'WARN', `.github/release/notes.md 是否指向 ${latestSection || '（无版本段）'}`,
   '该文件是下一次发版的正文底稿，发版前要整篇换成新版本')
 
-// 5) README 安装包直链表
+// 5) README 安装包直链表：tag 版本必须与 core 同号；文件名版本可比 core 旧（沿用上版安装包时）
 const readme = read('README.md')
-const urls = [...readme.matchAll(/WormPrintClient-([0-9][^-]*)-/g)].map(m => m[1])
-const uniqUrl = [...new Set(urls)]
-if (uniqUrl.length === 0) add('WARN', 'README 里没匹配到 `WormPrintClient-<版本>-` 直链', '核对「下载客户端安装包」一节是否被改写')
-else if (!uniqUrl.every(v => v === coreVer)) add('FAIL', `README 直链版本 ${uniqUrl.join('/')} 与 core ${coreVer} 不一致`, '每次发版必须同步这张表，否则指向上一版资产')
-else add('PASS', `README 直链表版本 = ${coreVer}`, '')
+const rows0 = [...readme.matchAll(/releases\/download\/v([^/]+)\/WormPrintClient-([0-9][^-]*)-/g)].map(m => ({ tag: m[1], file: m[2] }))
+const uniqTag = [...new Set(rows0.map(r => r.tag))]
+const uniqFile = [...new Set(rows0.map(r => r.file))]
+if (rows0.length === 0) add('WARN', 'README 里没匹配到 `releases/download/v<版本>/WormPrintClient-<版本>-` 直链', '核对「下载客户端安装包」一节是否被改写')
+else if (!uniqTag.every(v => v === coreVer)) add('FAIL', `README 直链 tag 版本 ${uniqTag.join('/')} 与 core ${coreVer} 不一致`, '每次发版必须同步这张表的 tag 部分，否则指向上一版资产')
+else if (uniqFile.every(v => v === coreVer)) add('PASS', `README 直链表 tag 与文件名版本 = ${coreVer}`, '')
+else add('WARN', `README 直链 tag = ${coreVer}，安装包文件名版本 = ${uniqFile.join('/')}（沿用上版产物，README 已注明）`, '确认发行版确实重传了同名文件后再置笃')
 
-// 6) 客户端 dist 卫生：目录里只该有本版的安装包
+// 6) 客户端 dist 卫生：目录里的安装包只能同属一个打包版本（本版重打 = 与 core 同号；沿用上版 = 与上版同号）
 const distDir = join(ROOT, 'clients/print-client/dist')
 if (existsSync(distDir)) {
   const pkgs = readdirSync(distDir).filter(f => /\.(dmg|exe|deb|rpm|AppImage)$/i.test(f))
-  const stale = pkgs.filter(f => !f.includes(coreVer))
+  const pkgVers = [...new Set(pkgs.map(f => (f.match(/WormPrintClient-([0-9][^-]*)-/) ?? [])[1]).filter(Boolean))]
   if (pkgs.length === 0) add('PASS', '客户端 dist 无安装包（发版前正常）', '')
-  else if (stale.length > 0) add('FAIL', `dist 里混有非本版安装包：${stale.join(', ')}`, `pack-client-release.mjs 会把 dist 全部收进 SHA256SUMS 并给出上传命令 → 整批移到 ~/print-client-dist/<旧版>/`)
-  else add('PASS', `dist 内 ${pkgs.length} 个安装包均属 ${coreVer}`, '')
+  else if (pkgVers.length > 1) add('FAIL', `dist 里混有多个版本的安装包：${pkgVers.join(', ')}`, `pack-client-release.mjs 会把 dist 全部收进 SHA256SUMS → 把多余版本整批移到 ~/print-client-dist/<旧版>/`)
+  else if (pkgVers[0] === coreVer) add('PASS', `dist 内 ${pkgs.length} 个安装包均属 ${coreVer}`, '')
+  else add('PASS', `dist 内 ${pkgs.length} 个安装包同属沿用版 ${pkgVers[0]}（本版未重打客户端）`, '上传 v' + coreVer + ' 前重算 SHA256SUMS.txt')
 }
 
 // 7) 安装包重打判据：core 的 render/* 与 functions/format.ts 命中就必须重打七件

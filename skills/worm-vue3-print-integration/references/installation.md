@@ -21,7 +21,7 @@ npm install @worm-vue3-print/core@^1.3.0 @worm-vue3-print/canvas@^1.3.0
 - `canvas` 会自动带入 `dompurify`、`jsbarcode`、`qrcode` 等依赖。
 - 宿主必须满足 `vue@^3.5.0`。
 - 建议提交锁文件，避免 NPM 侧依赖升级引入构建差异。
-- 已发布的当前版本为 `1.4.0`（canvas 与 core 版本号同步发布；canvas 内部以 `^1.4.0` 声明对 core 的依赖，宿主显式安装同版本 core 即可，锁文件会统一解析）。
+- 已发布的当前版本为 `1.4.1`（canvas 与 core 版本号同步发布；canvas 内部以 `^1.4.1` 声明对 core 的依赖，宿主显式安装同版本 core 即可，锁文件会统一解析）。
 
 ### 非 Vue 3 宿主使用可视化设计器（实验性 · 正式版）
 
@@ -29,7 +29,7 @@ npm install @worm-vue3-print/core@^1.3.0 @worm-vue3-print/canvas@^1.3.0
 npm install @worm-vue3-print/common @worm-vue3-print/core
 ```
 
-- `common` 与主线同号发布正式版（dist-tag `latest`，当前 `1.4.0`），安装直接取 `latest`，不再要求 `@next`。包虽按正式版本号发布，但仍是**实验性质**：npm 主页面顶部有明确声明，不建议用于生产。npm 主页面同时提供 Vue 3 / Vue 2 / React 三段接入示例。
+- `common` 与主线同号发布正式版（dist-tag `latest`，当前 `1.4.1`），安装直接取 `latest`，不再要求 `@next`。包虽按正式版本号发布，但仍是**实验性质**：npm 主页面顶部有明确声明，不建议用于生产。npm 主页面同时提供 Vue 3 / Vue 2 / React 三段接入示例。
 - 零框架运行时（原生 Custom Elements + Shadow DOM，无 `vue` peer 依赖）：`<print-designer>` 用 property / attribute 注入 `fields`、`template`，宿主能力与事件走 property 赋值和 `CustomEvent`。
 - 样式默认由组件内联注入，**Shadow DOM 形态不引样式文件**；只有渲染进 light DOM 才 `import '@worm-vue3-print/common/style.css'`（→ `dist/common.css`）。
 - 无打包器宿主走子路径 `@worm-vue3-print/common/browser`（UMD `dist/common.js`，core 与码制库已内联，挂 `window.WormPrintCommon`）。

@@ -2,6 +2,12 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## V1.4.1(2026-10-28)
+
+### 修复
+
+- **设计态条码/二维码不再被示例码值永久遮住**（Gitee PR #1）。元素工厂给条码/二维码元素预置的 `testData` 排在 formatter 之前取值，于是作者在「内容」里填了含 `{字段}` 占位的表达式后，属性台与画布仍一直显示工厂预置的占位码值，看起来像内容没有生效。现把条码/二维码设计态取值统一切到 core 单点 `resolveBarcodeDesignValue`：formatter 的 `{字段}` 先按示例数据求值（列表字段取数据源首项、全局字段按路径取，与表格单元格同口径），**求不到值才回退** `testData` 示例码值；该函数新增 `fallback` 形参，表格单元格沿用通用示例码值、元素级传 `testData`/空串以保住「testData 只在内容取不到值时当示例」的语义。canvas 条码/二维码两处、print-common 零框架 shell 条码/二维码两处全部改走这一个单点，并补设计态实时刷新回归测试。**存量影响仅在设计态展示**——出纸端仍按 `resolveTextBinding` 走实时数据绑定，产物、分页与模板契约零变化；客户端出纸行为不受影响，本版安装包沿用 V1.4.0 产物重传。
+
 ## V1.4.0(2026-10-28)
 
 ### 新增
