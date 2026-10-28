@@ -17,7 +17,7 @@ V1.4.0 是一个 minor 版本：设计器支持元素级任意角度旋转与拼
 ## 工程与验收
 - 测试：core 80 文件 1200 例 / canvas 75 文件 714 例 / common 30 文件 344 例 / print-client 14 文件 110 例，共 **199 文件 2368 例全绿**。
 - `demo-common` 四宿主 `verify-demo` 52/52 ×4 全绿（含默认档 100% 与点阵切档提示两条断言）。
-- core 渲染管线有改动，桌面客户端 7 件安装包（mac x64/arm64 dmg、win x64 exe、linux deb/rpm/AppImage）按本版重打，附 `SHA256SUMS.txt`。
+- core 渲染管线有改动，桌面客户端 **6 件安装包**（mac x64/arm64 dmg、win x64 exe、linux deb/rpm/AppImage）按本版重打，另附 `SHA256SUMS.txt`（共 7 个附件）。
 
 > 明细见 `docs/中文/CHANGELOG.md` 的 V1.4.0 段。安装包由本次发版重打后上传，上传前本页与 README 的 v1.4.0 直链会 404。
 
@@ -42,6 +42,6 @@ V1.4.0 is a minor release: the designer gains free-angle per-element rotation an
 ## Engineering
 - Tests: core 80 files / 1200 cases, canvas 75 / 714, common 30 / 344, print-client 14 / 110 — **199 files / 2368 cases, all green**.
 - `verify-demo` across the four `demo-common` hosts: 52/52 ×4 green (including the new 100% default and dots-switch hint assertions).
-- Core's render pipeline changed, so all seven desktop-client installers (mac x64/arm64 dmg, win x64 exe, linux deb/rpm/AppImage) were rebuilt for this release, with `SHA256SUMS.txt`.
+- Core's render pipeline changed, so all **six desktop-client installers** (mac x64/arm64 dmg, win x64 exe, linux deb/rpm/AppImage) were rebuilt for this release, plus `SHA256SUMS.txt` (seven attachments in total).
 
 > Details in the V1.4.0 section of `docs/en/CHANGELOG.en.md` (the Chinese changelog is authoritative). Installers are rebuilt and uploaded with this release; the v1.4.0 links in this page and the README 404 until then.
