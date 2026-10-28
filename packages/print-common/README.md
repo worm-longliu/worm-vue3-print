@@ -1,9 +1,7 @@
 # @worm-vue3-print/common
 
-> ⚠️ **实验性质 · 以预览版发布到 npm**：dist-tag 为 `next`，安装必须写 `@worm-vue3-print/common@next`；
-> 版本号形如 `1.4.0-beta.N`（与主线同号 + 预发布后缀）。npm 上还没有 `latest`，转正时才发 stable。
-> 本包尚未定版，接口与产物形态仍可能调整，**不建议应用到生产环境**；
-> Vue 3 项目请使用成熟方案 `@worm-vue3-print/canvas`，本包目前仅供评估与非生产环境的集成验证。
+> ⚠️ **实验性质（按正式版本号发布）**：本包已发布到 npm 的 `latest`（当前 `1.4.0`），但接口与产物形态仍可能调整，
+> **不建议应用到生产环境**；Vue 3 项目请使用成熟方案 `@worm-vue3-print/canvas`，本包面向 Vue 3 / Vue 2 / React / jQuery 等非 Vue3 或跨框架宿主。
 
 打印模板可视化设计器的 **通用宿主适配形态**：任意框架、或完全没有框架的宿主都能直接接入，
 实现为零框架原生 Custom Element + Shadow DOM，**不依赖 Vue / React 等任何框架运行时**，
@@ -18,19 +16,20 @@
 ## 安装
 
 ```bash
-npm i @worm-vue3-print/common@next @worm-vue3-print/core
+npm i @worm-vue3-print/common @worm-vue3-print/core
 ```
 
-`@next` 是预览版的 dist-tag，安装必须带上它。注意 `latest` 目前被 npm 在首次发布时自动打在了同一个预览版上（红灯判据：`npm run publish:common:check`），所以省略 `@next` 不会报错，而是**静默装到实验包**；维护者摘除 `latest` 后省略才会显式失败。
-`core` 装正式版即可（本包依赖 `^1.4.0`），出纸链路也要直接用它。
+`common` 与主线同号发布正式版，安装直接取 `latest`（当前 `1.4.0`），不需要 `@next`；`core` 装同版本即可（本包依赖 `^1.4.0`），出纸链路也要直接用它。包虽按正式版本号发布，但仍是**实验性质**，不建议用于生产。
+
+本页包含三种 NPM 宿主的最小接入示例：[Vue 3](#vue-3) · [Vue 2.7](#vue-27) · [React 18](#react-18)；无打包器宿主见下文「浏览器直挂」。
 
 四种宿主形态各自的依赖与插件（本包零框架运行时，宿主框架按需装）：
 
 | 宿主 | 安装 | 框架插件 |
 |---|---|---|
-| Vue 3 | `npm i @worm-vue3-print/common@next @worm-vue3-print/core vue` | `@vitejs/plugin-vue`，须配 `isCustomElement` |
-| Vue 2.7 | `npm i @worm-vue3-print/common@next @worm-vue3-print/core vue@2.7` | `@vitejs/plugin-vue2` |
-| React 18 | `npm i @worm-vue3-print/common@next @worm-vue3-print/core react react-dom` | `@vitejs/plugin-react`，无需自定义元素配置 |
+| Vue 3 | `npm i @worm-vue3-print/common @worm-vue3-print/core vue` | `@vitejs/plugin-vue`，须配 `isCustomElement` |
+| Vue 2.7 | `npm i @worm-vue3-print/common @worm-vue3-print/core vue@2.7` | `@vitejs/plugin-vue2` |
+| React 18 | `npm i @worm-vue3-print/common @worm-vue3-print/core react react-dom` | `@vitejs/plugin-react`，无需自定义元素配置 |
 | jQuery / 无打包器 | 取本包 `dist/common.js` + `dist/common.css` 直挂 | 无，见下节 |
 
 ## 浏览器直挂（jQuery / 无打包器宿主）

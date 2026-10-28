@@ -34,7 +34,7 @@ npm run dev -w @worm-vue3-print/render     # 服务端 PDF（3001，dev 代理�
 | `src/main.js` | `registerAll()` + `Vue.config.ignoredElements = ['print-designer']` + `new Vue({ render: h => h(App) }).$mount('#app')` |
 | `vite.config.js` | `@vitejs/plugin-vue2`（`plugins: [vue2()]`），`/render-api` 代理注入 `X-Render-Key` |
 
-依赖：`npm i @worm-vue3-print/common@next @worm-vue3-print/core vue@2.7`（`common` 目前只发预览版，必须带 `@next`）；`npm i -D @vitejs/plugin-vue2`。
+依赖：`npm i @worm-vue3-print/common @worm-vue3-print/core vue@2.7`（`common` 与主线同号发布正式版，直接取 `latest`，但仍属实验性质）；`npm i -D @vitejs/plugin-vue2`。
 示例数据在 `src/templates.js`（10 个示例，带 group/paper/desc 元数据；由 `demo-common/scripts/sync-demo-samples.mjs`
 从 demo 的 `src/samples` 同源生成，勿手改），改成你的接口返回即可。
 

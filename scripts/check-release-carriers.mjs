@@ -43,11 +43,11 @@ const HELP = [
   'packages/print-common/src/shell/help-content/changelog.ts',
 ]
 
-// 1) 版本号一致性：主线四包同号，common 走预览号（1.x.y-beta.N）不进主线
-const mainLine = [pkgVer, coreVer, canvasVer, clientVer]
+// 1) 版本号一致性：主线五包同号（common 已转正式版，随主线同号）
+const mainLine = [pkgVer, coreVer, canvasVer, clientVer, commonVer]
 if (new Set(mainLine).size !== 1) {
-  add('FAIL', `主线版本号不同号：root=${pkgVer} core=${coreVer} canvas=${canvasVer} client=${clientVer}`, '按升版文件集把四包同号后再发')
-} else add('PASS', `主线版本号一致 = ${coreVer}（common 预览号 ${commonVer}，不随主线）`, '')
+  add('FAIL', `主线版本号不同号：root=${pkgVer} core=${coreVer} canvas=${canvasVer} client=${clientVer} common=${commonVer}`, '按升版文件集把五包同号后再发')
+} else add('PASS', `主线版本号一致 = ${coreVer}（含 common）`, '')
 
 // 2) CHANGELOG 与版本号的关系
 if (mode === 'pre') {

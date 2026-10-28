@@ -1,8 +1,7 @@
-// common 的 dist-tag 自检：预览版只能挂 next，不得占用 latest。
-// 背景：npm 首次发布新包时会自动给最高版本打 latest，`--tag next` 挡不住这一步，
-// 于是 `npm i @worm-vue3-print/common` 会静默装到实验性预览版（与 README/CONTRIBUTING 的声明相反）。
+// common 的 dist-tag 自检：latest 只能是正式版，预发布只能挂 next。
+// 背景：npm 首次发布会给预览版自动打 latest；正式版发布后 latest 应指向正式版。
 // 用法：
-//   node scripts/check-common-dist-tag.mjs            只查（exit 0 健康 / 1 latest 被预览版占用）
+//   node scripts/check-common-dist-tag.mjs            只查（exit 0 健康 / 1 latest 被预发布版占用）
 //   node scripts/check-common-dist-tag.mjs --dry-run  查到问题时打印将执行的命令，不执行
 //   node scripts/check-common-dist-tag.mjs --fix      查到问题时执行 npm dist-tag rm <pkg> latest 并复查
 //   node scripts/check-common-dist-tag.mjs --warn-only  照旧打印红灯但 exit 0（给演练链用：既有红灯不该把演练判失败）
@@ -37,11 +36,11 @@ try {
 console.log(`[${PKG}] dist-tags 实况：${JSON.stringify(tags)}`)
 
 if (!tags.latest) {
-  console.log('健康：latest 不存在，宿主必须写 @next（未带 @next 的安装会显式报错）。')
+  console.log('健康：latest 不存在（仅预发布阶段允许；正式版发布后 latest 应指向正式版）。')
   process.exit(0)
 }
 if (!isPrerelease(tags.latest)) {
-  console.log(`健康：latest = ${tags.latest} 是正式版（该包已转正，记得同步 README/CONTRIBUTING 口径）。`)
+  console.log(`健康：latest = ${tags.latest} 是正式版。`)
   process.exit(0)
 }
 
@@ -51,7 +50,7 @@ if (WARN_ONLY) {
 }
 
 const cmd = ['dist-tag', 'rm', PKG, 'latest', `--registry=${REGISTRY}`]
-console.error(`红灯：latest 指向预览版 ${tags.latest}，裸装 npm i ${PKG} 会吃到实验包。`)
+console.error(`红灯：latest 指向预发布版 ${tags.latest}，裸装 npm i ${PKG} 会吃到实验包。`)
 if (!FIX) {
   console.error(`修复：npm ${cmd.join(' ')}（或直接跑本脚本加 --fix）`)
   process.exit(1)

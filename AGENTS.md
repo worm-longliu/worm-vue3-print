@@ -55,7 +55,7 @@
   - `clients/print-client`（`@worm-vue3-print/print-client`）：跨平台静默打印桌面客户端（Electron，本地 WebSocket + core 同构渲染）。
 - 其他目录：`demo`（Vite 集成示例）、`docs`（中英文档）、`skills`（集成技能）、`.release`（发布相关）。
 - 边界约定：`core`（纯逻辑）→ `canvas`（设计器 UI）→ 宿主应用；SDK、渲染服务与桌面客户端只依赖 `core`，分层清晰，改动不得破坏该边界。
-- 开发命令：`npm install` / `npm run build` / `npm test`；发布到 npm 的正式包仅 `core` 与 `canvas` 两个（`publish:npm`）。`common` 以**预览版**发布（dist-tag `next`、版本号取当前主线号-beta.N（如 `1.4.0-beta.N`）、不进 `latest`，走 `publish:common:beta` 本地手工发），只在该包单独发预览版时升号，**不随主线发版顺手改**。
+- 开发命令：`npm install` / `npm run build` / `npm test`；发布到 npm 的正式包为 `core`、`canvas` 与 `common` 三个（`publish:npm` / `publish:common`）。`common` 与主线同号发布正式版（dist-tag `latest`），但 npm 主页面与 README 必须保留实验性声明、不建议生产；发布走 `publish:common` 或手动 `publish-common.yml`，版本随主线同号。
 
 ## 六、协作约定
 

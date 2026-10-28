@@ -14,7 +14,7 @@ version: 1.2.0
 | --- | --- | --- |
 | 只做表达式求值、模板数据绑定、服务端 HTML/分页管线 | `@worm-vue3-print/core` | NPM 包 |
 | 需要 Vue 3 可视化设计器或浏览器端打印预览 | `@worm-vue3-print/canvas` + `@worm-vue3-print/core` | NPM 包 |
-| 非 Vue 3 宿主（React / Vue 2 / jQuery / 无框架）要可视化设计器 | `@worm-vue3-print/common` + `@worm-vue3-print/core` | NPM **预览版**（`@next`，实验性，不建议上生产） |
+| 非 Vue 3 宿主（React / Vue 2 / jQuery / 无框架）要可视化设计器 | `@worm-vue3-print/common` + `@worm-vue3-print/core` | NPM 正式版（`latest`，实验性，不建议上生产） |
 | 需要未发布修复、调试库源码、修改/回传补丁 | `core`，按需 `canvas` | 源码安装 |
 | 外部宿主要直接消费 monorepo 中的 `.vue/.ts` | 两者按需 | 源码 + Vite 别名 |
 | 服务端 PDF 微服务 | monorepo 内 `services/print-render`（private 服务包，workspace 软链 core，**不发布 npm**） | 按 [服务端渲染](references/server-render.md) 部署 |

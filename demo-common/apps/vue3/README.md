@@ -25,7 +25,7 @@ npm run dev -w @worm-vue3-print/render     # 服务端 PDF（3001，dev 代理�
 
 | 位置 | 内容 |
 | --- | --- |
-| `npm i @worm-vue3-print/common@next @worm-vue3-print/core` | 两个包，无 UI 组件库依赖（`common` 只发预览版，必须带 `@next`） |
+| `npm i @worm-vue3-print/common @worm-vue3-print/core` | 两个包，无 UI 组件库依赖（`common` 与主线同号发布正式版，取 `latest`，但仍属实验性质） |
 | `src/main.js` | `registerAll()` 一次，注册 `<print-designer>`（设计器样式在组件 Shadow DOM 内，不必引 css） |
 | `vite.config.js` | `@vitejs/plugin-vue` 的 `template.compilerOptions.isCustomElement: tag => tag.startsWith('print-')` |
 | `src/App.vue` | 版式骨架 + property 注入 + 事件监听 + 三条出纸链路；`src/SampleThumb.vue` 为示例库卡片缩略图（几何工具取自 core） |

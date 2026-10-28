@@ -1,15 +1,14 @@
-name: Publish common preview
+name: Publish common
 
-# 仅手动触发；common 预览版固定 dist-tag next，不进 latest。
-# 触发：Actions → Publish common preview → Run workflow，或
-#   gh workflow run publish-common.yml -f version=1.4.0-beta.0 -f dry_run=true
-# 注意：npm 的发布令牌可以上传，但删除 latest 需要维护者本机 OTP，
-# 因此本工作流只复查并在日志里给出人工摘除命令，不代替维护者执行。
+# 仅手动触发：正式版发 latest，预发布（版本含 -）发 next；推 tag 不会自动发布。
+# 触发：Actions → Publish common → Run workflow，或
+#   gh workflow run publish-common.yml -f version=1.4.0 -f dry_run=true
+# 包虽按正式版本号发布，但 npm 主页面必须保留实验性声明。
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: '要发布的 common 版本号（需与 packages/print-common/package.json 一致，如 1.4.0-beta.0）'
+        description: '要发布的 common 版本号（需与 packages/print-common/package.json 一致，如 1.4.0）'
         required: true
         type: string
       dry_run:
@@ -54,7 +53,7 @@ jobs:
           npm test -w @worm-vue3-print/canvas
           npm test -w @worm-vue3-print/common
 
-      - name: 校验版本号
+      - name: 校验版本号并选择 dist-tag
         run: |
           ACTUAL=$(node -p "require('./packages/print-common/package.json').version")
           if [ "$ACTUAL" != "${{ inputs.version }}" ]; then
@@ -62,9 +61,12 @@ jobs:
             exit 1
           fi
           case "$ACTUAL" in
-            *-*) echo "预览版本号：$ACTUAL" ;;
-            *) echo "::error::common 只能发预览版，版本号必须带预发布后缀"; exit 1 ;;
+            *-*) DIST_TAG=next ;;
+            *) DIST_TAG=latest ;;
           esac
+          echo "发布版本 $ACTUAL，dist-tag $DIST_TAG"
+          echo "PKG_VERSION=$ACTUAL" >> "$GITHUB_ENV"
+          echo "DIST_TAG=$DIST_TAG" >> "$GITHUB_ENV"
 
       - name: 验证 npm 登录态
         run: npm whoami --registry=https://registry.npmjs.org
@@ -75,18 +77,23 @@ jobs:
         run: |
           EXTRA=""
           if [ "${{ inputs.dry_run }}" = "true" ]; then EXTRA="--dry-run"; fi
-          npm publish -w @worm-vue3-print/common --tag next --access public \
+          npm publish -w @worm-vue3-print/common --tag "$DIST_TAG" --access public \
             --registry=https://registry.npmjs.org $EXTRA
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: 复查 dist-tags（latest 摘除需维护者 OTP）
+      - name: 复查 dist-tags
         run: |
           node scripts/check-common-dist-tag.mjs --warn-only
           TAGS=$(npm view @worm-vue3-print/common dist-tags --json --registry=https://registry.npmjs.org)
           echo "$TAGS"
-          if echo "$TAGS" | grep -q '"latest"'; then
-            echo "::warning::latest 仍存在；npm 发布令牌不能改 dist-tag，请维护者本机执行：npm dist-tag rm @worm-vue3-print/common latest --registry=https://registry.npmjs.org --otp=<OTP>"
+          LATEST=$(printf '%s' "$TAGS" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).latest || ''")
+          if [ "$DIST_TAG" = "latest" ]; then
+            if [ "$LATEST" != "$PKG_VERSION" ]; then
+              echo "::warning::latest=$LATEST 与 $PKG_VERSION 不一致；registry 可能仍在处理，稍后用 npm view 复查"
+            fi
+          elif [ -n "$LATEST" ]; then
+            echo "::warning::latest 仍指向 $LATEST；预发布需要维护者本机 OTP 执行 npm dist-tag rm @worm-vue3-print/common latest --registry=https://registry.npmjs.org --otp=<OTP>"
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

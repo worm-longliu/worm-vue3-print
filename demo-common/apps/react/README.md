@@ -23,7 +23,7 @@ npm run dev -w @worm-vue3-print/render     # 服务端 PDF（3001）
 
 | 位置 | 内容 |
 | --- | --- |
-| `npm i @worm-vue3-print/common@next @worm-vue3-print/core` | 两个包，无 UI 组件库依赖（`common` 只发预览版，必须带 `@next`） |
+| `npm i @worm-vue3-print/common @worm-vue3-print/core` | 两个包，无 UI 组件库依赖（`common` 与主线同号发布正式版，取 `latest`，但仍属实验性质） |
 | `src/main.jsx` | `registerAll()` 一次 + `import './styles/demo-ui.css'` |
 | `src/styles/demo-ui.css` | demo 同源样式（由 `demo-common/scripts/sync-demo-styles.mjs` 逐字抽取，四个工程同 MD5，**勿手改**） |
 | `src/App.jsx` | 顶栏 + `<print-designer>` + 预览层 + property 注入 + 事件监听 + 出纸调用 |
