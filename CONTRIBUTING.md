@@ -105,7 +105,7 @@ npm publish -w @worm-vue3-print/canvas
 # 1. 切预览号：手改两处（与主线发版同口径，npm version 不保证同步 lock）
 #    - packages/print-common/package.json 的 "version"
 #    - package-lock.json 里 "packages/print-common" 条目的 "version"
-#    例：主线 1.3.7 的第 2 轮预览 → 1.3.7-beta.1
+#    例：主线 1.4.0 的第 2 轮预览 → 1.4.0-beta.1
 
 ## 发版载体自检（发版前后各跑一次）
 

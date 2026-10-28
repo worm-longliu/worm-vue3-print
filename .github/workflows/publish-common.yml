@@ -1,0 +1,91 @@
+name: Publish common preview
+
+# 仅手动触发；common 预览版固定 dist-tag next，不进 latest。
+# 触发：Actions → Publish common preview → Run workflow，或
+#   gh workflow run publish-common.yml -f version=1.4.0-beta.0 -f dry_run=true
+# 发布后自动摘除 latest（npm 首次发布会给预览版自动打 latest）。
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '要发布的 common 版本号（需与 packages/print-common/package.json 一致，如 1.4.0-beta.0）'
+        required: true
+        type: string
+      dry_run:
+        description: '只打包干跑，不上传'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-common-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建 core、canvas 与 common
+        run: |
+          npm run build -w @worm-vue3-print/core
+          npm run build -w @worm-vue3-print/canvas
+          npm run build -w @worm-vue3-print/common
+
+      - name: 测试 core、canvas 与 common
+        run: |
+          npm test -w @worm-vue3-print/core
+          npm test -w @worm-vue3-print/canvas
+          npm test -w @worm-vue3-print/common
+
+      - name: 校验版本号
+        run: |
+          ACTUAL=$(node -p "require('./packages/print-common/package.json').version")
+          if [ "$ACTUAL" != "${{ inputs.version }}" ]; then
+            echo "::error::common 版本 $ACTUAL 与输入 ${{ inputs.version }} 不一致"
+            exit 1
+          fi
+          case "$ACTUAL" in
+            *-*) echo "预览版本号：$ACTUAL" ;;
+            *) echo "::error::common 只能发预览版，版本号必须带预发布后缀"; exit 1 ;;
+          esac
+
+      - name: 验证 npm 登录态
+        run: npm whoami --registry=https://registry.npmjs.org
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 发布 @worm-vue3-print/common
+        run: |
+          EXTRA=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then EXTRA="--dry-run"; fi
+          npm publish -w @worm-vue3-print/common --tag next --access public \
+            --registry=https://registry.npmjs.org $EXTRA
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 摘除 latest 并复查 dist-tags
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            node scripts/check-common-dist-tag.mjs --warn-only
+          else
+            node scripts/check-common-dist-tag.mjs --fix
+          fi
+          npm view @worm-vue3-print/common dist-tags --json --registry=https://registry.npmjs.org
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,7 +1,7 @@
 # @worm-vue3-print/common
 
 > ⚠️ **实验性质 · 以预览版发布到 npm**：dist-tag 为 `next`，安装必须写 `@worm-vue3-print/common@next`；
-> 版本号形如 `1.3.7-beta.N`（与主线同号 + 预发布后缀）。npm 上还没有 `latest`，转正时才发 stable。
+> 版本号形如 `1.4.0-beta.N`（与主线同号 + 预发布后缀）。npm 上还没有 `latest`，转正时才发 stable。
 > 本包尚未定版，接口与产物形态仍可能调整，**不建议应用到生产环境**；
 > Vue 3 项目请使用成熟方案 `@worm-vue3-print/canvas`，本包目前仅供评估与非生产环境的集成验证。
 
