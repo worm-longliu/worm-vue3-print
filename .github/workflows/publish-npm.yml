@@ -1,0 +1,88 @@
+name: Publish npm
+
+# 仅手动触发：推 tag 不会自动发布。
+# 触发：Actions → Publish npm → Run workflow，或
+#   gh workflow run publish-npm.yml -f tag=v1.4.1 -f dry_run=true
+# 首次验证用 dry_run=true；确认无误后再用 dry_run=false 真正上传。
+# 若之后建好 npm-publish 环境并加入同名环境密钥，给 job 加 environment: npm-publish 即可，
+# 环境密钥会覆盖仓库级 NPM_TOKEN，无需改发布步骤。
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要发布的版本标签（如 v1.4.1，需已推送到远端）'
+        required: true
+        type: string
+      dry_run:
+        description: '只打包干跑，不上传'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建 core 与 canvas
+        run: |
+          npm run build -w @worm-vue3-print/core
+          npm run build -w @worm-vue3-print/canvas
+
+      - name: 校验标签与包版本一致
+        run: |
+          TAG="${{ inputs.tag }}"
+          TAG="${TAG#v}"
+          for pkg in core canvas; do
+            VER=$(node -p "require('./packages/print-$pkg/package.json').version")
+            if [ "$VER" != "$TAG" ]; then
+              echo "::error::print-$pkg 版本 $VER 与标签 $TAG 不一致"
+              exit 1
+            fi
+          done
+          echo "标签与两个包版本一致：$TAG"
+
+      - name: 验证 npm 登录态
+        run: npm whoami --registry=https://registry.npmjs.org
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # canvas 依赖 core，必须先发 core
+      - name: 发布 @worm-vue3-print/core
+        working-directory: packages/print-core
+        run: |
+          EXTRA=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then EXTRA="--dry-run"; fi
+          npm publish --access public --registry=https://registry.npmjs.org $EXTRA
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 发布 @worm-vue3-print/canvas
+        working-directory: packages/print-canvas
+        run: |
+          EXTRA=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then EXTRA="--dry-run"; fi
+          npm publish --access public --registry=https://registry.npmjs.org $EXTRA
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

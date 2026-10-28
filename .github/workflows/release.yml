@@ -2,6 +2,7 @@ name: Release
 
 # 仅允许在 GitHub Actions 页面手动触发（已取消推送 v* 标签自动发布）
 # 手动执行前请先打标签：git tag -a v1.2.2 -m "v1.2.2" && git push origin v1.2.2
+# npm 发布已拆到 publish-npm.yml（同样手动触发），本工作流只做构建、测试并创建 GitHub 发行版。
 on:
   workflow_dispatch:
     inputs:
@@ -50,19 +51,6 @@ jobs:
             fi
           done
           echo "标签与两个包版本一致：$TAG"
-
-      # canvas 依赖 core，必须先发 core
-      - name: 发布 @worm-vue3-print/core
-        working-directory: packages/print-core
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: 发布 @worm-vue3-print/canvas
-        working-directory: packages/print-canvas
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # 顺带自动创建 GitHub 发行版（正文见 .github/release/notes.md，无需手工建）
       - name: 创建 GitHub Release
