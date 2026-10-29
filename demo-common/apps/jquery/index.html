@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="./src/styles/topbar-overflow.css" />
     <!-- host-links 运行时：dev 用 localhost:93xx，Pages 用 /worm-vue3-print/common/xxx/ -->
     <script>
-    (function(){
+    function initHostLinks() {
       var hosts = {
         demo:   { port: 9303, path: '/' },
         vue3:   { port: 9331, path: '/common/vue3/' },
@@ -32,7 +32,12 @@
           ? 'http://' + location.hostname + ':' + info.port + '/'
           : base + info.path;
       });
-    })();
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initHostLinks);
+    } else {
+      initHostLinks();
+    }
     </script>
   </head>
   <body>

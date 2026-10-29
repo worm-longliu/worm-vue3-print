@@ -251,8 +251,11 @@ import SampleThumb from './SampleThumb.vue'
 import { checkRenderHealth, openPdfBlob, requestServerPdf } from './render-client'
 import { createPreviewZoom, renderInBrowser, writeHtmlToFrame } from './browser-render'
 
-/** 宿主基址：模板里的相对路径图片按它拼接 */
-const BASE_URL = window.location.origin
+/**
+ * 宿主基址：模板里的相对路径图片（/images/xxx）按它拼接。
+ * import.meta.env.BASE_URL 在 vite build 时注入正确前缀（Pages: /worm-vue3-print/common/vue3/）。
+ */
+const BASE_URL = window.location.origin + import.meta.env.BASE_URL.replace(/\/$/, '')
 
 /**
  * 宿主互跳链接：dev 时各宿主独立 localhost 端口，Pages 时同域不同子路径。

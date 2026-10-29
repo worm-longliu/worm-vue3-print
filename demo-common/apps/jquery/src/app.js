@@ -11,8 +11,12 @@ import { initTopbarOverflow } from './topbar-overflow.js'
 
 const W = window.WormPrintCommon
 
-/** 宿主基址：模板里的相对路径图片按它拼接 */
-const BASE_URL = window.location.origin
+/**
+ * 宿主基址：模板里的相对路径图片（/images/xxx）按它拼接。
+ * dev: http://localhost:9334  → /images/xxx 拼成 http://localhost:9334/images/xxx
+ * Pages: .../worm-vue3-print/common/jquery → /images/xxx 拼成 .../worm-vue3-print/common/jquery/images/xxx
+ */
+const BASE_URL = window.location.origin + window.location.pathname.replace(/index\.html$/, '').replace(/\/$/, '')
 
 const state = {
   fields: [],
