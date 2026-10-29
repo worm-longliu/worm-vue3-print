@@ -30,11 +30,14 @@ jobs:
         with:
           node-version: 22
 
-      # ── 1. 根工作区：构建 common 包（jquery 宿主直挂形态依赖 dist/common.js） ──
-      # workspaces 只包含 packages/* services/* clients/*，demo / demo-common 独立安装
-      - name: 根工作区 npm ci + 构建 common
+      # ── 1. 根工作区：构建 core → canvas → common ──
+      # common 的 gen-styles.mjs 依赖 canvas/dist/canvas.css，须先构建 canvas。
+      # workspaces 只包含 packages/* services/* clients/*，demo / demo-common 独立安装。
+      - name: 根工作区 npm ci + 构建依赖链（core → canvas → common）
         run: |
           npm ci
+          npm run build -w @worm-vue3-print/core
+          npm run build -w @worm-vue3-print/canvas
           npm run build -w @worm-vue3-print/common
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
