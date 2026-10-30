@@ -406,6 +406,8 @@ watch(selectedElement, (el) => {
 const DBL_EDITABLE_FIELD: Record<string, string> = {
   text: 'formatter',
   longText: 'formatter',
+  // 流式列表：单元模板就是 options.formatter（列表路径写在模板里），双击任意位置都落在这个元素框上
+  flowList: 'formatter',
   barcode: 'formatter',
   qrcode: 'formatter',
   image: 'src',

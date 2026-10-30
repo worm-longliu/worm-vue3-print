@@ -110,6 +110,20 @@ describe('画布双击元素 → 表达式编辑器', () => {
     expect(saved).toBe('{supplier.name}')
   })
 
+  it('双击流式列表（flowList）任意位置：弹窗预填单元模板、确定后写回 options.formatter', async () => {
+    const { root, store } = await mountDesigner()
+    const el = store.addElement('flowList', { left: 10, top: 10, width: 120, height: 24 })
+    await frame()
+    // 落在内部单元格子上，验证「任意区域」都经元素框的 mousedown 判定打开
+    await dblClick(root, `[data-el-id="${el.id}"] .print-flow-cell`)
+    await frame()
+    expect(overlay(root)).not.toBe(null)
+    expect(textarea(root)!.value).toBe(String(el.options.formatter ?? ''))
+    setTextarea(root, '{drugs.name}')
+    await clickFooter(root, '确定')
+    expect(store.elements.find(e => e.id === el.id)!.options.formatter).toBe('{drugs.name}')
+  })
+
   it('点「取消」只关弹窗，不写回', async () => {
     const { root, store } = await mountDesigner()
     const el = store.addElement('text', { left: 10, top: 10, width: 40, height: 10 })
