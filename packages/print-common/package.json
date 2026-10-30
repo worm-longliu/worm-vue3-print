@@ -1,6 +1,6 @@
 {
   "name": "@worm-vue3-print/common",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org"
@@ -48,7 +48,7 @@
     "test": "npm run styles && vitest run"
   },
   "dependencies": {
-    "@worm-vue3-print/core": "^1.4.1",
+    "@worm-vue3-print/core": "^1.4.2",
     "dompurify": "^3.4.12",
     "jsbarcode": "^3.12.3",
     "qrcode": "^1.5.4"
