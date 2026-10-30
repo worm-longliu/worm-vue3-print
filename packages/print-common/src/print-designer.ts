@@ -710,7 +710,8 @@ export class PrintDesignerElement extends HTMLElement {
       this.store.addElement(type, {}, point)
     } else if (fieldKey) {
       const field = this.store.fields.find(f => f.fieldKey === fieldKey)
-      if (field) this.store.addFieldElement(field, {}, point)
+      // 按住 Ctrl/Cmd 松手：生成内容为字段中文名的静态文本元素（对齐 canvas 的 asLabel）
+      if (field) this.store.addFieldElement(field, {}, point, ev.ctrlKey || ev.metaKey)
     }
   }
 

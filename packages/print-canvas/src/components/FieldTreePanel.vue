@@ -20,7 +20,7 @@
             :key="field.fieldKey"
             class="field-row"
             draggable="true"
-            :data-tip="`${field.fieldLabel} (${field.fieldKey}) · 单击复制字段名`"
+            :data-tip="`${field.fieldLabel} (${field.fieldKey}) · 单击复制字段名 · Ctrl+拖动插入字段名`"
             :style="{ paddingLeft: (group.key ? 22 : 8) + 'px' }"
             @dragstart="onDragStart($event, field)"
             @dragend="onDragEnd"
@@ -78,7 +78,8 @@ function toggleGroup(key: string) {
 }
 
 function onDragStart(event: DragEvent, field: PrintBusinessField) {
-  // 拖拽载荷为完整字段路径（如 goods.spec），与打印数据结构一致
+  // 拖拽载荷为完整字段路径（如 goods.spec），与打印数据结构一致；
+  // 按住 Ctrl/Cmd 松手时由落点侧生成静态文本元素，载荷不变
   dragging.value = true
   event.dataTransfer?.setData('fieldData', JSON.stringify({ fieldKey: field.fieldKey, fieldLabel: field.fieldLabel }))
   if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copy'

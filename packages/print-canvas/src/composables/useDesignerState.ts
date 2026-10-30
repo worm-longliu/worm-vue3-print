@@ -6,7 +6,7 @@ import type {
   TableSelection, PrintElementData, MultiPageTemplateData,
 } from '@worm-vue3-print/core/designer'
 import { createRuntimeElement, generateId } from '@worm-vue3-print/core/designer'
-import { createFieldElement } from '@worm-vue3-print/core/designer'
+import { createFieldElement, createFieldLabelElement } from '@worm-vue3-print/core/designer'
 import { normalizeTemplateUnits } from '@worm-vue3-print/core/designer'
 import { syncTableElementSize } from '@worm-vue3-print/core/designer'
 import { getPaperDimensions } from '@worm-vue3-print/core/designer'
@@ -424,8 +424,13 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     recordHistory()
   }
 
-  function addFieldElement(field: { fieldKey: string; fieldLabel: string }, dropPoint?: { x: number; y: number }) {
-    const el = createFieldElement(field)
+  function addFieldElement(
+    field: { fieldKey: string; fieldLabel: string },
+    dropPoint?: { x: number; y: number },
+    asLabel = false,
+  ) {
+    // asLabel：按住 Ctrl/Cmd 拖放，生成内容为字段中文名的静态文本元素
+    const el = asLabel ? createFieldLabelElement(field) : createFieldElement(field)
     if (dropPoint && !placeAtDropPoint(el, dropPoint)) return
     elements.value.push(el)
     select(el.id, false)

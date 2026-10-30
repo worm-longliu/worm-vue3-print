@@ -140,7 +140,12 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   select: [id: string, multiple: boolean]
   'drop-element': [type: string, dropPoint?: { x: number; y: number }]
-  'drop-field': [field: { fieldKey: string; fieldLabel: string }, dropPoint?: { x: number; y: number }]
+  'drop-field': [
+    field: { fieldKey: string; fieldLabel: string },
+    dropPoint?: { x: number; y: number },
+    /** 按住 Ctrl/Cmd 放置：生成内容为字段中文名的静态文本元素 */
+    asLabel?: boolean,
+  ]
   'drag-start': []
   'drag-stop': []
   'dblclick-element': [id: string]
@@ -260,7 +265,8 @@ function onDrop(e: DragEvent) {
   if (fieldData) {
     try {
       const field = JSON.parse(fieldData) as { fieldKey: string; fieldLabel: string }
-      emit('drop-field', field, dropPoint)
+      // 修饰键只在 drop 时读：拖动途中按下 Ctrl 同样生效
+      emit('drop-field', field, dropPoint, e.ctrlKey || e.metaKey)
       return
     } catch {
       // 解析失败，忽略

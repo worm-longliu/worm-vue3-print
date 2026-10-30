@@ -150,6 +150,47 @@ describe('ExpressionEditor 智能大括号处理', () => {
   })
 })
 
+describe('ExpressionEditor Ctrl+双击插入字段名称', () => {
+  function setCaret(wrapper: VueWrapper, value: string, caret: number) {
+    const ta = wrapper.find('textarea.ee-textarea').element as HTMLTextAreaElement
+    ta.value = value
+    ta.selectionStart = ta.selectionEnd = caret
+    ta.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+
+  function fieldItem(wrapper: VueWrapper, label: string) {
+    const item = wrapper.findAll('.ee-field-item').find(el => el.text().includes(label))
+    expect(item, `找不到字段行 ${label}`).toBeTruthy()
+    return item!
+  }
+
+  it('Ctrl+双击字段插入字段中文名（静态文本，不带大括号）', async () => {
+    const wrapper = mountEditor('')
+    await fieldItem(wrapper, '规格').trigger('dblclick', { ctrlKey: true })
+    expect(textareaValue(wrapper)).toBe('规格')
+  })
+
+  it('Meta（Mac Cmd）+双击同样插入字段中文名', async () => {
+    const wrapper = mountEditor('')
+    await fieldItem(wrapper, '规格').trigger('dblclick', { metaKey: true })
+    expect(textareaValue(wrapper)).toBe('规格')
+  })
+
+  it('函数参数内 Ctrl+双击自动加双引号，避免插入非法表达式', async () => {
+    const wrapper = mountEditor('')
+    setCaret(wrapper, '{IF(', 4)
+    await fieldItem(wrapper, '规格').trigger('dblclick', { ctrlKey: true })
+    expect(textareaValue(wrapper)).toBe('{IF("规格"')
+  })
+
+  it('不按 Ctrl 仍是原来的取值表达式（回归）', async () => {
+    const wrapper = mountEditor('')
+    await fieldItem(wrapper, '规格').trigger('dblclick')
+    expect(textareaValue(wrapper)).toBe('{goods.spec}')
+  })
+})
+
+
 describe('ExpressionEditor 字段行复制按钮', () => {
   const originalClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
   afterEach(() => {

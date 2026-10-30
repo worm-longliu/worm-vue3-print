@@ -5,7 +5,7 @@ import type {
   RuntimeElement, TableSelection, TemplateData,
 } from '@worm-vue3-print/core/designer'
 import {
-  clampToZone, createFieldElement, createRuntimeElement, finalizeElementZone, generateGroupId,
+  clampToZone, createFieldElement, createFieldLabelElement, createRuntimeElement, finalizeElementZone, generateGroupId,
   generateId, getPaperDimensions, getZoneRects, MIN_SCALE_PERCENT, normalizeTemplateUnits,
   syncTableElementSize, useAlign, useGroup, ZONE_ALLOWED_TYPES, zoneFromPaperPoint,
 } from '@worm-vue3-print/core/designer'
@@ -286,9 +286,15 @@ export class DesignerStore {
     return el
   }
 
-  addFieldElement(field: PrintBusinessField, options: Partial<RuntimeElement['options']> = {}, dropPoint?: PaperPoint) {
-    // core 的 createFieldElement 只接收字段本身，位置/尺寸由调用方补写
-    const el = createFieldElement(field)
+  addFieldElement(
+    field: PrintBusinessField,
+    options: Partial<RuntimeElement['options']> = {},
+    dropPoint?: PaperPoint,
+    asLabel = false,
+  ) {
+    // core 的 createFieldElement 只接收字段本身，位置/尺寸由调用方补写；
+    // asLabel：Ctrl/Cmd 拖放，生成内容为字段中文名的静态文本元素
+    const el = asLabel ? createFieldLabelElement(field) : createFieldElement(field)
     Object.assign(el.options, options)
     if (dropPoint && !this.placeAtDropPoint(el, dropPoint)) return el
     this.recordHistory()

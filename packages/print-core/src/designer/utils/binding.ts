@@ -13,6 +13,15 @@ export function createFieldElement(field: { fieldKey: string; fieldLabel: string
   })
 }
 
+/** 从业务字段创建静态文本元素：内容为字段中文名，不参与表达式求值（Ctrl+拖动字段进画布） */
+export function createFieldLabelElement(field: { fieldKey: string; fieldLabel: string }): RuntimeElement {
+  const label = field.fieldLabel || field.fieldKey
+  return createRuntimeElement('text', {
+    formatter: label,
+    title: label,
+  })
+}
+
 /** 非设计态文本内容解析：用共享引擎渲染 formatter */
 export function resolveTextBinding(
   options: { formatter?: string },
