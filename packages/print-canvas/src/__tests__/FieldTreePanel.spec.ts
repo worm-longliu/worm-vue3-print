@@ -9,7 +9,7 @@ import type { PrintBusinessField } from '@worm-vue3-print/core/designer'
 
 const LONG_LABEL = '客户签收备注（加急）'
 const LONG_KEY = 'customer.receiptRemark.urgentHandling'
-const ROW_TIP = `${LONG_LABEL} (${LONG_KEY}) · 单击复制字段名 · Ctrl+拖动插入字段名`
+const ROW_TIP = `${LONG_LABEL} (${LONG_KEY}) · 单击复制字段名 · Ctrl/⌘+拖动插入字段名`
 
 const fields: PrintBusinessField[] = [
   { id: '1', fieldKey: 'customer', fieldLabel: '客户信息', fieldType: 'string', sortOrder: 1 },

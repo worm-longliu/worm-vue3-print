@@ -20,7 +20,7 @@
             :key="field.fieldKey"
             class="field-row"
             draggable="true"
-            :data-tip="`${field.fieldLabel} (${field.fieldKey}) · 单击复制字段名 · Ctrl+拖动插入字段名`"
+            :data-tip="`${field.fieldLabel} (${field.fieldKey}) · 单击复制字段名 · Ctrl/⌘+拖动插入字段名`"
             :style="{ paddingLeft: (group.key ? 22 : 8) + 'px' }"
             @dragstart="onDragStart($event, field)"
             @dragend="onDragEnd"

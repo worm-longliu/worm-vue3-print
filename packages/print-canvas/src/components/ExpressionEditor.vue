@@ -155,7 +155,7 @@
             v-model="localExpression"
             class="ee-textarea"
             rows="6"
-            placeholder="双击左侧字段/变量/函数插入，Ctrl+双击字段插入字段名，或直接输入静态内容"
+            placeholder="双击左侧字段/变量/函数插入，Ctrl/⌘+双击字段插入字段名，或直接输入静态内容"
           />
         </div>
 
@@ -171,7 +171,7 @@
               <div class="ee-help-card-title">输入方式</div>
               <div class="ee-help-card-content">
                 双击左侧字段、变量、函数即可插入到表达式输入框中<br>
-                按住 Ctrl（Mac 为 Cmd）双击字段插入字段名称，当静态文本用<br>
+                按住 Ctrl（Mac 为 ⌘）双击字段插入字段名称，当静态文本用<br>
                 静态数据直接输入即可，如：供应商名称<br>
                 动态解析字段、变量、函数必须用 {} 包裹<br>
                 示例：{SUM(supplier.name)}<br>
@@ -274,8 +274,9 @@ watch(visible, (val) => {
   }
 })
 
-// 字段双击：默认插入取值表达式；按住 Ctrl（Mac 为 Cmd）双击插入字段中文名当静态文本
+// 字段双击：默认插入取值表达式；按住 Ctrl（Mac 为 ⌘）双击插入字段中文名当静态文本
 // 函数参数内插字段名自动加引号，否则会插进一个非法表达式
+// macOS 上 Ctrl+点击会被 Chromium 当作右键（实测不派发 dblclick），故同时认 metaKey
 function handleFieldDoubleClick(field: PrintBusinessField, event?: MouseEvent) {
   const { insideParens } = getCursorRegion()
   if (event && (event.ctrlKey || event.metaKey)) {
