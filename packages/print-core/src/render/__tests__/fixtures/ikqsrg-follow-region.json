@@ -1,0 +1,407 @@
+{
+  "unit": "mm",
+  "paperSize": "A4",
+  "orientation": "portrait",
+  "margins": {
+    "top": 10,
+    "right": 10,
+    "bottom": 10,
+    "left": 10
+  },
+  "header": {
+    "height": 10,
+    "elements": []
+  },
+  "footer": {
+    "height": 10,
+    "elements": []
+  },
+  "elements": [
+    {
+      "id": "el-1793067833469-fbcazo",
+      "type": "table",
+      "options": {
+        "left": 1.2514,
+        "top": 6.40125,
+        "width": 188.9,
+        "height": 32.28,
+        "tableMode": "dynamic",
+        "tableRows": [
+          {
+            "id": "row-mvq2aiyl-13",
+            "type": "header",
+            "height": 8,
+            "repeatOnPage": true,
+            "cells": [
+              {
+                "id": "cell-mvq2aiyl-37",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "列1",
+                "align": "center",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-mvq2aiyl-38",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "列2",
+                "align": "center",
+                "fontWeight": "bold"
+              },
+              {
+                "id": "cell-mvq2aiyl-39",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "列3",
+                "align": "center",
+                "fontWeight": "bold"
+              }
+            ]
+          },
+          {
+            "id": "row-mvq2aiyl-14",
+            "type": "data",
+            "height": 8,
+            "cells": [
+              {
+                "id": "cell-mvq2aiyl-40",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                }
+              },
+              {
+                "id": "cell-mvq2aiyl-41",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                }
+              },
+              {
+                "id": "cell-mvq2aiyl-42",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "row-mvq2aiyl-15",
+            "type": "subtotal",
+            "height": 8,
+            "cells": [
+              {
+                "id": "cell-mvq2aiyl-43",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                },
+                "formatter": "小计"
+              },
+              {
+                "id": "cell-mvq2aiyl-44",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                }
+              },
+              {
+                "id": "cell-mvq2aiyl-45",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "row-mvq2aiyl-16",
+            "type": "summary",
+            "height": 8,
+            "cells": [
+              {
+                "id": "cell-mvq2aiyl-46",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                }
+              },
+              {
+                "id": "cell-mvq2aiyl-47",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                }
+              },
+              {
+                "id": "cell-mvq2aiyl-48",
+                "borders": {
+                  "top": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "right": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "bottom": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  },
+                  "left": {
+                    "width": 0.75,
+                    "style": "solid",
+                    "color": "#333333"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "tableColWidths": [
+          50,
+          50,
+          88.9
+        ],
+        "tableDefaultFontSize": 10,
+        "tableDefaultColor": "#333333",
+        "tableDefaultPadding": 1,
+        "fields": [],
+        "tablePagination": {
+          "enabled": true
+        }
+      },
+      "printElementType": {
+        "type": "table",
+        "title": "表格"
+      }
+    },
+    {
+      "id": "el-1793068016327-4pwhko",
+      "type": "vline",
+      "options": {
+        "left": -0.4985999999999999,
+        "top": 2.48955,
+        "width": 3.5,
+        "height": 164.94583333333333,
+        "borderWidth": 0.75
+      },
+      "printElementType": {
+        "type": "vline",
+        "title": "竖线"
+      }
+    }
+  ],
+  "watermark": {},
+  "guides": [],
+  "name": "页面 1"
+}

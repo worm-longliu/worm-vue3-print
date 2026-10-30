@@ -2,14 +2,16 @@ import { describe, it, expect } from 'vitest'
 import { bindData } from '../data-binder.js'
 import { paginate } from '../pagination-engine.js'
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import type { TemplateData } from '../types.js'
 
 // Gitee #IKQSRG 修复回归测试
 // 根因：xRange() 对线类元素用 options.width（画布编辑盒宽 3.5mm）而非 borderWidth（约 0.26mm），
 // vline xRange=[-0.5,3.0] 与表格 [1.25,190.15] 错误横向相交 → vline 全高占了表格所在列版面。
 // 修复：vline 的 xRange 改用 borderWidth（pt→mm），border 以中心线向外各半 + 安全余量。
+// 夹具即报告人 #IKQSRG 评论里的原模板（逐字段一致），必须随测试入库，否则干净检出/CI 会 ENOENT。
 
-const tplPath = '/Users/worm/worm-vue3-print/.video/tmp-ikqsrg-repro.json'
+const tplPath = fileURLToPath(new URL('./fixtures/ikqsrg-follow-region.json', import.meta.url))
 const repro = JSON.parse(readFileSync(tplPath, 'utf-8')) as TemplateData
 
 function bindAndPaginate(rowCount: number) {
