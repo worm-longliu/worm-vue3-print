@@ -46,6 +46,8 @@ export * from './utils/preset-colors.js'
 export * from './utils/property-search.js'
 export * from './utils/crop-anchor.js'
 export * from './utils/field-groups.js'
+// 复制文本到系统剪贴板：素材台字段单击复制、表达式弹窗字段复制按钮共用（浏览器环境专用）
+export * from './utils/clipboard.js'
 export * from './utils/binding-registry.js'
 export * from './utils/demo-data.js'
 export * from './utils/engine.js'

@@ -41,7 +41,7 @@ const RULER_THICK = 20
  * 走 JS 浮层 tooltip 的容器：这些区域带 overflow 裁剪，CSS ::after 气泡会被切掉，
  * 必须用 fixed 浮层（与 canvas 的 useHoverTip 消费方一一对应）。
  */
-const HOVER_TIP_CONTAINERS = '.page-tabs, .field-tree-panel'
+const HOVER_TIP_CONTAINERS = '.page-tabs, .field-tree-panel, .pd-dialog-overlay'
 
 /** Ctrl/⌘ 组合键白名单：不在表内的组合键不拦截浏览器默认行为（与 canvas useKeyboard 一致） */
 const HANDLED_CTRL_KEYS = new Set(['z', 'y', 'a', 'c', 'x', 'v', 'd', 'g', '1', 'l', 'r', 'e', 't', 'b', '0'])

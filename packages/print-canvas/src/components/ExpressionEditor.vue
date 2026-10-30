@@ -1,5 +1,12 @@
 <template>
-  <div v-if="visible" class="pd-dialog-overlay" @keydown.esc="visible = false">
+  <div
+    v-if="visible"
+    class="pd-dialog-overlay"
+    @keydown.esc="visible = false"
+    @mouseover="onTipOver"
+    @mouseout="onTipOut"
+    @mouseleave="hideTip"
+  >
   <section class="pd-dialog pd-dialog-large" role="dialog" aria-modal="true" aria-labelledby="expression-editor-title">
     <header class="pd-dialog-header">
       <strong id="expression-editor-title">编辑表达式</strong>
@@ -59,6 +66,18 @@
                   <span class="ee-item-label">{{ field.fieldLabel }}</span>
                   <span class="ee-item-key">{{ field.fieldKey }}</span>
                 </div>
+                <button
+                  type="button"
+                  class="ee-copy-btn"
+                  :class="{ 'is-copied': copiedKey === field.fieldKey }"
+                  :data-tip="copiedKey === field.fieldKey ? '已复制' : `复制字段名「${field.fieldLabel}」`"
+                  :aria-label="`复制字段名 ${field.fieldLabel}`"
+                  @click.stop="onCopyField(field)"
+                  @dblclick.stop
+                >
+                  <Check v-if="copiedKey === field.fieldKey" :size="13" />
+                  <Copy v-else :size="13" />
+                </button>
               </div>
             </template>
             <p v-if="filteredGroups.length === 0" class="pd-empty">暂无字段</p>
@@ -196,16 +215,20 @@
       <button type="button" class="pd-button primary" @click="onConfirm">确定</button>
     </footer>
   </section>
+  <!-- 自定义 tooltip：与素材台字段树/页签栏共用 useHoverTip；fixed 定位不受字段列表 overflow 裁剪 -->
+  <div v-if="tip" ref="tipEl" class="pd-hover-tip" :style="{ left: `${tip.x}px`, top: `${tip.y}px` }">{{ tip.text }}</div>
 </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
+import { Copy, Check } from 'lucide-vue-next'
 import type { PrintBusinessField } from '@worm-vue3-print/core/designer'
 import { evaluateTemplate } from '@worm-vue3-print/core/designer'
 import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
-import { groupFields, filterGroups } from '@worm-vue3-print/core/designer'
+import { copyTextToClipboard, groupFields, filterGroups } from '@worm-vue3-print/core/designer'
 import { resolveSystemVariables } from '@worm-vue3-print/core'
+import { useHoverTip } from '../composables/useHoverTip'
 
 const props = defineProps<{
   modelValue: boolean
@@ -255,6 +278,23 @@ function handleFieldDoubleClick(field: PrintBusinessField) {
   const { insideParens } = getCursorRegion()
   insertAtCursor(insideParens ? field.fieldKey : `{${field.fieldKey}}`)
 }
+
+// 字段右侧复制按钮：复制字段中文名（与素材台单击复制同一口径，Gitee #IKRIZM）
+const copiedKey = ref('')
+let copyTimer: ReturnType<typeof setTimeout> | null = null
+const { tip, tipEl, onTipOver, onTipOut, hideTip } = useHoverTip()
+
+async function onCopyField(field: PrintBusinessField) {
+  const text = field.fieldLabel || field.fieldKey
+  if (!(await copyTextToClipboard(text))) return
+  copiedKey.value = field.fieldKey
+  if (copyTimer) clearTimeout(copyTimer)
+  copyTimer = setTimeout(() => { copiedKey.value = '' }, 1200)
+}
+
+onBeforeUnmount(() => {
+  if (copyTimer) clearTimeout(copyTimer)
+})
 
 // 变量双击：函数参数内去大括号，其余场景保持 {变量} 原样
 function handleVariableDoubleClick(sv: { name: string; template: string }) {
@@ -544,6 +584,40 @@ function onConfirm() {
   font-size: 10px;
   color: var(--pd-text-muted);
   font-family: monospace;
+}
+
+/* 字段行：信息两行 + 右侧复制按钮（单击复制字段名，1.2s 内变对勾） */
+.ee-field-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ee-field-item .ee-field-info {
+  flex: 1;
+  min-width: 0;
+}
+.ee-copy-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--pd-text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.ee-copy-btn:hover {
+  background: var(--pd-surface, white);
+  border-color: var(--pd-border);
+  color: var(--pd-accent);
+}
+.ee-copy-btn.is-copied {
+  color: var(--pd-success, #16a34a);
 }
 
 .ee-list-item:hover {

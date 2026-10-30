@@ -67,11 +67,12 @@
 //   另外 canvas 的弹窗在组件树里由 v-model 控制显隐，本包改为「调用方决定 DOM 存在与否」。
 //   内部状态是闭包对象 state（activeTab/searchText/expression/binding），配一个 repaint(root) 做显式重绘
 //   （页签高亮、搜索占位、列表、文本域、预览）；换 target 就重新调用本函数拿新 DOM，无需 update 接口。
-import { DEFAULT_DEMO_DATA, evaluateTemplate, filterGroups, groupFields } from '@worm-vue3-print/core/designer'
+import { DEFAULT_DEMO_DATA, copyTextToClipboard, evaluateTemplate, filterGroups, groupFields } from '@worm-vue3-print/core/designer'
 import type { PrintBusinessField } from '@worm-vue3-print/core/designer'
 import { resolveSystemVariables } from '@worm-vue3-print/core'
 import { clear, h, render } from '../core/h'
 import type { El } from '../core/h'
+import { iconSvg } from '../core/icons'
 
 export interface ExpressionEditorTarget {
   /** 元素 id（表格单元格时用于定位） */
@@ -262,6 +263,8 @@ export function renderExpressionEditor(opts: ExpressionEditorOptions, target: Ex
     expression: target.value || '',
     /** 字段绑定模式标记：仅当调用方给了初始 key，才在确定时回写 binding/title */
     binding: target.binding,
+    /** 最近一次复制成功的字段 key：按钮图标 1.2s 内显示对勾（对齐 canvas 的 copiedKey） */
+    copiedFieldKey: '',
   }
 
   const query = <T extends Element>(root: ParentNode, selector: string) => root.querySelector<T>(selector)
@@ -316,7 +319,23 @@ export function renderExpressionEditor(opts: ExpressionEditorOptions, target: Ex
             const { insideParens } = region(ev)
             insert(scope(ev), insideParens ? field.fieldKey : `{${field.fieldKey}}`)
           },
-        }, [itemInfo(field.fieldLabel, field.fieldKey)]))
+        }, [
+          itemInfo(field.fieldLabel, field.fieldKey),
+          // 字段右侧复制按钮：复制字段中文名（对齐 canvas ExpressionEditor 的 .ee-copy-btn）
+          h('button', {
+            type: 'button',
+            class: `ee-copy-btn${state.copiedFieldKey === field.fieldKey ? ' is-copied' : ''}`,
+            // 提示浮层由 print-designer 的 hover-tip 委托承担（容器白名单含 .pd-dialog-overlay）
+            'data-tip': state.copiedFieldKey === field.fieldKey ? '已复制' : `复制字段名「${field.fieldLabel}」`,
+            'aria-label': `复制字段名 ${field.fieldLabel}`,
+            html: iconSvg(state.copiedFieldKey === field.fieldKey ? 'Check' : 'Copy', 13),
+            onClick: (ev: Event) => {
+              ev.stopPropagation()
+              copyFieldName(ev, field)
+            },
+            onDblclick: (ev: Event) => ev.stopPropagation(),
+          }),
+        ]))
       }
     }
     return nodes
@@ -340,6 +359,21 @@ export function renderExpressionEditor(opts: ExpressionEditorOptions, target: Ex
       for (const item of listItems()) render(item as El, list)
     }
     updatePreview(root)
+  }
+
+  /** 单击字段右侧复制按钮：复制字段中文名，图标变对勾 1.2s 后复原（整体重绘模型，状态外置在 state） */
+  function copyFieldName(ev: Event, field: PrintBusinessField) {
+    const root = scope(ev)
+    copyTextToClipboard(field.fieldLabel || field.fieldKey).then((ok) => {
+      if (!ok) return
+      state.copiedFieldKey = field.fieldKey
+      repaint(root)
+      setTimeout(() => {
+        if (state.copiedFieldKey !== field.fieldKey) return
+        state.copiedFieldKey = ''
+        repaint(root)
+      }, 1200)
+    })
   }
 
   /** 光标所在上下文：决定插入时要不要带大括号 */

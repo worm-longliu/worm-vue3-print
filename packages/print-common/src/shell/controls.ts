@@ -24,6 +24,8 @@ export interface ShellState {
   fieldSearch?: string
   /** 折叠的字段分组 key */
   collapsedGroups: Set<string>
+  /** 最近一次复制成功的字段 key：素材台行内「已复制」提示，1.2s 后清空重绘（对齐 canvas） */
+  copiedFieldKey?: string
   /** 正在行内重命名的页面下标 */
   renamingPage: number | null
   renameText?: string

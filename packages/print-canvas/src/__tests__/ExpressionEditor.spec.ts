@@ -1,6 +1,7 @@
 // web/src/components/print/__tests__/ExpressionEditor.spec.ts
-import { describe, it, expect } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import ExpressionEditor from '../components/ExpressionEditor.vue'
 
 const testFields = [
@@ -146,5 +147,67 @@ describe('ExpressionEditor 智能大括号处理', () => {
     setContentAndCaret(wrapper, '{SUM(', 5)
     await dblclickItem(wrapper, 'AVG', '函数')
     expect(textareaValue(wrapper)).toBe('{SUM(AVG()')
+  })
+})
+
+describe('ExpressionEditor 字段行复制按钮', () => {
+  const originalClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+  afterEach(() => {
+    if (originalClipboard) Object.defineProperty(navigator, 'clipboard', originalClipboard)
+    else Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true, writable: true })
+  })
+
+  function stubClipboard() {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true, writable: true })
+    return writeText
+  }
+
+  it('每个字段行右侧都有复制按钮', () => {
+    const wrapper = mountEditor('')
+    const items = wrapper.findAll('.ee-field-item')
+    // supplier / goods 是分组字段（渲染为分组标题），字段行是它们的子字段
+    expect(items.length).toBe(4)
+    for (const item of items) expect(item.find('.ee-copy-btn').exists()).toBe(true)
+  })
+
+  it('单击复制按钮复制字段中文名，不改动表达式输入框', async () => {
+    const writeText = stubClipboard()
+    const wrapper = mountEditor('')
+    const item = wrapper.findAll('.ee-field-item').find(el => el.text().includes('规格'))!
+    await item.find('.ee-copy-btn').trigger('click')
+    await flushPromises()
+    await nextTick()
+    expect(writeText).toHaveBeenCalledWith('规格')
+    expect(item.find('.ee-copy-btn').classes()).toContain('is-copied')
+    expect(textareaValue(wrapper)).toBe('')
+  })
+
+  it('复制按钮的提示走 data-tip，不残留原生 title；复制后提示变「已复制」', async () => {
+    stubClipboard()
+    const wrapper = mountEditor('')
+    const btn = wrapper.findAll('.ee-field-item').find(el => el.text().includes('规格'))!.find('.ee-copy-btn')
+    expect(btn.attributes('data-tip')).toBe('复制字段名「规格」')
+    expect(btn.attributes('title')).toBeUndefined()
+
+    await btn.trigger('click')
+    await flushPromises()
+    await nextTick()
+    expect(btn.attributes('data-tip')).toBe('已复制')
+  })
+
+  it('悬停复制按钮 300ms 后出 .pd-hover-tip 浮层（列表 overflow 会裁掉 CSS 气泡）', async () => {
+    vi.useFakeTimers()
+    try {
+      const wrapper = mountEditor('')
+      const btn = wrapper.findAll('.ee-field-item').find(el => el.text().includes('规格'))!.find('.ee-copy-btn')
+      await btn.trigger('mouseover')
+      vi.advanceTimersByTime(300)
+      await flushPromises()
+      await nextTick()
+      expect(wrapper.find('.pd-hover-tip').text()).toBe('复制字段名「规格」')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

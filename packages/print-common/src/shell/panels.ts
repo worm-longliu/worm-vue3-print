@@ -1,6 +1,6 @@
 // 左栏素材台 / 页签栏 / 状态栏：DOM 类名对齐 canvas 的
 // LeftPanel.vue、FieldTreePanel.vue、LayerPanel.vue、PageTabs.vue、StatusBar.vue。
-import { PAPER_PRESETS, getPaperDimensions, groupFields } from '@worm-vue3-print/core/designer'
+import { PAPER_PRESETS, copyTextToClipboard, getPaperDimensions, groupFields } from '@worm-vue3-print/core/designer'
 import type { ElementType, PrintBusinessField, RuntimeElement } from '@worm-vue3-print/core/designer'
 import { h } from '../core/h'
 import { iconSvg } from '../core/icons'
@@ -123,10 +123,23 @@ function fieldsPane(ctx: ShellCtx) {
       const rows = collapsed ? [] : group.fields.map(field => h('div', {
         class: 'field-row',
         draggable: true,
-        'data-tip': `${field.fieldLabel} (${field.fieldKey})`,
+        'data-tip': `${field.fieldLabel} (${field.fieldKey}) · 单击复制字段名`,
         style: { paddingLeft: `${group.key ? 22 : 8}px` },
         onDragstart: (ev: Event) => {
           (ev as DragEvent).dataTransfer?.setData('fieldKey', field.fieldKey)
+        },
+        // 单击复制字段中文名（对齐 canvas FieldTreePanel 的 onCopyField，Gitee #IKRIZM）
+        onClick: () => {
+          copyTextToClipboard(field.fieldLabel || field.fieldKey).then((ok) => {
+            if (!ok) return
+            st.copiedFieldKey = field.fieldKey
+            ctx.repaint()
+            setTimeout(() => {
+              if (st.copiedFieldKey !== field.fieldKey) return
+              st.copiedFieldKey = ''
+              ctx.repaint()
+            }, 1200)
+          })
         },
       }, [
         h('span', { class: 'node-icon', text: '📄' }),
@@ -134,7 +147,8 @@ function fieldsPane(ctx: ShellCtx) {
           h('span', { class: 'node-label', text: field.fieldLabel }),
           h('span', { class: 'node-key', text: `(${field.fieldKey})` }),
         ]),
-      ]))
+        st.copiedFieldKey === field.fieldKey ? h('span', { class: 'copy-hint', text: '已复制' }) : '',
+      ].filter(Boolean)))
       return [header, h('div', {}, rows.filter(Boolean))].filter(Boolean)
     })),
     matched.length === 0 ? h('p', { class: 'pd-empty', text: '暂无字段' }) : '',
