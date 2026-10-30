@@ -20,10 +20,7 @@
         <template v-if="element">
           <PropertySearch @search="onSearch" />
           <div class="property-content">
-            <PositionSizeGroup v-if="filteredGroups.includes('position-size') && !isTableCellSelected" :element="element" :matched-keys="matchedKeys" :searching="searching" />
-            <AppearanceGroup v-if="filteredGroups.includes('appearance')" :element="element" :is-text-type="isTextType" :matched-keys="matchedKeys" :searching="searching" :follow-member-ids="followMemberIds" />
-            <!-- 条码/二维码设置（码制、条宽、缩放模式、最大宽高等） -->
-            <CodeGroup v-if="filteredGroups.includes('code') && isCodeType" :element="element" :matched-keys="matchedKeys" :searching="searching" @change="recordHistory?.()" />
+            <!-- 内容绑定组置顶：作者最常改的一栏，先于位置/外观 -->
             <PropertyGroup v-if="filteredGroups.includes('binding') && !isMultiCellSelection" title="内容" icon="Document" default-expanded group-key="binding">
               <BindingControl
                 v-for="desc in bindingDescriptors"
@@ -38,6 +35,10 @@
                 @success="onImageUploadSuccess"
               />
             </PropertyGroup>
+            <PositionSizeGroup v-if="filteredGroups.includes('position-size') && !isTableCellSelected" :element="element" :matched-keys="matchedKeys" :searching="searching" />
+            <AppearanceGroup v-if="filteredGroups.includes('appearance')" :element="element" :is-text-type="isTextType" :matched-keys="matchedKeys" :searching="searching" :follow-member-ids="followMemberIds" />
+            <!-- 条码/二维码设置（码制、条宽、缩放模式、最大宽高等） -->
+            <CodeGroup v-if="filteredGroups.includes('code') && isCodeType" :element="element" :matched-keys="matchedKeys" :searching="searching" @change="recordHistory?.()" />
             <!-- 表格行/单元格属性（需有选区） -->
             <template v-if="isTableType && tableSelection && tableSelection.elementId === element!.id">
               <TableRowGroup :element="element!" :selection="tableSelection" />

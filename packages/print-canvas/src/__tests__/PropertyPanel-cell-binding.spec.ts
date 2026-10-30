@@ -28,7 +28,7 @@ function makeTable(rowCells: Array<Array<any>>): RuntimeElement {
   }) as unknown as RuntimeElement
 }
 
-function mountPanel(element: RuntimeElement, selection: TableSelection) {
+function mountPanel(element: RuntimeElement, selection?: TableSelection) {
   return mount(PropertyPanel, {
     props: {
       element,
@@ -72,5 +72,17 @@ describe('PropertyPanel 单元格「内容」绑定组的单选门控', () => {
     const element = makeTable([[{ rowspan: 2, formatter: '合并' }], [{ merged: true }]])
     const w = mountPanel(element, { elementId: 'el-table', r1: 0, c1: 0, r2: 1, c2: 0 })
     expect(titles(w)).toContain('内容')
+  })
+})
+
+describe('PropertyPanel 元素属性页签的分组顺序', () => {
+  it('「内容」绑定组置顶：作者最常改的一栏排在位置/外观之前', () => {
+    const element = reactive({
+      id: 'el-text',
+      options: { left: 0, top: 0, width: 30, height: 10, formatter: '文本' },
+      printElementType: { type: 'text', title: '文本' },
+    }) as unknown as RuntimeElement
+    const w = mountPanel(element)
+    expect(titles(w)[0]).toBe('内容')
   })
 })

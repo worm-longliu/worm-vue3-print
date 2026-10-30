@@ -91,6 +91,8 @@ function elementPane(ctx: ShellCtx, el: RuntimeElement) {
     && resolveCellGroupMode(el.options.tableRows ?? [], s.tableSelection!).mode === 'multi'
 
   const rows: unknown[] = []
+  // 内容绑定组置顶：作者最常改的一栏，先于位置/外观（与 canvas PropertyPanel 同序）
+  if (!multiCellSelected) rows.push(bindingGroup(ctx, el))
   if (!cellSelected) {
     rows.push(group(ctx, 'position-size', '位置与尺寸', 'Location', [
       h('form', { class: 'pd-form', onSubmit: (ev: Event) => ev.preventDefault() }, [
@@ -287,8 +289,6 @@ function elementPane(ctx: ShellCtx, el: RuntimeElement) {
       ].flat().filter(Boolean)),
     ]))
   }
-
-  if (!multiCellSelected) rows.push(bindingGroup(ctx, el))
 
   if (cellSelected) {
     rows.push(tableRowGroup(ctx, el))

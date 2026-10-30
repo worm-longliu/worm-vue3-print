@@ -100,7 +100,7 @@ describe('property-search 门控（对照 filteredGroups / matchedKeys / searchi
   it('未搜索：所有分组可见（标题与 canvas 的 PropertyGroup title 逐字一致）', () => {
     const { host } = paint()
     expect(visibleGroups(host)).toEqual(
-      ['位置与尺寸', '外观', '内容', '边框与背景', '分页配置', '高级设置'],
+      ['内容', '位置与尺寸', '外观', '边框与背景', '分页配置', '高级设置'],
     )
   })
 
@@ -159,7 +159,7 @@ describe('property-search 门控（对照 filteredGroups / matchedKeys / searchi
   it('h 描述的节点在 DOM 上带 data-prop-group 标记，供定点更新使用', () => {
     const { host } = paint()
     const groups = Array.from(host.querySelectorAll<HTMLElement>('.property-group')).map(g => g.dataset.propGroup)
-    expect(groups).toEqual(['position-size', 'appearance', 'binding', 'border-bg', 'pagination', 'advanced'])
+    expect(groups).toEqual(['binding', 'position-size', 'appearance', 'border-bg', 'pagination', 'advanced'])
   })
 })
 
