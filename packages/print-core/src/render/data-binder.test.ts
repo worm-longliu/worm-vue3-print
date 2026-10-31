@@ -82,6 +82,51 @@ describe('bindTableData 动态模式', () => {
   })
 })
 
+describe('bindTableData 数据行按值合并', () => {
+  it('mergeSameValue 列相邻同值自动 rowspan，占位格 merged 且 content 为空', () => {
+    const rows = dynamicRows()
+    ;(rows[1]!.cells[0] as any).mergeSameValue = true
+    const t = makeTemplate({ tableMode: 'dynamic', tableRows: rows, fields: [{ text: 'items', dataSource: 'items' }] })
+    const bound = bindData(t, { items: [{ name: 'A', qty: 1 }, { name: 'A', qty: 2 }, { name: 'B', qty: 3 }] })
+    const dataRows = bound.elements[0]!.options._renderRows.slice(1, 4)
+    expect(dataRows[0].cells[0].rowspan).toBe(2)
+    expect(dataRows[0].cells[0].content).toBe('A')
+    expect(dataRows[1].cells[0].merged).toBe(true)
+    expect(dataRows[1].cells[0].content).toBe('')
+    expect(dataRows[2].cells[0].rowspan).toBe(1)
+    expect(dataRows[2].cells[0].content).toBe('B')
+    // 未开启的列不受影响
+    expect(dataRows[0].cells[1].rowspan).toBe(1)
+  })
+
+  it('dynamic 数据行忽略模板静态 rowspan/merged（存量错位修复）', () => {
+    const rows = dynamicRows()
+    ;(rows[1]!.cells[0] as any).rowspan = 2
+    ;(rows[1]!.cells[1] as any).merged = true
+    const t = makeTemplate({ tableMode: 'dynamic', tableRows: rows, fields: [{ text: 'items', dataSource: 'items' }] })
+    const bound = bindData(t, { items: [{ name: 'A', qty: 1 }, { name: 'B', qty: 2 }] })
+    const dataRows = bound.elements[0]!.options._renderRows.slice(1, 3)
+    for (const r of dataRows) {
+      expect(r.cells[0].rowspan).toBe(1)
+      expect(r.cells[0].content).not.toBe('')
+      expect(r.cells[1].merged).toBe(false)
+      expect(r.cells[1].content).not.toBe('')
+    }
+  })
+
+  it('含页码表达式的列不参与按值合并（绑定阶段无法求值）', () => {
+    const rows = dynamicRows()
+    ;(rows[1]!.cells[0] as any).formatter = '{name} 第{pageIndex}页'
+    ;(rows[1]!.cells[0] as any).mergeSameValue = true
+    const t = makeTemplate({ tableMode: 'dynamic', tableRows: rows, fields: [{ text: 'items', dataSource: 'items' }] })
+    const bound = bindData(t, { items: [{ name: 'A', qty: 1 }, { name: 'A', qty: 2 }] })
+    const dataRows = bound.elements[0]!.options._renderRows.slice(1, 3)
+    expect(dataRows[0].cells[0].rowspan).toBe(1)
+    expect(dataRows[0].cells[0].rawFormatter).toBe('{name} 第{pageIndex}页')
+    expect(dataRows[1].cells[0].merged).toBe(false)
+  })
+})
+
 describe('bindTableData 静态模式', () => {
   it('formatter 变量替换', () => {
     const t = makeTemplate({

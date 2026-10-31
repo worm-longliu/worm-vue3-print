@@ -4,6 +4,7 @@
 import type { TemplateData, TemplateElement, RenderRow, RenderCell } from './types.js'
 import { evaluateTemplate } from './expression-eval.js'
 import { detectFlowListKey } from './flow-list.js'
+import { mergeDataRowsByValue } from './row-merge.js'
 
 /**
  * 将模板中元素的 formatter 表达式求值为实际值。
@@ -155,6 +156,17 @@ function bindTableData(el: TemplateElement, data: Record<string, any>): void {
 
   for (const row of rows) {
     if (mode === 'dynamic' && row.type === 'data') {
+      // 归一化：dynamic 数据行按列表逐项复制，模板静态纵向 span 会随每行复制导致错位，
+      // 一律重置（bindData 已深拷贝，原地安全）；按值归并的占位格在展开后另行计算
+      for (const cell of row.cells) {
+        if (cell.rowspan) { cell.rowspan = 1 }
+        if (cell.merged) { cell.merged = false }
+      }
+      // 声明「按值合并」的列索引：同一模板行展开出的连续行段内做相邻同值归并
+      const mergeCols = row.cells
+        .map((cell: any, col: number) => (cell.mergeSameValue === true ? col : -1))
+        .filter((col: number) => col >= 0)
+      const runStart = renderRows.length
       for (const item of list) {
         if (dataStartIdx < 0) dataStartIdx = renderRows.length
         const ctx = itemCtx(item)
@@ -163,6 +175,7 @@ function bindTableData(el: TemplateElement, data: Record<string, any>): void {
         }))
         dataRowCtx.push(ctx)
       }
+      mergeDataRowsByValue(renderRows.slice(runStart), mergeCols)
       continue
     }
     if (mode === 'dynamic' && row.type === 'subtotal') {

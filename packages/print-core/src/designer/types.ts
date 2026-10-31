@@ -205,6 +205,12 @@ export interface TableCell {
   rowspan?: number            // 默认 1
   colspan?: number            // 默认 1
   merged?: boolean            // true = 被合并覆盖的占位格
+  /**
+   * dynamic 模式数据行按值纵向合并：仅 type='data' 的模板行生效。
+   * 渲染绑定阶段对相邻数据行比较该列求值文本，相同则自动纵向 rowspan（空值与含页码
+   * 表达式的列不参与）。与静态合并不同，归并产生的占位格不写入模板 JSON。
+   */
+  mergeSameValue?: boolean
   align?: TextAlign
   valign?: 'top' | 'middle' | 'bottom'
   fontFamily?: string         // 字体

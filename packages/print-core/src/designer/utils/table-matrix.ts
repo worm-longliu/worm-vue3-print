@@ -124,6 +124,11 @@ export function canMergeReason(rows: TableRow[], rect: CellRect): string | null 
   const types = new Set<TableRowType>()
   for (let r = rect.r1; r <= rect.r2; r++) { types.add(rows[r]!.type) }
   if (types.size > 1) { return '合并区域不能跨越不同类型的行' }
+  // 数据行按列表逐项展开，模板静态纵向 span 复制到每个数据行会错位：
+  // 跨行合并一律拒绝（横向单行合并不受限），纵向同值归并用单元格属性「按值合并」表达
+  if (rect.r2 > rect.r1 && types.has('data')) {
+    return '数据行将按列表展开，纵向合并请使用单元格属性「按值合并」'
+  }
   // 与已有合并区部分重叠：normalize 后矩形应与选区一致
   const norm = normalizeSelection(rows, { r: rect.r1, c: rect.c1 }, { r: rect.r2, c: rect.c2 })
   if (norm.r1 !== rect.r1 || norm.c1 !== rect.c1 || norm.r2 !== rect.r2 || norm.c2 !== rect.c2) {

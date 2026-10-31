@@ -106,6 +106,8 @@
       :can-delete-col="colWidths.length > 1"
       :merge-disabled-reason="mergeReason"
       :can-split="canSplit"
+      :merge-same-value-active="mergeSameValueActive"
+      :merge-same-value-disabled-reason="mergeSameValueReason"
       :current-row-type="selection ? rows[selection.r1]?.type ?? null : null"
       :row-type-disabled-reason="rowTypeReason"
       @action="onMenuAction"
@@ -117,7 +119,7 @@
 import { computed, inject, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import type { RuntimeElement, TableRow, TableCell, TableRowType } from '@worm-vue3-print/core/designer'
 import {
-  normalizeSelection, canMergeReason, mergeCells, splitCells,
+  normalizeSelection, canMergeReason, mergeCells, splitCells, findMainCell,
   insertRow, deleteRow, insertCol, deleteCol, setRowType, syncTableElementSize,
   resolveCellBorderCss, clampResizedColumnWidth,
 } from '@worm-vue3-print/core/designer'
@@ -429,6 +431,22 @@ const canSplit = computed(() => {
   return false
 })
 
+/** 按值合并 toggle 项：主格当前开启态；仅数据行可用（动态展开的行才有「相邻同值归并」语义） */
+const mergeSameValueActive = computed(() => {
+  const s = selection.value
+  if (!s) return false
+  const main = findMainCell(rows.value, s.r1, s.c1)
+  return rows.value[main.r]!.cells[main.c]!.mergeSameValue === true
+})
+const mergeSameValueReason = computed(() => {
+  const s = selection.value
+  if (!s) return '未选择单元格'
+  for (let r = s.r1; r <= s.r2; r++) {
+    if (rows.value[r]!.type !== 'data') return '仅数据行（明细行）支持按值合并'
+  }
+  return null
+})
+
 function rowTypeReason(t: TableRowType): string | null {
   const s = selection.value
   if (!s) return '未选择单元格'
@@ -470,6 +488,18 @@ function onMenuAction(name: string, payload?: string) {
     case 'delete-col': err = deleteCol(rs, cw, s.c1); break
     case 'merge': mergeCells(rs, s); break
     case 'split': splitCells(rs, s); break
+    case 'toggle-merge-same-value': {
+      // 以主格当前值取反批写整个选区（跳过占位格）；纯属性写入，不改表格结构
+      const main = findMainCell(rs, s.r1, s.c1)
+      const next = !rs[main.r]!.cells[main.c]!.mergeSameValue
+      for (let r = s.r1; r <= s.r2; r++) {
+        for (let c = s.c1; c <= s.c2; c++) {
+          const cell = rs[r]!.cells[c]!
+          if (!cell.merged) { cell.mergeSameValue = next }
+        }
+      }
+      break
+    }
     case 'set-row-type':
       err = setRowType(rs, s.r1, payload as TableRowType)
       break

@@ -90,6 +90,18 @@ describe('paginateTable 行组切片', () => {
     expect(pages[1].sections[0].endRow).toBeGreaterThanOrEqual(3)
   })
 
+  it('按值合并段（rowspan 主格 + merged 占位格）跨页整段后移', () => {
+    // row-merge 归并产物形态：行 1 首格 rowspan=2，行 2 同列格 merged 占位 → 分页按主格 span 视为同组
+    const el = makeTable(4, 0, { 1: 2 })
+    const mergedCell = (el.options._renderRows as any[])[2]!.cells[0]!
+    mergedCell.merged = true
+    mergedCell.content = ''
+    const pages = paginate(makeTemplate(el), measure(Array(4).fill(100), 0))
+    expect(pages[0].sections[0]).toMatchObject({ startRow: 0, endRow: 1 })
+    expect(pages[1].sections[0].startRow).toBe(1)
+    expect(pages[1].sections[0].endRow).toBeGreaterThanOrEqual(3)
+  })
+
   it('repeatCount=0 的后续切片不带 repeatHeader', () => {
     const el = makeTable(8, 0)
     const pages = paginate(makeTemplate(el), measure(Array(8).fill(50), 0))

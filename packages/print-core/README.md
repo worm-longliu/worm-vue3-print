@@ -9,6 +9,7 @@ print-core/
     functions/                                                # formatMoney / formatDate / sum / concat 等
     render/
       data-binder.ts        # 变量/表达式绑定
+      row-merge.ts          # 数据行按值纵向归并（mergeSameValue）
       html-generator.ts     # 模板 JSON → HTML/CSS/SVG
       pagination-engine.ts  # 表格分页、重复表头、小计/汇总
       css-builder.ts        # mm 单位布局 → CSS
