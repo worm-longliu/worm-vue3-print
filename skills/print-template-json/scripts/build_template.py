@@ -15,6 +15,7 @@
 
 import json
 import sys
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # 元素类型 → 设计器显示的中文名（写进 printElementType.title）
@@ -426,8 +427,14 @@ def main() -> int:
 
     text = json.dumps(result, ensure_ascii=False, indent=2)
     if out_path:
-        with open(out_path, 'w', encoding='utf-8') as f:
-            f.write(text + '\n')
+        # 产物是技能工作目录内的模板文件：输出路径必须落在 cwd 内，
+        # 拒绝绝对路径与 .. 穿越，防不可信输入经 -o 直通写盘；
+        # 文档化用法 `-o <名称>.template.json` 不受影响
+        target = Path(out_path).resolve()
+        if target != Path.cwd() and Path.cwd() not in target.parents:
+            sys.stderr.write('输出路径必须在当前工作目录内：{}\n'.format(out_path))
+            return 1
+        target.write_text(text + '\n', encoding='utf-8')
         sys.stderr.write('已生成 {}（{} 字节）\n'.format(out_path, len(text)))
     else:
         sys.stdout.write(text + '\n')
