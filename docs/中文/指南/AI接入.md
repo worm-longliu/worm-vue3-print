@@ -51,13 +51,17 @@ npm run build
 | 工具 | 输入 | 返回 | 能力边界 |
 |---|---|---|---|
 | `print_element_kinds` | 无 | 13 种元素类型（含每种必填 option 键与打印注意事项）、表达式函数白名单、单位口径、表达式语法提示 | 生成模板前应先调用；`html` 标注 `blocked: true`，不开放给 AI 生成 |
-| `print_validate_template` | `templateJson` | `{ ok, issues, deprecatedHits, unknownKeys }` | `error` 必须修；废弃键（`title`/`tableMode`/`fields`）、契约未知键、缺 `unit` 都只出 `warning`，不判死存量模板 |
+| `print_validate_template` | `templateJson` 或 `templatePath` | `{ ok, issues, deprecatedHits, unknownKeys, summary }` | `error` 必须修；废弃键（`title`/`tableMode`/`fields`）、契约未知键、缺 `unit` 都只出 `warning`，不判死存量模板 |
 | `print_check_expression` | `expression`、`knownFields?` | `{ ok, syntax, functions, unknownFields, errors }` | 语法判定走 core 解析器（文案与出纸端同源）；函数名走白名单；原型链探测走词法闸门。`knownFields` 不传时**不做**未知字段判定 |
-| `print_inspect_layout` | `templateJson`、`toleranceMm?` | `{ ok, findings[] }`，finding 带 `code`/`level`/`path` | **不做排版测量**：表格真实行高、长文本换行后的占位、真实页数一律不在这里判。几何分两档——占位落在**纸张外**是 `OUT_OF_PAPER`（error，出纸必被裁），只是越出内容区但仍在纸上（侵入页边距）是 `OUT_OF_CONTENT_AREA`（warning）。多页模板逐页体检，路径带 `pages[i]` |
+| `print_inspect_layout` | `templateJson` 或 `templatePath`、`toleranceMm?` | `{ ok, findings[] }`，finding 带 `code`/`level`/`path` | **不做排版测量**：表格真实行高、长文本换行后的占位、真实页数一律不在这里判。几何分两档——占位落在**纸张外**是 `OUT_OF_PAPER`（error，出纸必被裁），只是越出内容区但仍在纸上（侵入页边距）是 `OUT_OF_CONTENT_AREA`（warning）。多页模板逐页体检，路径带 `pages[i]` |
 | `print_draft_template` | `spec`（纸张 + 元素列表） | `{ template, issues, expressionErrors }` | 元素走 core 元素工厂，自带设计器默认值；产出 JSON，**不触碰画布状态** |
-| `print_render_preview` | `templateJson`、`printData?`、`baseUrl?`、`fontBaseUrl?`、`paperHeightMm?` | `{ ok, pdfPath }` 或降级文案 | 送渲染前先过 `print_validate_template`；真实分页只由 `print-render` 产生，本仓库不在连接器里重复实现排版 |
+| `print_render_preview` | `templateJson` 或 `templatePath`、`printData?`、`baseUrl?`、`fontBaseUrl?`、`paperHeightMm?` | `{ ok, pdfPath }` 或降级文案 | 送渲染前先过 `print_validate_template`；真实分页只由 `print-render` 产生，本仓库不在连接器里重复实现排版 |
 
 给宿主 agent 的一句话用法：**先用 `print_element_kinds` 认类型，草稿一律走 `print_draft_template`，改完自查 `print_validate_template` + `print_inspect_layout`，需要看真实分页再调 `print_render_preview`**。
+
+**模板较大时请用 `templatePath` 而不是 `templateJson`。** 三个吃模板的工具（validate / inspect / render_preview）都接受本地 `.json` 路径（≤5MB，UTF-8，自动解包 `{ templateJson, printData }` 外壳）：实测一张采购收货单模板整份 JSON 是 9924 字符，改传路径后入参只有 91 字符。连接器是本地 stdio 进程，读文件放在连接器一侧，契约层保持浏览器/Node 同构、不引入 `fs`。
+
+工具声明带 MCP `annotations`（`title` 中文可读名、`readOnlyHint`、`openWorldHint`）：五个纯计算工具标只读、不碰外界，宿主可据此免审批放行；`print_render_preview` 会打渲染服务并落临时文件，标 `openWorldHint: true`。缺 `title` 时部分宿主（如 OpenCode）会把工具显示成 `Unknown`。
 
 ## 四、不经 MCP：直接 import 契约层
 
