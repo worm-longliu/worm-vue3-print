@@ -61,7 +61,9 @@ npm run build
 
 **模板较大时请用 `templatePath` 而不是 `templateJson`。** 三个吃模板的工具（validate / inspect / render_preview）都接受本地 `.json` 路径（≤5MB，UTF-8，自动解包 `{ templateJson, printData }` 外壳）：实测一张采购收货单模板整份 JSON 是 9924 字符，改传路径后入参只有 91 字符。连接器是本地 stdio 进程，读文件放在连接器一侧，契约层保持浏览器/Node 同构、不引入 `fs`。
 
-工具声明带 MCP `annotations`（`title` 中文可读名、`readOnlyHint`、`openWorldHint`）：五个纯计算工具标只读、不碰外界，宿主可据此免审批放行；`print_render_preview` 会打渲染服务并落临时文件，标 `openWorldHint: true`。缺 `title` 时部分宿主（如 OpenCode）会把工具显示成 `Unknown`。
+工具声明带 MCP `annotations`（`title` 中文可读名、`readOnlyHint`、`openWorldHint`）：五个纯计算工具标只读、不碰外界，宿主可据此免审批放行；`print_render_preview` 会打渲染服务并落临时文件，标 `openWorldHint: true`。
+
+实测备注：OpenCode 对无参工具会打一行 `⚙ <工具名> Unknown`——`Unknown` 出现在**参数列**（有参工具那行是参数 JSON），与 `title` 无关，别把它当成注解没生效。
 
 ## 四、不经 MCP：直接 import 契约层
 

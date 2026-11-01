@@ -17,7 +17,7 @@ export function createPrintMcpServer(): Server {
       name: t.name,
       description: t.description,
       inputSchema: t.inputSchema,
-      // 宿主靠 annotations 显示可读名并判断是否需要审批；缺 title 时 OpenCode 会显示 "Unknown"
+      // 注解随 tools/list 下发：宿主据此决定只读工具是否免审批
       ...(t.annotations ? { annotations: t.annotations } : {}),
     })),
   }))
