@@ -634,7 +634,7 @@ export function tableCellGroup(ctx: ShellCtx, el: RuntimeElement): El {
         switchRow('按值合并', isMulti ? groupDraft.values.mergeSameValue === true : cell0.mergeSameValue === true,
           v => writeField('mergeSameValue', v), mergeSameValueReason || undefined,
           mergeSameValueEnabled ? cellReset('mergeSameValue') : undefined, !mergeSameValueEnabled),
-        hint('明细相邻行同值时自动纵向合并，跨页整段后移不切开'),
+        hint('明细相邻行同值时自动纵向合并；跨页时在该页内成段，续页首行重放该值'),
       ]),
     ]),
   ])

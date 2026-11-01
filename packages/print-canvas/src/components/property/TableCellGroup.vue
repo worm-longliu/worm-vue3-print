@@ -282,7 +282,7 @@
           </span>
           <input :checked="mergeSameValueChecked" type="checkbox" class="pd-switch" :disabled="!mergeSameValueEnabled" :title="mergeSameValueReason" @input="writeField('mergeSameValue', !!($event.target as HTMLInputElement).checked)" />
         </div>
-        <div class="merge-card-hint">明细相邻行同值时自动纵向合并，跨页整段后移不切开</div>
+        <div class="merge-card-hint">明细相邻行同值时自动纵向合并；跨页时在该页内成段，续页首行重放该值</div>
       </div>
     </form>
   </PropertyGroup>

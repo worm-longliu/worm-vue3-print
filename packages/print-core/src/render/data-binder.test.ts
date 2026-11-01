@@ -83,20 +83,19 @@ describe('bindTableData 动态模式', () => {
 })
 
 describe('bindTableData 数据行按值合并', () => {
-  it('mergeSameValue 列相邻同值自动 rowspan，占位格 merged 且 content 为空', () => {
+  it('mergeSameValue 只透传声明，绑定阶段不归并（归并按渲染区间计算）', () => {
     const rows = dynamicRows()
     ;(rows[1]!.cells[0] as any).mergeSameValue = true
     const t = makeTemplate({ tableMode: 'dynamic', tableRows: rows, fields: [{ text: 'items', dataSource: 'items' }] })
     const bound = bindData(t, { items: [{ name: 'A', qty: 1 }, { name: 'A', qty: 2 }, { name: 'B', qty: 3 }] })
     const dataRows = bound.elements[0]!.options._renderRows.slice(1, 4)
-    expect(dataRows[0].cells[0].rowspan).toBe(2)
-    expect(dataRows[0].cells[0].content).toBe('A')
-    expect(dataRows[1].cells[0].merged).toBe(true)
-    expect(dataRows[1].cells[0].content).toBe('')
-    expect(dataRows[2].cells[0].rowspan).toBe(1)
-    expect(dataRows[2].cells[0].content).toBe('B')
-    // 未开启的列不受影响
-    expect(dataRows[0].cells[1].rowspan).toBe(1)
+    // 绑定阶段必须逐行原样：一旦在此归并，分页引擎会把整段当成 keep-together 组，长明细一次都不切页
+    expect(dataRows.map((r: any) => r.cells[0].rowspan)).toEqual([1, 1, 1])
+    expect(dataRows.map((r: any) => r.cells[0].merged)).toEqual([false, false, false])
+    expect(dataRows.map((r: any) => r.cells[0].content)).toEqual(['A', 'A', 'B'])
+    expect(dataRows.map((r: any) => r.cells[0].mergeSameValue)).toEqual([true, true, true])
+    // 未开启的列不带声明
+    expect(dataRows[0].cells[1].mergeSameValue).toBeUndefined()
   })
 
   it('dynamic 数据行忽略模板静态 rowspan/merged（存量错位修复）', () => {
@@ -114,16 +113,34 @@ describe('bindTableData 数据行按值合并', () => {
     }
   })
 
-  it('含页码表达式的列不参与按值合并（绑定阶段无法求值）', () => {
+  it('横向合并（colspan 主格 + 同行占位格）不被归一清掉：列数守恒', () => {
+    // 数据行内单行横向合并是合法操作，占位格一旦被清成实格就会多输出一个空 td，整表错列
+    const rows = dynamicRows()
+    ;(rows[1]!.cells[0] as any).colspan = 2
+    ;(rows[1]!.cells[1] as any).merged = true
+    const t = makeTemplate({ tableMode: 'dynamic', tableRows: rows, fields: [{ text: 'items', dataSource: 'items' }] })
+    const bound = bindData(t, { items: [{ name: 'A', qty: 1 }] })
+    const dataRow = bound.elements[0]!.options._renderRows[1] as any
+    expect(dataRow.cells[0].colspan).toBe(2)
+    expect(dataRow.cells[1].merged).toBe(true)
+    expect(dataRow.cells[1].content).toBe('')
+    const renderedCols = dataRow.cells
+      .filter((c: any) => !c.merged)
+      .reduce((s: number, c: any) => s + (c.colspan ?? 1), 0)
+    expect(renderedCols).toBe(2)
+  })
+
+  it('含页码表达式的列保留原文（按页重算，渲染期不参与归并）', () => {
     const rows = dynamicRows()
     ;(rows[1]!.cells[0] as any).formatter = '{name} 第{pageIndex}页'
     ;(rows[1]!.cells[0] as any).mergeSameValue = true
     const t = makeTemplate({ tableMode: 'dynamic', tableRows: rows, fields: [{ text: 'items', dataSource: 'items' }] })
     const bound = bindData(t, { items: [{ name: 'A', qty: 1 }, { name: 'A', qty: 2 }] })
     const dataRows = bound.elements[0]!.options._renderRows.slice(1, 3)
-    expect(dataRows[0].cells[0].rowspan).toBe(1)
     expect(dataRows[0].cells[0].rawFormatter).toBe('{name} 第{pageIndex}页')
-    expect(dataRows[1].cells[0].merged).toBe(false)
+    expect(dataRows[1].cells[0].rawFormatter).toBe('{name} 第{pageIndex}页')
+    // 声明照常透传：是否跳过由渲染期按 rawFormatter 判定
+    expect(dataRows[0].cells[0].mergeSameValue).toBe(true)
   })
 })
 

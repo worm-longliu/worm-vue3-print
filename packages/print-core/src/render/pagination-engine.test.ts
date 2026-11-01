@@ -90,8 +90,8 @@ describe('paginateTable 行组切片', () => {
     expect(pages[1].sections[0].endRow).toBeGreaterThanOrEqual(3)
   })
 
-  it('按值合并段（rowspan 主格 + merged 占位格）跨页整段后移', () => {
-    // row-merge 归并产物形态：行 1 首格 rowspan=2，行 2 同列格 merged 占位 → 分页按主格 span 视为同组
+  it('静态 rowspan 段仍 keep-together：整段移页不拆开（存量合并语义）', () => {
+    // 模板静态合并的 rowspan 主格 + merged 占位格：分页按主格 span 视为同组
     const el = makeTable(4, 0, { 1: 2 })
     const mergedCell = (el.options._renderRows as any[])[2]!.cells[0]!
     mergedCell.merged = true
@@ -100,6 +100,18 @@ describe('paginateTable 行组切片', () => {
     expect(pages[0].sections[0]).toMatchObject({ startRow: 0, endRow: 1 })
     expect(pages[1].sections[0].startRow).toBe(1)
     expect(pages[1].sections[0].endRow).toBeGreaterThanOrEqual(3)
+  })
+
+  it('按值合并声明不参与行组：mergeSameValue 只是渲染期归并，分页照常逐行切片', () => {
+    // 绑定阶段不再写 rowspan → 分页看不到任何跨行主格，长明细不会被锚成一整段
+    const el = makeTable(8, 1)
+    for (const row of el.options._renderRows as any[]) {
+      if (row.type === 'data') row.cells[0].mergeSameValue = true
+    }
+    const pages = paginate(makeTemplate(el), measure(Array(8).fill(50), 1))
+    expect(pages).toHaveLength(2)
+    expect(pages[0].sections[0]).toMatchObject({ startRow: 0, endRow: 5 })
+    expect(pages[1].sections[0]).toMatchObject({ startRow: 5, endRow: 8 })
   })
 
   it('repeatCount=0 的后续切片不带 repeatHeader', () => {
