@@ -609,9 +609,6 @@ export function tableCellGroup(ctx: ShellCtx, el: RuntimeElement): El {
         { min: 0, max: 10, step: 0.5, placeholder: multiPlaceholder('默认') }, cellReset('padding')),
       switchRow('自动换行', isMulti ? groupDraft.values.wordWrap === true : (cell0.wordWrap ?? true),
         v => writeField('wordWrap', v), undefined, cellReset('wordWrap')),
-      switchRow('按值合并', isMulti ? groupDraft.values.mergeSameValue === true : cell0.mergeSameValue === true,
-        v => writeField('mergeSameValue', v), mergeSameValueReason || undefined,
-        mergeSameValueEnabled ? cellReset('mergeSameValue') : undefined, !mergeSameValueEnabled),
       isTextCell ? selectRowPlain('文字溢出', textFitValue, withMulti(TEXT_FIT_OPTIONS),
         v => { if (v !== '__multi__') writeField('textFit', v as TextFit) }, { full: true, reset: cellReset('textFit') }) : '',
       (isTextCell && cellTextFit === 'shrink')
@@ -619,16 +616,25 @@ export function tableCellGroup(ctx: ShellCtx, el: RuntimeElement): El {
           { min: 0, max: 72, step: 0.5, placeholder: multiPlaceholder('默认 6') }, cellReset('shrinkMinFontSize'))
         : '',
 
-      h('div', { class: 'merge-btns' }, [
-        h('button', {
-          type: 'button', class: 'pd-button small', text: '合并单元格',
-          disabled: !!mergeReason, title: mergeReason || '',
-          onClick: () => { mergeCells(rows, sel); s.updateElement(el.id, { tableRows: rows }) },
-        }),
-        h('button', {
-          type: 'button', class: 'pd-button small', text: '拆分单元格', disabled: !canSplit,
-          onClick: () => { splitCells(rows, sel); s.updateElement(el.id, { tableRows: rows }) },
-        }),
+      // 合并相关三件套（动作按钮 + 按值开关）的子卡：动作与声明开关同区聚拢
+      h('div', { class: 'merge-card' }, [
+        h('div', { class: 'merge-card-title', text: '单元格合并' }),
+        h('div', { class: 'merge-btns' }, [
+          h('button', {
+            type: 'button', class: 'pd-button small', text: '合并单元格',
+            disabled: !!mergeReason, title: mergeReason || '',
+            onClick: () => { mergeCells(rows, sel); s.updateElement(el.id, { tableRows: rows }) },
+          }),
+          h('button', {
+            type: 'button', class: 'pd-button small', text: '拆分单元格', disabled: !canSplit,
+            onClick: () => { splitCells(rows, sel); s.updateElement(el.id, { tableRows: rows }) },
+          }),
+        ]),
+        h('div', { class: 'merge-card-divider' }),
+        switchRow('按值合并', isMulti ? groupDraft.values.mergeSameValue === true : cell0.mergeSameValue === true,
+          v => writeField('mergeSameValue', v), mergeSameValueReason || undefined,
+          mergeSameValueEnabled ? cellReset('mergeSameValue') : undefined, !mergeSameValueEnabled),
+        hint('明细相邻行同值时自动纵向合并，跨页整段后移不切开'),
       ]),
     ]),
   ])
