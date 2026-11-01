@@ -1298,6 +1298,14 @@ export function inspectTemplate(
 Run: `npm run test -w @worm-vue3-print/contract -- inspect`
 Expected: 9 passed。若「A4 可印区」数字与 `getPaperDimensions` 返回值不符（例如它已扣除边距），以 core 实现为准调整测试期望并在提交信息里记下实际口径——**不要**为了让测试变绿而在契约层重算纸型尺寸。
 
+落地实测偏差（已按此修正实现与测试，共 12 passed）：
+- `getPaperDimensions` 返回**整张纸**（A4 = 210×297，THERMAL_80 = 80×297），可印区由本函数自行扣 `margins`；测试里的 `CONTENT_W/CONTENT_H` 据此算。
+- 内容区**纵向超出不算缺陷**：固定纸会分页、连续纸纸高按内容推导，所以删掉 `CONTINUOUS_TOP_BEYOND_CANVAS`，只保留横向硬约束与负起点判定。
+- 页眉/页脚带装不下元素是另一件事，命名 `BAND_TOO_SMALL`（warning）；页眉+页脚合计吃掉可印高度才是 `HEADER_TOO_TALL`（error）。
+- 「带高为 0 却有元素」那条分支与 `BAND_TOO_SMALL` 重叠且实际不可达，删掉。
+- 连续纸与固定纸在横向是同一套硬约束，因此不必调 `isContinuousPaper`；连带删掉未使用的变量与 `void` 兜底写法。
+- 测试 helper 的 `options` 必须写成 `Partial<ElementOptions>` 再断言成 `ElementOptions`，否则 `tsc`（`include: ["src"]` 覆盖 `__tests__`）报 TS2322，会掩盖真错。
+
 - [ ] **Step 5: 导出并提交**
 
 `src/index.ts` 追加 `export * from './inspect.js'`
