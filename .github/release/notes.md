@@ -1,45 +1,41 @@
-# Worm Print V1.4.2 (2026-10-30)
+# Worm Print V1.4.3 (2026-11-01)
 
-V1.4.2 是一个 patch 版本：修复表格旁竖线挤占列导致明细拆页（Gitee #IKQSRG）与流式列表双击打不开表达式编辑器，并把素材台单击复制字段名、Ctrl/⌘ 拖放字段生成静态文本、属性台「内容」分组置顶三项交互带进设计器。竖线修复改动了 core 分页引擎，**桌面客户端受影响，七件安装包按本版重打**。自 v1.4.1 以来 12 次提交（含示例站与测试夹具）。
+V1.4.3 是一个 patch 版本：修掉字段 Ctrl/⌘ 拖放在 macOS 与 Windows 上「整次拖拽被原生判为无效、松手没反应」的问题（Vue3 画布与零框架宿主同口径），并把「画布看得见、纸面永远空白」的 HTML 占位元素在模板装载链上剥离。
+
+本版改动全部落在设计器交互与模板装载链上，**未触及 core 渲染管线**（`git diff v1.4.2..HEAD` 对 `packages/print-core/src/render/*` 与 `functions/format.ts` 零命中）⇒ **桌面客户端出纸行为与 V1.4.2 完全一致，本版不重打安装包、发行版不挂附件**，可下载的最新安装包仍是 `v1.4.2`；已装 V1.4.2 客户端的用户不必升级。
 
 ## 新增
-- **素材台单击字段复制中文名**（Gitee #IKRIZM）。拖字段进画布只带取值绑定，字段中文名常需要当静态文本复用。现在单击素材台字段行即复制中文名并就地提示「已复制」（拖拽起手不触发复制）；表达式弹窗里每个字段行右侧新增复制图标，点击后 1.2 秒变对勾。Vue3 画布与零框架宿主同口径，提示统一走 `data-tip`；复制能力收到 core 单点 `copyTextToClipboard`（安全上下文用 Clipboard API，否则回退 `textarea` + `execCommand`）。
-- **Ctrl/⌘ + 拖放字段直接生成静态文本**。素材台拖字段进画布默认仍是取值绑定；按住 Ctrl（macOS 为 ⌘）在画布上松手，则生成内容为字段中文名的静态文本元素，省去「先复制字段名、再新建文本」两步。表达式弹窗里 Ctrl/⌘ + 双击字段行可把字段中文名直接插入内容（光标位于函数参数内时自动补双引号），不按修饰键仍是 `{字段}` 取值表达式。core 新增 `createFieldLabelElement`，canvas 与零框架宿主共用同一口径。macOS 会把 Ctrl+左键当作右键，实际请用 ⌘，界面文案统一写「Ctrl/⌘」。
-
-## 变更
-- **属性台「内容」分组置顶**。元素属性页签原先以「位置与尺寸」打头，「内容」（绑定表达式、图片上传）排在外观之后，改文本/图片都要往下找。现「内容」为第一个分组，位置与尺寸、外观、条码设置顺延；多选单元格时整组让位的门控不变，两宿主分组顺序一致。
+- **core 出「屏蔽元素类型」单点判据与装载入口**。`/designer` 子路径新增 `BLOCKED_ELEMENT_TYPES`（当前 `['html']`）与 `isBlockedElementType()`、`stripBlockedElements()`（正文 / 页眉 / 页脚三区各自过滤，返回新对象、不改入参）、`countBlockedElements()`（宿主装载前计数提示用，与剥离同判据）。恢复某一类型只需把它移出该表并放回素材台，不必再动渲染分支。`countBlockedElements` 本仓库两宿主尚未接入，先作为集成方可用的入口发出。
 
 ## 修复
-- **表格旁的竖线不再挤占表格所在列、把明细拆成两页**（Gitee #IKQSRG）。分页引擎此前按竖线的画布编辑盒宽度（3.5mm）计算横向占用，而竖线实际渲染为 0 宽 + 0.75pt 描边（约 0.26mm），与表格被判为同列后占走 165mm 版面：10 条明细的表格被拆成 2 页，竖线看起来也消失了。现在竖线按边框宽度计算横向占用（左右各半 + 0.05mm 安全余量），10 条明细回到单页，60 条明细拆页时竖线仍留在第一页。**出纸分页有变化**：含竖线与表格的模板可能从 2 页回到 1 页。
-- **流式列表双击可打开表达式编辑器**。双击弹框的可编辑字段白名单漏了流式列表，而流式列表的单元模板本身就是 `options.formatter`，于是双击只选中、不弹框。现在 canvas 与零框架宿主都补上 flowList：双击元素框任意区域（含内部单元格）都会弹出表达式编辑器并预填 formatter，锁定元素仍只选中不弹框。
+- **字段拖放的 Ctrl/⌘ 切换不再整次会话失效**（真机复盘 macOS / Windows Chromium，三层平台陷阱逐层修）。落点 `dragover` 显式钉 `dropEffect='copy'`——不写时 Windows 按原生修饰键重算效果，按住 Ctrl 拖动会吞掉复制徽标甚至整次拒收；拖起件效果集由单一 `copy` 放宽为 `'all'`——macOS 的 ⌘ 是「切换默认拖拽动作」，锁单一效果时切换结果落在允许集外，原生会话直接判整次拖拽无效、`drop` 根本不派发（common 两处此前漏设、与 canvas 不对称，现补齐并各加守卫断言防日后收窄）；画布自绘落点徽标 `.drop-hint`，拖动期间按拖起件类型与锁存意图显示「＋ 取值字段 / ＋ 静态文本 / ＋ 元素」并跟随光标，外部拖入不显示，绕开不可控的操作系统光标；静态文本意图锁存——macOS 按住 ⌘ 松鼠标时 `drop` 仍可能不派发，改为拖拽中任一 `dragover` 见到过 ⌘/Ctrl 即锁定本次为静态文本，徽标显示同一锁存值（所见即所得），`drop` / `dragend` 后会话复位。入口文案同步为与实测一致的「拖动 / 双击途中按住 Ctrl（Mac 为 ⌘）切换」。
+- **导入旧模板不再带出 HTML 占位元素**。HTML 类型是占位实现：设计态画得出来，`html-generator` 的 `case 'html'` 却只输出一个空盒子，导入后留在画布上会让人以为有内容。现在装载模板时三区（正文 / 页眉 / 页脚）里的 HTML 元素一律剥离（接在 `normalizeTemplateUnits` 上，`unit` 已是 `mm` 的模板同样处理）；元素类型可能只写在 `printElementType.type` 上，判据两处都看。**口径边界**：本版只收导入这一路——两宿主素材台的「HTML」项未摘，用它手建的元素照旧不出纸，收编手建入口另起一笔。**存量影响**：含 HTML 元素的旧模板重新导入并保存后，出纸少掉那个空 `div`；若该元素当时设了边框（元素级边框判据没排除 HTML，框线是真的会上纸），那条框线随之消失——此前它也只是一圈没有内容的框。不含 HTML 元素的模板产物逐字不变。
 
 ## 工程与验收
-- 测试：core 83 文件 1214 例 / canvas 77 文件 740 例 / common 32 文件 361 例 / print-client 14 文件 110 例，共 **206 文件 2425 例全绿**；render 10 文件 38 例全绿。
-- core 分页引擎有改动，桌面客户端 7 件安装包（mac x64/arm64 dmg、win x64 exe、linux deb/rpm/AppImage）按本版重打，附 `SHA256SUMS.txt`。
-- 示例站：新增 GitHub Pages 多宿主部署（common 构建前置 canvas），修复 jquery 示例互跳链接失效与子路径图片 404。
+- 测试：core 83 文件 1219 例 / canvas 77 文件 747 例 / common 32 文件 365 例 / print-client 14 文件 110 例，共 **206 文件 2441 例全绿**；渲染服务 10 文件 38 例全绿。
+- 安装包：本版未重打，Release 不挂附件；判据为 `git diff --name-only v1.4.2..HEAD` 未命中 core `render/*` 与 `functions/format.ts`。README 的直链表因此继续指向 `v1.4.2` 资产（改成 v1.4.3 反而会 404），`npm run check:release-carriers` 已支持这一形态。
+- 出纸链路：模板产物、分页与三条出纸链路（浏览器打印 / 服务端 PDF / 客户端静默打印）零变化；本版两条修复均为设计器侧。
 
-> 明细见 `docs/中文/CHANGELOG.md` 的 V1.4.2 段。安装包由本次发版重打后上传，上传前本页与 README 的 v1.4.2 直链会 404。
+> 明细见 `docs/中文/CHANGELOG.md` 的 V1.4.3 段。
 
 ---
 
-# Worm Print V1.4.2 (2026-10-30)
+# Worm Print V1.4.3 (2026-11-01)
 
-V1.4.2 is a patch release: it fixes a vertical line beside a table consuming the table's column and splitting rows across pages (Gitee #IKQSRG), and double-clicking a flow list not opening the expression editor; it also brings click-to-copy field names, Ctrl/⌘-drag to create static text, and a "Content"-first property panel into the designer. The line fix changes core's pagination engine, so **the desktop client is affected and all seven installers are rebuilt for this release**. Twelve commits since v1.4.1 (including the demo site and test fixtures).
+V1.4.3 is a patch release: it fixes Ctrl/⌘ field dragging being invalidated for the whole native session on macOS and Windows (same behaviour in the Vue 3 canvas and the zero-framework hosts), and strips the HTML placeholder element — visible on the canvas but never printed — when a template is loaded.
+
+Every change sits in designer interaction or the template loading chain. **Core's render pipeline is untouched** (`git diff v1.4.2..HEAD` has zero hits for `packages/print-core/src/render/*` and `functions/format.ts`), so **the desktop client prints exactly as in V1.4.2: no installers were rebuilt and this release carries no installer assets.** The newest downloadable installers remain those of `v1.4.2`, and users on the V1.4.2 client do not need to upgrade.
 
 ## Added
-- **Clicking a field in the field palette copies its name** (Gitee #IKRIZM). Dragging a field onto the canvas only brings its value binding, while the display name often needs to be reused as static text. A single click on a field row now copies the display name and shows an inline "copied" hint (starting a drag does not copy); every field row in the expression dialog also has a copy icon that turns into a check mark for 1.2 seconds. The Vue 3 canvas and the zero-framework hosts behave the same and use `data-tip` for both hint states; the clipboard logic is a single core helper `copyTextToClipboard` (Clipboard API in secure contexts, `textarea` + `execCommand` fallback otherwise).
-- **Ctrl/⌘ + drag a field to create static text.** Dragging a field onto the canvas still creates a value-bound element by default; holding Ctrl (⌘ on macOS) while dropping creates a static text element whose content is the field's display name, saving the "copy the name, then add a text element" detour. In the expression dialog, Ctrl/⌘ + double-clicking a field row inserts the display name into the content (quotes are added automatically when the caret is inside a function argument); without the modifier it still inserts the `{field}` value expression. Core gained `createFieldLabelElement` and both the canvas and the zero-framework hosts share it. macOS treats Ctrl+left-click as a right-click, so use ⌘ there — the UI consistently says "Ctrl/⌘".
-
-## Changed
-- **The "Content" group now leads the property panel.** Element properties used to start with "Position & size", leaving "Content" (binding expression, image upload) after appearance, so changing text or images required scrolling. "Content" is now the first group, followed by position & size, appearance and barcode settings; the gating that moves the whole group out of the way for multi-selected table cells is unchanged, and both hosts keep the same group order.
+- **Core gained a single source of truth for blocked element types plus its loading helpers.** The `/designer` subpath now exports `BLOCKED_ELEMENT_TYPES` (currently `['html']`) and `isBlockedElementType()`, `stripBlockedElements()` (filters body, header and footer separately, returning a new object instead of mutating the input) and `countBlockedElements()` (same predicate, for hosts wanting a count before loading). Re-enabling a type only means removing it from the table and putting it back in the palette. `countBlockedElements` is not wired into either host in this repo yet; it ships as an integration entry point.
 
 ## Fixed
-- **A vertical line beside a table no longer occupies the table's column and splits rows across pages** (Gitee #IKQSRG). The pagination engine used the line's canvas edit-box width (3.5mm) for its horizontal span, while a vertical line actually renders as zero width plus a 0.75pt border (~0.26mm). The line was therefore judged to share the table's column and consumed 165mm of the budget: a 10-row table was split onto 2 pages and the line appeared to vanish. Vertical lines now use the border width (half on each side plus a 0.05mm safety margin) as their horizontal span — 10 rows fit on one page again, and with 60 rows the line still stays on page 1. **Printed pagination changes**: templates that place a vertical line beside a table may go from 2 pages back to 1.
-- **Double-clicking a flow list opens the expression editor.** The double-click editable-field whitelist missed flow lists, whose cell template is `options.formatter` itself, so double-clicking only selected the element. Both the canvas and the zero-framework hosts now include flowList: double-clicking anywhere in the element box (including inner cells) opens the expression editor prefilled with the formatter, while locked elements still only get selected.
+- **Ctrl/⌘ switching while dragging a field no longer dies for the whole session** (verified on real macOS / Windows Chromium; three platform traps, each fixed). `dragover` at the drop target now pins `dropEffect='copy'` — without it Windows recomputes the effect from the native modifiers, so holding Ctrl swallowed the copy badge or rejected the drop outright. The dragged item's effect set is widened from `copy` to `'all'` — on macOS ⌘ means "toggle the default drag action", and locking a single effect puts the toggled result outside the allowed set, which invalidates the entire drag so that `drop` never fires (two spots in common were missing this and are now symmetric with canvas, each guarded by an assertion against future narrowing). The canvas draws its own `.drop-hint` badge — "＋ bound field / ＋ static text / ＋ element" based on the dragged item and the latched intent — following the cursor and hidden for external drags, sidestepping the uncontrollable OS cursor. The static-text intent is latched: releasing the mouse while ⌘ is held may still not dispatch `drop`, so seeing ⌘/Ctrl in any `dragover` during the drag locks this drop as static text, the badge shows the latched value (what you see is what you get), and the session resets after `drop` / `dragend`. Hint wording now matches observed behaviour: "hold Ctrl (⌘ on Mac) at some point during the drag/double-click to switch".
+- **Importing an old template no longer brings in HTML placeholder elements.** HTML is a placeholder type: the canvas draws it while `html-generator`'s `case 'html'` emits an empty box, so imported templates looked like they had content. Those elements are now stripped from the body, header and footer while loading (hooked into `normalizeTemplateUnits`, so templates already marked `unit: 'mm'` are handled too); the type may live only in `printElementType.type`, and both places are checked. **Scope**: only the import path is closed in this release — the "HTML" item is still in both palettes, so elements created by hand still produce nothing; closing that entry is a separate change. **Existing templates**: re-importing and saving a template that contained HTML elements drops that empty `div` from the output; if such an element carried a border (the element-border rule does not exclude HTML, so the line did print), the line goes away with it — previously it was only an empty frame. Templates without HTML elements are byte-for-byte unchanged.
 
 ## Engineering
-- Tests: core 83 files / 1214 cases, canvas 77 / 740, common 32 / 361, print-client 14 / 110 — **206 files / 2425 cases, all green**; render service 10 files / 38 cases green.
-- Core's pagination engine changed, so all seven desktop-client installers (mac x64/arm64 dmg, win x64 exe, linux deb/rpm/AppImage) were rebuilt for this release, with `SHA256SUMS.txt`.
-- Demo site: GitHub Pages multi-host deployment (common now builds canvas first), plus fixes for the jquery demo's cross-links and sub-path image 404s.
+- Tests: core 83 files / 1219 cases, canvas 77 / 747, common 32 / 365, print-client 14 / 110 — **206 files / 2441 cases, all green**; render service 10 files / 38 cases green.
+- Installers: not rebuilt for this release and no assets attached; the criterion is that `git diff --name-only v1.4.2..HEAD` misses core's `render/*` and `functions/format.ts`. The README link table therefore keeps pointing at the `v1.4.2` assets (switching it to v1.4.3 would 404), a state `npm run check:release-carriers` now accepts.
+- Print chain: template output, pagination and the three print paths (browser, server PDF, silent desktop client) are unchanged — both fixes are designer-side.
 
-> Details in the V1.4.2 section of `docs/en/CHANGELOG.en.md` (the Chinese changelog is authoritative). Installers are rebuilt and uploaded with this release; the v1.4.2 links in this page and the README 404 until then.
+> Details in the V1.4.3 section of `docs/en/CHANGELOG.en.md` (the Chinese changelog is authoritative).

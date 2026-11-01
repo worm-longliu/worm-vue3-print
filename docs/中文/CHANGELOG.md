@@ -2,6 +2,17 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## V1.4.3(2026-11-01)
+
+### 新增
+
+- **core 出「屏蔽元素类型」单点判据与装载入口**。`designer/utils/element-factory.ts` 新增 `BLOCKED_ELEMENT_TYPES`（当前为 `['html']`）与 `isBlockedElementType()`；`designer/utils/migrate.ts` 新增 `stripBlockedElements()`（正文 / 页眉 / 页脚三区各自过滤，返回新对象、不改入参）与 `countBlockedElements()`（供宿主在装载前计数提示，与剥离走同一判据），四者随 `/designer` 子路径导出。恢复某一类型只需把它移出该表并放回素材台，不必再动渲染分支。`countBlockedElements` 本仓库两宿主尚未接入，先作为集成方可用的入口发出。
+
+### 修复
+
+- **导入旧模板不再带出「画布看得见、纸面永远空白」的 HTML 元素**。HTML 类型是占位实现：设计态画得出来，`html-generator` 的 `case 'html'` 却只输出一个空盒子，导入后留在画布上会让人以为有内容。现在装载模板时正文 / 页眉 / 页脚三区的 HTML 元素一律剥离（接在 `normalizeTemplateUnits` 上，`unit` 已是 `mm` 的模板同样处理）；元素类型可能只写在 `printElementType.type` 上，判据两处都看。**口径边界**：本版只收导入这一路——两宿主素材台的「HTML」项未摘，用它手建的元素照旧不出纸，收编手建入口另起一笔。**存量影响**：含 HTML 元素的旧模板重新导入并保存后，出纸少掉那个空 `div`；若该元素当时设了边框（元素级边框判据没排除 HTML，框线是真的会上纸），那条框线随之消失——此前它也只是一圈没有内容的框。不含 HTML 元素的模板产物逐字不变。
+- **字段拖放的 Ctrl/⌘ 切换在 macOS 与 Windows 上不再整次会话失效**（canvas 与零框架宿主同口径，真机复盘）。上一版「按住 Ctrl 拖字段生成静态文本」在真实浏览器里有三层平台陷阱，逐层修掉：落点 `dragover` 显式钉 `dropEffect='copy'`（不写时 Windows 按原生修饰键重算效果，按住 Ctrl 拖动会吞掉复制徽标甚至整次拒收）；拖起件效果集由单一 `copy` 放宽为 `'all'`（macOS 的 ⌘ 是「切换默认拖拽动作」，锁单一效果时切换结果落在允许集外，原生会话直接把整次拖拽判为无效、`drop` 根本不派发；common 两处此前漏设、与 canvas 不对称，现补齐并各加守卫断言防日后收窄）；画布自绘落点徽标 `.drop-hint`，拖动期间按拖起件类型与锁存意图显示「＋ 取值字段 / ＋ 静态文本 / ＋ 元素」并跟随光标，外部拖入不显示，绕开不可控的操作系统光标；静态文本意图锁存——macOS 按住 ⌘ 松鼠标时 `drop` 仍可能不派发，改为拖拽中任一 `dragover` 见到过 ⌘/Ctrl 即锁定本次为静态文本，徽标显示同一锁存值（所见即所得），`drop` / `dragend` 后会话复位。入口文案同时改为与实测一致的「拖动 / 双击途中按住 Ctrl（Mac 为 ⌘）切换」，覆盖素材台字段行 `data-tip`、表达式弹窗帮助卡与 placeholder、两份内置更新记录。**纯设计器交互**：模板产物、分页与三条出纸链路零变化。
+
 ## V1.4.2(2026-10-30)
 
 ### 新增
