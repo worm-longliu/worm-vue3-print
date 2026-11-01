@@ -18,8 +18,11 @@ export const PROBE_TOKENS = [
   '__defineGetter__', '__defineSetter__', '__lookupGetter__', '__lookupSetter__',
 ] as const
 
-/** 求值期可用的系统变量并入上下文，避免被误报成未知字段 */
-export const SYSTEM_VARIABLES = ['printDate', 'pageNo', 'pageCount', 'totalPage'] as const
+/**
+ * 求值期系统变量，名单来自 core render/data-binder.ts:344-353 的 resolveSystemVariables：
+ * printDate / printTime / pageIndex / totalPages。写成别的名字会把真实系统变量报成未知字段。
+ */
+export const SYSTEM_VARIABLES = ['printDate', 'printTime', 'pageIndex', 'totalPages'] as const
 
 export interface ExpressionResult {
   ok: boolean
@@ -59,6 +62,12 @@ export function checkExpression(expr: string, knownFields: string[] = []): Expre
   const errors: string[] = []
   let syntax: 'valid' | 'invalid' = 'valid'
 
+  // AI 最常见的错写：把 JS 模板字符串语法带进来。core 解析器只把 {…} 当表达式，
+  // 前面的 $ 会原样成为字面文本并打到纸上，所以这里必须判失败。
+  if (/\$\{/.test(expr)) {
+    errors.push('检测到 ${...}：本引擎不是 JS 模板字符串，去掉 $ 直接写 {字段} 或 {FUNC(字段)}')
+  }
+
   // 1. 语法：整串交给 core 解析器（未闭合花括号、空表达式都在这里显形，文案与出纸端一致）
   if (expr && expr.includes('{')) {
     try {
@@ -96,7 +105,9 @@ export function checkExpression(expr: string, knownFields: string[] = []): Expre
       for (const v of SYSTEM_VARIABLES) ctx[v] = '1'
       for (const id of scan.identifiers) ctx[id] = 1
       try {
-        engine.render(body, ctx)
+        // evaluate 收「裸表达式」，render 收「带 {} 的模板串」：这里必须用 evaluate，
+        // 用 render 传裸表达式会被当字面文本返回，探测形同虚设
+        engine.evaluate(body, ctx)
       } catch (e) {
         errors.push((e as Error).message)
       }

@@ -16,6 +16,86 @@ const base = {
   elements: [textElement],
 }
 
+describe('validateTemplateJson 结构强化（全流程手测发现的漏判）', () => {
+  const withElement = (options: Record<string, unknown>, type = 'text') => ({
+    ...base,
+    elements: [{ id: 'e1', type, options, printElementType: { type } }],
+  })
+
+  it('元素类型拼错（Text）被拒，且报在元素 type 上', () => {
+    const r = validateTemplateJson(withElement({ left: 0, top: 0, width: 50, height: 8 }, 'Text'))
+    expect(r.ok).toBe(false)
+    expect(r.issues.some(i => i.path === 'elements[0].type' && i.level === 'error')).toBe(true)
+  })
+
+  it('type 与 printElementType.type 不一致只给 warning', () => {
+    const r = validateTemplateJson({
+      ...base,
+      elements: [{
+        id: 'e1', type: 'text',
+        options: { left: 0, top: 0, width: 50, height: 8 },
+        printElementType: { type: 'table' },
+      }],
+    })
+    expect(r.ok).toBe(true)
+    expect(r.issues.some(i => i.level === 'warning' && i.path === 'elements[0]')).toBe(true)
+  })
+
+  it('字体声明必须有 family 与带 url 的 files', () => {
+    const noFamily = validateTemplateJson({ ...base, fonts: [{ files: [{ url: '/f.woff2' }] }] })
+    expect(noFamily.issues.some(i => i.path === 'fonts[0].family' && i.level === 'error')).toBe(true)
+
+    const noUrl = validateTemplateJson({ ...base, fonts: [{ family: 'SimHei', files: [{ weight: 400 }] }] })
+    expect(noUrl.issues.some(i => i.path === 'fonts[0].files[0].url' && i.level === 'error')).toBe(true)
+
+    const badStyle = validateTemplateJson({
+      ...base,
+      fonts: [{ family: 'SimHei', files: [{ url: '/f.woff2', style: 'oblique' }] }],
+    })
+    expect(badStyle.issues.some(i => i.path.endsWith('style'))).toBe(true)
+
+    const good = validateTemplateJson({
+      ...base,
+      fonts: [{ family: 'SimHei', label: '黑体', files: [{ url: '/f.woff2', weight: 400, style: 'normal' }] }],
+    })
+    expect(good.issues.filter(i => i.level === 'error')).toEqual([])
+  })
+
+  it('分边边框与分页配置按结构校验，不再整块放行', () => {
+    const badBorder = validateTemplateJson(withElement({
+      left: 0, top: 0, width: 50, height: 8, borders: { top: { width: '1' } },
+    }))
+    expect(badBorder.issues.some(i => i.path === 'elements[0].options.borders.top.width')).toBe(true)
+
+    const badPagination = validateTemplateJson(withElement({
+      left: 0, top: 0, width: 50, height: 8, pagination: { pageable: 'yes' },
+    }))
+    expect(badPagination.issues.some(i => i.path.endsWith('pagination.pageable'))).toBe(true)
+
+    const good = validateTemplateJson(withElement({
+      left: 0, top: 0, width: 50, height: 8,
+      borders: { top: { width: 1, style: 'solid', color: '#333' } },
+      pagination: { pageable: true, keepWithNext: false },
+      tablePagination: { enabled: true },
+    }))
+    expect(good.issues.filter(i => i.level === 'error')).toEqual([])
+  })
+
+  it('tableRows 走单元格/行结构校验', () => {
+    const badCells = validateTemplateJson(withElement({
+      left: 0, top: 0, width: 50, height: 8,
+      tableRows: [{ id: 'r1', type: 'data', height: 8, cells: { c1: {} } }],
+    }, 'table'))
+    expect(badCells.issues.some(i => i.path.includes('tableRows[0].cells'))).toBe(true)
+
+    const badCellType = validateTemplateJson(withElement({
+      left: 0, top: 0, width: 50, height: 8,
+      tableRows: [{ id: 'r1', type: 'data', height: 8, cells: [{ id: 'c1', cellType: 'svg' }] }],
+    }, 'table'))
+    expect(badCellType.issues.some(i => i.path.endsWith('cells[0].cellType'))).toBe(true)
+  })
+})
+
 describe('validateTemplateJson', () => {
   it('最小合法模板通过', () => {
     const r = validateTemplateJson(base)

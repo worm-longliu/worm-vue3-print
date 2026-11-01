@@ -56,6 +56,19 @@ const watermarkSchema = z.object({
   tileHeight: z.number().finite().min(100).optional(),
 }).catchall(z.unknown())
 
+/** 模板级字体声明（core print/fonts.ts:6-24）：family 必填，files[].url 必填 */
+const fontFileSchema = z.object({
+  url: z.string(),
+  weight: z.number().finite().optional(),
+  style: z.enum(['normal', 'italic']).optional(),
+}).catchall(z.unknown())
+
+const fontDeclarationSchema = z.object({
+  family: z.string(),
+  label: z.string().optional(),
+  files: z.array(fontFileSchema),
+}).catchall(z.unknown())
+
 export const templateDataSchema = z.object({
   paperSize: paperSizeSchema,
   orientation: z.enum(['portrait', 'landscape']),
@@ -65,7 +78,7 @@ export const templateDataSchema = z.object({
   footer: zone.optional(),
   elements: z.array(printElementDataSchema),
   name: z.string().optional(),
-  fonts: z.array(z.unknown()).optional(),
+  fonts: z.array(fontDeclarationSchema).optional(),
   tiling: tilingSchema.optional(),
   unit: z.enum(['pt', 'mm']).optional(),
   customWidth: z.number().finite().positive().optional(),

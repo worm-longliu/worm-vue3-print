@@ -41,6 +41,27 @@ describe('MCP 工具注册表', () => {
     expect(TOOLS.every(t => t.description.length > 20)).toBe(true)
     expect(TOOLS.every(t => t.inputSchema.type === 'object')).toBe(true)
   })
+
+  it('入参 JSON Schema 带字段级说明（模型唯一的入参说明书）', () => {
+    for (const t of TOOLS.filter(x => x.name !== 'print_element_kinds')) {
+      expect(JSON.stringify(t.inputSchema)).toContain('"description"')
+    }
+    const draft = JSON.stringify(TOOLS.find(t => t.name === 'print_draft_template')!.inputSchema)
+    expect(draft).toContain('mm')
+    expect(draft).toContain('13 种之一')
+    expect(draft).toContain('草稿内容')
+    const render = JSON.stringify(TOOLS.find(t => t.name === 'print_render_preview')!.inputSchema)
+    expect(render).toContain('批量')
+  })
+
+  it('元素类型写错时草稿回灌出 error（不再静默产出未知元素）', async () => {
+    const data = JSON.parse((await call('print_draft_template', {
+      spec: { elements: [{ type: 'Text', options: { left: 0, top: 0, width: 10, height: 5 } }] },
+    })).text)
+    expect(data.issues.some((i: { level: string; path: string }) =>
+      i.level === 'error' && i.path === 'elements[0].type')).toBe(true)
+    expect(data.summary).toContain('error')
+  })
 })
 
 describe('print_element_kinds', () => {
@@ -51,6 +72,8 @@ describe('print_element_kinds', () => {
     expect(data.functions).toContain('MONEY')
     expect(data.units).toContain('mm')
     expect(data.expressionSyntax).toContain('{字段}')
+    expect(data.systemVariables).toEqual(['printDate', 'printTime', 'pageIndex', 'totalPages'])
+    expect(data.pageNumberHint).toContain('pageIndex')
   })
 })
 
@@ -76,6 +99,11 @@ describe('print_check_expression', () => {
       { expression: '{amount}', knownFields: ['qty'] })).text)
     expect(unknown.unknownFields).toEqual(['amount'])
     expect(unknown.ok).toBe(true)
+
+    const dollar = JSON.parse((await call('print_check_expression',
+      { expression: '${total}', knownFields: ['total'] })).text)
+    expect(dollar.ok).toBe(false)
+    expect(dollar.errors.join()).toContain('${')
   })
 })
 

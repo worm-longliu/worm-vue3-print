@@ -23,7 +23,7 @@ const RAW: Array<Omit<ElementKindInfo, 'blocked'>> = [
   { type: 'rect', requiredOptionKeys: ['left', 'top', 'width', 'height'], notes: '矩形/边框块' },
   { type: 'oval', requiredOptionKeys: ['left', 'top', 'width', 'height'], notes: '椭圆' },
   { type: 'html', requiredOptionKeys: ['left', 'top', 'width', 'height'], notes: '可注入任意标记，AI 生成面封禁' },
-  { type: 'pageNumber', requiredOptionKeys: ['left', 'top', 'width', 'height'], notes: '页码表达式延迟到最终趟求值，含 {pageNo}/{pageCount}' },
+  { type: 'pageNumber', requiredOptionKeys: ['left', 'top', 'width', 'height'], notes: '页码变量到分页最终趟才求值，写 {pageIndex}/{totalPages}（core data-binder.ts:344）' },
 ]
 
 export const ELEMENT_KINDS: readonly ElementKindInfo[] = RAW.map(info => ({

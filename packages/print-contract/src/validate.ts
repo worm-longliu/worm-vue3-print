@@ -40,6 +40,30 @@ function scanKeys(node: unknown, path: string, hits: string[], unknown: string[]
   }
 }
 
+/**
+ * type 与 printElementType.type 不一致只给 warning：渲染端按 `el.type || printElementType.type || 'text'`
+ * 分派（html-generator.ts:437），两者都写但写错一个仍会按前者出图，属可运行但易困惑的状态。
+ */
+function scanTypeMismatch(node: unknown, path: string, issues: OptionIssue[]) {
+  if (Array.isArray(node)) {
+    node.forEach((item, i) => scanTypeMismatch(item, `${path}[${i}]`, issues))
+    return
+  }
+  if (!node || typeof node !== 'object') return
+  const obj = node as Record<string, unknown>
+  const meta = obj.printElementType as { type?: string } | undefined
+  if (typeof obj.type === 'string' && typeof meta?.type === 'string' && obj.type !== meta.type) {
+    issues.push({
+      path,
+      level: 'warning',
+      message: `type='${obj.type}' 与 printElementType.type='${meta.type}' 不一致；渲染按 type 分派，printElementType.type 只是兜底`,
+    })
+  }
+  for (const [key, value] of Object.entries(obj)) {
+    scanTypeMismatch(value, path ? `${path}.${key}` : key, issues)
+  }
+}
+
 export function validateTemplateJson(input: unknown): ValidationResult {
   const isMultiPage = !Array.isArray(input) && !!input
     && Array.isArray((input as MultiPageTemplateData).pages)
@@ -71,6 +95,7 @@ export function validateTemplateJson(input: unknown): ValidationResult {
   }
 
   scanKeys(input, '', deprecatedHits, unknownKeys)
+  scanTypeMismatch(input, '', issues)
   for (const hit of deprecatedHits) {
     issues.push({ path: hit, message: '该键已废弃，读取兼容但新模板不应写入', level: 'warning' })
   }

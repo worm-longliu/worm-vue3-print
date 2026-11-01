@@ -4,9 +4,12 @@ import { tmpdir } from 'node:os'
 import {
   ELEMENT_KINDS,
   EXPRESSION_FUNCTIONS,
+  SYSTEM_VARIABLES,
   checkExpression,
   draftTemplate,
+  elementTypeSchema,
   inspectTemplate,
+  paperSizeSchema,
   validateTemplateJson,
 } from '@worm-vue3-print/contract'
 import type { TemplateData } from '@worm-vue3-print/core/designer'
@@ -16,57 +19,92 @@ import { requestRenderPdf } from './render-client.js'
 import type { ToolDef, ToolResult } from './tool-types.js'
 import { asText } from './tool-types.js'
 
-/** zod → JSON Schema；MCP 的 inputSchema 要的是 JSON Schema 而非 zod 实例 */
+/** zod → JSON Schema；字段级 .describe() 会落进属性 description，是模型唯一的入参说明书 */
 function schemaOf<T extends z.ZodTypeAny>(schema: T): Record<string, unknown> {
   return z.toJSONSchema(schema, { target: 'draft-2020-12' }) as Record<string, unknown>
 }
 
-const templateArg = z.object({ templateJson: z.unknown() })
+const templateJsonField = z.unknown().describe(
+  '打印模板 JSON。两种形态都接受：单页 TemplateData（顶层有 paperSize/orientation/margins/elements），'
+  + '或多页 wrapper { version: 1, pages: [TemplateData, ...] }。'
+  + '坐标与尺寸单位是 mm（fontSize/lineHeight/borderWidth 是 pt），新模板请写 unit: "mm"。',
+)
 
 export const TOOLS: ToolDef[] = [
   {
     name: 'print_element_kinds',
-    description: '列出 worm-vue3-print 支持的 13 种元素类型（含每种必填 option 键与打印注意事项）和表达式函数白名单。生成模板前必须先调用它。',
+    description: 'worm-vue3-print 模板能力速查：13 种元素类型（含每种必填 option 键与打印注意事项）、'
+      + '表达式函数白名单、系统变量、单位口径、表达式语法。生成或修改模板前先调用它，不要凭印象猜字段名。',
     inputSchema: schemaOf(z.object({})),
     handler: async (): Promise<ToolResult> => asText({
       kinds: ELEMENT_KINDS,
       functions: EXPRESSION_FUNCTIONS,
-      units: '元素坐标/宽高/行高为 mm；fontSize/lineHeight/borderWidth 为 pt；barWidth/qrQuietZone 为「模块」无量纲',
-      expressionSyntax: '绑定用 {字段} 或 {FUNC(字段)}，不是 ${...}',
+      systemVariables: SYSTEM_VARIABLES,
+      units: '元素 left/top/width/height/barHeight/maxWidth/flowRowHeight 为 mm；'
+        + 'fontSize/lineHeight/letterSpacing/shrinkMinFontSize/borderWidth 为 pt；'
+        + 'barWidth/barQuietZone/qrQuietZone/flowColumns 是「模块数/列数」，无量纲，不能按长度换算',
+      expressionSyntax: '绑定写 {字段} 或 {FUNC(字段)}，嵌套字段用点号 {order.no}；'
+        + '不支持 ${...}，也不支持 JavaScript 语句与控制流',
+      pageNumberHint: '页码变量是 {pageIndex}/{totalPages}（1 起），到分页最终趟才求值',
     }),
   },
   {
     name: 'print_validate_template',
-    description: '校验一份打印模板 JSON 是否符合契约：返回 error（必须修）与 warning（废弃键/未知键/缺 unit）。纯 Node，不依赖浏览器。',
-    inputSchema: schemaOf(templateArg),
+    description: '校验模板 JSON 是否符合契约，返回可直接定位的 issues（含 elements[0].options.width 这类路径）。'
+      + 'level=error 必须修（渲染会出错或被拒）；level=warning 是存量兼容提示（废弃键 title/tableMode/fields、'
+      + '契约未知键、缺 unit），不必强行清零。修完后重跑本工具直到 ok=true。',
+    inputSchema: schemaOf(z.object({ templateJson: templateJsonField })),
     handler: async (args): Promise<ToolResult> => {
       const r = validateTemplateJson((args as { templateJson: unknown }).templateJson)
+      const errorCount = r.issues.filter(i => i.level === 'error').length
       return asText({
         ok: r.ok,
         issues: r.issues,
         deprecatedHits: r.deprecatedHits,
         unknownKeys: r.unknownKeys,
+        summary: r.ok
+          ? `通过。${r.issues.length} 条 warning 属存量兼容项，可不处理。`
+          : `${errorCount} 条 error 必须修：按 issues[].path 定位元素与键，改完重跑本工具。`
+            + 'warning 不影响 ok。',
       })
     },
   },
   {
     name: 'print_check_expression',
-    description: '校验模板表达式：语法走 core 解析器，函数名走白名单，原型链探测走词法闸门。传 knownFields（宿主字段字典）时才会给出未知字段。',
+    description: '校验模板表达式（formatter / styler / dataSource 里的写法）。语法判定走 core 解析器，'
+      + '与出纸端同一套规则：未闭合花括号、空表达式、未知函数、原型链探测都会被拒。'
+      + '传 knownFields（宿主业务字段字典）后才会额外给出 unknownFields 警告；不传则只判合法性。',
     inputSchema: schemaOf(z.object({
-      expression: z.string(),
-      knownFields: z.array(z.string()).optional(),
+      expression: z.string().describe(
+        '表达式原文，如 "合计：{MONEY(SUM(amount))}"。必须成对花括号；不接受 ${...}。'
+        + '聚合函数 SUM/AVG/COUNT/MIN/MAX 只用于表格 subtotal/summary 单元格。',
+      ),
+      knownFields: z.array(z.string()).optional().describe(
+        '宿主业务字段键名清单（如 ["orderNo","amount","details.name"]）。给了才会报未知字段。',
+      ),
     })),
     handler: async (args): Promise<ToolResult> => {
       const a = args as { expression: string; knownFields?: string[] }
-      return asText(checkExpression(a.expression, a.knownFields ?? []))
+      const r = checkExpression(a.expression, a.knownFields ?? [])
+      return asText({
+        ...r,
+        allowedFunctions: EXPRESSION_FUNCTIONS,
+        systemVariables: SYSTEM_VARIABLES,
+      })
     },
   },
   {
     name: 'print_inspect_layout',
-    description: '静态版面体检：占位落在纸张外（error，出纸被裁）、侵入页边距（warning）、零尺寸、列宽与元素宽不符、表格无行、flowList 无列数、同区元素交叠。**不做排版测量**，真实行高与页数走 print_render_preview。',
+    description: '静态版面体检（只看模板里写死的坐标，不做排版测量）：占位落在纸张外 OUT_OF_PAPER（error，出纸被裁）、'
+      + '侵入页边距 OUT_OF_CONTENT_AREA（warning）、零尺寸 ZERO_SIZE_ELEMENT、表格无行 TABLE_MISSING_ROWS、'
+      + '流式列表无列数 FLOW_MISSING_COLUMNS、列宽与元素宽不符 TABLE_COL_WIDTH_MISMATCH、同区交叠 ELEMENT_OVERLAP、'
+      + '页眉页脚带装不下 BAND_TOO_SMALL。表格真实行高、长文本换行占位、真实页数一律不在这里判，'
+      + '需要那些数字请调 print_render_preview。',
     inputSchema: schemaOf(z.object({
-      templateJson: z.unknown(),
-      toleranceMm: z.number().positive().max(5).optional(),
+      templateJson: templateJsonField,
+      toleranceMm: z.number().positive().max(5).optional().describe(
+        '几何容差（mm），默认 0.2：贴边与浮点误差不算越界。',
+      ),
     })),
     handler: async (args): Promise<ToolResult> => {
       const a = args as { templateJson: { pages?: unknown[] }; toleranceMm?: number }
@@ -88,43 +126,67 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: 'print_draft_template',
-    description: '按结构化 spec 生成模板草稿（元素走 core 元素工厂，自动带设计器默认值），并当场回灌 validate + inspect + 表达式校验。html 类型被封禁。只产出 JSON，不改动画布。',
+    description: '按结构化 spec 生成模板草稿：元素走 core 元素工厂（自带设计器默认值），'
+      + '返回前当场回灌 validate + inspect + 表达式校验，所以 issues/expressionErrors 就是这份草稿的可用性结论。'
+      + '只产出 JSON，不触碰画布状态；html 类型被封禁（防标记注入）。'
+      + '表格必须给 tableRows 且 tableColWidths 合计等于元素宽；flowList 必须给 flowColumns。',
     inputSchema: schemaOf(z.object({
       spec: z.object({
         paper: z.object({
-          paperSize: z.string().optional(),
-          orientation: z.enum(['portrait', 'landscape']).optional(),
+          paperSize: paperSizeSchema.optional().describe(
+            '预设纸型或 CUSTOM/CONTINUOUS；缺省 A4。标签 LABEL_*、小票 THERMAL_*、针式 DOT_* 也是预设。',
+          ),
+          orientation: z.enum(['portrait', 'landscape']).optional().describe('缺省 portrait'),
           margins: z.object({
             top: z.number(), right: z.number(), bottom: z.number(), left: z.number(),
-          }).optional(),
-          customWidth: z.number().positive().optional(),
-          customHeight: z.number().positive().optional(),
-          pageBackground: z.string().optional(),
+          }).optional().describe('页边距（mm），四边都必填；缺省 10/10/10/10'),
+          customWidth: z.number().positive().optional().describe('mm，仅 paperSize=CUSTOM 与连续纸生效'),
+          customHeight: z.number().positive().optional().describe('mm，仅 CUSTOM 生效；连续纸时只作设计画布高'),
+          pageBackground: z.string().optional().describe('页面背景色，CSS 值，如 "#ffffff"'),
         }).optional(),
         elements: z.array(z.object({
-          type: z.string(),
-          options: z.record(z.string(), z.unknown()).optional(),
-          formatter: z.string().optional(),
-        })),
-      }),
+          type: elementTypeSchema.describe('元素类型，必须是 13 种之一；先调 print_element_kinds 看必填键'),
+          options: z.record(z.string(), z.unknown()).optional().describe(
+            '元素属性。left/top/width/height 为 mm（不给则用 core 工厂默认值）；'
+            + 'fontSize/borderWidth 为 pt；barWidth/qrQuietZone 是模块数',
+          ),
+          formatter: z.string().optional().describe(
+            '元素级绑定表达式，形如 {orderNo}；表格/列表的绑定写在 tableRows[].cells[].formatter',
+          ),
+        })).describe('至少一个元素；坐标相对内容区左上角'),
+      }).describe('草稿内容：纸张设置（可缺省 A4）+ 元素列表。元素属性缺省时由 core 元素工厂补默认值。'),
     })),
     handler: async (args): Promise<ToolResult> => {
       const spec = (args as { spec: DraftSpec }).spec
-      return asText(draftTemplate(spec))
+      const r = draftTemplate(spec)
+      return asText({
+        ...r,
+        summary: r.expressionErrors.length
+          ? `表达式有 ${r.expressionErrors.length} 处非法，见 expressionErrors。`
+          : r.issues.some(i => i.level === 'error')
+            ? '草稿存在 error，见 issues（含 validate 与版面体检两路），修完再落画布。'
+            : '草稿可用；warnings 多为 core 工厂自带的废弃键（title/tableMode/fields）。',
+      })
     },
   },
   {
     name: 'print_render_preview',
-    description: '调用 print-render 渲染服务出真实 PDF（真分页/真实行高），返回本地 PDF 路径。需要环境变量 PRINT_RENDER_BASE_URL（如 http://127.0.0.1:3001）与 RENDER_API_KEY；未配置时直接返回降级说明。本工具不重复实现排版。',
+    description: '调 print-render 渲染服务出真实 PDF（真分页、真行高），返回本地 pdfPath。'
+      + '送渲染前会先跑一遍契约校验，不合法直接回 { stage: "validate" } 而不浪费一次浏览器渲染。'
+      + '需要环境变量 PRINT_RENDER_BASE_URL（如 http://127.0.0.1:3001）与 RENDER_API_KEY（与服务端同名变量一致）；'
+      + '未配置时返回降级说明。本工具不重复实现排版逻辑。',
     inputSchema: schemaOf(z.object({
-      templateJson: z.unknown(),
+      templateJson: templateJsonField,
       printData: z.union([
         z.record(z.string(), z.unknown()),
         z.array(z.record(z.string(), z.unknown())),
-      ]).optional(),
-      baseUrl: z.string().optional(),
-      fontBaseUrl: z.string().optional(),
-      paperHeightMm: z.number().positive().optional(),
+      ]).optional().describe(
+        '业务数据。对象 = 单份；非空对象数组 = 批量（长度即份数，上限 500）。'
+        + '表格/列表的数据源是数组里的字段路径，不是数组本身。',
+      ),
+      baseUrl: z.string().optional().describe('图片相对路径的基址（服务端拼成绝对 URL）'),
+      fontBaseUrl: z.string().optional().describe('字体相对路径基址；缺省回落 baseUrl'),
+      paperHeightMm: z.number().positive().optional().describe('连续纸显式纸高（mm），逃生门用'),
     })),
     handler: async (args): Promise<ToolResult> => {
       const a = args as {
@@ -151,7 +213,11 @@ export const TOOLS: ToolDef[] = [
       if (!r.ok) {
         return { content: [{ type: 'text' as const, text: r.message }], isError: true }
       }
-      return asText({ ok: true, pdfPath, hint: '用 PDF 页数与目视结果核对分页；静态体检不含真实行高' })
+      return asText({
+        ok: true,
+        pdfPath,
+        hint: '读 PDF 页数与目视结果核对分页；静态体检不含真实行高，这里才是准数。',
+      })
     },
   },
 ]
