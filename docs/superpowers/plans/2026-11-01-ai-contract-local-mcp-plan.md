@@ -317,21 +317,30 @@ import type { ElementOptions } from '@worm-vue3-print/core/designer'
 import type { OptionKind, OptionMeta } from './units.js'
 
 type Meta = OptionMeta
+type OptionKey = keyof ElementOptions
 
-/** 同种键成组声明，避免 72 行复制粘贴 */
-function group(kind: OptionKind, keys: readonly string[], extra: Partial<Meta> = {}) {
-  return Object.fromEntries(keys.map(k => [k, { kind, ...extra }])) as Record<string, Meta>
+/**
+ * 组声明 helper。返回类型必须是 `{ [P in K]: Meta }` 这样的映射类型：
+ * 若退回 `Record<string, Meta>`，展开后字面键被抹平，全键必填检查会把所有组里的键都报成缺失
+ * （落地时实测：TS2740，提示缺 color/left/top/width「and 55 more」）。
+ */
+function groupOf<K extends OptionKey>(
+  kind: OptionKind,
+  keys: readonly K[],
+  extra: Partial<Meta> = {},
+): { [P in K]: Meta } {
+  return Object.fromEntries(keys.map(k => [k, { kind, ...extra }])) as { [P in K]: Meta }
 }
 
-const mm = (...k: string[]) => group('mm', k)
-const pt = (...k: string[]) => group('pt', k)
-const count = (...k: string[]) => group('count', k)
-const flag = (...k: string[]) => group('bool', k)
-const text = (...k: string[]) => group('text', k)
-const color = (...k: string[]) => group('color', k)
-const obj = (...k: string[]) => group('object', k)
+const mm = <K extends OptionKey>(...k: K[]) => groupOf('mm', k)
+const pt = <K extends OptionKey>(...k: K[]) => groupOf('pt', k)
+const count = <K extends OptionKey>(...k: K[]) => groupOf('count', k)
+const flag = <K extends OptionKey>(...k: K[]) => groupOf('bool', k)
+const text = <K extends OptionKey>(...k: K[]) => groupOf('text', k)
+const color = <K extends OptionKey>(...k: K[]) => groupOf('color', k)
+const obj = <K extends OptionKey>(...k: K[]) => groupOf('object', k)
 
-export const OPTION_META: Record<keyof ElementOptions, Meta> = {
+export const OPTION_META: Record<OptionKey, Meta> = {
   // 几何（mm）
   ...mm('left', 'top', 'width', 'height'),
   ...mm('barHeight', 'maxWidth', 'maxHeight', 'flowRowHeight', 'flowGapX'),
@@ -376,7 +385,7 @@ export const DEPRECATED_OPTION_KEYS: readonly string[] = OPTION_KEYS.filter(
 Run: `npm run test -w @worm-vue3-print/contract -- option-meta`
 Expected: PASS（3 passed）。
 
-闸门自检（临时改动，验完还原，不留进提交）：把 `title` 那一行删掉后 Run `npx tsc --noEmit -p packages/print-contract/tsconfig.json`，Expected: FAIL 且报 TS2741（`title` 在 `Record<keyof ElementOptions, Meta>` 中缺失）。验完把该行加回去（本任务尚未提交，用编辑器还原，禁止 `git checkout` 丢掉其他改动）。
+闸门自检不必做破坏性改动：helper 若写成 `Record<string, Meta>`（字面键被抹平），`npx tsc --noEmit -p packages/print-contract/tsconfig.json` 会给出 TS2740「missing … color, left, top, width, and 55 more」——这条已在落地时实际触发过一次，即为闸门有效性的证据。另需在 contract 的 `tsconfig.json` 里加 `"skipLibCheck": true`（canvas/common 均已如此），否则 `@types/chai` 与 `@vitest/expect` 的重名声明会让 `tsc` 长红，掩盖真错。
 
 - [ ] **Step 6: 提交**
 
