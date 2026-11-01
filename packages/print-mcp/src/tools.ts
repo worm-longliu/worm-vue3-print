@@ -63,7 +63,7 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: 'print_inspect_layout',
-    description: '静态版面体检：横向越界、零尺寸、列宽与元素宽不符、表格无行、flowList 无列数、同区元素交叠。**不做排版测量**，真实行高与页数走 print_render_preview。',
+    description: '静态版面体检：占位落在纸张外（error，出纸被裁）、侵入页边距（warning）、零尺寸、列宽与元素宽不符、表格无行、flowList 无列数、同区元素交叠。**不做排版测量**，真实行高与页数走 print_render_preview。',
     inputSchema: schemaOf(z.object({
       templateJson: z.unknown(),
       toleranceMm: z.number().positive().max(5).optional(),

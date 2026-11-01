@@ -49,7 +49,7 @@ describe('draftTemplate', () => {
     const r = draftTemplate({
       elements: [{ type: 'text', options: { left: 300, top: 10, width: 60, height: 8 } }],
     })
-    expect(r.issues.some(i => i.message.includes('OUT_OF_CONTENT_AREA'))).toBe(true)
+    expect(r.issues.some(i => i.message.includes('OUT_OF_PAPER'))).toBe(true)
   })
 
   it('元素类型清单覆盖 13 类并标注封禁项', () => {

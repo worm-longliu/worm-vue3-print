@@ -3,6 +3,7 @@ import { getPaperDimensions } from '@worm-vue3-print/core'
 
 export type InspectCode =
   | 'LEGACY_UNIT'
+  | 'OUT_OF_PAPER'
   | 'OUT_OF_CONTENT_AREA'
   | 'ZERO_SIZE_ELEMENT'
   | 'BAND_TOO_SMALL'
@@ -94,13 +95,27 @@ export function inspectTemplate(
         findings.push({ code: 'ZERO_SIZE_ELEMENT', level: 'error', path: p,
           message: `高度 ${o.height}mm 不足以落纸（线类元素除外）` })
       }
-      if (o.left < -tol || o.top < -tol) {
-        findings.push({ code: 'OUT_OF_CONTENT_AREA', level: 'error', path: p,
-          message: `元素起点 (${o.left}, ${o.top}) 为负，落在区域外` })
-      } else if (o.left + o.width > contentWidth + tol) {
-        // 连续纸同样只有横向是硬约束（纸宽固定，纸高按内容推导）
-        findings.push({ code: 'OUT_OF_CONTENT_AREA', level: 'error', path: p,
-          message: `右边界 ${(o.left + o.width).toFixed(1)}mm 超出可印区宽 ${contentWidth.toFixed(1)}mm` })
+      // 横向两档：区域坐标以「内容区左上角」为原点，纸张左沿在 margins.left 处。
+      // 落在纸张之外 = 出纸必被裁（error）；只是越出内容区但仍在纸上 = 侵入页边距（warning）。
+      const paperX0 = template.margins.left + o.left
+      const paperX1 = paperX0 + o.width
+      if (paperX1 > paper.width + tol || paperX0 < -tol) {
+        findings.push({ code: 'OUT_OF_PAPER', level: 'error', path: p,
+          message: `横向占位 ${paperX0.toFixed(1)}~${paperX1.toFixed(1)}mm 超出纸张宽 ${paper.width}mm，出纸会被裁切` })
+      } else if (o.left + o.width > contentWidth + tol || o.left < -tol) {
+        findings.push({ code: 'OUT_OF_CONTENT_AREA', level: 'warning', path: p,
+          message: `横向占位 ${o.left.toFixed(1)}~${(o.left + o.width).toFixed(1)}mm 越出内容区宽 ${contentWidth.toFixed(1)}mm，落在页边距内` })
+      }
+      // 纵向：内容区向下溢出由分页接手，只有「起点为负」需要提示；越过纸张上沿才是 error
+      if (zone === 'content' && o.top < -tol) {
+        const paperY0 = template.margins.top + headerH + o.top
+        if (paperY0 < -tol) {
+          findings.push({ code: 'OUT_OF_PAPER', level: 'error', path: p,
+            message: `纵向起点 ${paperY0.toFixed(1)}mm 落在纸张外` })
+        } else {
+          findings.push({ code: 'OUT_OF_CONTENT_AREA', level: 'warning', path: p,
+            message: `纵向起点 ${o.top.toFixed(1)}mm 为负，侵入上边距或页眉带` })
+        }
       }
       if (Number.isFinite(bandHeight) && o.top + o.height > bandHeight + tol) {
         findings.push({ code: 'BAND_TOO_SMALL', level: 'warning', path: p,

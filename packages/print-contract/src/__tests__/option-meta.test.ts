@@ -32,7 +32,9 @@ describe('OPTION_META', () => {
     expect(OPTION_META.flowColumns.kind).toBe('count')
     expect(OPTION_META.fitScale.min).toBe(100)
     expect(OPTION_META.fitScale.max).toBe(400)
-    expect(OPTION_META.printerDpi.enum).toContain('203')
+    // types.ts 里 printerDpi 是 number，不是字符串枚举
+    expect(OPTION_META.printerDpi.kind).toBe('count')
+    expect(OPTION_META.printerDpi.enum).toBeUndefined()
   })
 
   it('废弃键只降级为警告并被单独列出', () => {

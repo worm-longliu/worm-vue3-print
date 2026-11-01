@@ -51,7 +51,9 @@ export const OPTION_META: Record<OptionKey, Meta> = {
   textFit: { kind: 'enum', enum: ['clip', 'shrink', 'autoHeight'] },
   fit: { kind: 'enum', enum: ['contain', 'cover', 'fill', 'none', 'scale-down'] },
   qrCodeLevel: { kind: 'enum', enum: ['L', 'M', 'Q', 'H'] },
-  printerDpi: { kind: 'enum', enum: ['203', '300', '600'] },
+  // types.ts:335 起 printerDpi 是 number（常见 203/300/600），不是字符串枚举：
+  // 声明成枚举会把在用的真实模板判成非法（已由 skills/ 与 demo/ 的模板回归测试夹住）
+  printerDpi: { kind: 'count', min: 1 },
   rotate: { kind: 'count', min: 0, max: 360 },
   zIndex: { kind: 'count' },
   longTextIndent: { kind: 'count', min: 0 },

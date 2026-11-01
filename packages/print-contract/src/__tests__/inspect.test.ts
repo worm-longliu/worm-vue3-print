@@ -29,11 +29,29 @@ describe('inspectTemplate', () => {
     expect(r.findings).toEqual([])
   })
 
-  it('横向越出可印区报 error 并带元素路径', () => {
+  it('越出纸张右沿报 error 并带元素路径', () => {
     const r = inspectTemplate(tpl([el({ left: CONTENT_W - 5, top: 0, width: 20, height: 8 })]))
     expect(r.ok).toBe(false)
-    expect(r.findings[0].code).toBe('OUT_OF_CONTENT_AREA')
+    expect(r.findings[0].code).toBe('OUT_OF_PAPER')
     expect(r.findings[0].path).toBe('elements[0]')
+  })
+
+  it('只侵入页边距（仍在纸上）降级为 warning', () => {
+    // 内容区右沿 190，纸张右沿 200（10+190）：占位 185~200 落在页边距内但没出纸
+    const r = inspectTemplate(tpl([el({ left: 185, top: 0, width: 15, height: 8 })]))
+    expect(r.ok).toBe(true)
+    expect(r.findings.map(f => [f.code, f.level])).toEqual([['OUT_OF_CONTENT_AREA', 'warning']])
+  })
+
+  it('负起点分两档：小幅进边距是 warning，超出纸张才是 error', () => {
+    // 真实 fixture（core 的 ikqsrg-follow-region）里竖线 left = -0.4986mm，属侵入左边距
+    const inside = inspectTemplate(tpl([el({ left: -0.4986, top: 0, width: 1.8, height: 40 })]))
+    expect(inside.ok).toBe(true)
+    expect(inside.findings.map(f => f.code)).toEqual(['OUT_OF_CONTENT_AREA'])
+
+    const outside = inspectTemplate(tpl([el({ left: -15, top: 0, width: 20, height: 8 })]))
+    expect(outside.ok).toBe(false)
+    expect(outside.findings.some(f => f.code === 'OUT_OF_PAPER' && f.level === 'error')).toBe(true)
   })
 
   it('零宽高报 error，贴边不算越界', () => {
@@ -41,11 +59,6 @@ describe('inspectTemplate', () => {
     expect(r.findings.some(f => f.code === 'ZERO_SIZE_ELEMENT')).toBe(true)
     const edge = inspectTemplate(tpl([el({ left: 0, top: 0, width: CONTENT_W, height: 8 })]))
     expect(edge.findings).toEqual([])
-  })
-
-  it('内容为负起点报 error', () => {
-    const r = inspectTemplate(tpl([el({ left: -2, top: 0, width: 20, height: 8 })]))
-    expect(r.findings.some(f => f.code === 'OUT_OF_CONTENT_AREA')).toBe(true)
   })
 
   it('缺 unit 的历史模板先要求迁移，不做几何判定', () => {
@@ -109,12 +122,12 @@ describe('inspectTemplate', () => {
   })
 
   it('连续纸只约束横向：纸宽内纵向不限', () => {
-    // THERMAL_80 可印宽 = 80-10-10 = 60，元素[0] 宽 50 合规，元素[1] 横向越界
+    // THERMAL_80 纸张宽 80、内容区宽 60；元素[0] 占位 10~60 合规，元素[1] 占位 80~100 出纸被裁
     const r = inspectTemplate(tpl([
       el({ left: 0, top: 400, width: 50, height: 8 }),
       el({ left: 70, top: 0, width: 20, height: 8 }),
     ], { paperSize: 'THERMAL_80' }))
-    expect(r.findings.map(f => f.code)).toEqual(['OUT_OF_CONTENT_AREA'])
+    expect(r.findings.map(f => f.code)).toEqual(['OUT_OF_PAPER'])
     expect(r.findings[0].path).toBe('elements[1]')
   })
 })

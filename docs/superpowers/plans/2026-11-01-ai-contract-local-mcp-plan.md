@@ -2252,6 +2252,15 @@ git commit -m "docs(mcp): 本地 MCP 连接器文档、待办勾销与架构守�
 
 ---
 
+## 运行验证补记（分支内启动与真实数据回归，计划外的两处修正）
+
+计划收尾后在分支上做了真实数据验证：拿仓内 13 份在用模板（`demo/src`、`skills/print-template-json/assets/templates`、core fixture、客户端冒烟模板）过 `validateTemplateJson` + `inspectTemplate`，暴露两处契约层缺陷，均已修正并补上回归测试：
+
+1. **`printerDpi` 类型写错**：`types.ts:335` 起它是 `number`（常见 203/300/600），本计划 `OPTION_META` 把它声明成字符串枚举，直接把 4 份在用模板判成 error。改为 `{ kind: 'count', min: 1 }`；`OPTION_META` 的编译期闸门只保证「键齐全」，不保证「类型对」，所以新增 `src/__tests__/real-templates.test.ts` 用真实模板夹住这一类缺陷。
+2. **几何判定只有一档**：原规则「左/上起点为负即 error」把 core fixture 里 `left = -0.4986mm` 的竖线判成缺陷，而它只是侵入左边距、仍在纸上。改为两档：占位落在**纸张外** → `OUT_OF_PAPER`（error，出纸必被裁）；越出内容区但仍在纸内 → `OUT_OF_CONTENT_AREA`（warning）。内容区纵向向下溢出仍不算问题（分页接手）。
+
+因此 Task 5/8 的测试期望同步更新（连续纸与越界用例断言 `OUT_OF_PAPER`），`print_inspect_layout` 的工具描述与 `docs/中文/指南/AI接入.md` 的工具表同步改写。真实模板复检结果：**含 error 的文件数 0/13**，余下 2 条 warning（1 份侵入页边距、1 份同区交叠）。
+
 ## Pending：第二阶段（本计划不含，需先拍一项）
 
 裁决 11/12 合起来的必然后果：**画布永不拥有模型调用**。第二阶段要做的是一张宿主能力契约，按宿主已有东西分三态：

@@ -59,6 +59,23 @@ describe('validateTemplateJson', () => {
     expect(r.issues.some(i => i.path === 'unit' && i.level === 'warning')).toBe(true)
   })
 
+  it('printerDpi 是数字而非字符串枚举（真实模板回归发现）', () => {
+    const r = validateTemplateJson({
+      ...base,
+      elements: [{
+        ...textElement,
+        options: { ...textElement.options, barcodeType: 'code128', printerDpi: 203, barWidth: 2 },
+      }],
+    })
+    expect(r.ok).toBe(true)
+    // 字符串写法在 types.ts 里不存在，按非法处理，避免两套口径都放行
+    const str = validateTemplateJson({
+      ...base,
+      elements: [{ ...textElement, options: { ...textElement.options, printerDpi: '203' } }],
+    })
+    expect(str.ok).toBe(false)
+  })
+
   it('多页 wrapper 与拼版配置一并覆盖', () => {
     const r = validateTemplateJson({
       version: 1,

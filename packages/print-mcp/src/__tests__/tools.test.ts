@@ -80,7 +80,7 @@ describe('print_check_expression', () => {
 })
 
 describe('print_inspect_layout', () => {
-  it('对越界元素给出 finding', async () => {
+  it('对越出纸张的元素给出 finding', async () => {
     const data = JSON.parse((await call('print_inspect_layout', {
       templateJson: {
         ...validTemplate,
@@ -88,7 +88,18 @@ describe('print_inspect_layout', () => {
       },
     })).text)
     expect(data.ok).toBe(false)
-    expect(data.findings.some((f: { code: string }) => f.code === 'OUT_OF_CONTENT_AREA')).toBe(true)
+    expect(data.findings.some((f: { code: string }) => f.code === 'OUT_OF_PAPER')).toBe(true)
+  })
+
+  it('只侵入页边距时 ok 仍为 true，只出 warning', async () => {
+    const data = JSON.parse((await call('print_inspect_layout', {
+      templateJson: {
+        ...validTemplate,
+        elements: [{ ...validTemplate.elements[0], options: { ...validTemplate.elements[0].options, left: 185, width: 15 } }],
+      },
+    })).text)
+    expect(data.ok).toBe(true)
+    expect(data.findings.every((f: { level: string }) => f.level === 'warning')).toBe(true)
   })
 
   it('多页模板逐页体检并把路径带上页号', async () => {

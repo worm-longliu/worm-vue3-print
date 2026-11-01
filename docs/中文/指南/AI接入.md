@@ -53,7 +53,7 @@ npm run build
 | `print_element_kinds` | 无 | 13 种元素类型（含每种必填 option 键与打印注意事项）、表达式函数白名单、单位口径、表达式语法提示 | 生成模板前应先调用；`html` 标注 `blocked: true`，不开放给 AI 生成 |
 | `print_validate_template` | `templateJson` | `{ ok, issues, deprecatedHits, unknownKeys }` | `error` 必须修；废弃键（`title`/`tableMode`/`fields`）、契约未知键、缺 `unit` 都只出 `warning`，不判死存量模板 |
 | `print_check_expression` | `expression`、`knownFields?` | `{ ok, syntax, functions, unknownFields, errors }` | 语法判定走 core 解析器（文案与出纸端同源）；函数名走白名单；原型链探测走词法闸门。`knownFields` 不传时**不做**未知字段判定 |
-| `print_inspect_layout` | `templateJson`、`toleranceMm?` | `{ ok, findings[] }`，finding 带 `code`/`level`/`path` | **不做排版测量**：表格真实行高、长文本换行后的占位、真实页数一律不在这里判。多页模板逐页体检，路径带 `pages[i]` |
+| `print_inspect_layout` | `templateJson`、`toleranceMm?` | `{ ok, findings[] }`，finding 带 `code`/`level`/`path` | **不做排版测量**：表格真实行高、长文本换行后的占位、真实页数一律不在这里判。几何分两档——占位落在**纸张外**是 `OUT_OF_PAPER`（error，出纸必被裁），只是越出内容区但仍在纸上（侵入页边距）是 `OUT_OF_CONTENT_AREA`（warning）。多页模板逐页体检，路径带 `pages[i]` |
 | `print_draft_template` | `spec`（纸张 + 元素列表） | `{ template, issues, expressionErrors }` | 元素走 core 元素工厂，自带设计器默认值；产出 JSON，**不触碰画布状态** |
 | `print_render_preview` | `templateJson`、`printData?`、`baseUrl?`、`fontBaseUrl?`、`paperHeightMm?` | `{ ok, pdfPath }` 或降级文案 | 送渲染前先过 `print_validate_template`；真实分页只由 `print-render` 产生，本仓库不在连接器里重复实现排版 |
 
@@ -92,6 +92,7 @@ if (!layout.ok) console.warn(layout.findings)
 3. **`PROBE_TOKENS`**：与 core `evaluator.ts` 的 `DANGEROUS_PROPS` 是**同集合的两份副本**（后者未导出，运行时取不到）。判据单点仍在渲染端，core 调整该集合时这里要人工同步。
 4. **表达式求值入口**：必须用 `core/designer` 的 `engine` 单例；裸调 `compileTemplate(t)(ctx)` 的函数表为空，会把合法的 `{MONEY(x)}` 判成未知函数。
 5. **core 元素工厂仍写废弃键**：`createDefaultOptions` 给 barcode/qrcode 预置 `title`、给 table 预置 `tableMode` 与 `fields`，因此草稿自带 deprecated warning。属存量口径，本阶段未改 core。
+6. **真实模板回归**：`src/__tests__/real-templates.test.ts` 拿仓内在用的模板（`demo/src/template-*.json`、AI 技能资产模板、core 回归 fixture、客户端冒烟模板）逐项过 `validateTemplateJson` 与 `inspectTemplate`，断言零 error。契约层一旦把 `types.ts` 里的 `number` 写成字符串枚举（`printerDpi` 就这么错过 4 份在用模板），这里会先红。
 
 ## 七、第二阶段（未实现，接口待定）
 
