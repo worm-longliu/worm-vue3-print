@@ -39,10 +39,12 @@ GitHub Pages：**https://worm-longliu.github.io/worm-vue3-print/**
 
 ```
 worm-vue3-print/
-├── packages/                  # 可发布的 npm 包（npm workspaces，发布到 npm）
+├── packages/                  # 工作区包（npm workspaces；core / canvas / common 发布到 npm，contract 与 mcp 暂不发布）
 │   ├── print-core/            # @worm-vue3-print/core   模板表达式引擎 + 同构渲染管线（含浏览器端静默打印 SDK 子路径 /client）
 │   ├── print-canvas/          # @worm-vue3-print/canvas Vue 3 可视化设计器画布
 │   ├── print-common/          # @worm-vue3-print/common 通用宿主适配版设计器（实验性 · 未完全稳定测试；支持多种运行时框架；生产请用 print-canvas）
+│   ├── print-contract/        # @worm-vue3-print/contract 模板契约层：zod schema / 表达式校验 / 静态版面体检 / 草稿生成（private，不发布 npm）
+│   ├── print-mcp/             # @worm-vue3-print/mcp     本地 stdio MCP 连接器：把契约层暴露给宿主已有 AI agent（private，不调模型、不持密钥）
 ├── clients/
 │   └── print-client/          # @worm-vue3-print/print-client Electron 静默打印桌面客户端（private，不发布 npm）
 ├── services/
@@ -74,6 +76,8 @@ worm-vue3-print/
 | `packages/print-core` | 核心包（`@worm-vue3-print/core`）：表达式引擎（lexer / parser / evaluator）、`template-parser`、数据绑定 / 分页 / HTML 生成（`render`）、设计器内核与浏览器适配（`designer` / `browser`，含连续纸探针与 `browserCodeRenderer`）；浏览器端静默打印 SDK 位于子路径 `/client`（传输层 / 协议与错误码 / 打印门面）。纯 TypeScript，无 Vue、无宿主依赖 |
 | `packages/print-canvas` | 设计器画布（`@worm-vue3-print/canvas`）：Vue 3 组件（`components`）、组合式函数（`composables`）、内置帮助内容（`help-content`）、原生控件样式（`styles`）。含 `PrintDesigner`、`PrintHtmlPreview` |
 | `packages/print-common` | ⚠️ **实验性 · 未完全稳定测试**：通用宿主适配设计器（`@worm-vue3-print/common`）：以原生自定义元素 `<print-designer>` 形态提供，**支持多种运行时框架**——任意框架（Vue 3 / Vue 2 / React / jQuery / Angular 等）或无框架宿主均可直接接入，供 React / Vue2 / jQuery 等非 Vue3 宿主使用，**不打包 Vue 运行时**。样式与图标由 `scripts/gen-styles.mjs`、`scripts/gen-icons.mjs` 从 canvas 构建产物派生（类名逐字对齐），交互与渲染逻辑复用 core 的 designer 导出；另产出浏览器直挂形态 `dist/common.js`（UMD，core 与码制库内联，挂 `window.WormPrintCommon`）与 `dist/common.css`，无打包器宿主一个 `<script>` + 一个 `<link>` 即可接入。与 Vue3 版的功能与样式一致性说明见包内 `PARITY.md`，宿主示例在 `demo-common/apps/` |
+| `packages/print-contract` | 模板契约层（`@worm-vue3-print/contract`，private）：把 `TemplateData`/`ElementOptions` 收敛为机器可读契约——`OPTION_META` 全键元数据（编译期必填映射，core 加字段而此处漏登记则 `tsc` 红）、zod schema 与 `validateTemplateJson`（废弃键/未知键只降级 warning，不判死存量模板）、`checkExpression`（语法交给 core 解析器、函数名走白名单）、`inspectTemplate`（静态版面体检，**不做排版测量**）、`draftTemplate`（走 core 元素工厂产草稿并回灌三道校验） |
+| `packages/print-mcp` | 本地 MCP 连接器（`@worm-vue3-print/mcp`，private，bin `worm-vue3-print-mcp`）：仅 stdio 传输，暴露 6 个工具（元素清单 / 模板校验 / 表达式校验 / 版面体检 / 草稿生成 / 渲染预览）。**不调用模型、不读取任何模型密钥**，工具循环归宿主 agent；`print_render_preview` 把真实分页交给 `services/print-render`，本包不重复实现排版 |
 | `clients/print-client` | 静默打印桌面客户端（Electron，private）：主进程 WS 服务 / 打印引擎 / 打印机服务 / 配置与任务记录（`src/main`）、配置窗口 Vue 3 界面（`src/renderer`）、隐藏渲染 worker（`src/worker`）、沙箱 IPC 桥（`src/preload`）、IPC 通道契约（`src/shared`）；含 electron-builder 打包配置与真机冒烟脚本（`scripts/`） |
 | `services/print-render` | 服务端渲染微服务（private）：基于 Playwright 的 PDF 渲染（`driver-playwright` / `pdf-render` / `browser-pool` / `server`），workspace 软链依赖 core，与浏览器预览、桌面客户端共用同一份打印管线 |
 | `demo` | Vue 3 演示项目：设计器接入（`App.vue`）、静默打印集成、渲染客户端封装（`render-client.ts`）、业务字段（`business.ts`）、内置模板 JSON（`template-purchase-receipt.json`），端口 9303 |
@@ -109,7 +113,8 @@ worm-vue3-print/
 
 ## 🗺 待办（Roadmap）
 
-- [ ] 实现 MCP 连接器功能
+- [x] 本地 MCP 连接器（`@worm-vue3-print/mcp`，stdio）：模板契约校验、表达式校验、静态版面体检、草稿生成与渲染预览；详见 [AI 接入](docs/中文/指南/AI接入.md)
+- [ ] 画布内 AI 面板与宿主能力探测（第二阶段，接口待定）
 
 ## 开发
 

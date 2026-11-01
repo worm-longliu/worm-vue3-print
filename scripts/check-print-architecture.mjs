@@ -1,8 +1,9 @@
-// 架构守卫：三端不得各自实现测量、纸高推导、出图参数与码制渲染；这些必须来自 core。
+// 架构守卫：各端不得各自实现测量、纸高推导、出图参数与码制渲染；这些必须来自 core。
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
-const TARGETS = ['services/print-render/src', 'clients/print-client/src']
+// MCP 连接器是第四个「端」：它同样只能调 core，不许自带测量或码制实现
+const TARGETS = ['services/print-render/src', 'clients/print-client/src', 'packages/print-mcp/src']
 /** 白名单：允许出现宿主能力的文件（driver 与平台适配层） */
 const ALLOW = [
   /client\/src\/main\/driver-electron\.ts$/,
@@ -44,4 +45,4 @@ if (violations.length > 0) {
   console.error('打印架构守卫未通过：\n' + violations.join('\n'))
   process.exit(1)
 }
-console.log('打印架构守卫通过：三端未出现重复的测量/纸高/出图/码制实现')
+console.log('打印架构守卫通过：各端未出现重复的测量/纸高/出图/码制实现')
