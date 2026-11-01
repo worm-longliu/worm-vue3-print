@@ -16,25 +16,42 @@ import type { TemplateData } from '@worm-vue3-print/core/designer'
 import type { DraftSpec } from '@worm-vue3-print/contract'
 import { readConfig } from './config.js'
 import { requestRenderPdf } from './render-client.js'
+import { resolveTemplateSource } from './template-source.js'
 import type { ToolDef, ToolResult } from './tool-types.js'
-import { asText } from './tool-types.js'
+import { asError, asText } from './tool-types.js'
 
 /** zod → JSON Schema；字段级 .describe() 会落进属性 description，是模型唯一的入参说明书 */
 function schemaOf<T extends z.ZodTypeAny>(schema: T): Record<string, unknown> {
   return z.toJSONSchema(schema, { target: 'draft-2020-12' }) as Record<string, unknown>
 }
 
-const templateJsonField = z.unknown().describe(
-  '打印模板 JSON。两种形态都接受：单页 TemplateData（顶层有 paperSize/orientation/margins/elements），'
-  + '或多页 wrapper { version: 1, pages: [TemplateData, ...] }。'
-  + '坐标与尺寸单位是 mm（fontSize/lineHeight/borderWidth 是 pt），新模板请写 unit: "mm"。',
+const templateJsonField = z.unknown().optional().describe(
+  '打印模板 JSON，两种形态都接受：单页 TemplateData（顶层有 paperSize/orientation/margins/elements），'
+  + '或多页 wrapper { version: 1, pages: [TemplateData, ...] }，或 { templateJson, printData } 外壳。'
+  + '坐标与尺寸单位 mm（fontSize/lineHeight/borderWidth 为 pt），新模板请写 unit: "mm"。'
+  + '与 templatePath 二选一，二者都给时以本字段为准。',
 )
+
+const templatePathField = z.string().optional().describe(
+  '本地模板文件路径（.json，≤5MB，UTF-8）。整份模板动辄上万字符，'
+  + '用路径比把 JSON 塞进参数省上下文；与 templateJson 二选一。',
+)
+
+/** 三个吃模板的工具共用的入参对；两者都缺时由 resolveTemplateSource 给出可行动文案 */
+const templateSourceFields = {
+  templateJson: templateJsonField,
+  templatePath: templatePathField,
+}
+
+/** 纯计算工具：不落文件、不出网，宿主可放心免审批 */
+const PURE_ANNOTATIONS = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const
 
 export const TOOLS: ToolDef[] = [
   {
     name: 'print_element_kinds',
     description: 'worm-vue3-print 模板能力速查：13 种元素类型（含每种必填 option 键与打印注意事项）、'
       + '表达式函数白名单、系统变量、单位口径、表达式语法。生成或修改模板前先调用它，不要凭印象猜字段名。',
+    annotations: { title: '打印模板能力速查', ...PURE_ANNOTATIONS },
     inputSchema: schemaOf(z.object({})),
     handler: async (): Promise<ToolResult> => asText({
       kinds: ELEMENT_KINDS,
@@ -53,9 +70,12 @@ export const TOOLS: ToolDef[] = [
     description: '校验模板 JSON 是否符合契约，返回可直接定位的 issues（含 elements[0].options.width 这类路径）。'
       + 'level=error 必须修（渲染会出错或被拒）；level=warning 是存量兼容提示（废弃键 title/tableMode/fields、'
       + '契约未知键、缺 unit），不必强行清零。修完后重跑本工具直到 ok=true。',
-    inputSchema: schemaOf(z.object({ templateJson: templateJsonField })),
+    annotations: { title: '校验模板契约', ...PURE_ANNOTATIONS },
+    inputSchema: schemaOf(z.object(templateSourceFields)),
     handler: async (args): Promise<ToolResult> => {
-      const r = validateTemplateJson((args as { templateJson: unknown }).templateJson)
+      const src = await resolveTemplateSource(args as { templateJson?: unknown; templatePath?: string })
+      if (!src.ok) return asError(src.message)
+      const r = validateTemplateJson(src.template)
       const errorCount = r.issues.filter(i => i.level === 'error').length
       return asText({
         ok: r.ok,
@@ -72,8 +92,9 @@ export const TOOLS: ToolDef[] = [
   {
     name: 'print_check_expression',
     description: '校验模板表达式（formatter / styler / dataSource 里的写法）。语法判定走 core 解析器，'
-      + '与出纸端同一套规则：未闭合花括号、空表达式、未知函数、原型链探测都会被拒。'
+      + '与出纸端同一套规则：未闭合花括号、空表达式、未知函数、原型链探测、${} 写法都会被拒。'
       + '传 knownFields（宿主业务字段字典）后才会额外给出 unknownFields 警告；不传则只判合法性。',
+    annotations: { title: '校验模板表达式', ...PURE_ANNOTATIONS },
     inputSchema: schemaOf(z.object({
       expression: z.string().describe(
         '表达式原文，如 "合计：{MONEY(SUM(amount))}"。必须成对花括号；不接受 ${...}。'
@@ -100,15 +121,18 @@ export const TOOLS: ToolDef[] = [
       + '流式列表无列数 FLOW_MISSING_COLUMNS、列宽与元素宽不符 TABLE_COL_WIDTH_MISMATCH、同区交叠 ELEMENT_OVERLAP、'
       + '页眉页脚带装不下 BAND_TOO_SMALL。表格真实行高、长文本换行占位、真实页数一律不在这里判，'
       + '需要那些数字请调 print_render_preview。',
+    annotations: { title: '版面静态体检', ...PURE_ANNOTATIONS },
     inputSchema: schemaOf(z.object({
-      templateJson: templateJsonField,
+      ...templateSourceFields,
       toleranceMm: z.number().positive().max(5).optional().describe(
         '几何容差（mm），默认 0.2：贴边与浮点误差不算越界。',
       ),
     })),
     handler: async (args): Promise<ToolResult> => {
-      const a = args as { templateJson: { pages?: unknown[] }; toleranceMm?: number }
-      const tpl = a.templateJson
+      const a = args as { templateJson?: unknown; templatePath?: string; toleranceMm?: number }
+      const src = await resolveTemplateSource(a)
+      if (!src.ok) return asError(src.message)
+      const tpl = src.template as { pages?: unknown[] }
       if (Array.isArray(tpl.pages)) {
         // 多页模板逐页体检，路径带页号，避免 agent 只知道「有一页有问题」
         const per = tpl.pages.map((page, i) => ({
@@ -130,6 +154,7 @@ export const TOOLS: ToolDef[] = [
       + '返回前当场回灌 validate + inspect + 表达式校验，所以 issues/expressionErrors 就是这份草稿的可用性结论。'
       + '只产出 JSON，不触碰画布状态；html 类型被封禁（防标记注入）。'
       + '表格必须给 tableRows 且 tableColWidths 合计等于元素宽；flowList 必须给 flowColumns。',
+    annotations: { title: '生成模板草稿', ...PURE_ANNOTATIONS },
     inputSchema: schemaOf(z.object({
       spec: z.object({
         paper: z.object({
@@ -175,8 +200,10 @@ export const TOOLS: ToolDef[] = [
       + '送渲染前会先跑一遍契约校验，不合法直接回 { stage: "validate" } 而不浪费一次浏览器渲染。'
       + '需要环境变量 PRINT_RENDER_BASE_URL（如 http://127.0.0.1:3001）与 RENDER_API_KEY（与服务端同名变量一致）；'
       + '未配置时返回降级说明。本工具不重复实现排版逻辑。',
+    // 出网打渲染服务 + 落临时文件，不能标只读
+    annotations: { title: '渲染真实 PDF', readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     inputSchema: schemaOf(z.object({
-      templateJson: templateJsonField,
+      ...templateSourceFields,
       printData: z.union([
         z.record(z.string(), z.unknown()),
         z.array(z.record(z.string(), z.unknown())),
@@ -190,29 +217,30 @@ export const TOOLS: ToolDef[] = [
     })),
     handler: async (args): Promise<ToolResult> => {
       const a = args as {
-        templateJson: unknown
+        templateJson?: unknown
+        templatePath?: string
         printData?: unknown
         baseUrl?: string
         fontBaseUrl?: string
         paperHeightMm?: number
       }
+      const src = await resolveTemplateSource(a)
+      if (!src.ok) return asError(src.message)
       // 先过契约门：把明显不合法的模板送给渲染服务只是浪费一次浏览器渲染
-      const precheck = validateTemplateJson(a.templateJson)
+      const precheck = validateTemplateJson(src.template)
       if (!precheck.ok) {
         return asText({ stage: 'validate', ok: false, issues: precheck.issues })
       }
       const cfg = readConfig()
       const pdfPath = join(tmpdir(), `worm-print-preview-${Date.now()}.pdf`)
       const r = await requestRenderPdf(cfg, {
-        templateJson: a.templateJson,
+        templateJson: src.template,
         ...(a.printData !== undefined ? { printData: a.printData } : {}),
         ...(a.baseUrl ? { baseUrl: a.baseUrl } : {}),
         ...(a.fontBaseUrl ? { fontBaseUrl: a.fontBaseUrl } : {}),
         ...(a.paperHeightMm ? { paperHeightMm: a.paperHeightMm } : {}),
       }, pdfPath)
-      if (!r.ok) {
-        return { content: [{ type: 'text' as const, text: r.message }], isError: true }
-      }
+      if (!r.ok) return asError(r.message)
       return asText({
         ok: true,
         pdfPath,

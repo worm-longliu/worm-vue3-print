@@ -13,7 +13,13 @@ export function createPrintMcpServer(): Server {
   )
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: TOOLS.map(t => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })),
+    tools: TOOLS.map(t => ({
+      name: t.name,
+      description: t.description,
+      inputSchema: t.inputSchema,
+      // 宿主靠 annotations 显示可读名并判断是否需要审批；缺 title 时 OpenCode 会显示 "Unknown"
+      ...(t.annotations ? { annotations: t.annotations } : {}),
+    })),
   }))
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {

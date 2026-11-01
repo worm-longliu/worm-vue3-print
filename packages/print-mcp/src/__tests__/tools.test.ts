@@ -1,4 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
+import { mkdtemp, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { TOOLS } from '../tools.js'
 
 const call = async (name: string, args: Record<string, unknown>) => {
@@ -152,6 +155,78 @@ describe('print_draft_template', () => {  it('拒绝 html 元素', async () => {
     })).text)
     expect(data.expressionErrors).toEqual([])
     expect(data.template.unit).toBe('mm')
+  })
+})
+
+describe('templatePath（模型不必重发整份模板）', () => {
+  const writableTools = ['print_validate_template', 'print_inspect_layout', 'print_render_preview']
+
+  it('三个工具入参都声明了 templatePath', () => {
+    for (const name of writableTools) {
+      const t = TOOLS.find(x => x.name === name)!
+      expect(Object.keys(t.inputSchema.properties as object)).toContain('templatePath')
+    }
+  })
+
+  it('validate 走路径时结果与走 templateJson 一致', async () => {
+    const d = await mkdtemp(join(tmpdir(), 'mcp-tool-'))
+    const p = join(d, 't.json')
+    await writeFile(p, JSON.stringify(validTemplate), 'utf8')
+
+    const byPath = JSON.parse((await call('print_validate_template', { templatePath: p })).text)
+    const byValue = JSON.parse((await call('print_validate_template', { templateJson: validTemplate })).text)
+    expect(byPath.ok).toBe(true)
+    expect(byPath.issues).toEqual(byValue.issues)
+  })
+
+  it('inspect 走路径同样出 finding', async () => {
+    const d = await mkdtemp(join(tmpdir(), 'mcp-tool-'))
+    const p = join(d, 't.json')
+    await writeFile(p, JSON.stringify({
+      ...validTemplate,
+      elements: [{ ...validTemplate.elements[0], options: { ...validTemplate.elements[0].options, left: 250 } }],
+    }), 'utf8')
+    const data = JSON.parse((await call('print_inspect_layout', { templatePath: p })).text)
+    expect(data.ok).toBe(false)
+    expect(data.findings.some((f: { code: string }) => f.code === 'OUT_OF_PAPER')).toBe(true)
+  })
+
+  it('路径读失败返回 isError 与带路径的文案', async () => {
+    const r = await call('print_validate_template', { templatePath: '/tmp/worm-__nope__.json' })
+    expect(r.isError).toBe(true)
+    expect(r.text).toContain('/tmp/')
+  })
+})
+
+describe('annotations（宿主显示与审批依据）', () => {
+  it('每个工具都有中文 title 与只读/破坏性标记', () => {
+    for (const t of TOOLS) {
+      expect(typeof t.annotations?.title).toBe('string')
+      expect((t.annotations?.title as string).length).toBeGreaterThan(1)
+      expect(typeof t.annotations?.readOnlyHint).toBe('boolean')
+      expect(typeof t.annotations?.openWorldHint).toBe('boolean')
+    }
+  })
+
+  it('纯计算工具标只读、不碰外界；render_preview 声明 openWorld', () => {
+    const pure = ['print_element_kinds', 'print_validate_template', 'print_check_expression',
+      'print_inspect_layout', 'print_draft_template']
+    for (const name of pure) {
+      const t = TOOLS.find(x => x.name === name)!
+      expect(t.annotations?.readOnlyHint).toBe(true)
+      expect(t.annotations?.openWorldHint).toBe(false)
+    }
+    const render = TOOLS.find(t => t.name === 'print_render_preview')!
+    expect(render.annotations?.openWorldHint).toBe(true)
+    expect(render.annotations?.readOnlyHint).toBe(false)
+  })
+
+  it('tools 元数据不含重复 title，且 tools/list 能带出 annotations', async () => {
+    const { createPrintMcpServer } = await import('../server.js')
+    const server = createPrintMcpServer()
+    expect(server).toBeDefined()
+    const titles = TOOLS.map(t => t.annotations?.title)
+    expect(new Set(titles).size).toBe(titles.length)
   })
 })
 

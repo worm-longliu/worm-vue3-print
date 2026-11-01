@@ -1,4 +1,4 @@
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
 
 /**
  * 直接复用 SDK 的结果类型：它带索引签名与 task 变体，
@@ -10,6 +10,11 @@ export type ToolResult = CallToolResult
 export interface ToolDef {
   name: string
   description: string
+  /**
+   * MCP 工具注解：宿主靠 title 显示可读名（缺省时 OpenCode 显示 "Unknown"），
+   * 靠 readOnlyHint / openWorldHint 决定是否需要用户审批。
+   */
+  annotations?: ToolAnnotations
   /** JSON Schema（由 zod 的 z.toJSONSchema 生成），MCP 的 inputSchema 要 JSON Schema 而非 zod 实例 */
   inputSchema: Record<string, unknown>
   handler: (args: Record<string, unknown>) => Promise<ToolResult>
@@ -17,4 +22,8 @@ export interface ToolDef {
 
 export function asText(payload: unknown): ToolResult {
   return { content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }] }
+}
+
+export function asError(message: string): ToolResult {
+  return { content: [{ type: 'text' as const, text: message }], isError: true }
 }
