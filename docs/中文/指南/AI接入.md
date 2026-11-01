@@ -94,7 +94,7 @@ if (!layout.ok) console.warn(layout.findings)
 5. **core 元素工厂仍写废弃键**：`createDefaultOptions` 给 barcode/qrcode 预置 `title`、给 table 预置 `tableMode` 与 `fields`，因此草稿自带 deprecated warning。属存量口径，本阶段未改 core。
 6. **真实模板回归**：`src/__tests__/real-templates.test.ts` 拿仓内在用的模板（`demo/src/template-*.json`、AI 技能资产模板、core 回归 fixture、客户端冒烟模板）逐项过 `validateTemplateJson` 与 `inspectTemplate`，断言零 error。契约层一旦把 `types.ts` 里的 `number` 写成字符串枚举（`printerDpi` 就这么错过 4 份在用模板），这里会先红。
 
-## 七、第二阶段（未实现，接口待定）
+## 七、第二阶段（未实现；服务端代理边界已定）
 
 画布内 AI 面板的前提是「宿主 key 必须在服务端」，因此面板**不能独立存在**，只能走注入式 transport。落地形态按宿主已有能力分三态，挂载时先探测 bridge：
 
@@ -102,9 +102,15 @@ if (!layout.ok) console.warn(layout.findings)
 |---|---|---|---|
 | `agent` | 自己的 AI agent / 会话 | 只出工具契约（MCP 或 JS bridge） | 宿主 |
 | `endpoint` | 只有服务端模型代理 | 面板 + 工具循环，调宿主代理 | 本仓库 |
-| `none` | 什么都没有 | 面板 + 参考代理实现 | 本仓库 |
+| `none` | 什么都没有 | 面板 + 接口规范（服务端代理由宿主自实现） | 本仓库（打到宿主端点） |
 
-探测到 bridge 就不自己发模型请求——这是「不与宿主重复」的落地位置。服务端 key 代理由本仓库出参考实现、还是只出接口规范，尚未拍板。
+探测到 bridge 就不自己发模型请求——这是「不与宿主重复」的落地位置。
+
+**已定：第二阶段只出接口规范，不新增代理服务包。** 由此确定三条边界：
+
+- 本仓库不持有、不转发、不经手任何模型密钥，也不新增服务包与镜像；`none` 态宿主需自备一个 OpenAI 兼容的服务端转发（约百来行）才能启用面板。**不存在 clone 即跑通 AI 的开箱路径**，文档与 demo 只演示「宿主端点已存在」的接法。
+- 面板的模型调用一律走注入式 transport（宿主传入的 request 函数或宿主端点 URL）；组件内部不得出现指向任何模型域名的请求代码路径。
+- 规范的最小契约：请求体 `messages / tools / stream`；返回事件四类——增量文本、`tool_call`、结束、错误；鉴权由宿主负责；超时与取消走 `AbortSignal`。
 
 ## 八、验收
 
