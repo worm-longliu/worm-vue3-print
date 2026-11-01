@@ -2,6 +2,16 @@
 import type { RuntimeElement, ElementType, ElementOptions } from '../types.js'
 import { createDefaultTable } from './table-matrix.js'
 
+/**
+ * 已屏蔽的元素类型：占位实现（设计态能画、出纸永远空盒），不允许从素材台新建，
+ * 导入模板时一律剥离。类型联合与渲染分支保留，恢复只需把该类型从这里移出并放回素材台。
+ */
+export const BLOCKED_ELEMENT_TYPES: readonly ElementType[] = ['html']
+
+export function isBlockedElementType(type?: string | null): boolean {
+  return !!type && (BLOCKED_ELEMENT_TYPES as readonly string[]).includes(type)
+}
+
 export function generateId(): string {
   return `el-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }

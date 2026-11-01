@@ -1,6 +1,6 @@
 // web/src/components/print/__tests__/migrate.spec.ts
 import { describe, it, expect } from 'vitest'
-import { normalizeTemplateUnits } from '../migrate.js'
+import { normalizeTemplateUnits, stripBlockedElements, countBlockedElements } from '../migrate.js'
 import type { TemplateData } from '../../types.js'
 
 const PT_TO_MM = 25.4 / 72
@@ -47,5 +47,52 @@ describe('normalizeTemplateUnits', () => {
     const out = normalizeTemplateUnits(tpl)
     expect('firstPageOverlay' in out).toBe(false)
     expect(out.elements![0]?.options.left).toBe(10)
+  })
+})
+
+// 屏蔽类型（html）：出纸永远是空盒子，导入时一律剥离，且要在三个区都剥干净
+describe('stripBlockedElements', () => {
+  const mixed = () => ({
+    unit: 'mm',
+    elements: [
+      { id: 'a', type: 'text', options: { left: 10 }, printElementType: { type: 'text', title: '文本' } },
+      { id: 'b', type: 'html', options: { left: 20 }, printElementType: { type: 'html', title: 'HTML' } },
+    ],
+    header: { height: 10, elements: [{ id: 'h', type: 'html', options: {}, printElementType: { type: 'html' } }] },
+    footer: { height: 10, elements: [{ id: 'f', type: 'html', options: {}, printElementType: { type: 'html' } }] },
+  } as unknown as TemplateData)
+
+  it('三区里的 html 元素全部被剥离，其余元素原样保留', () => {
+    const out = stripBlockedElements(mixed())
+    expect(out.elements).toHaveLength(1)
+    expect(out.elements![0]!.id).toBe('a')
+    expect(out.header!.elements).toHaveLength(0)
+    expect(out.footer!.elements).toHaveLength(0)
+  })
+
+  it('反面对照：无屏蔽元素时逐字节不变（证明上一条的剥离不是整体丢弃）', () => {
+    const clean = {
+      unit: 'mm',
+      elements: [{ id: 'a', type: 'text', options: { left: 10 }, printElementType: { type: 'text' } }],
+    } as unknown as TemplateData
+    expect(stripBlockedElements(clean)).toEqual(clean)
+  })
+
+  it('只有 printElementType.type 的运行时元素同样被识别', () => {
+    const out = stripBlockedElements({
+      unit: 'mm',
+      elements: [{ id: 'x', options: {}, printElementType: { type: 'html' } }],
+    } as unknown as TemplateData)
+    expect(out.elements).toHaveLength(0)
+  })
+
+  it('normalizeTemplateUnits 已接剥离：旧模板导入不会带出 html 元素', () => {
+    const out = normalizeTemplateUnits(mixed())
+    expect(out.elements!.map(e => e.id)).toEqual(['a'])
+  })
+
+  it('countBlockedElements 供宿主在装载前计数提示（三区求和）', () => {
+    expect(countBlockedElements(mixed())).toBe(3)
+    expect(countBlockedElements({ unit: 'mm', elements: [] } as unknown as TemplateData)).toBe(0)
   })
 })
