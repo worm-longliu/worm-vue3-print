@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>按值合并 × 分页验证</title>
+  </head>
+  <body>
+    <header class="toolbar">
+      <h1 class="toolbar-title">按值合并 × 分页验证</h1>
+
+      <label class="field">
+        <span class="field-label">行数</span>
+        <input id="row-count" type="range" min="10" max="300" step="10" value="40" />
+        <output id="row-count-value" class="field-value" for="row-count">40</output>
+      </label>
+
+      <label class="field">
+        <span class="field-label">行高</span>
+        <select id="row-height">
+          <option value="8">8 mm</option>
+          <option value="10" selected>10 mm</option>
+          <option value="12">12 mm</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span class="field-label">缩放</span>
+        <select id="zoom">
+          <option value="0.5">50%</option>
+          <option value="0.62" selected>62%</option>
+          <option value="0.8">80%</option>
+        </select>
+      </label>
+
+      <button id="rerender" type="button" class="btn">重新渲染</button>
+    </header>
+
+    <section class="stats" aria-live="polite">
+      <div class="stat">
+        <span class="stat-label">总行数</span>
+        <span class="stat-value" id="stat-rows">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">左栏页数</span>
+        <span class="stat-value" id="stat-pages-left">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">右栏页数</span>
+        <span class="stat-value" id="stat-pages-right">—</span>
+      </div>
+      <div class="stat stat-wide">
+        <span class="stat-label">左栏每页行数</span>
+        <span class="stat-value" id="stat-rows-left">—</span>
+      </div>
+      <div class="stat stat-wide">
+        <span class="stat-label">右栏每页行数</span>
+        <span class="stat-value" id="stat-rows-right">—</span>
+      </div>
+      <div class="stat stat-wide">
+        <span class="stat-label">左栏合并段</span>
+        <span class="stat-value" id="stat-spans-left">—</span>
+      </div>
+      <div class="stat stat-wide">
+        <span class="stat-label">右栏合并段</span>
+        <span class="stat-value" id="stat-spans-right">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">右栏合并格数（跨页计）</span>
+        <span class="stat-value" id="stat-merged-cells">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">结论</span>
+        <span class="verdict" id="stat-verdict">—</span>
+      </div>
+      <p class="stats-note">
+        单位列每 7 行一段；段跨页时在页界处切断，续页首行重放该单位。左右两栏页数与每页行数应完全一致，差异只在合并。
+      </p>
+    </section>
+
+    <main class="preview">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>关闭按值合并</h2>
+        </div>
+        <div class="panel-body">
+          <iframe id="frame-left" title="关闭按值合并预览"></iframe>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>开启按值合并</h2>
+        </div>
+        <div class="panel-body">
+          <iframe id="frame-right" title="开启按值合并预览"></iframe>
+        </div>
+      </section>
+
+      <div id="busy-overlay" class="busy-overlay" hidden>渲染中…</div>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
