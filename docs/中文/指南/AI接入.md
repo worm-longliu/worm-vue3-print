@@ -82,7 +82,11 @@ if (!layout.ok) console.warn(layout.findings)
 - 元素坐标、宽高、行高、`barHeight`、`maxWidth` 等：**mm**。
 - `fontSize`、`lineHeight`、`letterSpacing`、`shrinkMinFontSize`、`borderWidth`、单元格 `padding`：**pt**。
 - `barWidth`、`barQuietZone`、`qrQuietZone`、`flowColumns`：**模块数/个数**，无量纲，不能按长度换算。
-- 表达式是 `{field}`，**不是** `${field}`；函数白名单见 `EXPRESSION_FUNCTIONS`（`MONEY`/`IF`/`CONCAT`/`PAD` 等，聚合 `SUM`/`AVG`/`COUNT`/`MIN`/`MAX` 由绑定阶段预处理）。
+- 表达式是 `{field}`，**不是** `${field}`：`${total}` 会打出字面 `$`，`print_check_expression` 对此判失败。
+- 元素类型必须落在 core 的 13 种 `ElementType` 上（`text`/`longText`/`table`/`flowList`/`image`/`hline`/`vline`/`rect`/`oval`/`barcode`/`qrcode`/`html`/`pageNumber`）；`Text`、`tabel` 这类拼写会报 error，而不是静默产出一个渲染端不认识的元素。
+- 系统变量是 `printDate` / `printTime` / `pageIndex` / `totalPages`（页码从 1 起），**没有** `pageNo` / `pageCount` 这种写法。
+- 函数白名单见 `EXPRESSION_FUNCTIONS`（`MONEY`/`IF`/`CONCAT`/`PAD` 等，聚合 `SUM`/`AVG`/`COUNT`/`MIN`/`MAX` 由绑定阶段预处理，只用于表格 subtotal/summary 单元格）。
+- 复合结构不是自由字典：`borders` 的每条边、`pagination`、`tablePagination`、`tableColWidths`、`tableRows[].cells[]`、`fonts[].files[]` 都按 core 类型逐个字段校验（值出现即校验形状，缺省仍兼容存量）。
 - 新模板 `unit: 'mm'` 必须写；缺 `unit` 的历史模板按 pt 迁移，`print_inspect_layout` 会先要求归一。
 
 ## 六、耦合点登记（改 core 时会被这里咬到）
@@ -94,7 +98,9 @@ if (!layout.ok) console.warn(layout.findings)
 5. **core 元素工厂仍写废弃键**：`createDefaultOptions` 给 barcode/qrcode 预置 `title`、给 table 预置 `tableMode` 与 `fields`，因此草稿自带 deprecated warning。属存量口径，本阶段未改 core。
 6. **真实模板回归**：`src/__tests__/real-templates.test.ts` 拿仓内在用的模板（`demo/src/template-*.json`、AI 技能资产模板、core 回归 fixture、客户端冒烟模板）逐项过 `validateTemplateJson` 与 `inspectTemplate`，断言零 error。契约层一旦把 `types.ts` 里的 `number` 写成字符串枚举（`printerDpi` 就这么错过 4 份在用模板），这里会先红。
 
-## 七、第二阶段（未实现；服务端代理边界已定）
+## 七、第二阶段（未实现；设计已定稿并交接）
+
+完整交接件见 [AI 接入 · 第二阶段交接](./AI接入-第二阶段交接.md)：目标与非目标、三态与循环归属、`AiTransport`/`AiEvent`/bridge 接口规范草案、画布侧已知缺口（无写入型 expose API、undo 归属、面板容器缺失）、待裁决四项、实施拆解顺序与验收口径。
 
 画布内 AI 面板的前提是「宿主 key 必须在服务端」，因此面板**不能独立存在**，只能走注入式 transport。落地形态按宿主已有能力分三态，挂载时先探测 bridge：
 
