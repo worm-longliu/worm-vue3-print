@@ -155,12 +155,14 @@ function bindTableData(el: TemplateElement, data: Record<string, any>): void {
 
   for (const row of rows) {
     if (mode === 'dynamic' && row.type === 'data') {
+      // 归一化：dynamic 数据行按列表逐项复制，模板上的静态纵向 span 会随每行复制导致错位，一律重置。
+      // 只清「被上方行跨行覆盖」的占位格；横向合并（colspan 主格 + 同行占位格）必须保留，
+      // 否则占位格会渲染成空 td，整行多出一列。
+      resetDataRowSpan(row.cells)
       for (const item of list) {
         if (dataStartIdx < 0) dataStartIdx = renderRows.length
         const ctx = itemCtx(item)
-        renderRows.push(makeRenderRow(row, cell => {
-          return resolveCellText(cell, ctx)
-        }))
+        renderRows.push(makeRenderRow(row, cell => resolveCellText(cell, ctx)))
         dataRowCtx.push(ctx)
       }
       continue
@@ -190,6 +192,26 @@ function bindTableData(el: TemplateElement, data: Record<string, any>): void {
   opts._subtotalTemplates = subtotalTemplates
   opts._summaryRows = summaryRenderRows
   opts._mainData = data
+}
+
+/**
+ * 数据行模板格的跨度归一：纵向行跨度随列表复制只会让后续副本错位，一律清零；
+ * 同时只把「被上方行跨行覆盖」的占位格恢复成实格。
+ * 横向合并（左侧主格 colspan 覆盖到的同行格子）必须保持 merged=true——渲染趟据此跳过，
+ * 一旦清掉就会多输出一个空 td，整张表错列（数据行内单行横向合并是合法操作）。
+ */
+function resetDataRowSpan(cells: any[]): void {
+  // 同行横向覆盖的列索引：colspan 主格右侧 (colspan-1) 格（矩阵模型下 cells 下标即列号）
+  const horizontal = new Set<number>()
+  cells.forEach((cell: any, idx: number) => {
+    if (!cell || cell.merged) return
+    const span = Math.max(cell.colspan ?? 1, 1)
+    for (let i = 1; i < span; i++) horizontal.add(idx + i)
+  })
+  cells.forEach((cell: any, idx: number) => {
+    if (cell.rowspan) cell.rowspan = 1
+    if (cell.merged && !horizontal.has(idx)) cell.merged = false
+  })
 }
 
 /** 单元格文本求值：引用了页码的表达式保留原文，由最终趟按页重算（元素 formatter 同理） */
@@ -234,6 +256,8 @@ function makeRenderRow(
       rowspan: cell.rowspan ?? 1,
       colspan: cell.colspan ?? 1,
       merged: cell.merged === true,
+      // 「按值合并」声明必须带到渲染行：归并在渲染区间（每片）计算，渲染端据此决定列是否参与
+      ...(cell.mergeSameValue === true ? { mergeSameValue: true } : {}),
       align: cell.align,
       valign: cell.valign,
       fontSize: cell.fontSize,

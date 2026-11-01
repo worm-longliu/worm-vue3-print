@@ -39,7 +39,7 @@ import {
   BARCODE_MARGIN_BOTTOM_MODULES,
   BARCODE_TEXT_FONT_SIZE_MODULES, DEFAULT_DEMO_DATA, barcodeAvailableBoxMm, barcodeQuietZoneModules, barcodeUnitsPerModule,
   canMergeReason, cellFitCapMm, cellFitWidthMm, cellImageBoxMm, clampResizedColumnWidth, cropStyleDeclarations, deleteCol, deleteRow,
-  evaluateTemplate, insertCol, insertRow, layoutBarcodeSize, mergeCells, normalizeSelection,
+  evaluateTemplate, findMainCell, insertCol, insertRow, layoutBarcodeSize, mergeCells, normalizeSelection,
   resolveBarcodeDesignValue, resolveCellBorderCss, resolveCellTextFit,
   resolveShrinkMinFontSize, setRowType, splitCells, syncTableElementSize,
 } from '@worm-vue3-print/core/designer'
@@ -583,6 +583,32 @@ function canSplitSelection(ctx: TableCtx): boolean {
   return false
 }
 
+/** 按值合并 toggle：主格当前值取反批写整个选区（纯属性写入，走 updateElement 记历史，不走 executeMatrix） */
+function toggleMergeSameValue(ctx: TableCtx): void {
+  const s = ctx.selection
+  if (!s) return
+  const main = findMainCell(ctx.rows, s.r1, s.c1)
+  const next = !ctx.rows[main.r]?.cells[main.c]?.mergeSameValue
+  for (let r = s.r1; r <= s.r2; r++) {
+    for (let c = s.c1; c <= s.c2; c++) {
+      const cell = ctx.rows[r]?.cells[c]
+      if (cell && !cell.merged) { cell.mergeSameValue = next }
+    }
+  }
+  ctx.store.updateElement(ctx.el.id, { tableRows: ctx.rows })
+  closeMenu(ctx.store, ctx.fire)
+}
+
+/** 按值合并菜单项的可用性：仅数据行（选区覆盖行全为 data）可 toggle */
+function mergeSameValueDisabledReason(ctx: TableCtx): string | null {
+  const s = ctx.selection
+  if (!s) return '未选择单元格'
+  for (let r = s.r1; r <= s.r2; r++) {
+    if (ctx.rows[r]?.type !== 'data') return '仅数据行（明细行）支持按值合并'
+  }
+  return null
+}
+
 /** 行类型禁用原因：在深拷贝上试算（canvas 同口径，避免污染真实数据） */
 function rowTypeReason(ctx: TableCtx, t: TableRowType): string | null {
   const s = ctx.selection
@@ -632,6 +658,16 @@ export function renderTableContextMenu(
     MENU_DIVIDER(),
     menuItem('合并单元格', () => onMenuAction(ctx, 'merge'), { disabled: !!mergeReason, title: mergeReason || '' }),
     menuItem('拆分单元格', () => onMenuAction(ctx, 'split'), { disabled: !canSplitSelection(ctx) }),
+    menuItem('按值合并', () => toggleMergeSameValue(ctx), {
+      disabled: !!mergeSameValueDisabledReason(ctx),
+      title: mergeSameValueDisabledReason(ctx) || '',
+      active: (() => {
+        const s = ctx.selection
+        if (!s) return false
+        const main = findMainCell(ctx.rows, s.r1, s.c1)
+        return ctx.rows[main.r]?.cells[main.c]?.mergeSameValue === true
+      })(),
+    }),
     MENU_DIVIDER(),
     h('div', { class: 'menu-group-title', text: '行类型' }),
     ...ROW_TYPES.map(t => menuItem(t.label, () => onMenuAction(ctx, 'set-row-type', t.value), {

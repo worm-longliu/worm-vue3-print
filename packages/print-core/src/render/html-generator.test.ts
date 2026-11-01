@@ -103,6 +103,20 @@ describe('renderTableSlice 矩阵输出', () => {
     expect((html.match(/<td/g) ?? []).length).toBe(1)
   })
 
+  it('按值归并产物输出 rowspan 属性，占位格不重复输出值', () => {
+    // row-merge 归并后的数据行形态：行 1 首格 rowspan=2，行 2 同列 merged 占位
+    const opts = matrixOptions()
+    ;((opts._renderRows as any[])[1]!.cells[0] as any).rowspan = 2
+    ;((opts._renderRows as any[])[2]!.cells[0] as any).merged = true
+    ;((opts._renderRows as any[])[2]!.cells[0] as any).content = ''
+    const html = generateHtml(makeTemplate(opts), pageWith([
+      { elementId: 'tbl-1', type: 'table-slice', startRow: 0, endRow: 3 },
+    ]))
+    expect(html).toContain('rowspan="2"')
+    expect((html.match(/<td/g) ?? []).length).toBe(4)
+    expect(html.match(/>A<\/td>/g)).toHaveLength(1)
+  })
+
   it('repeatHeader 切片在行前重复表头段', () => {
     const html = generateHtml(makeTemplate(matrixOptions()), pageWith([
       { elementId: 'tbl-1', type: 'table-slice', startRow: 2, endRow: 3, repeatHeader: true },

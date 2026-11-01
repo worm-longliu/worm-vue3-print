@@ -87,11 +87,11 @@ describe('单元格「恢复默认值」', () => {
   })
 
   /** 单元格行按 cellType 条件渲染，所以"挂了几行"要分类型断言，不能按 22 行总数硬核 */
-  it('文本格：10 个无条件行全部挂上图标', () => {
+  it('文本格：11 个无条件行全部挂上图标', () => {
     const w = mountCells([{ fontSize: 14, padding: 2, color: '#ff0000' }])
     const withIcon = w.findAll('.pd-field').filter(f => f.find('.pd-reset-btn').exists())
-    expect(withIcon.length).toBe(10)
-    for (const t of ['水平对齐', '垂直对齐', '字体', '字号', '加粗', '文字颜色', '背景色', '内边距', '自动换行', '文字溢出']) {
+    expect(withIcon.length).toBe(11)
+    for (const t of ['水平对齐', '垂直对齐', '字体', '字号', '加粗', '文字颜色', '背景色', '内边距', '自动换行', '文字溢出', '按值合并']) {
       expect(rowOf(w, t).find('.pd-reset-btn').exists(), `缺图标：${t}`).toBe(true)
     }
   })

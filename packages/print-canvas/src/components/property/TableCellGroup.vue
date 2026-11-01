@@ -268,11 +268,21 @@
           @update:model-value="writeField('shrinkMinFontSize', $event ?? undefined)" />
       </div>
 
-      <div class="merge-btns">
-        <button type="button" class="pd-button small" :disabled="!!mergeReason" :title="mergeReason || ''" @click="doMerge">
-          合并单元格
-        </button>
-        <button type="button" class="pd-button small" :disabled="!canSplit" @click="doSplit">拆分单元格</button>
+      <div class="merge-card">
+        <div class="merge-card-title">单元格合并</div>
+        <div class="merge-btns">
+          <button type="button" class="pd-button small" :disabled="!!mergeReason" :title="mergeReason || ''" @click="doMerge">
+            合并单元格
+          </button>
+          <button type="button" class="pd-button small" :disabled="!canSplit" @click="doSplit">拆分单元格</button>
+        </div>
+        <div class="merge-card-divider" />
+        <div class="pd-field"><span class="pd-label"><span class="pd-label-t">按值合并</span>
+            <ResetButton v-if="mergeSameValueEnabled" :force="isMulti" :target="mainCell" :base="CELL_FACTORY" prop-key="mergeSameValue" :tip-override="CELL_TIP" :write="(v) => writeField('mergeSameValue', v)" />
+          </span>
+          <input :checked="mergeSameValueChecked" type="checkbox" class="pd-switch" :disabled="!mergeSameValueEnabled" :title="mergeSameValueReason" @input="writeField('mergeSameValue', !!($event.target as HTMLInputElement).checked)" />
+        </div>
+        <div class="merge-card-hint">明细相邻行同值时自动纵向合并；跨页时在该页内成段，续页首行重放该值</div>
       </div>
     </form>
   </PropertyGroup>
@@ -408,6 +418,19 @@ const showBarcodeTextChecked = computed(() => (isMulti.value
 const wordWrapChecked = computed(() => (isMulti.value
   ? batchDraft.value.wordWrap === true
   : mainCell.value.wordWrap ?? true))
+
+/** 按值合并仅对数据行模板格有意义：选区覆盖行全为 data 才可用（多选跨行类型不一致时禁用） */
+const mergeSameValueEnabled = computed(() => {
+  for (let r = props.selection.r1; r <= props.selection.r2; r++) {
+    if (rows.value[r]!.type !== 'data') { return false }
+  }
+  return true
+})
+const mergeSameValueReason = computed(() => (mergeSameValueEnabled.value
+  ? '' : '仅数据行（明细行）支持按值合并'))
+const mergeSameValueChecked = computed(() => (isMulti.value
+  ? batchDraft.value.mergeSameValue === true
+  : mainCell.value.mergeSameValue === true))
 
 /** 单元格内容盒近似：列宽合计 × 行高合计（内边距与塌陷边框不计，只用于判哪一轴能挪） */
 /** 剪裁盒尺寸取「可用内容框」：与出纸钉盒同一口径（扣内边距与塌陷边框），报原始行列和会让可挪量虚高 */
@@ -666,8 +689,31 @@ defineExpose({ openFormatterEditor })
   margin-bottom: 8px;
 }
 .merge-btns {
-  margin-top: 8px;
   display: flex;
   gap: 8px;
+}
+/* 合并相关三件套（动作按钮 + 按值开关）的子卡：动作与声明开关同区聚拢 */
+.merge-card {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--pd-border, #dcdfe6);
+  border-radius: 6px;
+}
+.merge-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pd-text, #303133);
+  margin-bottom: 8px;
+}
+.merge-card-divider {
+  height: 1px;
+  background: var(--pd-menu-divider, #ebeef5);
+  margin: 8px 0;
+}
+.merge-card-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--pd-text-muted, #8b909c);
 }
 </style>

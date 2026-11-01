@@ -42,6 +42,7 @@ import { injectSystemVariables } from './data-binder.js'
 import { evaluateTemplate } from './expression-eval.js'
 import { renderWatermarkLayerHtml } from './watermark.js'
 import { tableDesignBottom } from './pagination-engine.js'
+import { buildMergeOverlay } from './row-merge.js'
 import { barcodeAvailableBoxMm } from './barcode-dot.js'
 import { resolveElementRotation } from './rotation.js'
 
@@ -670,17 +671,23 @@ function renderMatrixRows(
 ): string {
   const trs: string[] = []
   const defaultPadding = opts.tableDefaultPadding ?? 1
+  // 按值合并覆盖层：只在本次渲染区间内归并。分页在此之上切行，跨页的段于页界处断开、
+  // 续页首行重放该值（Word 口径），因此归并不会把整段锚成 keep-together 组。
+  const merge = buildMergeOverlay(renderRows, start, end)
   for (let r = start; r < end; r++) {
     const row = renderRows[r]
     if (!row) continue
     const idxAttr = withRowIndex ? ` data-row-index="${r}"` : ''
     const tds = row.cells
       .map((cell, ci) => ({ cell, ci }))
-      .filter(({ cell }) => !cell.merged)
+      .filter(({ cell, ci }) => !cell.merged && !merge?.merged.has(`${r}:${ci}`))
       .map(({ cell, ci }) => {
-        const rowspan = rowLimit === undefined
+        // 归并段的跨度优先于静态 rowspan；有效格（含 span 后的 rowspan）用于可用高度结算
+        const mergedSpan = merge?.rowspan.get(`${r}:${ci}`)
+        const rowspan = mergedSpan ?? (rowLimit === undefined
           ? (cell.rowspan ?? 1)
-          : Math.max(1, Math.min(cell.rowspan ?? 1, rowLimit - r))
+          : Math.max(1, Math.min(cell.rowspan ?? 1, rowLimit - r)))
+        const ec = mergedSpan === undefined ? cell : { ...cell, rowspan: mergedSpan }
         const span = `${rowspan > 1 ? ` rowspan="${rowspan}"` : ''}${cell.colspan > 1 ? ` colspan="${cell.colspan}"` : ''}`
         const colIndex = ci
         let inner: string
@@ -696,7 +703,7 @@ function renderMatrixRows(
             printerDpi: cell.printerDpi,
             // 可用框 = 单元格内容区（列宽/行高扣除内边距与塌陷边框）；列宽缺失时宽度为 0 → 不约束宽度
             targetWidthMm: cellFitWidthMm(opts.tableColWidths ?? [], ci, cell, defaultPadding),
-            targetHeightMm: cellFitCapMm(renderRows, r, cell, defaultPadding),
+            targetHeightMm: cellFitCapMm(renderRows, r, ec, defaultPadding),
           })}</div>`
         } else if (cell.cellType === 'image') {
           // 图片类型单元格：渲染 <img> 标签
@@ -704,12 +711,12 @@ function renderMatrixRows(
           const maxWidth = cell.maxWidth ? `max-width:${cell.maxWidth}mm;` : 'max-width:100%;'
           const maxHeight = cell.maxHeight ? `max-height:${cell.maxHeight}mm;` : 'max-height:100%;'
           // 只有剪裁档钉盒：td 的高度由内容决定，外框不钉在声明行高上就没有可裁余量（其余档逐字保持存量形态）
-          const boxMm = cellImageBoxMm(fit, cellFitCapMm(renderRows, r, cell, defaultPadding))
+          const boxMm = cellImageBoxMm(fit, cellFitCapMm(renderRows, r, ec, defaultPadding))
           const boxHeight = boxMm === undefined ? 'height:100%' : `height:${boxMm}mm`
           const imgBox = boxMm === undefined ? '' : 'width:100%;height:100%;'
           inner = `<div style="width:100%;${boxHeight};display:flex;align-items:center;justify-content:center;overflow:hidden;"><img src="${esc(resolveCellContent(cell, ctx))}" style="${imgBox}object-fit:${fit};${cropStyle(fit, cell.fitScale, cell.objectPosition)}${maxWidth}${maxHeight}display:block;" /></div>`
         } else {
-          inner = renderTextCellInner(renderRows, r, colIndex, cell, opts, fitOwner, defaultPadding, ctx)
+          inner = renderTextCellInner(renderRows, r, colIndex, ec, opts, fitOwner, defaultPadding, ctx)
         }
         return `<td${span} style="${matrixCellStyle(cell, opts)}">${inner}</td>`
       })

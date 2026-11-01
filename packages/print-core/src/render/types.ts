@@ -176,6 +176,11 @@ export interface RenderCell {
   rowspan: number
   colspan: number
   merged: boolean
+  /**
+   * 模板格「按值合并」声明：同一列相邻数据行文本相同时渲染期纵向归并。
+   * 归并按渲染区间（一片 table-slice）计算，跨页在页界处断开、续页首行重放该值。
+   */
+  mergeSameValue?: boolean
   align?: string
   valign?: string
   fontSize?: number       // pt

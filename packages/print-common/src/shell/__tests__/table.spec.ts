@@ -213,6 +213,7 @@ describe('选区与右键菜单', () => {
       'menu-divider#',
       'menu-item disabled#合并单元格',
       'menu-item disabled#拆分单元格',
+      'menu-item disabled#按值合并',
       'menu-divider#',
       'menu-group-title#行类型',
       'menu-item active#标题行',
@@ -223,7 +224,9 @@ describe('选区与右键菜单', () => {
     const kids = Array.from(m.children)
     expect(kids[8].getAttribute('title')).toBe('至少选择 2 个单元格')
     // 单选格（第 1 行表头）：数据行已存在 → 由 core 试算给出禁用原因
-    expect(kids[13].getAttribute('title')).toBe('数据行已存在（第 2 行），全表最多一行')
+    expect(kids[14].getAttribute('title')).toBe('数据行已存在（第 2 行），全表最多一行')
+    // 表头单选格：按值合并仅数据行可用
+    expect(kids[10].getAttribute('title')).toBe('仅数据行（明细行）支持按值合并')
   })
 
   it('表格未选中时右键单元格仍打开菜单，并单选该表格（与 canvas 同口径）', () => {
@@ -266,11 +269,11 @@ describe('选区与右键菜单', () => {
     const id = store.elements[0]!.id
     store.tableSelection = { elementId: id, r1: 2, c1: 0, r2: 2, c2: 0 }
     let host = openMenu(store, menu, id, 2, 0)
-    Array.from(host.querySelector('.table-ctx-menu')!.children)[14].dispatchEvent(mouse('click', { bubbles: true }))
+    Array.from(host.querySelector('.table-ctx-menu')!.children)[15].dispatchEvent(mouse('click', { bubbles: true }))
     expect((store.elements[0]!.options.tableRows as TableRow[])[2]!.type).toBe('subtotal')
     store.tableSelection = { elementId: id, r1: 0, c1: 0, r2: 0, c2: 0 }
     host = openMenu(store, menu, id, 0, 0)
-    const subtotalItem = Array.from(host.querySelector('.table-ctx-menu')!.children)[14] as HTMLElement
+    const subtotalItem = Array.from(host.querySelector('.table-ctx-menu')!.children)[15] as HTMLElement
     expect(subtotalItem.className).toContain('disabled')
     expect(subtotalItem.getAttribute('title')).toBe('小计/汇总行必须位于数据行之后')
     subtotalItem.dispatchEvent(mouse('click', { bubbles: true }))

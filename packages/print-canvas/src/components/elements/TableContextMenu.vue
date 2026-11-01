@@ -42,6 +42,14 @@
       >
         拆分单元格
       </div>
+      <div
+        class="menu-item"
+        :class="{ disabled: !!mergeSameValueDisabledReason, active: mergeSameValueActive }"
+        :title="mergeSameValueDisabledReason || ''"
+        @click="!mergeSameValueDisabledReason && emitAction('toggle-merge-same-value')"
+      >
+        按值合并
+      </div>
       <div class="menu-divider" />
       <div class="menu-group-title">行类型</div>
       <div
@@ -76,6 +84,9 @@ defineProps<{
   canDeleteCol: boolean
   mergeDisabledReason: string | null
   canSplit: boolean
+  /** 按值合并 toggle：主格当前开启态（active 高亮） */
+  mergeSameValueActive: boolean
+  mergeSameValueDisabledReason: string | null
   currentRowType: TableRowType | null
   rowTypeDisabledReason: (t: TableRowType) => string | null
 }>()

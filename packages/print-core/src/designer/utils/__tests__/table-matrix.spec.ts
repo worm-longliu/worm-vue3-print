@@ -66,6 +66,18 @@ describe('合并/拆分', () => {
     expect(canMergeReason(rows, { r1: 0, c1: 0, r2: 1, c2: 0 })).toContain('类型')
   })
 
+  it('拒绝数据行内跨行合并（动态展开会错位，纵向归并走「按值合并」）', () => {
+    const rows = makeTypedRows(['data', 'data'], 2)
+    expect(canMergeReason(rows, { r1: 0, c1: 0, r2: 1, c2: 0 })).toContain('按值合并')
+  })
+
+  it('数据行单行内横向合并不受限，header 跨行合并不受限', () => {
+    const dataRows = makeTypedRows(['data'], 2)
+    expect(canMergeReason(dataRows, { r1: 0, c1: 0, r2: 0, c2: 1 })).toBeNull()
+    const headerRows = makeTypedRows(['header', 'header'], 2)
+    expect(canMergeReason(headerRows, { r1: 0, c1: 0, r2: 1, c2: 0 })).toBeNull()
+  })
+
   it('拒绝与已有合并区部分重叠（normalizeSelection 扩展后等值判断）', () => {
     const rows = makeRows(3, 3)
     mergeCells(rows, { r1: 0, c1: 0, r2: 1, c2: 1 })

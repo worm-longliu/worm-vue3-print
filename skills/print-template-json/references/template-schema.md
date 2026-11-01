@@ -178,6 +178,12 @@ Chromium 会合成粗体，度量漂移会静默改分页。
 - 行类型：`header`（表头，可 `repeatOnPage` 每页重复）、`data`（明细，按 `dataSource` 迭代）、
   `subtotal`（**本页**小计，`SUM` 只聚合当前页）、`summary`（总计，聚合全部）
 - **每行 `cells` 长度恒等于列数**：`colspan`/`rowspan` 覆盖的格必须补 `{ "id": "...", "merged": true }` 占位格
+  （仅限静态行；`data` 行模板上的纵向 `rowspan`/`merged` 会在动态展开时被忽略并归一）
+- **数据行按值纵向合并**：`data` 行模板格声明 `"mergeSameValue": true` 后，渲染期对相邻数据行
+  比较该列求值文本，相同则自动纵向合并（如批次/类别列）。归并按**渲染区间**计算：每一页在本页内成段，
+  跨页的段在页界处断开、下一页首行重放该值（Word/Excel 口径），因此不影响分页与行组切片。
+  空值与含页码表达式（`pageIndex`/`totalPages`）的列不参与；各列独立归并、不联动。**归并产生的占位格
+  不写入模板 JSON**（与静态合并不同，占位在渲染时计算），各列建议先按该列排序再开合并
 - 列宽和应等于 `width`、行高和应等于 `height`（设计器加载会按实际渲染尺寸回写，但手写时应自洽）
 - 单元格常用字段：`formatter`、`cellType`（`text`/`barcode`/`qrcode`/`image`）、`align`（`left`/`center`/`right`/`justify`，`justify` = 撑满列宽含末行，渲染端成对输出 `text-align:justify;text-align-last:justify`）、`valign`、
   `fontSize`、`fontWeight`、`color`、`backgroundColor`、`padding`、`borders`（`{top,right,bottom,left}`，

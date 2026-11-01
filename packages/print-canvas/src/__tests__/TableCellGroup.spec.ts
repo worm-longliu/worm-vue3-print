@@ -689,3 +689,70 @@ describe('TableCellGroup 单格四边不一致显示混合', () => {
     expect(w.text()).not.toContain('四边边框规格不一致')
   })
 })
+
+describe('TableCellGroup 按值合并开关', () => {
+  const cellOf = (element: RuntimeElement, r: number, c: number) =>
+    (element.options.tableRows as any[])[r].cells[c] as TableCell
+  const field = (w: ReturnType<typeof mount>, label: string) =>
+    w.findAll('.pd-field').find(f => f.find('.pd-label').text() === label)
+  const switchOf = (w: ReturnType<typeof mount>) => field(w, '按值合并')!.find('input.pd-switch')
+
+  function mountRows(
+    rowTypes: Array<'header' | 'data'>,
+    selection: { r1: number; c1: number; r2: number; c2: number },
+  ) {
+    const element = reactive({
+      id: 'el-table',
+      options: {
+        tableColWidths: [50, 50],
+        tableRows: rowTypes.map((type, ri) => ({
+          id: `r${ri}`,
+          type,
+          height: 10,
+          cells: [
+            { id: `c${ri}-0`, formatter: 'A' },
+            { id: `c${ri}-1`, formatter: 'B' },
+          ],
+        })),
+      },
+      printElementType: { type: 'table', title: '表格' },
+    }) as unknown as RuntimeElement
+    const w = mount(TableCellGroup, {
+      props: { element, selection: { elementId: 'el-table', ...selection }, fields: [] },
+      global: {
+        provide: {
+          [TABLE_EDIT_KEY as symbol]: { tableSelection: { value: null }, setTableSelection: () => {}, recordHistory: () => {} },
+        },
+      },
+    })
+    return { w, element }
+  }
+
+  it('数据行单选：回显当前值，勾选写入 mergeSameValue，再点取消', async () => {
+    const { w, element } = mountRows(['data'], { r1: 0, c1: 0, r2: 0, c2: 0 })
+    expect((switchOf(w).element as HTMLInputElement).checked).toBe(false)
+    await switchOf(w).setValue(true)
+    expect(cellOf(element, 0, 0).mergeSameValue).toBe(true)
+    await switchOf(w).setValue(false)
+    expect(cellOf(element, 0, 0).mergeSameValue).toBe(false)
+  })
+
+  it('非数据行禁用并给理由，数据行可用', () => {
+    const header = mountRows(['header'], { r1: 0, c1: 0, r2: 0, c2: 0 })
+    expect((switchOf(header.w).element as HTMLInputElement).disabled).toBe(true)
+    expect(switchOf(header.w).attributes('title')).toBe('仅数据行（明细行）支持按值合并')
+
+    const mixed = mountRows(['header', 'data'], { r1: 0, c1: 0, r2: 1, c2: 0 })
+    expect((switchOf(mixed.w).element as HTMLInputElement).disabled).toBe(true)
+
+    const data = mountRows(['data', 'data'], { r1: 0, c1: 0, r2: 1, c2: 0 })
+    expect((switchOf(data.w).element as HTMLInputElement).disabled).toBe(false)
+  })
+
+  it('跨数据行多选批写：整列选中格全部写入', async () => {
+    const { w, element } = mountRows(['data', 'data'], { r1: 0, c1: 0, r2: 1, c2: 0 })
+    await switchOf(w).setValue(true)
+    expect(cellOf(element, 0, 0).mergeSameValue).toBe(true)
+    expect(cellOf(element, 1, 0).mergeSameValue).toBe(true)
+  })
+})

@@ -520,7 +520,7 @@ describe('TableElement 右键菜单', () => {
     expect(menuItems().map(i => i.textContent?.trim())).toEqual([
       '在上方插入行', '在下方插入行', '删除行',
       '在左侧插入列', '在右侧插入列', '删除列',
-      '合并单元格', '拆分单元格',
+      '合并单元格', '拆分单元格', '按值合并',
       '标题行', '数据行', '小计行', '汇总行',
     ])
   })
@@ -609,6 +609,32 @@ describe('TableElement 右键菜单', () => {
     headerItem.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     await nextTick()
     expect(element.options.tableRows![0].type).toBe('header')
+  })
+
+  it('按值合并：数据行 toggle 写入模型并记历史，非数据行置灰', async () => {
+    const { wrapper, element, recordHistory } = mountMenuTable()
+    // r0=header：菜单项置灰
+    await openMenu(wrapper, 0, 0)
+    const headerItem = menuItems().find(i => i.textContent?.trim() === '按值合并')!
+    expect(headerItem.className).toContain('disabled')
+    expect(headerItem.getAttribute('title')).toBe('仅数据行（明细行）支持按值合并')
+    headerItem.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await nextTick()
+    expect(element.options.tableRows![0].cells[0].mergeSameValue).toBeUndefined()
+    // r1=data：toggle 开 → active 高亮 + 模型写入；再 toggle 关
+    await openMenu(wrapper, 1, 0)
+    const dataItem = menuItems().find(i => i.textContent?.trim() === '按值合并')!
+    expect(dataItem.className).not.toContain('disabled')
+    dataItem.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await nextTick()
+    expect(element.options.tableRows![1].cells[0].mergeSameValue).toBe(true)
+    expect(recordHistory).toHaveBeenCalled()
+    await openMenu(wrapper, 1, 0)
+    const activeItem = menuItems().find(i => i.textContent?.trim() === '按值合并')!
+    expect(activeItem.className).toContain('active')
+    activeItem.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await nextTick()
+    expect(element.options.tableRows![1].cells[0].mergeSameValue).toBe(false)
   })
 
   it('动作执行后记一次历史并清空选区', async () => {
