@@ -772,6 +772,11 @@ export function validateTemplateJson(input: unknown): ValidationResult {
 
 `schema.safeParse` 的返回类型由 zod 推导；`templateDataSchema` 与 `multiPageTemplateDataSchema` 的推断类型不同，若 TS 报联合类型上取 `parsed.error` 不成立，给两个分支各写一次 `safeParse` 调用，不要加 `as any`。
 
+落地实测两处偏差（已按此修正代码）：
+- 两个 schema 的联合 narrowing 确实取不到 `error.issues`，采用「先分支再各自 safeParse」的写法。
+- zod 4 的 `issue.path` 类型是 `PropertyKey[]`（可能含 symbol），`joinPath` 的入参必须写成 `readonly PropertyKey[]` 并用 `String(seg)` 渲染，否则 `tsc` 报 TS2345。
+- 宽松对象统一用 `.catchall(z.unknown())`（zod 4 已不鼓励 `.passthrough()`），全包保持同一写法。
+
 - [ ] **Step 6: 跑测试确认通过**
 
 Run: `npm run test -w @worm-vue3-print/contract -- validate`
