@@ -6,6 +6,15 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
  */
 export type ToolResult = CallToolResult
 
+/** 工具注册表条目：handler 与 SDK 解耦，便于直接单测而无需起 stdio 服务 */
+export interface ToolDef {
+  name: string
+  description: string
+  /** JSON Schema（由 zod 的 z.toJSONSchema 生成），MCP 的 inputSchema 要 JSON Schema 而非 zod 实例 */
+  inputSchema: Record<string, unknown>
+  handler: (args: Record<string, unknown>) => Promise<ToolResult>
+}
+
 export function asText(payload: unknown): ToolResult {
   return { content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }] }
 }

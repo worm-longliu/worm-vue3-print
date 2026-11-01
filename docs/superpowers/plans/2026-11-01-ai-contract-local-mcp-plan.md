@@ -1995,6 +1995,13 @@ Expected: 除 `print_render_preview` 一条外全绿（`draftTemplate` 返回的
 Run: `npm run build -w @worm-vue3-print/mcp && printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"print_element_kinds","arguments":{}}}' | node packages/print-mcp/dist/index.js`
 Expected: `tools/list` 返回 5 个工具（Task 9 后为 6 个）；`tools/call` 回包里 `content[0].text` 含 `"html"` 且其 `blocked: true`。
 
+**落地实测偏差（已按此修正，16 passed / tsc 干净 / stdio 实调通过）：**
+- `ToolDef` 落在 `src/tool-types.ts`（共享类型模块），不再由 Task 7 的 `tools.ts` 桩声明——桩被真实工具替换时类型不能一起消失。
+- `zod` 必须显式写进 print-mcp 的 `dependencies`：`z.toJSONSchema` 在传输层用，靠 workspace 提升侥幸能 import 不算依赖正确。
+- `TemplateData` 类型只能从 `@worm-vue3-print/core/designer` 取；contract 不 re-export core 类型（边界见约束 3）。
+- `z.toJSONSchema(schema, { target: 'draft-2020-12' })` 在 zod 4.6.7 可用；`z.object({})` 产出 `{ type: 'object' }`，故「每个工具 inputSchema.type === 'object'」这条断言成立。
+- 测试 helper 取 `r.content[0].text` 会撞 TS2339（content 是 text/image/audio/resource 的联合），必须先 `block.type !== 'text'` 收窄。
+
 - [ ] **Step 5: 提交**
 
 ```bash
