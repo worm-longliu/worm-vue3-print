@@ -2184,6 +2184,13 @@ Expected: 全绿（render-client 两条 + 工具级全部）。注意本条依�
 `npm run dev -w @worm-vue3-print/render`（另开终端）+ `PRINT_RENDER_BASE_URL=http://127.0.0.1:3001 RENDER_API_KEY=dev-render-key node packages/print-mcp/dist/index.js`，用 Step 4 of Task 8 的 `tools/call` 报文把 `name` 换成 `print_render_preview`。
 Expected: 回包 `pdfPath` 指向的文件存在且首 5 字节是 `%PDF-`。
 
+落地实测：`/health` 返回 `{status:"ok",maxConcurrent:5}`；经 stdio 调 `print_render_preview` 得 `isError=false / ok=true`，产物 4845 字节、首 5 字节 `%PDF-`；dev server 验完已停（临时进程不留）。
+
+**本任务另三处偏差（已按此修正，23 passed / tsc 干净）：**
+- `stub()` 的 handler 参数必须写成 `IncomingMessage`，不能自造 `{ headers: Record<string, string|undefined> }`：`IncomingHttpHeaders` 的索引值含 `string[]`，窄类型使 `createServer` 重载匹配失败（TS2769）。相应把 `seenKey` 声明为 `string | string[] | undefined`。
+- 工具数断言不新增 `toHaveLength(6)`，而是直接更新注册表名单断言为 6 个名字：同一事实只留一处口径，且不让 Task 8 的名单断言在增工具后失效。
+- `print_render_preview` 送渲染前先跑 `validateTemplateJson`，不合法直接回 `{stage:'validate',ok:false,issues}`：省一次浏览器渲染，agent 也能拿到可行动的修复信息。
+
 - [ ] **Step 5: 提交**
 
 ```bash

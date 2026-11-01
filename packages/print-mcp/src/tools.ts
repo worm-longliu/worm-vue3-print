@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import {
   ELEMENT_KINDS,
   EXPRESSION_FUNCTIONS,
@@ -9,6 +11,8 @@ import {
 } from '@worm-vue3-print/contract'
 import type { TemplateData } from '@worm-vue3-print/core/designer'
 import type { DraftSpec } from '@worm-vue3-print/contract'
+import { readConfig } from './config.js'
+import { requestRenderPdf } from './render-client.js'
 import type { ToolDef, ToolResult } from './tool-types.js'
 import { asText } from './tool-types.js'
 
@@ -107,6 +111,47 @@ export const TOOLS: ToolDef[] = [
     handler: async (args): Promise<ToolResult> => {
       const spec = (args as { spec: DraftSpec }).spec
       return asText(draftTemplate(spec))
+    },
+  },
+  {
+    name: 'print_render_preview',
+    description: '调用 print-render 渲染服务出真实 PDF（真分页/真实行高），返回本地 PDF 路径。需要环境变量 PRINT_RENDER_BASE_URL（如 http://127.0.0.1:3001）与 RENDER_API_KEY；未配置时直接返回降级说明。本工具不重复实现排版。',
+    inputSchema: schemaOf(z.object({
+      templateJson: z.unknown(),
+      printData: z.union([
+        z.record(z.string(), z.unknown()),
+        z.array(z.record(z.string(), z.unknown())),
+      ]).optional(),
+      baseUrl: z.string().optional(),
+      fontBaseUrl: z.string().optional(),
+      paperHeightMm: z.number().positive().optional(),
+    })),
+    handler: async (args): Promise<ToolResult> => {
+      const a = args as {
+        templateJson: unknown
+        printData?: unknown
+        baseUrl?: string
+        fontBaseUrl?: string
+        paperHeightMm?: number
+      }
+      // 先过契约门：把明显不合法的模板送给渲染服务只是浪费一次浏览器渲染
+      const precheck = validateTemplateJson(a.templateJson)
+      if (!precheck.ok) {
+        return asText({ stage: 'validate', ok: false, issues: precheck.issues })
+      }
+      const cfg = readConfig()
+      const pdfPath = join(tmpdir(), `worm-print-preview-${Date.now()}.pdf`)
+      const r = await requestRenderPdf(cfg, {
+        templateJson: a.templateJson,
+        ...(a.printData !== undefined ? { printData: a.printData } : {}),
+        ...(a.baseUrl ? { baseUrl: a.baseUrl } : {}),
+        ...(a.fontBaseUrl ? { fontBaseUrl: a.fontBaseUrl } : {}),
+        ...(a.paperHeightMm ? { paperHeightMm: a.paperHeightMm } : {}),
+      }, pdfPath)
+      if (!r.ok) {
+        return { content: [{ type: 'text' as const, text: r.message }], isError: true }
+      }
+      return asText({ ok: true, pdfPath, hint: '用 PDF 页数与目视结果核对分页；静态体检不含真实行高' })
     },
   },
 ]

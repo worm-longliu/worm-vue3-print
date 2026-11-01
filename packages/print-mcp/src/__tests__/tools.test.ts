@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { TOOLS } from '../tools.js'
 
 const call = async (name: string, args: Record<string, unknown>) => {
@@ -30,10 +30,10 @@ describe('MCP 工具注册表', () => {
     expect(names.every(n => /^[a-z][a-z0-9_]*$/.test(n))).toBe(true)
   })
 
-  it('契约层四件事 + 元素清单齐备', () => {
+  it('契约层四件事 + 元素清单 + 渲染出口齐备', () => {
     expect(TOOLS.map(t => t.name).sort()).toEqual([
       'print_check_expression', 'print_draft_template', 'print_element_kinds',
-      'print_inspect_layout', 'print_validate_template',
+      'print_inspect_layout', 'print_render_preview', 'print_validate_template',
     ])
   })
 
@@ -100,8 +100,7 @@ describe('print_inspect_layout', () => {
   })
 })
 
-describe('print_draft_template', () => {
-  it('拒绝 html 元素', async () => {
+describe('print_draft_template', () => {  it('拒绝 html 元素', async () => {
     const data = JSON.parse((await call('print_draft_template', {
       spec: { elements: [{ type: 'html', options: { left: 0, top: 0, width: 10, height: 10 } }] },
     })).text)
@@ -114,5 +113,24 @@ describe('print_draft_template', () => {
     })).text)
     expect(data.expressionErrors).toEqual([])
     expect(data.template.unit).toBe('mm')
+  })
+})
+
+describe('print_render_preview', () => {
+  it('契约不合法时先被 validate 拦下，不浪费一次渲染', async () => {
+    const data = JSON.parse((await call('print_render_preview', { templateJson: { paperSize: 'A99' } })).text)
+    expect(data.stage).toBe('validate')
+    expect(data.ok).toBe(false)
+  })
+
+  it('未配置渲染服务时降级为可读提示而不是静默', async () => {
+    vi.stubEnv('PRINT_RENDER_BASE_URL', '')
+    try {
+      const { text, isError } = await call('print_render_preview', { templateJson: validTemplate })
+      expect(isError).toBe(true)
+      expect(text).toContain('PRINT_RENDER_BASE_URL')
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 })
