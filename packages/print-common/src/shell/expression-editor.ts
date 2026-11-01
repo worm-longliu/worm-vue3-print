@@ -226,7 +226,7 @@ function helpSection(): El {
     h('div', { class: 'ee-help-grid' }, [
       helpCard('ee-help-field', '输入方式', [
         '双击左侧字段、变量、函数即可插入到表达式输入框中',
-        '按住 Ctrl（Mac 为 ⌘）双击字段插入字段名称，当静态文本用',
+        '双击途中按住 Ctrl（Mac 为 ⌘）切换为插入字段名称，当静态文本用',
         '静态数据直接输入即可，如：供应商名称',
         '动态解析字段、变量、函数必须用 {} 包裹',
         '示例：{SUM(supplier.name)}',
@@ -458,7 +458,7 @@ export function renderExpressionEditor(opts: ExpressionEditorOptions, target: Ex
       h('textarea', {
         class: 'ee-textarea',
         rows: 6,
-        placeholder: '双击左侧字段/变量/函数插入，Ctrl/⌘+双击字段插入字段名，或直接输入静态内容',
+        placeholder: '双击左侧字段/变量/函数插入，双击途中按住 Ctrl（Mac 为 ⌘）切换为插入字段名，或直接输入静态内容',
         text: state.expression,
         onInput: (ev: Event) => {
           state.expression = (ev.target as HTMLTextAreaElement).value

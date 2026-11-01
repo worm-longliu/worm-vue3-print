@@ -2,7 +2,8 @@
   <div
     ref="rootRef"
     class="canvas-area"
-    @dragover.prevent
+    @dragover="onDragOver"
+    @dragleave="onDragLeave"
     @drop="onDrop"
     @mousedown="onCanvasMouseDown"
     @mousemove="onMouseMove"
@@ -80,6 +81,13 @@
       }"
     />
 
+    <!-- 拖放落点自绘徽标：原生光标徽标会被 OS 按 Ctrl/⌘ 重算（Mac/Win 均会消失），拖动期间由画布自报将创建什么 -->
+    <div
+      v-if="dropHint"
+      class="drop-hint"
+      :style="{ left: dropHint.x + 'px', top: dropHint.y + 'px' }"
+    >{{ dropHint.text }}</div>
+
     <!-- 右键菜单：fixed 定位脱离滚动容器，避免撑大 scrollWidth/Height 触发滚动条 -->
     <div
       v-if="contextMenu.visible"
@@ -143,7 +151,7 @@ const emit = defineEmits<{
   'drop-field': [
     field: { fieldKey: string; fieldLabel: string },
     dropPoint?: { x: number; y: number },
-    /** 按住 Ctrl/Cmd 放置：生成内容为字段中文名的静态文本元素 */
+    /** 拖动中按过 Ctrl/Cmd（锁存）或松手时按住：生成内容为字段中文名的静态文本元素 */
     asLabel?: boolean,
   ]
   'drag-start': []
@@ -259,14 +267,52 @@ function toPaperPoint(e: DragEvent): { x: number; y: number } | undefined {
   return { x, y }
 }
 
+function onDragOver(e: DragEvent) {
+  e.preventDefault()
+  // 显式钉死 copy：不写时 Windows Chromium 会按原生修饰键重算效果，按住 Ctrl 拖动
+  // 会被当作「请求另一种默认动作」而落到不允许的档位，复制徽标消失甚至拒收 drop
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+  updateDropHint(e)
+}
+
+/** 拖放落点自绘徽标：只认本设计器的拖起件（dataTransfer 类型区分），外部拖入不显示 */
+const dropHint = ref<{ x: number; y: number; text: string } | null>(null)
+/**
+ * 字段拖拽的静态文本意图锁存：macOS 按住 ⌘ 松鼠标时，原生会话会直接拒绝、
+ * drop 不派发到页面（effectAllowed 放宽也压不住），用户被迫「先松 ⌘ 再松鼠标」——
+ * 若只认 drop 事件上的修饰键就会落成取值字段。拖拽中任一 dragover 看到过 ⌘/Ctrl
+ * 即锁定本次为静态文本，松手时按锁存值落；徽标显示同一锁存值，所见即所得。
+ */
+const dropLabelIntent = ref(false)
+function updateDropHint(e: DragEvent) {
+  const types = e.dataTransfer?.types
+  const hasField = !!types?.includes('fielddata')
+  const hasElement = !!types?.includes('elementtype')
+  if (!hasField && !hasElement) { dropHint.value = null; return }
+  // 元素类拖起件不读修饰键（Ctrl 不改变其语义），仅字段区分取值绑定 vs 静态文本
+  if (hasField && (e.ctrlKey || e.metaKey)) dropLabelIntent.value = true
+  const text = hasElement ? '＋ 元素' : dropLabelIntent.value ? '＋ 静态文本' : '＋ 取值字段'
+  dropHint.value = { x: e.clientX + 14, y: e.clientY + 18, text }
+}
+function clearDropHint() { dropHint.value = null }
+function resetDropDrag() { dropHint.value = null; dropLabelIntent.value = false }
+
+function onDragLeave(e: DragEvent) {
+  const next = e.relatedTarget as Node | null
+  // 出画布只收起徽标：意图属于整次拖拽会话，回画布仍按锁存值显示与落点
+  if (!next || !rootRef.value?.contains(next)) clearDropHint()
+}
+
 function onDrop(e: DragEvent) {
+  const asLabel = dropLabelIntent.value || e.ctrlKey || e.metaKey
+  resetDropDrag()
   const dropPoint = toPaperPoint(e)
   const fieldData = e.dataTransfer?.getData('fieldData')
   if (fieldData) {
     try {
       const field = JSON.parse(fieldData) as { fieldKey: string; fieldLabel: string }
-      // 修饰键只在 drop 时读：拖动途中按下 Ctrl 同样生效
-      emit('drop-field', field, dropPoint, e.ctrlKey || e.metaKey)
+      // 锁存意图优先；drop 事件自身的修饰键作兜底（未经历 dragover 锁存的通路）
+      emit('drop-field', field, dropPoint, asLabel)
       return
     } catch {
       // 解析失败，忽略
@@ -573,6 +619,8 @@ onMounted(() => {
     resizeObserver = new ResizeObserver(measureRuler)
     resizeObserver.observe(rootRef.value)
   }
+  // Esc 取消/拖到画布外松手时不会有 drop，靠源端 dragend 兜底清徽标与锁存意图
+  document.addEventListener('dragend', resetDropDrag, true)
 })
 
 watch(() => props.scale, startScaleMeasureLoop)
@@ -613,6 +661,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('mousemove', onMarqueeMove)
   window.removeEventListener('mouseup', onMarqueeUp)
   window.removeEventListener('mousedown', scheduleMenuClose)
+  document.removeEventListener('dragend', resetDropDrag, true)
   resizeObserver?.disconnect()
   cancelAnimationFrame(scaleMeasureRaf)
 })
@@ -657,6 +706,21 @@ onBeforeUnmount(() => {
   border-radius: 2px;
   pointer-events: none;
   z-index: 10000;
+}
+/* 拖放落点自绘徽标：原生光标徽标受 OS 修饰键重算，Mac/Win 按住 ⌘/Ctrl 时都可能消失，
+   拖动期间由画布自绘「将创建什么」，与落点判定无关（gen-styles 派生进 common，类名即契约） */
+.drop-hint {
+  position: fixed;
+  z-index: 10002;
+  pointer-events: none;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--pd-accent, #165dff);
+  color: #fff;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 18%);
 }
 /* 右键菜单：fixed 定位，不参与滚动容器的内容尺寸计算，避免出现滚动条 */
 .context-menu {

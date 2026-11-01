@@ -97,6 +97,8 @@ const elementTypes: { type: ElementType; label: string; icon: string }[] = [
 
 function onDragStart(event: DragEvent, type: string) {
   event.dataTransfer?.setData('elementType', type)
+  // 宽效果集，理由同 FieldTreePanel：收窄会让 macOS 的 ⌘ 重算落到允许集外被会话拒绝
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'all'
 }
 
 function onFieldDrag(field: PrintBusinessField) {

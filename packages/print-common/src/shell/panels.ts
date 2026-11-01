@@ -82,7 +82,12 @@ function elementsPane(): unknown[] {
       class: 'material-card',
       draggable: true,
       dataset: { test: `material-${item.type}` },
-      onDragstart: (ev: Event) => (ev as DragEvent).dataTransfer?.setData('elementType', item.type),
+      onDragstart: (ev: Event) => {
+        const dt = (ev as DragEvent).dataTransfer
+        dt?.setData('elementType', item.type)
+        // 宽效果集，理由同 canvas LeftPanel：收窄会让 macOS 的 ⌘ 重算落到允许集外被会话拒绝
+        if (dt) dt.effectAllowed = 'all'
+      },
     }, [
       h('span', { class: 'material-icon', text: item.icon }),
       h('span', { class: 'material-label', text: item.label }),
@@ -123,10 +128,13 @@ function fieldsPane(ctx: ShellCtx) {
       const rows = collapsed ? [] : group.fields.map(field => h('div', {
         class: 'field-row',
         draggable: true,
-        'data-tip': `${field.fieldLabel} (${field.fieldKey}) · 单击复制字段名 · Ctrl/⌘+拖动插入字段名`,
+        'data-tip': `${field.fieldLabel} (${field.fieldKey}) · 单击复制字段名 · 拖动中按住 Ctrl（Mac 为 ⌘）切换为插入字段名`,
         style: { paddingLeft: `${group.key ? 22 : 8}px` },
         onDragstart: (ev: Event) => {
-          (ev as DragEvent).dataTransfer?.setData('fieldKey', field.fieldKey)
+          const dt = (ev as DragEvent).dataTransfer
+          dt?.setData('fieldKey', field.fieldKey)
+          // 与 canvas FieldTreePanel 同口径：宽效果集，macOS 的 ⌘ 重算不能被会话拒绝
+          if (dt) dt.effectAllowed = 'all'
         },
         // 单击复制字段中文名（对齐 canvas FieldTreePanel 的 onCopyField，Gitee #IKRIZM）
         onClick: () => {

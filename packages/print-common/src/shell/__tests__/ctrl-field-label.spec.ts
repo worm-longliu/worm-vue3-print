@@ -152,4 +152,73 @@ describe('画布字段落点：Ctrl 拖放生成静态文本元素（common）',
     dropField(root, { metaKey: true })
     expect(lastElement(store).options.formatter).toBe('供应商名称')
   })
+
+  it('dragover 显式写 dropEffect=copy（防 Windows 按住 Ctrl 时被原生重算吞掉复制徽标）', async () => {
+    const { root } = await mountDesigner()
+    const canvas = root.querySelector<HTMLElement>('[data-test="canvas-area"]')!
+    const ev = new Event('dragover', { bubbles: true, cancelable: true })
+    const dt: { dropEffect: string } = { dropEffect: 'none' }
+    Object.defineProperty(ev, 'dataTransfer', { value: dt })
+    canvas.dispatchEvent(ev)
+    expect(ev.defaultPrevented).toBe(true)
+    expect(dt.dropEffect).toBe('copy')
+  })
+
+  /** dragover 桩：只暴露 types/dropEffect（真实浏览器拖动中读不了数据、能读类型） */
+  function dragOver(root: ShadowRoot, opts: { types?: string[]; ctrlKey?: boolean; metaKey?: boolean } = {}) {
+    const canvas = root.querySelector<HTMLElement>('[data-test="canvas-area"]')!
+    const ev = new Event('dragover', { bubbles: true, cancelable: true })
+    const dt: { types: string[]; dropEffect: string } = { types: opts.types ?? [], dropEffect: 'none' }
+    Object.defineProperties(ev, {
+      dataTransfer: { value: dt },
+      ctrlKey: { value: !!opts.ctrlKey },
+      metaKey: { value: !!opts.metaKey },
+      clientX: { value: 10 },
+      clientY: { value: 10 },
+    })
+    canvas.dispatchEvent(ev)
+    return dt
+  }
+  const hintText = (root: ShadowRoot) => root.querySelector('.drop-hint')?.textContent ?? null
+
+  it('落点自绘徽标与 canvas 同文案，放下即消失', async () => {
+    const { root, store } = await mountDesigner()
+    // 未按键在前：按过修饰键后徽标按锁存值保持（锁存语义见下一条用例）
+    dragOver(root, { types: ['fieldkey'] })
+    expect(hintText(root)).toBe('＋ 取值字段')
+    dragOver(root, { types: ['fieldkey'], metaKey: true })
+    expect(hintText(root)).toBe('＋ 静态文本')
+    dragOver(root, { types: ['elementtype'], ctrlKey: true })
+    expect(hintText(root)).toBe('＋ 元素')
+    dragOver(root, { types: ['files'] })
+    expect(hintText(root)).toBe(null)
+
+    // 元素放下：徽标先摘除、再落库，画布出现新元素
+    dragOver(root, { types: ['elementtype'] })
+    expect(hintText(root)).toBe('＋ 元素')
+    const canvas = root.querySelector<HTMLElement>('[data-test="canvas-area"]')!
+    const d = new Event('drop', { bubbles: true, cancelable: true })
+    Object.defineProperties(d, {
+      dataTransfer: { value: { getData: (t: string) => (t === 'elementType' ? 'text' : '') } },
+      clientX: { value: 10 },
+      clientY: { value: 10 },
+    })
+    canvas.dispatchEvent(d)
+    expect(hintText(root)).toBe(null)
+    expect(store.elements.some(el => el.printElementType.type === 'text')).toBe(true)
+  })
+
+  it('拖拽中按过 ⌘ 即锁存：松键后的 drop 仍落静态文本，徽标同步锁存值', async () => {
+    const { root, store } = await mountDesigner()
+    dragOver(root, { types: ['fieldkey'], metaKey: true })
+    expect(hintText(root)).toBe('＋ 静态文本')
+    // 途中松开 ⌘（macOS 用户被迫的先松键再松鼠标序列）：徽标与落点都按锁存值
+    dragOver(root, { types: ['fieldkey'] })
+    expect(hintText(root)).toBe('＋ 静态文本')
+    dropField(root)
+    expect(lastElement(store).options.formatter).toBe('供应商名称')
+    // 锁存随会话复位：下一次普通拖放仍是取值绑定
+    dropField(root)
+    expect(lastElement(store).options.formatter).toBe('{supplier.name}')
+  })
 })

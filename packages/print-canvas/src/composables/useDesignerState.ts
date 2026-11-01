@@ -429,7 +429,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     dropPoint?: { x: number; y: number },
     asLabel = false,
   ) {
-    // asLabel：按住 Ctrl/Cmd 拖放，生成内容为字段中文名的静态文本元素
+    // asLabel：拖动中按过/按住 Ctrl/Cmd，生成内容为字段中文名的静态文本元素
     const el = asLabel ? createFieldLabelElement(field) : createFieldElement(field)
     if (dropPoint && !placeAtDropPoint(el, dropPoint)) return
     elements.value.push(el)

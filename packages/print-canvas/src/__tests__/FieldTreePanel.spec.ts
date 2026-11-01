@@ -9,7 +9,7 @@ import type { PrintBusinessField } from '@worm-vue3-print/core/designer'
 
 const LONG_LABEL = '客户签收备注（加急）'
 const LONG_KEY = 'customer.receiptRemark.urgentHandling'
-const ROW_TIP = `${LONG_LABEL} (${LONG_KEY}) · 单击复制字段名 · Ctrl/⌘+拖动插入字段名`
+const ROW_TIP = `${LONG_LABEL} (${LONG_KEY}) · 单击复制字段名 · 拖动中按住 Ctrl（Mac 为 ⌘）切换为插入字段名`
 
 const fields: PrintBusinessField[] = [
   { id: '1', fieldKey: 'customer', fieldLabel: '客户信息', fieldType: 'string', sortOrder: 1 },
@@ -89,7 +89,10 @@ describe('FieldTreePanel 单击复制字段名', () => {
     const writeText = stubClipboard()
     const w = mountPanel()
     const row = w.findAll('.field-row').find(r => r.text().includes(LONG_KEY))!
-    await row.trigger('dragstart', { dataTransfer: { setData: vi.fn(), effectAllowed: '' } })
+    const dt: { setData: ReturnType<typeof vi.fn>; effectAllowed: string } = { setData: vi.fn(), effectAllowed: '' }
+    await row.trigger('dragstart', { dataTransfer: dt })
+    // 守卫：宽效果集不能收窄——macOS 的 ⌘ 重算落在允许集外会让原生会话直接拒绝整次拖拽
+    expect(dt.effectAllowed).toBe('all')
     await row.trigger('click')
     await flushPromises()
     expect(writeText).not.toHaveBeenCalled()

@@ -12,7 +12,7 @@ import { renderLeftPanel } from '../panels'
 
 const LONG_LABEL = '客户签收备注（加急）'
 const LONG_KEY = 'customer.receiptRemark.urgentHandling'
-const ROW_TIP = `${LONG_LABEL} (${LONG_KEY}) · 单击复制字段名 · Ctrl/⌘+拖动插入字段名`
+const ROW_TIP = `${LONG_LABEL} (${LONG_KEY}) · 单击复制字段名 · 拖动中按住 Ctrl（Mac 为 ⌘）切换为插入字段名`
 
 const fields: PrintBusinessField[] = [
   { id: '1', fieldKey: 'customer', fieldLabel: '客户信息', fieldType: 'string', sortOrder: 1 },
@@ -77,6 +77,16 @@ describe('素材台字段树长字段显示', () => {
     const row = rowOf(host)
     expect(row.getAttribute('data-tip')).toBe(ROW_TIP)
     expect(row.getAttribute('title')).toBeNull()
+  })
+
+  it('字段行起拖用宽效果集 all（macOS ⌘ 重算不能被会话拒绝，守卫与 canvas 同口径）', () => {
+    const host = paint()
+    const dt: { setData: ReturnType<typeof vi.fn>; effectAllowed: string } = { setData: vi.fn(), effectAllowed: '' }
+    const ev = new Event('dragstart', { bubbles: true })
+    Object.defineProperty(ev, 'dataTransfer', { value: dt })
+    rowOf(host).dispatchEvent(ev)
+    expect(dt.setData).toHaveBeenCalledWith('fieldKey', LONG_KEY)
+    expect(dt.effectAllowed).toBe('all')
   })
 
   it('分组标题 data-tip 带出完整分组名', () => {

@@ -117,6 +117,40 @@ function zoneLayer(ctx: ShellCtx, ui: CanvasUI, zone: 'header' | 'content' | 'fo
   }, children.filter(Boolean) as never)
 }
 
+/**
+ * 拖放落点自绘徽标：与 canvas 的 .drop-hint 同文案同口径。imperative 维护、不走 repaint
+ * （本包渲染器整树重建，dragover 频率重绘会销毁拖起件、打断原生拖拽会话）。
+ * 静态文本意图锁存同理：macOS 按住 ⌘ 松鼠标时原生会话直接拒绝、drop 不派发，
+ * 用户被迫先松 ⌘ 再松鼠标——拖拽中任一 dragover 看到过 ⌘/Ctrl 即锁存（存本会话
+ * area 的 dataset），松手按锁存落；徽标显示同一锁存值，所见即所得。
+ */
+function syncDropHint(e: DragEvent) {
+  const area = e.currentTarget as HTMLElement
+  const types = e.dataTransfer?.types ?? []
+  const hasField = types.includes('fieldkey')
+  const hasElement = types.includes('elementtype')
+  if (!hasField && !hasElement) { area.querySelector('.drop-hint')?.remove(); return }
+  // 元素类拖起件不读修饰键（Ctrl 不改变其语义），仅字段区分取值绑定 vs 静态文本
+  if (hasField && (e.ctrlKey || e.metaKey)) area.dataset.dropLabelIntent = '1'
+  const text = hasElement ? '＋ 元素' : area.dataset.dropLabelIntent ? '＋ 静态文本' : '＋ 取值字段'
+  let badge = area.querySelector<HTMLElement>('.drop-hint')
+  if (!badge) {
+    badge = document.createElement('div')
+    badge.className = 'drop-hint'
+    area.appendChild(badge)
+  }
+  badge.textContent = text
+  badge.style.left = `${e.clientX + 14}px`
+  badge.style.top = `${e.clientY + 18}px`
+}
+
+/** 清徽标与锁存意图（drop 与拖拽会话结束时各调一次） */
+export function clearDropDrag(area: HTMLElement | null | undefined) {
+  if (!area) return
+  area.querySelector('.drop-hint')?.remove()
+  delete area.dataset.dropLabelIntent
+}
+
 export function renderCanvasArea(ctx: ShellCtx, ui: CanvasUI) {
   const s = ctx.store
   const t = s.templateData
@@ -261,8 +295,28 @@ export function renderCanvasArea(ctx: ShellCtx, ui: CanvasUI) {
   return h('div', {
     class: 'canvas-area',
     dataset: { test: 'canvas-area' },
-    onDragover: (ev: Event) => ev.preventDefault(),
-    onDrop: (ev: Event) => ctx.fire('drop', ev as DragEvent),
+    onDragover: (ev: Event) => {
+      const e = ev as DragEvent
+      e.preventDefault()
+      // 显式钉死 copy：不写时 Windows Chromium 会按原生修饰键重算效果，按住 Ctrl 拖动
+      // 会被当作「请求另一种默认动作」而落到不允许的档位，复制徽标消失甚至拒收 drop
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+      syncDropHint(e)
+    },
+    onDragleave: (ev: Event) => {
+      const area = ev.currentTarget as HTMLElement
+      const next = (ev as DragEvent).relatedTarget as Node | null
+      if (!next || !area.contains(next)) area.querySelector('.drop-hint')?.remove()
+    },
+    onDrop: (ev: Event) => {
+      const e = ev as DragEvent & { labelIntent?: boolean }
+      const area = ev.currentTarget as HTMLElement
+      const intent = area.dataset.dropLabelIntent === '1'
+      clearDropDrag(area)
+      // 锁存意图随事件透传给 print-designer.drop（drop 事件修饰键在 macOS 松键场景不可靠）
+      if (intent) e.labelIntent = true
+      ctx.fire('drop', e)
+    },
     onMousedown: (ev: Event) => ctx.fire('canvas-mousedown', ev as MouseEvent),
     onMousemove: (ev: Event) => ctx.fire('canvas-mousemove', ev as MouseEvent),
     onMouseleave: () => ctx.fire('canvas-mouseleave'),

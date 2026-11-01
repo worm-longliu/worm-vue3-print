@@ -13,7 +13,7 @@ import { clear, h, render } from './core/h'
 import { DesignerStore } from './core/store'
 import type { DesignerOptions } from './core/store'
 import { FormatToolbar } from './core/format'
-import { renderCanvasArea, zoneRectsMM } from './shell/canvas'
+import { renderCanvasArea, zoneRectsMM, clearDropDrag } from './shell/canvas'
 import { positionLabel } from './shell/elements'
 import type { CanvasUI } from './shell/canvas'
 import { renderFormatBar } from './shell/format-bar'
@@ -109,6 +109,7 @@ export class PrintDesignerElement extends HTMLElement {
   /** 接管全局快捷键的实例（同页多设计器时最后一个交互者），见 bindKeys */
   private static active: PrintDesignerElement | null = null
   private docKeydown: ((ev: Event) => void) | null = null
+  private docDragend: ((ev: Event) => void) | null = null
   private ro: ResizeObserver | null = null
   private roArea: HTMLElement | null = null
   /** 工具栏收纳的尺寸驱动源：容器宽度变化不触发重绘，需观察器重跑后置遍 */
@@ -710,8 +711,9 @@ export class PrintDesignerElement extends HTMLElement {
       this.store.addElement(type, {}, point)
     } else if (fieldKey) {
       const field = this.store.fields.find(f => f.fieldKey === fieldKey)
-      // 按住 Ctrl/Cmd 松手：生成内容为字段中文名的静态文本元素（对齐 canvas 的 asLabel）
-      if (field) this.store.addFieldElement(field, {}, point, ev.ctrlKey || ev.metaKey)
+      // 拖动中按过/按住 Ctrl/Cmd：生成内容为字段中文名的静态文本元素（对齐 canvas 的 asLabel）
+      // 拖拽中锁存过修饰键的（labelIntent）优先：macOS 先松 ⌘ 再松鼠标时 drop 上修饰键已丢
+      if (field) this.store.addFieldElement(field, {}, point, ev.ctrlKey || ev.metaKey || (ev as DragEvent & { labelIntent?: boolean }).labelIntent === true)
     }
   }
 
@@ -1261,12 +1263,19 @@ export class PrintDesignerElement extends HTMLElement {
     if (this.docKeydown) return
     this.docKeydown = (ev) => this.onGlobalKeydown(ev as KeyboardEvent)
     document.addEventListener('keydown', this.docKeydown)
+    // 拖拽会话结束（Esc 取消/画布外松手不会有 drop）：清自绘徽标与静态文本锁存
+    this.docDragend = () => clearDropDrag(this.root?.querySelector<HTMLElement>('.canvas-area'))
+    document.addEventListener('dragend', this.docDragend, true)
   }
 
   private detachDocKeys() {
     if (!this.docKeydown) return
     document.removeEventListener('keydown', this.docKeydown)
     this.docKeydown = null
+    if (this.docDragend) {
+      document.removeEventListener('dragend', this.docDragend, true)
+      this.docDragend = null
+    }
   }
 
   private onGlobalKeydown(e: KeyboardEvent) {
