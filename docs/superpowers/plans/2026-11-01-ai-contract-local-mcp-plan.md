@@ -1513,6 +1513,11 @@ export { ELEMENT_KINDS }
 Run: `npm run test -w @worm-vue3-print/contract -- draft`
 Expected: 5 passed。若 `createRuntimeElement` 返回的 `options` 已自带 `left/top/width/height` 初值（多数类型如此），「补 0 并记 warning」那条测试改为断言 `r.template.elements[0].options.width` 等于 core 给的默认值且**没有** warning——以 [element-factory.ts:19](file:///Users/worm/worm/worm-vue3-print/packages/print-core/src/designer/utils/element-factory.ts#L19) 实际实现为准，不许反过来改 core。
 
+落地实测偏差（已按此修正，共 6 passed）：
+- `createDefaultOptions` 对**所有**类型都恒带 `left/top/width/height`（text 为 7/17.6/42.3/5.3），所以「几何缺省补 0 并记 warning」那段逻辑是死代码，已删；几何真缺时由 schema 的必填键报错兜住。
+- 草稿回灌的体检 finding 会同时把「横向超出可印区」变成 error，测试里的表格必须 `left: 0, width: 190`（A4 可印宽 190），`left: 10` 会越界。
+- core 工厂给 barcode/qrcode 预置了 `title`、给 table 预置了 `tableMode` 与 `fields`，即工厂自身仍写废弃键；草稿因此带 deprecated warning（不判失败）。这属于存量口径，不在本阶段顺手改。
+
 - [ ] **Step 6: 导出、构建并提交**
 
 `src/index.ts` 追加：
