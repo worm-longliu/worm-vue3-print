@@ -75,15 +75,39 @@ add(notes.includes(latestSection.replace('V', '')) || notes.includes(latestSecti
   ? 'PASS' : 'WARN', `.github/release/notes.md 是否指向 ${latestSection || '（无版本段）'}`,
   '该文件是下一次发版的正文底稿，发版前要整篇换成新版本')
 
-// 5) README 安装包直链表：tag 版本必须与 core 同号；文件名版本可比 core 旧（沿用上版安装包时）
+// 5) 安装包重打判据 + README 直链表：两者必须合起来判
+//    core 的 render/* 与 functions/format.ts 命中就必须重打七件；未命中且本版 Release 不挂安装包时，
+//    README 直链就该继续指向上一版资产（改成同号反而 404）
 const readme = read('README.md')
 const rows0 = [...readme.matchAll(/releases\/download\/v([^/]+)\/WormPrintClient-([0-9][^-]*)-/g)].map(m => ({ tag: m[1], file: m[2] }))
 const uniqTag = [...new Set(rows0.map(r => r.tag))]
 const uniqFile = [...new Set(rows0.map(r => r.file))]
+
+let changed = ''
+let needsRepack = null
+try {
+  changed = execFileSync('git', ['diff', '--name-only', `${BASE}..`], { cwd: ROOT, encoding: 'utf8' })
+} catch (e) {
+  add('WARN', `git diff ${BASE}.. 取变更失败：${e.message}`, '用 --base=<上个有资产的 tag> 指定基线')
+}
+if (changed) {
+  const hit = changed.split('\n').filter(f => /packages\/print-core\/src\/(render\/|functions\/format\.ts)/.test(f))
+  if (hit.length > 0) {
+    needsRepack = true
+    add('WARN', `变更命中渲染管线 ${hit.length} 处（${hit[0]} 等）`, '客户端只依赖 core → 七件安装包需按本版重打，别复用上一版资产')
+  } else {
+    needsRepack = false
+    add('PASS', '变更未触及 core 渲染管线', '安装包可沿用上版产物（仍建议核对 app.asar 尺寸）')
+  }
+}
+
 if (rows0.length === 0) add('WARN', 'README 里没匹配到 `releases/download/v<版本>/WormPrintClient-<版本>-` 直链', '核对「下载客户端安装包」一节是否被改写')
-else if (!uniqTag.every(v => v === coreVer)) add('FAIL', `README 直链 tag 版本 ${uniqTag.join('/')} 与 core ${coreVer} 不一致`, '每次发版必须同步这张表的 tag 部分，否则指向上一版资产')
-else if (uniqFile.every(v => v === coreVer)) add('PASS', `README 直链表 tag 与文件名版本 = ${coreVer}`, '')
-else add('WARN', `README 直链 tag = ${coreVer}，安装包文件名版本 = ${uniqFile.join('/')}（沿用上版产物，README 已注明）`, '确认发行版确实重传了同名文件后再置笃')
+else if (uniqTag.every(v => v === coreVer)) {
+  if (uniqFile.every(v => v === coreVer)) add('PASS', `README 直链表 tag 与文件名版本 = ${coreVer}`, '')
+  else add('WARN', `README 直链 tag = ${coreVer}，安装包文件名版本 = ${uniqFile.join('/')}（沿用上版产物，README 已注明）`, '确认发行版确实重传了同名文件后再置笃')
+} else if (needsRepack === false && uniqTag.length === 1 && uniqTag.every(v => v === uniqFile[0])) {
+  add('PASS', `README 直链整条沿用 v${uniqTag[0]}（本版客户端零变化、未挂安装包）`, '本版 Release 若补挂安装包，须把直链 tag 与文件名一起切到 ' + coreVer)
+} else add('FAIL', `README 直链 tag 版本 ${uniqTag.join('/')} 与 core ${coreVer} 不一致`, '每次发版必须同步这张表的 tag 部分，否则指向上一版资产')
 
 // 6) 客户端 dist 卫生：目录里的安装包只能同属一个打包版本（本版重打 = 与 core 同号；沿用上版 = 与上版同号）
 const distDir = join(ROOT, 'clients/print-client/dist')
@@ -94,19 +118,6 @@ if (existsSync(distDir)) {
   else if (pkgVers.length > 1) add('FAIL', `dist 里混有多个版本的安装包：${pkgVers.join(', ')}`, `pack-client-release.mjs 会把 dist 全部收进 SHA256SUMS → 把多余版本整批移到 ~/print-client-dist/<旧版>/`)
   else if (pkgVers[0] === coreVer) add('PASS', `dist 内 ${pkgs.length} 个安装包均属 ${coreVer}`, '')
   else add('PASS', `dist 内 ${pkgs.length} 个安装包同属沿用版 ${pkgVers[0]}（本版未重打客户端）`, '上传 v' + coreVer + ' 前重算 SHA256SUMS.txt')
-}
-
-// 7) 安装包重打判据：core 的 render/* 与 functions/format.ts 命中就必须重打七件
-let changed = ''
-try {
-  changed = execFileSync('git', ['diff', '--name-only', `${BASE}..`], { cwd: ROOT, encoding: 'utf8' })
-} catch (e) {
-  add('WARN', `git diff ${BASE}.. 取变更失败：${e.message}`, '用 --base=<上个有资产的 tag> 指定基线')
-}
-if (changed) {
-  const hit = changed.split('\n').filter(f => /packages\/print-core\/src\/(render\/|functions\/format\.ts)/.test(f))
-  if (hit.length > 0) add('WARN', `变更命中渲染管线 ${hit.length} 处（${hit[0]} 等）`, '客户端只依赖 core → 七件安装包需按本版重打，别复用上一版资产')
-  else add('PASS', '变更未触及 core 渲染管线', '安装包可沿用上版产物（仍建议核对 app.asar 尺寸）')
 }
 
 for (const r of results) {
