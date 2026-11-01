@@ -2,7 +2,7 @@
 
 V1.4.3 是一个 patch 版本：修掉字段 Ctrl/⌘ 拖放在 macOS 与 Windows 上「整次拖拽被原生判为无效、松手没反应」的问题（Vue3 画布与零框架宿主同口径），并把「画布看得见、纸面永远空白」的 HTML 占位元素在模板装载链上剥离。
 
-本版改动全部落在设计器交互与模板装载链上，**未触及 core 渲染管线**（`git diff v1.4.2..HEAD` 对 `packages/print-core/src/render/*` 与 `functions/format.ts` 零命中）⇒ **桌面客户端出纸行为与 V1.4.2 完全一致，本版不重打安装包、发行版不挂附件**，可下载的最新安装包仍是 `v1.4.2`；已装 V1.4.2 客户端的用户不必升级。
+本版改动全部落在设计器交互与模板装载链上，**未触及 core 渲染管线**（`git diff v1.4.2..HEAD` 对 `packages/print-core/src/render/*` 与 `functions/format.ts` 零命中）⇒ **桌面客户端出纸行为与 V1.4.2 完全一致，本版不重打安装包、发行版不挂附件**，可下载的最新安装包仍是 `v1.4.2`；已装 V1.4.2 客户端的用户不必升级。自 v1.4.2 以来 5 次提交（含本 tag 提交）。
 
 ## 新增
 - **core 出「屏蔽元素类型」单点判据与装载入口**。`/designer` 子路径新增 `BLOCKED_ELEMENT_TYPES`（当前 `['html']`）与 `isBlockedElementType()`、`stripBlockedElements()`（正文 / 页眉 / 页脚三区各自过滤，返回新对象、不改入参）、`countBlockedElements()`（宿主装载前计数提示用，与剥离同判据）。恢复某一类型只需把它移出该表并放回素材台，不必再动渲染分支。`countBlockedElements` 本仓库两宿主尚未接入，先作为集成方可用的入口发出。
@@ -24,7 +24,7 @@ V1.4.3 是一个 patch 版本：修掉字段 Ctrl/⌘ 拖放在 macOS 与 Window
 
 V1.4.3 is a patch release: it fixes Ctrl/⌘ field dragging being invalidated for the whole native session on macOS and Windows (same behaviour in the Vue 3 canvas and the zero-framework hosts), and strips the HTML placeholder element — visible on the canvas but never printed — when a template is loaded.
 
-Every change sits in designer interaction or the template loading chain. **Core's render pipeline is untouched** (`git diff v1.4.2..HEAD` has zero hits for `packages/print-core/src/render/*` and `functions/format.ts`), so **the desktop client prints exactly as in V1.4.2: no installers were rebuilt and this release carries no installer assets.** The newest downloadable installers remain those of `v1.4.2`, and users on the V1.4.2 client do not need to upgrade.
+Every change sits in designer interaction or the template loading chain. **Core's render pipeline is untouched** (`git diff v1.4.2..HEAD` has zero hits for `packages/print-core/src/render/*` and `functions/format.ts`), so **the desktop client prints exactly as in V1.4.2: no installers were rebuilt and this release carries no installer assets.** the newest downloadable installers remain those of `v1.4.2`, and users on the V1.4.2 client do not need to upgrade. Five commits since v1.4.2 (including this tag commit).
 
 ## Added
 - **Core gained a single source of truth for blocked element types plus its loading helpers.** The `/designer` subpath now exports `BLOCKED_ELEMENT_TYPES` (currently `['html']`) and `isBlockedElementType()`, `stripBlockedElements()` (filters body, header and footer separately, returning a new object instead of mutating the input) and `countBlockedElements()` (same predicate, for hosts wanting a count before loading). Re-enabling a type only means removing it from the table and putting it back in the palette. `countBlockedElements` is not wired into either host in this repo yet; it ships as an integration entry point.
