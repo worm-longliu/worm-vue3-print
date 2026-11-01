@@ -1763,6 +1763,12 @@ export function asText(payload: unknown): ToolResult {
 Run: `npm run build -w @worm-vue3-print/mcp && printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | node packages/print-mcp/dist/index.js`
 Expected: 两行 JSON：initialize 回包带 `serverInfo.name: "worm-vue3-print"`；`tools/list` 回包 `tools: []`（Task 8 填完后再跑，应列出 6 个工具）。若报 `Cannot find module '@worm-vue3-print/contract'`，先 `npm run build -w @worm-vue3-print/contract`。
 
+**落地实测偏差（已按此修正）：**
+- `ToolResult` 不能自定义成窄形状：SDK 1.32 里 `setRequestHandler(CallToolRequestSchema, …)` 的返回类型带索引签名与 `task` 变体，自定义形状在 strict 下报 TS2345。改为 `export type ToolResult = CallToolResult`（取自 `@modelcontextprotocol/sdk/types.js`），字面量里的 `type: 'text'` 加 `as const`。
+- 本任务不新增 `Files` 未列出的文件：`src/tool-types.ts` 属 Step 6 的产物，Task 7 的 Files 清单已含。
+- `server.test.ts` 原计划断言「TOOLS.length ≥ 5」与「名字 snake_case」，那是 Task 8 的验收；留在本任务会让骨架批次无法干净收口，已移到 `tools.test.ts`。
+- stdio 实测：握手回包 `serverInfo.name = "worm-vue3-print"`、`capabilities.tools = {}`；`tsup` 的 `banner` 确实落在产物首行（`head -1 dist/index.js` → `#!/usr/bin/env node`）。
+
 - [ ] **Step 8: 串进根脚本并提交**
 
 根 `package.json`：`build` 在 `@worm-vue3-print/contract` 之后插入 `&& npm run build -w @worm-vue3-print/mcp`；`test` 同样插入 `&& npm run test -w @worm-vue3-print/mcp`。
