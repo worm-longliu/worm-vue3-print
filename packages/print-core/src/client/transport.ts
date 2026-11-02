@@ -3,6 +3,7 @@ import {
   PORT_SCAN_LIMIT,
   encodeRequest,
   decodeServerMessage,
+  isServerRequestFrame,
   type ClientRequest,
   type HelloResponsePayload,
 } from './protocol.js'
@@ -19,6 +20,18 @@ export interface TransportOptions {
   ports?: number[]
   /** 注入 WebSocket 构造器（测试用） */
   WebSocketCtor?: typeof WebSocket
+}
+
+/** 桌面端主动请求（如 template.get/apply）的处理器；抛 WormPrintError 时错误码随响应帧回传 */
+export type ServerRequestHandler = (type: string, payload: unknown) => Promise<unknown>
+
+/** 把处理器抛出的错误映射为协议错误码：WormPrintError/携带 code 字符串者透传，其余 INTERNAL */
+function extractRequestErrorCode(err: unknown): string {
+  if (err instanceof WormPrintError) return err.code
+  if (err && typeof err === 'object' && typeof (err as { code: unknown }).code === 'string') {
+    return (err as { code: string }).code
+  }
+  return 'INTERNAL'
 }
 
 interface PendingRequest {
@@ -42,6 +55,7 @@ export class WsTransport {
   private hello: HelloResponsePayload | null = null
   private pendings = new Map<string, PendingRequest>()
   private statusCbs = new Set<(s: TransportStatus) => void>()
+  private requestHandler: ServerRequestHandler | null = null
   private manualClose = false
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private reconnectAttempts = 0
@@ -62,6 +76,14 @@ export class WsTransport {
   onStatus(cb: (s: TransportStatus) => void): () => void {
     this.statusCbs.add(cb)
     return () => this.statusCbs.delete(cb)
+  }
+
+  /**
+   * 注册桌面端主动请求（template.get / template.apply 等）的处理器，
+   * 需返回结果 payload；抛错时按错误码回失败响应帧。传 null 注销。
+   */
+  setRequestHandler(handler: ServerRequestHandler | null): void {
+    this.requestHandler = handler
   }
 
   setToken(token: string | undefined): void {
@@ -190,17 +212,7 @@ export class WsTransport {
   /** 握手成功后绑定正式生命周期（消息分发、掉线重连） */
   private bindLifecycle(ws: WebSocket): void {
     ws.onmessage = (ev: MessageEvent) => {
-      const msg = decodeServerMessage(String(ev.data))
-      if ('malformed' in msg) return
-      const pending = this.pendings.get(msg.id)
-      if (!pending) return
-      this.pendings.delete(msg.id)
-      clearTimeout(pending.timer)
-      if (msg.ok) {
-        pending.resolve(msg.payload)
-      } else {
-        pending.reject(new WormPrintError(msg.error.code, msg.error.message))
-      }
+      this.handleIncoming(ws, String(ev.data))
     }
     ws.onclose = () => {
       this.failAllPendings(new WormPrintError('CLIENT_NOT_RUNNING', '与客户端的连接中断'))
@@ -211,6 +223,66 @@ export class WsTransport {
     ws.onerror = () => {
       /* onclose 负责收尾，避免重复处理 */
     }
+  }
+
+  /** 单次解析后按帧形状分派：桌面端请求 → 处理器，其余按响应路由到 pending 表 */
+  private handleIncoming(ws: WebSocket, raw: string): void {
+    let data: unknown
+    try {
+      data = JSON.parse(raw)
+    } catch {
+      return
+    }
+    if (isServerRequestFrame(data)) {
+      this.dispatchServerRequest(ws, data)
+      return
+    }
+    const msg = decodeServerMessage(raw)
+    if ('malformed' in msg) return
+    const pending = this.pendings.get(msg.id)
+    if (!pending) return
+    this.pendings.delete(msg.id)
+    clearTimeout(pending.timer)
+    if (msg.ok) {
+      pending.resolve(msg.payload)
+    } else {
+      pending.reject(new WormPrintError(msg.error.code, msg.error.message))
+    }
+  }
+
+  /** 调用注册处理器并自动回响应帧；未注册时回 INVALID_REQUEST，不静默挂起桌面端 */
+  private dispatchServerRequest(ws: WebSocket, frame: ClientRequest): void {
+    const handler = this.requestHandler
+    if (!handler) {
+      this.safeSend(ws, frame.id, false, undefined, 'INVALID_REQUEST', '桌面端请求未注册处理器')
+      return
+    }
+    Promise.resolve()
+      .then(() => handler(frame.type, frame.payload))
+      .then(result => this.safeSend(ws, frame.id, true, result ?? {}))
+      .catch(err => {
+        const code = extractRequestErrorCode(err)
+        const message = err instanceof Error ? err.message : String(err)
+        this.safeSend(ws, frame.id, false, undefined, code, message)
+      })
+  }
+
+  private safeSend(
+    ws: WebSocket,
+    id: string,
+    ok: boolean,
+    payload?: unknown,
+    errorCode?: string,
+    errorMessage?: string,
+  ): void {
+    if (ws.readyState !== 1) return
+    ws.send(
+      JSON.stringify(
+        ok
+          ? { id, ok, payload }
+          : { id, ok, error: { code: errorCode ?? 'INTERNAL', message: errorMessage ?? '内部错误' } },
+      ),
+    )
   }
 
   private scheduleReconnect(): void {

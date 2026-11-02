@@ -44,7 +44,7 @@ worm-vue3-print/
 │   ├── print-canvas/          # @worm-vue3-print/canvas Vue 3 可视化设计器画布
 │   ├── print-common/          # @worm-vue3-print/common 通用宿主适配版设计器（实验性 · 未完全稳定测试；支持多种运行时框架；生产请用 print-canvas）
 │   ├── print-contract/        # @worm-vue3-print/contract 模板契约层：zod schema / 表达式校验 / 静态版面体检 / 草稿生成（private，不发布 npm）
-│   ├── print-mcp/             # @worm-vue3-print/mcp     本地 stdio MCP 连接器：把契约层暴露给宿主已有 AI agent（private，不调模型、不持密钥）
+│   ├── print-mcp/             # @worm-vue3-print/mcp     本地 MCP 连接器：stdio 供宿主 AI agent 直连；桌面客户端复用其工具在 /mcp 提供 HTTP 形态（private，不调模型、不持密钥）
 ├── clients/
 │   └── print-client/          # @worm-vue3-print/print-client Electron 静默打印桌面客户端（private，不发布 npm）
 ├── services/
@@ -77,7 +77,7 @@ worm-vue3-print/
 | `packages/print-canvas` | 设计器画布（`@worm-vue3-print/canvas`）：Vue 3 组件（`components`）、组合式函数（`composables`）、内置帮助内容（`help-content`）、原生控件样式（`styles`）。含 `PrintDesigner`、`PrintHtmlPreview` |
 | `packages/print-common` | ⚠️ **实验性 · 未完全稳定测试**：通用宿主适配设计器（`@worm-vue3-print/common`）：以原生自定义元素 `<print-designer>` 形态提供，**支持多种运行时框架**——任意框架（Vue 3 / Vue 2 / React / jQuery / Angular 等）或无框架宿主均可直接接入，供 React / Vue2 / jQuery 等非 Vue3 宿主使用，**不打包 Vue 运行时**。样式与图标由 `scripts/gen-styles.mjs`、`scripts/gen-icons.mjs` 从 canvas 构建产物派生（类名逐字对齐），交互与渲染逻辑复用 core 的 designer 导出；另产出浏览器直挂形态 `dist/common.js`（UMD，core 与码制库内联，挂 `window.WormPrintCommon`）与 `dist/common.css`，无打包器宿主一个 `<script>` + 一个 `<link>` 即可接入。与 Vue3 版的功能与样式一致性说明见包内 `PARITY.md`，宿主示例在 `demo-common/apps/` |
 | `packages/print-contract` | 模板契约层（`@worm-vue3-print/contract`，private）：把 `TemplateData`/`ElementOptions` 收敛为机器可读契约——`OPTION_META` 全键元数据（编译期必填映射，core 加字段而此处漏登记则 `tsc` 红）、zod schema 与 `validateTemplateJson`（废弃键/未知键只降级 warning，不判死存量模板）、`checkExpression`（语法交给 core 解析器、函数名走白名单）、`inspectTemplate`（静态版面体检，**不做排版测量**）、`draftTemplate`（走 core 元素工厂产草稿并回灌三道校验） |
-| `packages/print-mcp` | 本地 MCP 连接器（`@worm-vue3-print/mcp`，private，bin `worm-vue3-print-mcp`）：仅 stdio 传输，暴露 6 个工具（元素清单 / 模板校验 / 表达式校验 / 版面体检 / 草稿生成 / 渲染预览）。**不调用模型、不读取任何模型密钥**，工具循环归宿主 agent；`print_render_preview` 把真实分页交给 `services/print-render`，本包不重复实现排版 |
+| `packages/print-mcp` | 本地 MCP 连接器（`@worm-vue3-print/mcp`，private，bin `worm-vue3-print-mcp`）：stdio 传输暴露 6 个工具（元素清单 / 模板校验 / 表达式校验 / 版面体检 / 草稿生成 / 渲染预览），另提供可嵌入的工具集——桌面客户端在 `/mcp` 复用 5 个纯计算工具 + 3 个模板会话读写工具（stdio 入口 `dist/stdio.js`）。**不调用模型、不读取任何模型密钥**，工具循环归宿主 agent；`print_render_preview` 把真实分页交给 `services/print-render`，本包不重复实现排版 |
 | `clients/print-client` | 静默打印桌面客户端（Electron，private）：主进程 WS 服务 / 打印引擎 / 打印机服务 / 配置与任务记录（`src/main`）、配置窗口 Vue 3 界面（`src/renderer`）、隐藏渲染 worker（`src/worker`）、沙箱 IPC 桥（`src/preload`）、IPC 通道契约（`src/shared`）；含 electron-builder 打包配置与真机冒烟脚本（`scripts/`） |
 | `services/print-render` | 服务端渲染微服务（private）：基于 Playwright 的 PDF 渲染（`driver-playwright` / `pdf-render` / `browser-pool` / `server`），workspace 软链依赖 core，与浏览器预览、桌面客户端共用同一份打印管线 |
 | `demo` | Vue 3 演示项目：设计器接入（`App.vue`）、静默打印集成、渲染客户端封装（`render-client.ts`）、业务字段（`business.ts`）、内置模板 JSON（`template-purchase-receipt.json`），端口 9303 |
@@ -108,12 +108,13 @@ worm-vue3-print/
 - 智能表格：动态分页、跨页重复表头、序号/小计/汇总、单元格合并
 - 同构渲染：一套渲染逻辑同时产出浏览器预览、服务端 PDF 与桌面客户端出图（逻辑同源）
 - 静默打印：跨平台桌面打印客户端（Electron）+ 浏览器端 SDK，本地 WebSocket 通讯、`webContents.print` 静默出纸，全程无打印对话框、不依赖浏览器插件，支持连续纸纸长自动推导
+- AI 辅助模板编辑：桌面客户端内置 MCP（`/mcp`，Bearer 鉴权），AI Agent 可校验模板、读写浏览器里正在编辑的模板（防覆盖 revision + 封禁元素拦截）；详见 [AI 接入](docs/中文/指南/AI接入.md)
 - 内置业务模板：采购收货单、批发销售单、出入库单、库存盘点单
 - 毫米（mm）单位精确布局，支持 A4 等纸张规格
 
 ## 🗺 待办（Roadmap）
 
-- [x] 本地 MCP 连接器（`@worm-vue3-print/mcp`，stdio）：模板契约校验、表达式校验、静态版面体检、草稿生成与渲染预览；详见 [AI 接入](docs/中文/指南/AI接入.md)
+- [x] 本地 MCP 连接器（`@worm-vue3-print/mcp`）：stdio 形态 6 个工具；桌面客户端内置 HTTP 形态 8 个工具（含浏览器模板会话读写）
 - [ ] 画布内 AI 面板与宿主能力探测（第二阶段；只出注入式 transport 接口规范，本仓库不实现服务端 key 代理）
 
 ## 开发

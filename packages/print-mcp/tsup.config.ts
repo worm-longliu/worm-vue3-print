@@ -1,7 +1,8 @@
 import { defineConfig } from 'tsup'
 
 export default defineConfig({
-  entry: ['src/index.ts'],
+  // index = 无副作用库入口（桌面主进程 import）；stdio = 命令行连接器入口（bin/start）
+  entry: ['src/index.ts', 'src/stdio.ts'],
   format: ['esm'],
   target: 'node18',
   dts: true,

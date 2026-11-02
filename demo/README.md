@@ -13,6 +13,10 @@
 - 服务端 PDF 打印：顶栏「服务端 PDF」按钮把当前画布 JSON + 当前示例的静态数据
   提交给同仓库的 render 微服务（`services/print-render`），服务端两遍渲染出 PDF 后在新标签页打开；
   顶栏实时显示渲染服务在线状态（经 `/render-api/health` 探测）
+- AI 模板会话：`src/template-session.ts` 用浏览器 SDK 连接桌面打印客户端并 `attachTemplate` 签到，
+  响应 `template.get/apply`——顶栏「AI 助手」徽标区分「未启动客户端 / 连接异常 / 已接入 / 写入冲突」，
+  AI 写回自动清空示例标识并弹提示「已修改模板，可撤销」（写回只产生一步设计器历史）。
+  需启动桌面客户端并在其设置里开启 MCP（见 [AI 接入](../docs/中文/指南/AI接入.md) §三）
 - 保存演示：`save` 时输出控制台并将模板 JSON 下载为本地文件
 - 自定义字体联调：**字体声明跟着模板走**——只有综合示例模板在 JSON 里内嵌 `fonts`（`public/fonts/` 放
   三款公开字体，见该目录 README），`App.vue` 的 `activeFonts` 从当前模板 JSON 读取后传给设计器；

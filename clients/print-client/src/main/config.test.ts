@@ -64,6 +64,14 @@ describe('parseConfig', () => {
     expect('printRoute' in parsed).toBe(false)
     expect(parsed.logLevel).toBe('info')
   })
+
+  it('mcpEnabled：默认 false、布尔透传、类型不符回退默认', () => {
+    expect(DEFAULT_CONFIG.mcpEnabled).toBe(false)
+    expect(parseConfig({ mcpEnabled: true }).mcpEnabled).toBe(true)
+    expect(parseConfig({ mcpEnabled: 'yes' }).mcpEnabled).toBe(false)
+    // 旧配置缺字段不报错
+    expect(parseConfig({ port: 19001 }).mcpEnabled).toBe(false)
+  })
 })
 
 describe('generatePairingToken', () => {
@@ -91,5 +99,15 @@ describe('ConfigStore', () => {
     expect(again.load()).toMatchObject({ port: 18000, autoStart: true })
     // 文件是合法 JSON
     expect(() => JSON.parse(readFileSync(file, 'utf-8'))).not.toThrow()
+  })
+
+  it('mcpEnabled round-trip：false→true→false 全程保留合法配置', () => {
+    const file = join(dir, 'config.json')
+    const store = new ConfigStore(file)
+    store.load()
+    store.update({ mcpEnabled: true })
+    expect(new ConfigStore(file).load().mcpEnabled).toBe(true)
+    store.update({ mcpEnabled: false })
+    expect(new ConfigStore(file).load().mcpEnabled).toBe(false)
   })
 })

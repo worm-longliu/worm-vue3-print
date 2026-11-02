@@ -1,11 +1,17 @@
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { createPrintMcpServer } from './server.js'
+// 库入口：只导出，不启动任何 transport（stdio 启动在 ./stdio.ts，桌面 HTTP 接线在宿主进程）。
+import { version } from './version.js'
 
-const server = createPrintMcpServer()
-const transport = new StdioServerTransport()
-
-server.connect(transport).catch((e) => {
-  // stdio 被协议占用，诊断信息一律走 stderr
-  console.error('worm-vue3-print MCP 启动失败:', e)
-  process.exit(1)
-})
+export { version }
+export { createPrintMcpServer } from './server.js'
+export { TOOLS } from './tools.js'
+export { createDesktopPrintTools, DESKTOP_BLOCKED_TOOL_NAMES } from './desktop-tools.js'
+export { createTemplateSessionTools, unwrapTemplateShell } from './template-session-tools.js'
+export type {
+  TemplateSessionBridge,
+  OpenTemplateSession,
+  GetOpenTemplateResult,
+} from './template-session-tools.js'
+export type { ToolDef, ToolResult } from './tool-types.js'
+export { asText, asError } from './tool-types.js'
+export { resolveTemplateSource } from './template-source.js'
+export { readConfig } from './config.js'

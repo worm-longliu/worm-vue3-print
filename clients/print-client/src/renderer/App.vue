@@ -4,6 +4,7 @@ import type { AppConfig } from '../main/config.js'
 import type { PrinterInfo } from '@worm-vue3-print/core/client'
 import type { JobRecord } from '../main/job-history.js'
 import type { LogEntry } from '../main/logger.js'
+import type { McpState } from '../preload/preload.api.js'
 
 const tab = ref<'settings' | 'jobs' | 'logs'>('settings')
 const config = ref<AppConfig | null>(null)
@@ -19,6 +20,38 @@ const logs = ref<LogEntry[]>([])
 const originsText = ref('')
 const bridgeError = ref('')
 const pdfActionError = ref<Record<string, string>>({})
+const mcpState = ref<McpState | null>(null)
+const mcpCopyMsg = ref('')
+/** 端口漂移检测：上次记录的 MCP URL 与当前不同时提示更新 Agent 配置 */
+const MCP_LAST_URL_KEY = 'worm-print-client:mcpLastUrl'
+const mcpUrlDrift = ref('')
+
+async function refreshMcpState() {
+  try {
+    mcpState.value = await window.wormPrint.getMcpState()
+    const lastUrl = localStorage.getItem(MCP_LAST_URL_KEY)
+    if (lastUrl && lastUrl !== mcpState.value.url) {
+      mcpUrlDrift.value = `MCP 端口从 ${lastUrl} 漂移到 ${mcpState.value.url}，请更新 AI Agent 的 MCP 配置`
+    }
+    localStorage.setItem(MCP_LAST_URL_KEY, mcpState.value.url)
+  } catch {
+    /* 刷新失败时保留旧状态 */
+  }
+}
+
+const mcpHeadersJson = computed(() =>
+  JSON.stringify({ url: mcpState.value?.url, headers: { Authorization: `Bearer ${config.value?.pairingToken ?? ''}` } }, null, 2),
+)
+
+async function copyMcpConfig() {
+  try {
+    await navigator.clipboard.writeText(mcpHeadersJson.value)
+    mcpCopyMsg.value = '已复制 MCP 连接配置（含 Bearer headers）'
+  } catch {
+    mcpCopyMsg.value = '复制失败：请手动选中下方文本'
+  }
+  setTimeout(() => (mcpCopyMsg.value = ''), 3000)
+}
 /** 路径条实际展示的目录：自定义目录优先，未设置时回退默认目录 */
 const effectivePdfDir = computed(() => config.value?.pdfOutputDir?.trim() || pdfDir.value)
 
@@ -34,6 +67,14 @@ onMounted(async () => {
     port.value = state.port
     version.value = state.version
     pdfDir.value = state.pdfDir
+    mcpState.value = state.mcp
+    {
+      const lastUrl = localStorage.getItem(MCP_LAST_URL_KEY)
+      if (lastUrl && state.mcp.url !== lastUrl) {
+        mcpUrlDrift.value = `MCP 地址从 ${lastUrl} 变为 ${state.mcp.url}，请更新 AI Agent 的 MCP 配置`
+      }
+      localStorage.setItem(MCP_LAST_URL_KEY, state.mcp.url)
+    }
     originsText.value = state.config.allowedOrigins.join('\n')
     printers.value = await window.wormPrint.listPrinters()
     jobs.value = await window.wormPrint.listHistory()
@@ -59,7 +100,8 @@ async function save() {
       .filter(Boolean),
   }
   config.value = await window.wormPrint.saveConfig(patch)
-  saveMsg.value = '已保存（端口变更需重启客户端生效）'
+  saveMsg.value = '已保存（端口变更需重启客户端生效；AI 助手开关即时生效）'
+  await refreshMcpState()
   setTimeout(() => (saveMsg.value = ''), 3000)
 }
 
@@ -111,6 +153,7 @@ async function openJobPdf(job: JobRecord) {
 function fmtTime(iso: string): string {
   return new Date(iso).toLocaleString()
 }
+
 </script>
 
 <template>
@@ -201,6 +244,54 @@ function fmtTime(iso: string): string {
         <button class="primary" @click="save">保存设置</button>
         <span class="muted">{{ saveMsg }}</span>
       </div>
+
+      <hr style="margin: 18px 0; border: none; border-top: 1px solid var(--divider, #eee)" />
+      <div class="ai-section-title">AI 助手（MCP）</div>
+      <div class="row">
+        <label>启用 AI 助手</label>
+        <input type="checkbox" v-model="config.mcpEnabled" />
+        <span class="muted">本地 AI Agent 经 MCP 读写浏览器中打开的设计器模板；开关即时生效，无需重启</span>
+      </div>
+      <template v-if="mcpUrlDrift">
+        <div class="row">
+          <label></label>
+          <span class="mcp-warn">⚠ {{ mcpUrlDrift }}</span>
+        </div>
+      </template>
+      <template v-if="config.mcpEnabled && mcpState">
+        <div class="row">
+          <label>MCP 地址</label>
+          <code class="mcp-code">{{ mcpState.url }}</code>
+        </div>
+        <div class="row row-stack">
+          <label>Agent 连接配置</label>
+          <textarea class="mcp-config" :value="mcpHeadersJson" readonly></textarea>
+          <div class="field-hint">
+            <button type="button" class="link-btn" @click="copyMcpConfig">复制 JSON 配置</button>
+            <span class="muted">{{ mcpCopyMsg }}</span>
+          </div>
+        </div>
+        <div class="row">
+          <label>Bearer token</label>
+          <code class="mcp-code">{{ config.pairingToken || '（生成中…）' }}</code>
+          <span class="muted">/mcp 恒要求该 token（与安全开关无关）；不回显模板内容</span>
+        </div>
+        <div class="row">
+          <label>模板会话</label>
+          <span>{{ mcpState.sessions.length }} 个
+            <span class="muted">（页面需保持打开；多会话时 AI 调用需指定 sessionId）</span>
+          </span>
+        </div>
+        <div class="row" v-if="mcpState.sessions.length" style="align-items: flex-start">
+          <label></label>
+          <div class="field-stack">
+            <span v-for="s in mcpState.sessions" :key="s.sessionId" class="mcp-session">
+              {{ s.name || '未命名页面' }}（{{ s.url }}）
+            </span>
+          </div>
+        </div>
+      </template>
+      <div v-else class="row"><label></label><span class="muted">未启用：MCP endpoint 不对外提供服务</span></div>
 
       <hr style="margin: 18px 0; border: none; border-top: 1px solid var(--divider, #eee)" />
       <div class="row">

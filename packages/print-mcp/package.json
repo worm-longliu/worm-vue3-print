@@ -3,11 +3,11 @@
   "version": "1.4.4",
   "private": true,
   "type": "module",
-  "description": "本地 stdio MCP 连接器：把打印模板契约层（校验/体检/草稿/表达式）暴露给宿主已有的 AI agent。不调用模型、不持有模型密钥。",
+  "description": "本地 MCP 连接器：把打印模板契约层（校验/体检/草稿/表达式）暴露给宿主已有的 AI agent。不调用模型、不持有模型密钥。库入口无副作用，stdio 由 dist/stdio.js 启动。",
   "license": "MIT",
   "author": "worm <liu_long_qqcom@qq.com>",
   "bin": {
-    "worm-vue3-print-mcp": "./dist/index.js"
+    "worm-vue3-print-mcp": "./dist/stdio.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "start": "node dist/index.js",
+    "start": "node dist/stdio.js",
     "test": "vitest run"
   },
   "dependencies": {

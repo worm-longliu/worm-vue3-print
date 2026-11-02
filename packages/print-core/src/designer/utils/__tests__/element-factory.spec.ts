@@ -1,7 +1,7 @@
 // 新建元素不携带字体字段：未手工配置时由渲染端系统默认字体承接。
 // 项目不替用户预置字体名，避免陈列/写入第三方授权字体（见 print/fonts.ts）。
 import { describe, it, expect } from 'vitest'
-import { createDefaultOptions, createRuntimeElement } from '../element-factory.js'
+import { createDefaultOptions, createRuntimeElement, findBlockedElementPaths } from '../element-factory.js'
 import type { ElementType } from '../../types.js'
 
 const ALL_TYPES: ElementType[] = [
@@ -43,5 +43,34 @@ describe('createRuntimeElement 手工配置语义', () => {
     const el = createRuntimeElement('table')
     expect('fontFamily' in el.options).toBe(false)
     expect(JSON.stringify(el.options)).not.toContain('fontFamily')
+  })
+})
+
+describe('findBlockedElementPaths 路径口径', () => {
+  const htmlEl = { id: 'x', type: 'html', printElementType: { type: 'html' } }
+  const okEl = { id: 'y', type: 'text' }
+
+  it('单页：elements / header / footer 均无前导点，路径涵盖 printElementType 兜底', () => {
+    expect(findBlockedElementPaths({
+      paperSize: 'A4', margins: {}, elements: [okEl, htmlEl],
+      header: { elements: [htmlEl] }, footer: { elements: [htmlEl] },
+    })).toEqual([
+      'elements[1].type',
+      'header.elements[0].type',
+      'footer.elements[0].type',
+    ])
+  })
+
+  it('多页 wrapper：路径带 pages[i] 前缀', () => {
+    expect(findBlockedElementPaths({
+      pages: [{ paperSize: 'A4', margins: {}, elements: [htmlEl] }, { paperSize: 'A4', margins: {}, elements: [okEl, htmlEl] }],
+    })).toEqual([
+      'pages[0].elements[0].type',
+      'pages[1].elements[1].type',
+    ])
+  })
+
+  it('无封禁元素返回空数组', () => {
+    expect(findBlockedElementPaths({ paperSize: 'A4', margins: {}, elements: [okEl] })).toEqual([])
   })
 })

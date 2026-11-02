@@ -14,6 +14,10 @@ export type ServerErrorCode =
   | 'BUSY'
   | 'RENDER_TIMEOUT'
   | 'PRINT_FAILED'
+  | 'SESSION_NOT_FOUND'
+  | 'SESSION_DISCONNECTED'
+  | 'REVISION_CONFLICT'
+  | 'INVALID_TEMPLATE'
   | 'INTERNAL'
 
 /** SDK 本地产生的错误码（服务端不会发送） */
@@ -150,7 +154,14 @@ export const MESSAGE_TYPES = {
   PRINTERS_LIST: 'printers.list',
   PRINT_SUBMIT: 'print.submit',
   PRINT_SUBMIT_HTML: 'print.submitHtml',
+  TEMPLATE_ATTACH: 'template.attach',
+  TEMPLATE_DETACH: 'template.detach',
+  TEMPLATE_GET: 'template.get',
+  TEMPLATE_APPLY: 'template.apply',
 } as const
+
+/** 桌面端主动请求的 id 前缀：与浏览器侧请求 id（现有格式）互不碰撞 */
+export const SERVER_REQUEST_ID_PREFIX = 'srv-'
 
 // ─── 编解码 ───
 
@@ -189,4 +200,82 @@ export function decodeServerMessage(raw: string): ServerResponse | MalformedMess
     ok: false,
     error: { code: err.code as ServerErrorCode, message: err.message },
   }
+}
+
+// ─── 双向协议：桌面端 → 浏览器请求（模板会话） ───
+
+/**
+ * 服务端主动下发的请求帧。浏览器 SDK 用 onMessage 时先判
+ * `('type' in msg)`（请求）再判 `'ok' in msg`（响应），公开既有返回形状不变。
+ */
+export type IncomingServerMessage =
+  | ServerResponse
+  | ClientRequest
+  | MalformedMessage
+
+/** template.attach 请求 payload（浏览器 → 桌面端） */
+export interface TemplateAttachRequest {
+  /** 页内 16–128 位 [A-Za-z0-9_-] 随机串（sessionStorage 保存，重连复用） */
+  sessionId: string
+  /** 页面展示名，桌面端截断到 120 字符 */
+  name: string
+  /** 页面地址，桌面端只保留 origin+pathname 并截断到 512 字符 */
+  url: string
+  templateName?: string
+}
+
+export interface TemplateAttachResponsePayload {
+  sessionId: string
+}
+
+/** template.get 请求 payload（桌面端 → 浏览器） */
+export interface TemplateGetRequest {}
+
+/** template.get 响应 payload（浏览器 → 桌面端） */
+export interface TemplateGetResponsePayload {
+  sessionId: string
+  /** 当前模板 JSON 的不透明内容指纹（SHA-256 hex，不支持时退化为稳定 FNV-1a hex） */
+  revision: string
+  templateJson: unknown
+  fields?: unknown[]
+  printData?: unknown
+  templateName?: string
+}
+
+/** template.apply 请求 payload（桌面端 → 浏览器） */
+export interface TemplateApplyRequest {
+  /** 写回依据的 revision；与当前不一致时浏览器拒绝并返回 REVISION_CONFLICT */
+  baseRevision: string
+  templateJson: unknown
+  reason?: string
+}
+
+/** template.apply 响应 payload */
+export interface TemplateApplyResponsePayload {
+  /** 写回后重新计算的新 revision */
+  revision: string
+  templateJson: unknown
+  issues?: unknown[]
+  warnings?: unknown[]
+}
+
+/** 判定一帧是否为服务端（桌面端）主动请求：无 ok 字段且含 id/type/payload */
+export function isServerRequestFrame(data: unknown): data is ClientRequest {
+  if (typeof data !== 'object' || data === null) return false
+  const obj = data as Record<string, unknown>
+  return 'ok' in obj === false
+    && typeof obj.id === 'string'
+    && typeof obj.type === 'string'
+    && typeof obj.payload === 'object' && obj.payload !== null
+}
+
+/** 桌面端请求帧解码：无 ok 字段且含 id/type/payload 才算请求，其余返回 malformed */
+export function decodeServerRequest(raw: string): ClientRequest | MalformedMessage {
+  let data: unknown
+  try {
+    data = JSON.parse(raw)
+  } catch {
+    return { malformed: true }
+  }
+  return isServerRequestFrame(data) ? data : { malformed: true }
 }

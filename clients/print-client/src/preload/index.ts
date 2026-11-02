@@ -4,6 +4,7 @@ import { SETTINGS_IPC } from '../shared/settings-protocol.js'
 
 const api = {
   getState: () => ipcRenderer.invoke(SETTINGS_IPC.GET_STATE),
+  getMcpState: () => ipcRenderer.invoke(SETTINGS_IPC.GET_MCP_STATE),
   saveConfig: (patch: unknown) => ipcRenderer.invoke(SETTINGS_IPC.SAVE_CONFIG, patch),
   listPrinters: () => ipcRenderer.invoke(SETTINGS_IPC.LIST_PRINTERS),
   testPrint: (printerName?: string) =>

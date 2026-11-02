@@ -62,6 +62,13 @@
           </label>
         </div>
       </Teleport>
+      <Teleport :to="overflow.slotEl('ai-status')" :disabled="!overflow.moved('ai-status')">
+        <div v-overflow-unit="{ id: 'ai-status', order: 10, label: 'AI 助手' }" class="demo-ou">
+          <span class="demo-ai-status" :class="`is-${aiStatus}`" :title="aiError || aiStatusHint">
+            AI 助手：{{ aiStatusText }}
+          </span>
+        </div>
+      </Teleport>
       <DemoTopbarMore />
       <button type="button" class="demo-print-btn" @click="printDialogVisible = true">打印输出</button>
       <input ref="fileInputRef" type="file" accept="application/json,.json" class="demo-file-input" @change="onImportTemplate($event)" />
@@ -133,11 +140,16 @@
       @apply="onApplyCustomData"
       @close="customDialogVisible = false"
     />
+
+    <!-- 模板会话提示：AI 写回成功 / 冲突时出现的浮层 -->
+    <Teleport to="body">
+      <div v-if="aiToast" class="demo-ai-toast">{{ aiToast }}</div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, shallowRef, computed, watch, onMounted } from 'vue'
+import { ref, shallowRef, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import {
   PrintDesigner,
   PrintHtmlPreview,
@@ -165,6 +177,7 @@ import {
   PURCHASE_RECEIPT_FIELDS,
 } from './business'
 import { deriveBatchData } from './batch-data'
+import { createTemplateSession, type TemplateSessionStatus } from './template-session'
 
 /** 相对路径图片（/docfiles/...）拼接基址：浏览器预览与打印保持一致，默认取当前站点 origin */
 const RENDER_BASE_URL = (import.meta.env.VITE_RENDER_BASE_URL as string | undefined) || window.location.origin
@@ -447,7 +460,75 @@ onMounted(() => {
   applySample(COMPREHENSIVE_SHOWCASE_SAMPLE)
 })
 
-</script>
+// ── 模板会话：将当前画布暴露给桌面客户端的 MCP AI 助手（客户端未启动时静默重试） ──
+const aiStatus = ref<TemplateSessionStatus>('unreachable')
+const aiError = ref<string | null>(null)
+const aiConflict = ref(false)
+const aiToast = ref<string | null>(null)
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+
+function showAiToast(message: string, sticky = false) {
+  aiToast.value = message
+  if (toastTimer) clearTimeout(toastTimer)
+  if (!sticky) toastTimer = setTimeout(() => { aiToast.value = null }, 4000)
+}
+
+/**
+ * apply 写回：深拷贝写回 templateData（currentSample 置空，改手动编辑内容），
+ * 等设计器重载完成后重读画布 JSON 作为新快照供 revision 计算。
+ * 写回只产生一次历史记录，用户可一步撤销。
+ */
+async function writeAiTemplate(json: unknown) {
+  templateData.value = JSON.parse(JSON.stringify(json)) as TemplateData | MultiPageTemplateData
+  currentSample.value = null
+  await nextTick()
+  return { freshTemplateJson: designerRef.value?.getTemplateJson?.() ?? json }
+}
+
+let session: ReturnType<typeof createTemplateSession> | null = null
+
+onMounted(() => {
+  session = createTemplateSession({
+    readSnapshot: () => ({
+      templateJson: designerRef.value?.getTemplateJson?.() ?? templateData.value,
+      templateName: currentSample.value?.name ?? TEMPLATE_NAME,
+      fields: fields.value,
+      printData: activePrintData.value,
+    }),
+    writeTemplate: writeAiTemplate,
+    onApplyResult: (kind, message) => {
+      if (kind === 'conflict') {
+        aiConflict.value = true
+        showAiToast(`AI 写入冲突：${message}`, true)
+      } else {
+        aiConflict.value = false
+        showAiToast(message)
+      }
+    },
+  })
+  session.onStatusChange((s, err) => {
+    aiStatus.value = s
+    aiError.value = err
+    if (s !== 'attached') aiConflict.value = false
+  })
+  session.start()
+})
+
+onUnmounted(() => {
+  session?.stop()
+  session = null
+  if (toastTimer) clearTimeout(toastTimer)
+})
+
+const aiStatusText = computed(() => {
+  if (aiConflict.value) return '写入冲突'
+  switch (aiStatus.value) {
+    case 'attached': return '已接入（可读写模板）'
+    case 'idle': return '连接异常'
+    default: return '未启动客户端'
+  }
+})
+const aiStatusHint = '启动桌面打印客户端并在设置里开启 MCP 后，本地 AI Agent 可读取并修改当前模板'</script>
 
 <style>
 /* 设计器内部控件基于原生样式，需全局引入一次 */
@@ -593,7 +674,28 @@ body,
   color: #5a667f;
   font-size: 12px;
 }
-.demo-note {
+.demo-ai-status {
+  padding: 2px 10px;
+  border: 1px solid #d9dde6;
+  border-radius: 999px;
+  background: #f4f6fa;
+  color: #5a667f;
+  font-size: 12px;
+  cursor: default;
+}
+.demo-ai-status.is-attached {
+  border-color: #b7eb8f;
+  background: #fcffe6;
+  color: #389e0d;
+}
+.demo-ai-status.is-idle {
+  border-color: #ffd591;
+  background: #fff7e6;
+  color: #d46b08;
+}
+.demo-ai-status.is-unreachable {
+  opacity: 0.8;
+}.demo-note {
   color: #8b909c;
   font-size: 12px;
 }
@@ -698,5 +800,19 @@ body,
   background: #f4f6fa;
   color: #2a2e37;
   border: 1px solid #d9dde6;
+}
+.demo-ai-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  z-index: 3000;
+  max-width: 60vw;
+  padding: 8px 18px;
+  border-radius: 6px;
+  background: rgba(28, 31, 35, 0.9);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.6;
 }
 </style>

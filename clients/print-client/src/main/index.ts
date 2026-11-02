@@ -1,4 +1,4 @@
-// 应用入口：单实例 → 加载配置/日志 → 渲染池 → 打印引擎 → 回环 WS 服务 → 托盘驻留。
+// 应用入口：单实例 → 加载配置/日志 → 渲染池 → 打印引擎 → 回环 HTTP+WS 服务（含 /mcp）→ 托盘驻留。
 import { app, Menu } from 'electron'
 import { join } from 'node:path'
 import { APP_ID } from '@worm-vue3-print/core/client'
@@ -10,6 +10,8 @@ import { PrinterService } from './printer-service.js'
 import { PrintEngine, createPrintRuntime } from './print-engine.js'
 import { buildPdfOutputPolicy, type PdfOutputPolicy } from './pdf-output.js'
 import { WsServer } from './ws-server.js'
+import { TemplateSessionRegistry } from './template-sessions.js'
+import { createMcpRequestHandler } from './mcp-host.js'
 import { checkAccess } from './security.js'
 import { makeMessageHandler } from './protocol-handler.js'
 import { createTray } from './tray.js'
@@ -39,7 +41,10 @@ if (!gotLock) {
       const userData = app.getPath('userData')
       const configStore = new ConfigStore(join(userData, 'config.json'))
       configStore.load()
-      if (configStore.current.securityEnabled && !configStore.current.pairingToken) {
+      if (
+        (configStore.current.securityEnabled || configStore.current.mcpEnabled)
+        && !configStore.current.pairingToken
+      ) {
         configStore.update({ pairingToken: generatePairingToken() })
       }
 
@@ -64,6 +69,8 @@ if (!gotLock) {
       })
 
       let actualPort = 0
+      // 模板会话注册表：attach/detach 来自浏览器，get/apply 供 MCP 工具实时读写
+      const templateSessions = new TemplateSessionRegistry(logger)
       const server = new WsServer({
         preferredPort: configStore.current.port,
         handler: makeMessageHandler({
@@ -72,11 +79,23 @@ if (!gotLock) {
           getPort: () => actualPort,
           printerService,
           printEngine,
+          templateSessions,
         }),
         checkAccess: input => checkAccess(input, configStore.current),
+        handleMcp: createMcpRequestHandler({
+          isMcpEnabled: () => configStore.current.mcpEnabled,
+          getPairingToken: () => configStore.current.pairingToken,
+          version: app.getVersion(),
+          templateSessions,
+          logger,
+        }),
         logger,
       })
       actualPort = await server.start()
+      templateSessions.connectBroker({
+        request: (ws, type, payload, timeoutMs) => server.requestClient(ws, type, payload, timeoutMs),
+        rejectPendingsOf: (ws, message) => server.rejectPendingsOf(ws, message),
+      })
 
       const testPrint = async (printerName?: string) => {
         await printEngine.submit({
@@ -95,6 +114,7 @@ if (!gotLock) {
         printEngine,
         getPort: () => server.port,
         getPdfDir: resolvePdfDir,
+        templateSessions,
       })
       mainWindow.registerIpc()
       mainWindow.bindPushEvents()
@@ -119,6 +139,7 @@ if (!gotLock) {
         e.preventDefault()
         quitting = true
         void (async () => {
+          templateSessions.stop()
           await server.stop().catch(() => {})
           destroyPrintHostWindow()
           app.exit(0)

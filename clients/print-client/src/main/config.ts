@@ -18,6 +18,8 @@ export interface AppConfig {
   securityEnabled: boolean
   allowedOrigins: string[]
   pairingToken: string
+  /** AI 助手（MCP Streamable HTTP）开关：默认关闭；开启后 /mcp 恒要求 Bearer pairingToken */
+  mcpEnabled: boolean
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -29,6 +31,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   securityEnabled: false,
   allowedOrigins: [],
   pairingToken: '',
+  mcpEnabled: false,
 }
 
 const LOG_LEVELS: readonly LogLevel[] = ['debug', 'info', 'warn', 'error']
@@ -75,6 +78,8 @@ export function parseConfig(raw: unknown): AppConfig {
     allowedOrigins,
     pairingToken:
       typeof src.pairingToken === 'string' ? src.pairingToken : DEFAULT_CONFIG.pairingToken,
+    // 旧配置缺字段时回退默认，不迁移、不报错；round-trip 由 parse 显式保留
+    mcpEnabled: src.mcpEnabled === true,
   }
 }
 

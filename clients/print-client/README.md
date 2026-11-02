@@ -201,6 +201,17 @@ npm run pack:client:dir
   - Origin 白名单非空时，握手同时校验浏览器 `Origin`；留空则只校验 token。
 - token 不明文进日志。
 
+## AI 助手（本地 MCP）
+
+设置页的「AI 助手」开关对应配置项 `mcpEnabled`（默认关闭，旧配置缺字段按关闭处理；开关即时生效，端口变更仍需按提示重启）。开启后客户端本地服务在**同一回环端口**额外挂出 `/mcp`（MCP Streamable HTTP），供本机 AI Agent（Claude Desktop / Cursor / OpenCode 等）直连，无需再跑 stdio 连接器：
+
+- 鉴权恒为 `Authorization: Bearer <配对 token>`（与安全开关无关；首次开启会自动生成 token，设置页展示并可一键复制，Agent 配置 JSON 也由设置页直接生成）。
+- 无状态 JSON 响应模式：每个 `POST /mcp` 独立处理，`GET/DELETE /mcp` 返回 405；MCP 关闭时 `/mcp` 返回 404；请求体与 WebSocket 帧上限同为 4MiB，仅接受 `127.0.0.1:<端口>` 的 Host（防 DNS rebinding）。
+- 暴露 8 个工具：`print_element_kinds`、`print_draft_template`、`print_validate_template`、`print_check_expression`、`print_inspect_layout`、`print_list_open_templates`、`print_get_open_template`、`print_apply_open_template`。**不包含 `print_render_preview`**（桌面端不访问渲染服务），需要真实 PDF 预览请走 stdio 连接器或渲染服务。
+- `print_get_open_template` / `print_apply_open_template` 读写的是浏览器里**正在编辑**的实时模板：宿主页面（demo 或业务页）用浏览器 SDK `setRequestHandler` 注册 `template.get/apply` 处理器并 `attachTemplate` 签到；`apply` 带防覆盖 revision（陈旧 `baseRevision` 返回冲突，需重新读取），并拒绝 `html` 等封禁元素。同一 sessionId 跨 Origin 重连被拒，页面断开后台自动回收会话。
+
+工作流：demo 打开设计器 → 客户端开启 MCP → Agent 直连 `/mcp` 读取/修改画布模板。宿主接入方式见 [AI 接入](../../docs/中文/指南/AI接入.md)。
+
 ## 连续纸（热敏/标签）纸长策略
 
 仅对模板 **`paperSize: 'CONTINUOUS'`（连续纸）** 生效，普通纸一律使用模板纸张：

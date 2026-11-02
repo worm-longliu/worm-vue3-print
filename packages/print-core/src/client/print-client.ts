@@ -1,4 +1,9 @@
-import { WsTransport, type TransportOptions, type TransportStatus } from './transport.js'
+import {
+  WsTransport,
+  type TransportOptions,
+  type TransportStatus,
+  type ServerRequestHandler,
+} from './transport.js'
 import {
   MESSAGE_TYPES,
   type HelloResponsePayload,
@@ -9,6 +14,8 @@ import {
   type PrintSubmitResponsePayload,
   type PrintersListResponsePayload,
   type RenderedHtmlPages,
+  type TemplateAttachRequest,
+  type TemplateAttachResponsePayload,
 } from './protocol.js'
 
 const TOKEN_STORAGE_KEY = 'worm-print-client:token'
@@ -48,6 +55,14 @@ export class PrintClient {
     return this.transport.onStatus(cb)
   }
 
+  /**
+   * 注册桌面端主动请求（template.get / template.apply 等模板会话协议）的处理器。
+   * 传 null 注销；抛错时错误码（如 REVISION_CONFLICT）随失败响应帧回传桌面端。
+   */
+  setRequestHandler(handler: ServerRequestHandler | null): void {
+    this.transport.setRequestHandler(handler)
+  }
+
   /** 枚举本机打印机 */
   async listPrinters(): Promise<PrinterInfo[]> {
     const res = await this.transport.request<PrintersListResponsePayload>(
@@ -55,6 +70,21 @@ export class PrintClient {
       {},
     )
     return res.printers
+  }
+
+  /** 通用协议请求：承载 print/printers 之外的协议消息（如 template.attach） */
+  request<T = unknown>(type: string, payload: unknown, timeoutMs?: number): Promise<T> {
+    return this.transport.request<T>(type, payload, timeoutMs)
+  }
+
+  /** 模板会话：向桌面端注册本页（重连成功后需重新调用） */
+  attachTemplate(payload: TemplateAttachRequest): Promise<TemplateAttachResponsePayload> {
+    return this.request(MESSAGE_TYPES.TEMPLATE_ATTACH, payload)
+  }
+
+  /** 模板会话：注销本页（页面卸载时调用；连接关闭后桌面端也会自动回收） */
+  detachTemplate(sessionId: string): Promise<Record<string, never>> {
+    return this.request(MESSAGE_TYPES.TEMPLATE_DETACH, { sessionId })
   }
 
   /**

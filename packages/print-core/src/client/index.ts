@@ -1,6 +1,10 @@
 export * from './protocol.js'
 export * from './errors.js'
 export { WsTransport } from './transport.js'
-export type { TransportOptions, TransportStatus } from './transport.js'
+export type {
+  TransportOptions,
+  TransportStatus,
+  ServerRequestHandler,
+} from './transport.js'
 export { PrintClient } from './print-client.js'
 export type { PrintClientOptions } from './print-client.js'
