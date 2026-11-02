@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la /Users/worm/.agents/skills/experts 2>/dev/null || ls -la .agents/skills/experts 2>/dev/null || find /Users/worm -maxdepth 4 -type d -name experts 2>/dev/null | head)",
+      "Read(//Users/worm/.agents/skills/**)",
+      "Bash(ls -la /Users/worm/worm/worm-vue3-print/.agents/skills 2>/dev/null; echo ---; ls -la /Users/worm/.agents 2>/dev/null; echo ---; find /Users/worm/.qoder /Users/worm/.agents -maxdepth 3 -type d 2>/dev/null | head -30)",
+      "Bash(find /Users/worm/.agents/skills -maxdepth 3 | head -50)",
+      "Bash(find /Users/worm/.workbuddy/plugins/marketplaces/experts -maxdepth 3 2>/dev/null | head -40; echo ---; find /Users/worm/.qoder/cache/experts -maxdepth 2 2>/dev/null | head -20)"
+    ]
+  }
+}
