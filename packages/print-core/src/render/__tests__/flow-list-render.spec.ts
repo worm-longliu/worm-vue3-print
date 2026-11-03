@@ -154,6 +154,13 @@ describe('动态模式', () => {
     expect(elementDecls(html)).not.toContain('height:24mm')
   })
 
+  it('动态测量容器的 verticalAlign 不改变文档流方向', () => {
+    const decls = elementDecls(render({
+      flowLayoutMode: 'dynamic', verticalAlign: 'middle', formatter: '{name}', dataSource: 'drugs',
+    }, drugs))
+    expect(decls.filter(d => d.startsWith('display:')).at(-1)).toBe('display:block')
+  })
+
   it('动态模式无业务数据时仍用 testData 生成测量行', () => {
     const html = render({ flowLayoutMode: 'dynamic', flowColumns: 1, testData: '黄芪 20g\n当归尾 15g\n赤芍 10g' }, {})
     expect(html.match(/class="print-flow-row"/g)).toHaveLength(3)

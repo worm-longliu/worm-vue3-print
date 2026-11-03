@@ -11,7 +11,7 @@ import type {
 } from './types.js'
 import { getPaperDimensions, isContinuousPaper } from './types.js'
 import { getRotatedAabb, resolveElementRotation } from './rotation.js'
-import { resolveFlowPadding, resolveFlowLayoutMode } from './flow-list.js'
+import { resolveFlowPadding, resolveFlowLayoutMode, resolveFlowRowHeight } from './flow-list.js'
 import { resolveElementBorder, type ElementBorderCss } from './element-border.js'
 
 /** 分页配置读取：options 内优先（前端序列化位置），顶层兼容旧测试/旧数据 */
@@ -928,7 +928,8 @@ export function paginate(
     const opts = el.options ?? {}
     const rowHeights = measured.get(el.id)?.measuredFlowRowHeights ?? []
     const rows: any[] = Array.isArray(opts._flowRows) ? opts._flowRows : []
-    const rowCount = Math.min(rows.length, rowHeights.length)
+    const rowCount = rows.length
+    const fallbackRowHeight = resolveFlowRowHeight(opts.flowRowHeight)
     // 空行区间：不输出空切片，也不为空列表产出空页
     if (rowCount === 0) return idx + 1
 
@@ -969,14 +970,18 @@ export function paginate(
         endFlowRow: endRow,
         renderTop: sliceTop,
       })
-      // 物理占位 = 设计 top 段 + 内边距/边框 + 行高合计：同列后续成员贴片底排布
-      occupy(tb, sliceDebit + chromeVertical + sliceRows)
+      // 首页同列已有元素已包含设计 top 之前的占位，只补当前片实际新增的底边深度；
+      // 续页 sliceTop 即当前列游标，同样按片底与游标之差记账，避免重复扣顶距。
+      const depthBefore = pageBroken ? sliceTop : depthIn(tb)
+      const sliceBottom = sliceTop + chromeVertical + sliceRows
+      occupy(tb, Math.max(0, sliceBottom - depthBefore))
       sliceRows = 0
     }
 
     let r = 0
     while (r < rowCount) {
-      const rowHeight = rowHeights[r] ?? 0
+      // 自定义测量链路缺行时按配置最小行高兜底，不能按短数组截断并静默丢数据
+      const rowHeight = rowHeights[r] ?? fallbackRowHeight
       if (rowHeight <= avail()) {
         sliceRows += rowHeight
         r++

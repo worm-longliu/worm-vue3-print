@@ -103,6 +103,17 @@ describe('动态列表按行切片', () => {
     ])
   })
 
+  it('实测行高不完整时按配置行高兜底，后续行不丢失', () => {
+    const tpl = template({
+      top: 0, flowLayoutMode: 'dynamic', flowColumns: 1, flowRowHeight: 8,
+      _flowRows: flowRows(['黄芪', '红花', '桃仁']),
+    })
+    const pages = paginate(tpl, measured('fl', [8]))
+    expect(flowSlices(pages)).toEqual([
+      { pageIndex: 0, startFlowRow: 0, endFlowRow: 3, renderTop: 0 },
+    ])
+  })
+
   it('四边内边距与上下边框进入预算：挤掉本来能放下的行', () => {
     // chrome = 上下内边距 2+2 + 上下 1pt(=25.4/72mm) 边框 ≈ 4.705mm
     // 行高 135.2：两行 270.4 ≤ 275（无 chrome 时单片装下），加 chrome 后超出预算 → 换页
@@ -222,6 +233,26 @@ describe('动态列表下方跟随区', () => {
     for (const page of pages) {
       expect(page.sections.some(s => s.type === 'element' && s.elementId === 'after')).toBe(false)
     }
+  })
+
+  it('首页同列已有元素时不重复累计列表设计 top，跟随区按实际底部承接', () => {
+    // 标题 0~30、列表 30~210、跟随区 210~250，均可放进 275mm 分页预算。
+    const tpl = multiTemplate([
+      followTextEl('title', 0, 30, { formatter: '标题' }),
+      flowListEl('fl', 30, 180, flowRows(Array.from({ length: 9 }, (_, i) => `药${i}`))),
+      followTextEl('after', 230, 20, { formatter: '合计' }),
+    ])
+    const pages = paginate(tpl, measuredMulti([
+      { id: 'title', measuredHeight: 30 },
+      { id: 'fl', flowRowHeights: Array(9).fill(20) },
+      { id: 'after', measuredHeight: 20 },
+    ]))
+    expect(pages).toHaveLength(1)
+    expect(followGroups(pages)).toHaveLength(1)
+    expect(pages[0]!.sections.at(-1)).toMatchObject({
+      type: 'flow-group', elementId: 'fl', groupTop: 30,
+      startFlowRow: 0, endFlowRow: 9, followElementIds: ['after'],
+    })
   })
 
   it('跟随区放不下：整体移到新页 groupTop=0 且 startFlowRow/endFlowRow 归零，只渲染跟随区', () => {
@@ -366,6 +397,17 @@ describe('跟随区 HTML：列表末片升级为 flow-group', () => {
 })
 
 describe('切片 HTML 闭合容器', () => {
+  it('verticalAlign 不把切片容器改成横向 flex', () => {
+    const tpl = template({
+      top: 0, height: 8, flowLayoutMode: 'dynamic', flowColumns: 1,
+      verticalAlign: 'middle', _flowRows: flowRows(['黄芪', '红花']),
+    })
+    const html = generateHtml(tpl, paginate(tpl, measured('fl', [8, 8])))
+    const style = html.match(/<div class="print-flowlist-slice" style="([^"]*)"/)?.[1] ?? ''
+    const displays = [...style.matchAll(/display:([^;]+)/g)].map(m => m[1])
+    expect(displays.at(-1)).toBe('block')
+  })
+
   it('每个切片容器输出四边 padding、元素边框与本片文本，下一片不带上一片文本', () => {
     let tpl = template({
       top: 260, height: 24, flowLayoutMode: 'dynamic',

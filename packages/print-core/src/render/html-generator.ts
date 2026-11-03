@@ -527,7 +527,7 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
         const rows: FlowRow[] = Array.isArray(opts._flowRows)
           ? opts._flowRows
           : layoutFlowList(items, { ...cfg, width: flowContentWidthMm(width, padding) })
-        return `<div class="print-element" style="${style}${textStyle(opts)}box-sizing:border-box;height:auto;overflow:visible;padding:${flowMm(padding.top)} ${flowMm(padding.right)} ${flowMm(padding.bottom)} ${flowMm(padding.left)};"${measureAttr}${fitAttr}>
+        return `<div class="print-element" style="${style}${textStyle(opts)}display:block;box-sizing:border-box;height:auto;overflow:visible;padding:${flowMm(padding.top)} ${flowMm(padding.right)} ${flowMm(padding.bottom)} ${flowMm(padding.left)};"${measureAttr}${fitAttr}>
   ${flowRowsHtml(rows, columns, gapX, rowHeight)}
 </div>`
       }
@@ -605,7 +605,7 @@ function flowSliceChromeStyle(type: string, opts: Record<string, any>): string {
     }
   }
   const padding = resolveFlowPadding(opts)
-  style += `${textStyle(opts)}box-sizing:border-box;height:auto;overflow:visible;padding:${flowMm(padding.top)} ${flowMm(padding.right)} ${flowMm(padding.bottom)} ${flowMm(padding.left)};`
+  style += `${textStyle(opts)}display:block;box-sizing:border-box;height:auto;overflow:visible;padding:${flowMm(padding.top)} ${flowMm(padding.right)} ${flowMm(padding.bottom)} ${flowMm(padding.left)};`
   return style
 }
 
