@@ -96,7 +96,7 @@ function measureFlowList() {
 }
 
 watch(
-  () => [props.element.options, props.designMode],
+  () => [props.element.options, props.designMode, props.data],
   () => measureFlowList(),
   { deep: true, flush: 'post' },
 )

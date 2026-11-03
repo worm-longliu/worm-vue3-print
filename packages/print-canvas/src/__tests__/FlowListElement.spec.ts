@@ -178,6 +178,21 @@ describe('FlowListElement 动态高度实测', () => {
     host.remove()
   })
 
+  it('打印数据变化后按新内容重新测量高度', async () => {
+    const element = reactive(makeElement({ flowLayoutMode: 'dynamic' }))
+    const wrapper = mount(FlowListElement, { props: { element, data: PRINT_DATA, designMode: true } })
+    let heightPx = 76
+    const root = wrapper.find('.print-flowlist').element
+    Object.defineProperty(root, 'offsetHeight', { configurable: true, get: () => heightPx })
+    await flushMeasurement()
+    expect(element.options.height).toBe(20.11)
+
+    heightPx = 114
+    await wrapper.setProps({ data: [{ drugs: [...DRUGS, { name: '丹参', spec: '15g' }] }] })
+    await flushMeasurement()
+    expect(element.options.height).toBe(30.16)
+  })
+
   it('零高度不写模型高度', async () => {
     const element = reactive(makeElement({ flowLayoutMode: 'dynamic' }))
     const wrapper = mount(FlowListElement, { props: { element, data: PRINT_DATA, designMode: true } })
