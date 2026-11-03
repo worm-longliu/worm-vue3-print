@@ -37,7 +37,7 @@ export interface PdfTargetSpec {
 export interface RawMeasurement {
   id: string
   heightPx: number
-  /** 表格行高（px），仅表格元素有值 */
+  /** 表格行或动态流式列表行的实际高度（px），仅表格与 dynamic 模式的 flowList 元素有值 */
   rowHeightsPx?: number[]
 }
 

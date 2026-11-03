@@ -34,8 +34,12 @@ import {
   resolveFlowColumns,
   resolveFlowGapX,
   resolveFlowMaxSpan,
+  resolveFlowPadding,
   resolveFlowRowHeight,
+  resolveFlowLayoutMode,
+  flowContentWidthMm,
   type FlowRenderConfig,
+  type FlowRow,
 } from './flow-list.js'
 import { cropStyleDeclarations } from './crop-style.js'
 import { injectSystemVariables } from './data-binder.js'
@@ -436,9 +440,11 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
   const height = opts.height ?? undefined
   const type = el.type || el.printElementType?.type || 'text'
   const fit = resolveElementTextFit(type, opts)
+  // 动态流式列表：容器高度由内容撑开，设计高度仅作画布初始尺寸，不写入落纸样式
+  const dynamicFlow = type === 'flowList' && resolveFlowLayoutMode(opts.flowLayoutMode) === 'dynamic'
   // 自适应行高：不写死高度（两趟一致），盒子由内容撑开——
   // 实测高度即内容高度，分页与连续纸探针才能拿到真实占位；设计高度仍作为分页下限保留
-  const fitHeight = fit === 'autoHeight' ? undefined : height
+  const fitHeight = fit === 'autoHeight' || dynamicFlow ? undefined : height
   // 方案 A+B：flow-group 内跟随元素用相对容器样式（containerStyle）覆盖绝对定位
   const baseStyle = containerStyle ?? elementPositionStyle(left, top, width, fitHeight, opts.zIndex)
   // 元素级边框统一追加（rect/oval/hline/vline/table 由 resolveElementBorder 排除，不双重边框）；
@@ -511,6 +517,17 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
         fontSizePt: opts.fontSize ?? 12,
         autoSpan: opts.flowAutoSpan === true,
       }
+      if (dynamicFlow) {
+        // 动态模式：绑定时已按内容宽保留排布行；逐行输出可独立测量的标记行。
+        // 测量趟与最终趟共用同一行 HTML 助手，保证行数与跨列口径一致。
+        const padding = resolveFlowPadding(opts)
+        const rows: FlowRow[] = Array.isArray(opts._flowRows)
+          ? opts._flowRows
+          : layoutFlowList(items, { ...cfg, width: flowContentWidthMm(width, padding) })
+        return `<div class="print-element" style="${style}${textStyle(opts)}height:auto;overflow:visible;padding:${flowMm(padding.top)} ${flowMm(padding.right)} ${flowMm(padding.bottom)} ${flowMm(padding.left)};"${measureAttr}${fitAttr}>
+  ${flowRowsHtml(rows, columns, gapX, rowHeight)}
+</div>`
+      }
       // 一框一页：单元超出框高由 overflow:hidden 裁掉，不撑破纸面（第 8 项口径）
       const cells = layoutFlowList(items, cfg)
         .flatMap(row => row.cells)
@@ -526,6 +543,38 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
       // 普通文本（text）与未单列的类型都走这里：判据只在显式打开新档时出声明，缺省逐字不变
       return `<div class="print-element" style="${style}${textStyle(opts)}${whiteSpaceStyle(opts)}${elementFitStyle(fit, opts)}"${measureAttr}${fitAttr}>${esc(opts.formatter ?? opts.testData ?? '')}</div>`
   }
+}
+
+/** mm 数值落纸：钳 3 位小数，避免浮点噪声进入内联样式 */
+function flowMm(value: number): string {
+  return `${Math.round(value * 1000) / 1000}mm`
+}
+
+/** 动态模式单行网格样式：行内均分列、横向间距与固定模式同口径，行高为最小高语义 */
+function flowRowGridStyle(columns: number, gapX: number, rowHeight: number): string {
+  return [
+    'display:grid',
+    `grid-template-columns:repeat(${columns},minmax(0,1fr))`,
+    `column-gap:${flowMm(gapX)}`,
+    `min-height:${flowMm(rowHeight)}`,
+  ].join(';')
+}
+
+/**
+ * 动态模式逐行 HTML。每行独立标注 data-flow-row-index，供测量趟的 DOM 执行器
+ * 按行读取真实高度；行内单元与固定模式同一 class 与跨列声明。
+ */
+function flowRowsHtml(rows: FlowRow[], columns: number, gapX: number, rowHeight: number): string {
+  return rows
+    .map((row, index) => {
+      const cells = row.cells
+        .map(c => `<div class="print-flow-cell"${c.span > 1 ? ` style="grid-column:span ${c.span};"` : ''}>${esc(c.text)}</div>`)
+        .join('\n    ')
+      return `<div class="print-flow-row" data-flow-row-index="${index}" style="${flowRowGridStyle(columns, gapX, rowHeight)};">
+    ${cells}
+  </div>`
+    })
+    .join('\n  ')
 }
 
 /** codeImgHtml 的可选参数（调用方按元素/单元格场景选择） */

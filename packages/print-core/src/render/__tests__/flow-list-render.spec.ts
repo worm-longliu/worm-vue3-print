@@ -135,3 +135,28 @@ describe('出纸 HTML', () => {
     expect(cells(html).map(c => c.text)).toEqual(['黄芪 20g', '当归尾 15g', '赤芍 10g'])
   })
 })
+
+describe('动态模式', () => {
+  it('动态模式保留排布行，固定模式不写内部行结构', () => {
+    const dynamic = bindData(template({
+      flowLayoutMode: 'dynamic', formatter: '{name}', dataSource: 'drugs',
+      flowColumns: 2, flowAutoSpan: true, flowMaxSpan: 2,
+    }), drugs)
+    expect(dynamic.elements[0]!.options._flowRows.length).toBeGreaterThan(1)
+    const fixed = bindData(template({ formatter: '{name}', dataSource: 'drugs' }), drugs)
+    expect(fixed.elements[0]!.options._flowRows).toBeUndefined()
+  })
+
+  it('动态测量趟逐行输出标记，容器不写死高度', () => {
+    const html = render({ flowLayoutMode: 'dynamic', formatter: '{name}', dataSource: 'drugs' }, drugs)
+    expect(html).toContain('class="print-flow-row"')
+    expect(html).toContain('data-flow-row-index="0"')
+    expect(elementDecls(html)).not.toContain('height:24mm')
+  })
+
+  it('动态模式无业务数据时仍用 testData 生成测量行', () => {
+    const html = render({ flowLayoutMode: 'dynamic', flowColumns: 1, testData: '黄芪 20g\n当归尾 15g\n赤芍 10g' }, {})
+    expect(html.match(/class="print-flow-row"/g)).toHaveLength(3)
+    expect(cells(html).map(c => c.text)).toEqual(['黄芪 20g', '当归尾 15g', '赤芍 10g'])
+  })
+})

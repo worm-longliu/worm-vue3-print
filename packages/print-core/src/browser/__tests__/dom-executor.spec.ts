@@ -47,6 +47,20 @@ describe('readMeasurements', () => {
     expect(readMeasurements(document)).toEqual([{ id: 'f', heightPx: 143.609375 }])
   })
 
+  it('无表格时读取流式列表逐行高度（原始 px，按行序）', () => {
+    document.body.innerHTML = `
+      <div data-measure-id="f">
+        <div class="print-flow-row" data-flow-row-index="0"></div>
+        <div class="print-flow-row" data-flow-row-index="1"></div>
+      </div>`
+    stubHeight(document.querySelector('[data-measure-id="f"]') as HTMLElement, 114)
+    const rows = document.querySelectorAll('.print-flow-row')
+    stubHeight(rows[0] as HTMLElement, 38)
+    stubHeight(rows[1] as HTMLElement, 76)
+
+    expect(readMeasurements(document)).toEqual([{ id: 'f', heightPx: 114, rowHeightsPx: [38, 76] }])
+  })
+
   it('缺 data-measure-id 的元素被跳过', () => {
     document.body.innerHTML = '<div data-measure-id=""><span></span></div>'
     expect(readMeasurements(document)).toEqual([])

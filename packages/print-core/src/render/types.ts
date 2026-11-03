@@ -279,6 +279,8 @@ export interface MeasuredElement {
   measuredHeight: number // mm
   /** 表格每行实际高度（mm），仅表格元素有值 */
   measuredRowHeights?: number[]
+  /** 动态流式列表逐行实测高度（mm），仅 dynamic 模式的 flowList 元素有值 */
+  measuredFlowRowHeights?: number[]
   /** 重复表头段实际高度（mm）= 前 _repeatHeaderCount 个渲染行高之和，仅表格元素有值 */
   repeatHeaderHeight?: number
 }

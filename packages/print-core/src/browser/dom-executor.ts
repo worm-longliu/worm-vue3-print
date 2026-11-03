@@ -81,6 +81,14 @@ export function readMeasurements(doc: Document): RawMeasurement[] {
     const heightPx = el.getBoundingClientRect().height
     const table = el.querySelector('table.print-table')
     if (!table) {
+      // 动态流式列表：逐行实测高度走与表格同一个 rowHeightsPx 通道（按 DOM 行序）
+      const flowRows = el.querySelectorAll<HTMLElement>('.print-flow-row[data-flow-row-index]')
+      if (flowRows.length > 0) {
+        const flowRowHeightsPx: number[] = []
+        flowRows.forEach(row => flowRowHeightsPx.push(row.getBoundingClientRect().height))
+        result.push({ id, heightPx, rowHeightsPx: flowRowHeightsPx })
+        return
+      }
       result.push({ id, heightPx })
       return
     }

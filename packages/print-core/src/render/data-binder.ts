@@ -3,7 +3,16 @@
 
 import type { TemplateData, TemplateElement, RenderRow, RenderCell } from './types.js'
 import { evaluateTemplate } from './expression-eval.js'
-import { detectFlowListKey } from './flow-list.js'
+import {
+  detectFlowListKey,
+  flowContentWidthMm,
+  layoutFlowList,
+  resolveFlowColumns,
+  resolveFlowGapX,
+  resolveFlowMaxSpan,
+  resolveFlowPadding,
+  resolveFlowLayoutMode,
+} from './flow-list.js'
 
 /**
  * 将模板中元素的 formatter 表达式求值为实际值。
@@ -99,8 +108,8 @@ function bindElement(
 
 /**
  * 流式列表：与表格共用「列表源解析」（dataSource → fields → 顶层第一个数组兜底），
- * 但只产出一维的单元文本——单元模板（options.formatter）对每个数据项求值一次，
- * 排布与跨列留给 html-generator。
+ * 单元模板（options.formatter）对每个数据项求值一次；固定模式只保留单元文本，
+ * 动态模式同时保留排布行，供逐行测量与后续分页使用。
  */
 function bindFlowListData(el: TemplateElement, data: Record<string, any>): void {
   const template = typeof el.options.formatter === 'string' ? el.options.formatter : ''
@@ -118,6 +127,22 @@ function bindFlowListData(el: TemplateElement, data: Record<string, any>): void 
   })
   el.options._flowItems = items
   el.options._flowRawFormatter = referencesPageNumbers(template) ? template : undefined
+  // 动态模式在数据绑定后保留内部排布行结构（宽度按扣除左右内边距后的内容宽计算）；
+  // 固定模式不写，避免为兼容模式增加多余字段。
+  if (resolveFlowLayoutMode(el.options.flowLayoutMode) === 'dynamic') {
+    const contentWidth = flowContentWidthMm(el.options.width ?? 0, resolveFlowPadding(el.options))
+    const layoutItems = items.length > 0
+      ? items
+      : String(el.options.testData ?? '').split(/\r?\n/).map(s => s.trim()).filter(Boolean)
+    el.options._flowRows = layoutFlowList(layoutItems, {
+      width: contentWidth,
+      columns: resolveFlowColumns(el.options.flowColumns),
+      gapX: resolveFlowGapX(el.options.flowGapX),
+      fontSizePt: el.options.fontSize ?? 12,
+      autoSpan: el.options.flowAutoSpan === true,
+      maxSpan: resolveFlowMaxSpan(el.options.flowMaxSpan, el.options.flowColumns),
+    })
+  }
 }
 
 function resolveListSource(opts: any, data: Record<string, any>): { list: Record<string, any>[]; key: string | undefined } {

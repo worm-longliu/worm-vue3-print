@@ -13,6 +13,15 @@ const template = {
   ],
 } as unknown as TemplateData
 
+const flowTemplate = {
+  paperSize: 'A4',
+  orientation: 'portrait',
+  margins: { top: 10, right: 10, bottom: 10, left: 10 },
+  elements: [
+    { id: 'f', type: 'flowList', options: { left: 0, top: 0, width: 80, height: 24, flowLayoutMode: 'dynamic' } },
+  ],
+} as unknown as TemplateData
+
 describe('normalizeMeasurements', () => {
   it('普通元素：像素高度换算为毫米，无行高与重复表头高度', () => {
     const map = normalizeMeasurements([{ id: 'a', heightPx: 38 }], template)
@@ -35,5 +44,11 @@ describe('normalizeMeasurements', () => {
   it('模板未知 id 或未配置重复表头时，重复表头高度为 0', () => {
     const map = normalizeMeasurements([{ id: 'ghost', heightPx: 76, rowHeightsPx: [38, 38] }], template)
     expect(map.get('ghost')!.repeatHeaderHeight).toBe(0)
+  })
+
+  it('动态列表的 rowHeightsPx 写入 measuredFlowRowHeights', () => {
+    const map = normalizeMeasurements([{ id: 'f', heightPx: 114, rowHeightsPx: [38, 76] }], flowTemplate)
+    expect(map.get('f')?.measuredFlowRowHeights).toEqual([38 / PX_PER_MM, 76 / PX_PER_MM])
+    expect(map.get('f')?.measuredRowHeights).toBeUndefined()
   })
 })
