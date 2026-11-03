@@ -46,6 +46,22 @@ describe('createRuntimeElement 手工配置语义', () => {
   })
 })
 
+describe('flowList 布局模式与四边内边距缺省', () => {
+  it('工厂默认固定模式且四边内边距为零', () => {
+    expect(createDefaultOptions('flowList')).toMatchObject({
+      flowLayoutMode: 'fixed', flowPaddingTop: 0, flowPaddingRight: 0,
+      flowPaddingBottom: 0, flowPaddingLeft: 0,
+    })
+  })
+
+  it('旧几何与排布缺省零变化', () => {
+    expect(createDefaultOptions('flowList')).toMatchObject({
+      width: 141.1, height: 21.2, fontSize: 12, formatter: '{name} {spec}',
+      flowColumns: 4, flowRowHeight: 8, flowGapX: 4, flowAutoSpan: false, flowMaxSpan: 2,
+    })
+  })
+})
+
 describe('findBlockedElementPaths 路径口径', () => {
   const htmlEl = { id: 'x', type: 'html', printElementType: { type: 'html' } }
   const okEl = { id: 'y', type: 'text' }

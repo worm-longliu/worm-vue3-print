@@ -107,6 +107,36 @@ export const PROPERTY_REGISTRY: PropertyGroupDef[] = [
         keywords: ['最多跨几列', '跨列上限', 'flowmaxspan'],
         tip: '跨列的列数上限，最大只能等于「每行列数」：把每行列数改小时，这里会被一并顶回去',
       },
+      {
+        key: 'fl-layout-mode',
+        default: 'fixed',
+        keywords: ['布局模式', '容器模式', '固定高度', '动态分页', '自动高度', 'flowlayoutmode'],
+        tip: '容器高度由谁决定：固定高度＝维持设计高度、一框一页，超高裁切（存量模板默认值，输出不变）；动态分页＝容器高度由内容撑开，内容满页后按行续页，每一页都画完整边框，元素下方的跟随区与表格同一套规则',
+      },
+      {
+        key: 'fl-padding-top',
+        keywords: ['上内边距', '内边距', '顶边距', 'flowpaddingtop'],
+        default: 0, defaultUnit: 'mm',
+        tip: '动态分页模式下容器顶部与第一行内容之间的留白（毫米），仅动态模式生效；每页切片都按它留白并计入分页预算，负值与非法值按 0 处理',
+      },
+      {
+        key: 'fl-padding-right',
+        keywords: ['右内边距', '内边距', '右边距', 'flowpaddingright'],
+        default: 0, defaultUnit: 'mm',
+        tip: '动态分页模式下容器右侧与内容之间的留白（毫米），会压缩参与列宽估算的内容宽度，仅动态模式生效',
+      },
+      {
+        key: 'fl-padding-bottom',
+        keywords: ['下内边距', '内边距', '底边距', 'flowpaddingbottom'],
+        default: 0, defaultUnit: 'mm',
+        tip: '动态分页模式下容器底部与最后一行内容之间的留白（毫米），每页切片都按它留白并计入分页预算，仅动态模式生效',
+      },
+      {
+        key: 'fl-padding-left',
+        keywords: ['左内边距', '内边距', '左边距', 'flowpaddingleft'],
+        default: 0, defaultUnit: 'mm',
+        tip: '动态分页模式下容器左侧与内容之间的留白（毫米），会压缩参与列宽估算的内容宽度，仅动态模式生效',
+      },
     ],
   },
   {

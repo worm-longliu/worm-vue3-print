@@ -4,13 +4,16 @@ import {
   detectFlowListKey,
   estimateTextWidthMm,
   flowColumnWidthMm,
+  flowContentWidthMm,
   flowGridStyle,
   flowSpanWidthMm,
   layoutFlowList,
   resolveFlowColumns,
   resolveFlowGapX,
   resolveFlowMaxSpan,
+  resolveFlowPadding,
   resolveFlowRowHeight,
+  resolveFlowLayoutMode,
   spanForText,
   suggestFlowColumns,
   type FlowLayoutConfig,
@@ -25,6 +28,25 @@ const base: FlowLayoutConfig = {
   autoSpan: true,
   maxSpan: 2,
 }
+
+describe('布局模式与四边内边距解析', () => {
+  it('动态布局缺省保持 fixed，非法值不触发分页', () => {
+    expect(resolveFlowLayoutMode(undefined)).toBe('fixed')
+    expect(resolveFlowLayoutMode('fixed')).toBe('fixed')
+    expect(resolveFlowLayoutMode('dynamic')).toBe('dynamic')
+    expect(resolveFlowLayoutMode('unknown')).toBe('fixed')
+  })
+
+  it('四边内边距独立解析，负值和非有限值归零', () => {
+    expect(resolveFlowPadding({
+      flowPaddingTop: 2, flowPaddingRight: -1,
+      flowPaddingBottom: Number.NaN, flowPaddingLeft: 4,
+    })).toEqual({ top: 2, right: 0, bottom: 0, left: 4 })
+    expect(resolveFlowPadding({})).toEqual({ top: 0, right: 0, bottom: 0, left: 0 })
+    expect(flowContentWidthMm(100, { top: 2, right: 3, bottom: 2, left: 4 })).toBe(93)
+    expect(flowContentWidthMm(5, { top: 0, right: 4, bottom: 0, left: 4 })).toBe(0)
+  })
+})
 
 describe('resolve* 缺省与钳制', () => {
   it('列数缺省 4、非法回落、钳到 1~12', () => {

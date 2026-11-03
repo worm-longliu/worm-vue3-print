@@ -404,6 +404,17 @@ export interface ElementOptions {
    * 会改用户填值的行为，与 flowColumns 冲突时按列数顶回（specs 第八节第 9 项）。
    */
   flowMaxSpan?: number
+  /**
+   * 容器布局模式：缺省 'fixed'（固定设计高度、一框一页，存量模板无需迁移）；
+   * 'dynamic' 容器高度由内容撑开、内容满页后按行续页，每片输出完整边框容器。
+   * 非法值读取时按 'fixed' 处理（resolveFlowLayoutMode）。
+   */
+  flowLayoutMode?: import('../render/flow-list.js').FlowLayoutMode
+  /** 动态容器四边内边距（mm），缺省 0；负值与非有限值按 0 处理。仅 dynamic 模式生效 */
+  flowPaddingTop?: number
+  flowPaddingRight?: number
+  flowPaddingBottom?: number
+  flowPaddingLeft?: number
 }
 
 /** 元素类型元数据 */

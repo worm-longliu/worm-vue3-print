@@ -18,6 +18,50 @@ export const FLOW_MAX_ROW_HEIGHT_MM = 100
 export const FLOW_MIN_GAP_X_MM = 0
 export const FLOW_MAX_GAP_X_MM = 50
 
+/** 流式列表容器布局模式：fixed=固定设计高度、一框一页（兼容模式）；dynamic=容器高度由内容撑开、按行续页 */
+export type FlowLayoutMode = 'fixed' | 'dynamic'
+
+/** 动态容器四边内边距（mm），每页切片都生成完整边框时进入页面预算 */
+export interface FlowPadding {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
+/**
+ * 布局模式解析：缺省与非法值一律按 fixed——旧模板与未知数据不允许意外分页。
+ * 只有显式写 'dynamic' 才进入动态模式（动态容器设计第二节）。
+ */
+export function resolveFlowLayoutMode(value: unknown): FlowLayoutMode {
+  return value === 'dynamic' ? 'dynamic' : 'fixed'
+}
+
+/**
+ * 四边内边距解析（mm，仅动态模式消费）：负值与非有限值按 0 处理，
+ * 不回写作者配置的其他字段。固定模式不依赖本值。
+ */
+export function resolveFlowPadding(options: Record<string, unknown>): FlowPadding {
+  const read = (key: string): number => {
+    const value = options[key]
+    return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0
+  }
+  return {
+    top: read('flowPaddingTop'),
+    right: read('flowPaddingRight'),
+    bottom: read('flowPaddingBottom'),
+    left: read('flowPaddingLeft'),
+  }
+}
+
+/**
+ * 动态容器内容宽度（mm）：扣除左右内边距后参与列宽估算与跨列计算。
+ * 左右内边距吃掉全部宽度时钳 0，不返回负数。
+ */
+export function flowContentWidthMm(width: number, padding: FlowPadding): number {
+  return Math.max(0, width - padding.left - padding.right)
+}
+
 /** 一个 pt 字号对应的毫米数（1pt = 25.4/72 mm） */
 const PT_TO_MM = 25.4 / 72
 

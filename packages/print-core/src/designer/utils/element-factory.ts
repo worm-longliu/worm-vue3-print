@@ -83,11 +83,14 @@ export function createDefaultOptions(type: ElementType): ElementOptions {
       }
     }
     case 'flowList':
-      // 每行列数与行高都必须由作者指定（不自动算列数）；跨列默认关，打开后上限钳到列数
+      // 每行列数与行高都必须由作者指定（不自动算列数）；跨列默认关，打开后上限钳到列数。
+      // 容器布局缺省 fixed：新拖入也不自动分页，动态模式由作者显式开启。
       return {
         ...base, width: 141.1, height: 21.2, fontSize: 12, formatter: '{name} {spec}',
         flowColumns: 4, flowRowHeight: 8, flowGapX: 4,
         flowAutoSpan: false, flowMaxSpan: 2,
+        flowLayoutMode: 'fixed', flowPaddingTop: 0, flowPaddingRight: 0,
+        flowPaddingBottom: 0, flowPaddingLeft: 0,
       }
     case 'hline':
       return { ...base, width: 70.6, height: 1.8, borderWidth: 0.75 }
