@@ -31,6 +31,7 @@ GitHub Pages：**https://worm-longliu.github.io/worm-vue3-print/**
 - [渲染管线（浏览器预览 / 服务端 PDF）](docs/中文/指南/渲染管线.md)
 - [三端渲染一致性方案](docs/中文/指南/三端渲染一致性方案.md)
 - [静默打印（桌面客户端 + 浏览器 SDK）](docs/中文/指南/静默打印.md)
+- [MCP 使用与集成（在自有项目/AI agent 里接入打印模板能力）](docs/中文/指南/MCP集成.md)
 - [技术复盘（偏差原因与客户端选型）](docs/技术复盘.md)
 - [CHANGELOG（版本变更记录）](docs/中文/CHANGELOG.md)
 

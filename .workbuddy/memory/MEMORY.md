@@ -24,11 +24,27 @@
 - 续片渲染重复表头时传 `rowLimit=repeatCount`，超界 rowspan 会被裁剪（`html-generator.ts` 的 `renderMatrixRows`），防止跨行主格吃掉数据行位置。
 - 新增 header 行（`insertRow` / `setRowType`）会继承相邻 header 行的 `repeatOnPage`；设计器开关走 `setHeaderRepeat(rows, enabled)` 作用于整个表头区。
 
-## 包结构现状（2026-09-21 起）
+## 包结构现状（2026-11-03 核对）
 
-- 发布到 npm 的包只有两个：`core`、`canvas`。
-- 静默打印浏览器端 SDK 在 core 子路径 **`@worm-vue3-print/core/client`**（源码 `packages/print-core/src/client/`），不存在独立 `@worm-vue3-print/client` 包（0.1.0 从未发布，旧目录 `packages/print-client-sdk` 已删）。
+- `packages/` 下六个目录：core、canvas、common（**发布**）；contract、mcp（private，不发布）；`print-client-sdk` 是**空壳残骸**（只剩 `dist/` 与 `node_modules/`，无 package.json/源码），别往里加代码。
+- workspace 内版本号 **1.4.4**；`common` 与主线同号发正式版，但 README 保留实验性声明。`contract` 是契约校验 / 元素种类白名单 / `draftTemplate` / `inspectTemplate` 的所在，MCP 依赖它。
+- 静默打印浏览器端 SDK 在 core 子路径 **`@worm-vue3-print/core/client`**（源码 `packages/print-core/src/client/`），不存在独立 `@worm-vue3-print/client` 包（0.1.0 从未发布）。
 - demo 线上预览：GitHub Pages `https://worm-longliu.github.io/worm-vue3-print/`，工作流 `.github/workflows/pages.yml`；EdgeOne 读根 `edgeone.json`。
+
+## MCP 工具集（桌面端实际可用 6 个）
+
+- 会话三件：`print_list_open_templates` / `print_get_open_template` / `print_apply_open_template`（实现在 `packages/print-mcp/src/template-session-tools.ts`）。
+- 纯计算五件：`print_element_kinds` / `print_validate_template` / `print_check_expression` / `print_inspect_layout` / `print_draft_template`（`packages/print-mcp/src/tools.ts`）。
+- **`print_render_preview` 在桌面端被排除**（`desktop-tools.ts` 的 `DESKTOP_BLOCKED_TOOL_NAMES`），且需 `PRINT_RENDER_BASE_URL` + `RENDER_API_KEY`；查不到它是设计如此，真实分页只能让用户在设计器预览。
+- 桌面端**拒绝 `templatePath`**（运行时 isError），只能传 `templateJson`。
+- `apply` 是整份替换 + `baseRevision`（一次撤销可恢复）；会话快照实时无缓存，页面关闭即失效。
+
+## 技能位置与适用范围（2026-11-03）
+
+- **用户级** `~/.workbuddy/skills/print-mcp-designer/`：MCP 画布操作，**与工作目录无关**（MCP 读的是桌面客户端连接的浏览器页面，不是磁盘文件）。用户在任何项目里用 MCP 都能加载；探属性走 `print_element_kinds` / `print_draft_template`，不要 grep 源码。
+- **项目级** `.workbuddy/skills/worm-vue3-print-project-map/`：只在 worm-vue3-print 仓库开发时用（包结构、源码定位、构建与发版坑）。
+- 仓库 `skills/`（`print-template-json`、`worm-vue3-print-integration`）是随仓库分发给宿主开发者 / 其他 AI 工具的，不参与本机技能自动发现，别和上面两类混为一谈。
+- 用户使用 MCP 的场景不限于本仓库（常在宿主业务项目里），所以与 MCP 相关的知识一律放用户级。
 
 ## 打标签与 Release 正文的顺序（硬约束）
 

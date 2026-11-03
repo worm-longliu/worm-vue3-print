@@ -5,6 +5,7 @@ import type { PrinterInfo } from '@worm-vue3-print/core/client'
 import type { JobRecord } from '../main/job-history.js'
 import type { LogEntry } from '../main/logger.js'
 import type { McpState } from '../preload/preload.api.js'
+import { buildMcpConfigJson, MCP_SERVICE_NAME } from './mcp-config'
 
 const tab = ref<'settings' | 'jobs' | 'logs'>('settings')
 const config = ref<AppConfig | null>(null)
@@ -40,13 +41,13 @@ async function refreshMcpState() {
 }
 
 const mcpHeadersJson = computed(() =>
-  JSON.stringify({ url: mcpState.value?.url, headers: { Authorization: `Bearer ${config.value?.pairingToken ?? ''}` } }, null, 2),
+  buildMcpConfigJson(mcpState.value?.url ?? '', config.value?.pairingToken ?? ''),
 )
 
 async function copyMcpConfig() {
   try {
     await navigator.clipboard.writeText(mcpHeadersJson.value)
-    mcpCopyMsg.value = '已复制 MCP 连接配置（含 Bearer headers）'
+    mcpCopyMsg.value = '已复制完整 MCP 配置（含服务名称与 Bearer headers）'
   } catch {
     mcpCopyMsg.value = '复制失败：请手动选中下方文本'
   }
@@ -270,6 +271,10 @@ function fmtTime(iso: string): string {
             <button type="button" class="link-btn" @click="copyMcpConfig">复制 JSON 配置</button>
             <span class="muted">{{ mcpCopyMsg }}</span>
           </div>
+        </div>
+        <div class="row">
+          <label></label>
+          <span class="muted">服务名称固定为 {{ MCP_SERVICE_NAME }}；已配置其它 MCP 服务时，请把该条目合并进现有 mcpServers，勿整段覆盖。</span>
         </div>
         <div class="row">
           <label>Bearer token</label>

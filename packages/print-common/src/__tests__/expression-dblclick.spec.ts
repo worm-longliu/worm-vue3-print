@@ -58,12 +58,18 @@ const textarea = (root: ShadowRoot) => root.querySelector<HTMLTextAreaElement>('
  */
 async function dblClick(root: ShadowRoot, sel: string) {
   const opts = { bubbles: true, cancelable: true, button: 0, clientX: 10, clientY: 10 }
+  const mouseEvent = (type: string, timeStamp: number) => {
+    const event = new MouseEvent(type, opts)
+    // rAF 在完整套件高负载时可能等待超过 500ms；固定两击时间戳以聚焦双击行为而非机器速度
+    Object.defineProperty(event, 'timeStamp', { value: timeStamp })
+    return event
+  }
   for (let i = 0; i < 2; i++) {
     await frame()
     const node = root.querySelector<HTMLElement>(sel)
     if (!node) throw new Error(`节点不存在: ${sel}`)
-    node.dispatchEvent(new MouseEvent('mousedown', opts))
-    window.dispatchEvent(new MouseEvent('mouseup', opts))
+    node.dispatchEvent(mouseEvent('mousedown', 1000 + i * 50))
+    window.dispatchEvent(mouseEvent('mouseup', 1000 + i * 50))
   }
 }
 
