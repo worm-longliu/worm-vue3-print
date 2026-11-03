@@ -11,6 +11,8 @@ import type {
 } from './types.js'
 import { getPaperDimensions, isContinuousPaper } from './types.js'
 import { getRotatedAabb, resolveElementRotation } from './rotation.js'
+import { resolveFlowPadding, resolveFlowLayoutMode } from './flow-list.js'
+import { resolveElementBorder, type ElementBorderCss } from './element-border.js'
 
 /** 分页配置读取：options 内优先（前端序列化位置），顶层兼容旧测试/旧数据 */
 function paginationOf(el: TemplateElement): { pageable?: boolean; keepWithNext?: boolean } | undefined {
@@ -26,6 +28,12 @@ const SAFETY_MARGIN = 2
 
 function isTableEl(el: FollowJudgementInput): boolean {
   return el.type === 'table' || el.printElementType?.type === 'table'
+}
+
+/** 动态模式流式列表：按行分页的可切片元素，不走普通元素的整体/堆叠分页路径 */
+function isDynamicFlowListEl(el: FollowJudgementInput): boolean {
+  const type = el.type || el.printElementType?.type || 'text'
+  return type === 'flowList' && resolveFlowLayoutMode(el.options?.flowLayoutMode) === 'dynamic'
 }
 
 function elTypeOf(el: FollowJudgementInput): string {
@@ -295,9 +303,11 @@ function buildPaginationUnits(
     for (const m of members) unitOf.set(m.id, unit)
   }
 
-  // 隐式纵向重叠聚类：并查集（DSU），仅纳入可分页、非表格、未显式编组的元素
+  // 隐式纵向重叠聚类：并查集（DSU），仅纳入可分页、非表格、未显式编组的元素。
+  // 动态流式列表按行切片，不参与整组同页的堆叠聚类，避免同一高度被两处重复记账。
   const eligible = sorted.filter(
-    el => !isTableEl(el) && !el.options?.groupId && paginationOf(el)?.pageable !== false,
+    el => !isTableEl(el) && !isDynamicFlowListEl(el) && !el.options?.groupId
+      && paginationOf(el)?.pageable !== false,
   )
   const parent = new Map<string, string>()
   eligible.forEach(el => parent.set(el.id, el.id))
@@ -580,6 +590,8 @@ export function paginate(
 
     if (isTableEl(el)) {
       i = paginateTable(el, measuredElements, i)
+    } else if (isDynamicFlowListEl(el)) {
+      i = paginateFlowList(el, measuredElements, i)
     } else if (unit) {
       i = paginateUnit(unit, i)
     } else {
@@ -879,6 +891,107 @@ export function paginate(
     }
 
     applyFollowGroup(el, measured, tb)
+    return idx + 1
+  }
+
+  // ─── 动态流式列表分页（按排布行切片；不处理表头、小计或汇总） ───
+
+  function paginateFlowList(
+    el: TemplateElement,
+    measured: Map<string, MeasuredElement>,
+    idx: number,
+  ): number {
+    const opts = el.options ?? {}
+    const rowHeights = measured.get(el.id)?.measuredFlowRowHeights ?? []
+    const rows: any[] = Array.isArray(opts._flowRows) ? opts._flowRows : []
+    const rowCount = Math.min(rows.length, rowHeights.length)
+    // 空行区间：不输出空切片，也不为空列表产出空页
+    if (rowCount === 0) return idx + 1
+
+    // 本片纵向开销（mm）＝上下内边距 + 上下边框：pt 按 25.4/72 换算、上下分边分别计
+    const padding = resolveFlowPadding(opts)
+    const borders = resolveElementBorder(elTypeOf(el), opts)
+    const sideMm = (css?: ElementBorderCss): number => {
+      if (!css) return 0
+      const pt = Number.parseFloat(css.borderWidth)
+      return Number.isFinite(pt) ? pt * PT_TO_MM : 0
+    }
+    const borderMm = (side: 'top' | 'bottom'): number => {
+      const edge = borders?.edges?.[side]
+      if (edge) return sideMm(edge)
+      return sideMm(borders?.all ?? undefined)
+    }
+    const chromeVertical = padding.top + padding.bottom + borderMm('top') + borderMm('bottom')
+
+    const tb = xRange(el)
+    let sliceStart = 0
+    let sliceTop = sectionTop(el, tb)
+    // 首片在首页时预算先扣设计 top 段（片顶是绝对坐标，页面物理下限固定，不再按 depthIn 扣）；
+    // 换页后片顶落内容区顶部(0)，先前占深由 remainingIn 扣除
+    let sliceDebit = pageBroken ? 0 : sliceTop
+    // 本片行高合计（不含内边距与边框）
+    let sliceRows = 0
+    const avail = (): number => {
+      const base = pageBroken ? remainingIn(tb) : fullPageHeight() - sliceDebit
+      return base - sliceRows - chromeVertical
+    }
+
+    /** 收下当前片：半开区间 [sliceStart, endRow)；行高、内边距、边框只对本片记账一次 */
+    const pushFlowSlice = (endRow: number): void => {
+      currentPage.push({
+        elementId: el.id,
+        type: 'flow-list-slice',
+        startFlowRow: sliceStart,
+        endFlowRow: endRow,
+        renderTop: sliceTop,
+      })
+      // 物理占位 = 设计 top 段 + 内边距/边框 + 行高合计：同列后续成员贴片底排布
+      occupy(tb, sliceDebit + chromeVertical + sliceRows)
+      sliceRows = 0
+    }
+
+    let r = 0
+    while (r < rowCount) {
+      const rowHeight = rowHeights[r] ?? 0
+      if (rowHeight <= avail()) {
+        sliceRows += rowHeight
+        r++
+        continue
+      }
+      // 页面全新预算也放不下这一行：先收下已有前片；当前页还有其他内容时先换页，
+      // 再把超高行单独留在空页并记 overflow，不把前片一并拖成溢出。
+      if (rowHeight + chromeVertical > fullPageHeight()) {
+        if (r > sliceStart) {
+          pushFlowSlice(r)
+          sliceStart = r
+        }
+        if (currentPage.length > 0) finishPage()
+        sliceTop = sectionTop(el, tb)
+        sliceDebit = pageBroken ? 0 : sliceTop
+        sliceRows = rowHeight
+        noteOverflow(sliceTop + chromeVertical + sliceRows)
+        r++
+        continue
+      }
+      // 当前页为空且无可收片时换页只会产出空白纸：按 overflow 口径留在原页
+      if (currentPage.length === 0 && sliceRows === 0 && !pageBroken) {
+        sliceRows += rowHeight
+        noteOverflow(sliceTop + chromeVertical + sliceRows)
+        r++
+        continue
+      }
+      // 已积累的行先收片 → 换页 → 新片从内容区顶部(0)排布，重试当前行
+      if (r > sliceStart) {
+        pushFlowSlice(r)
+        sliceStart = r
+      }
+      finishPage()
+      sliceTop = sectionTop(el, tb)
+      sliceDebit = pageBroken ? 0 : sliceTop
+    }
+    if (sliceStart < rowCount) {
+      pushFlowSlice(rowCount)
+    }
     return idx + 1
   }
 

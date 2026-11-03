@@ -304,11 +304,15 @@ export interface PageLayout {
 
 export interface PageSection {
   elementId: string
-  type: 'element' | 'table-slice' | 'flow-group'
+  type: 'element' | 'table-slice' | 'flow-list-slice' | 'flow-group'
   /** table-slice 专用：渲染行起始索引（含表头行） */
   startRow?: number
   /** table-slice 专用：渲染行结束索引（不含） */
   endRow?: number
+  /** flow-list-slice 专用：本片排布行起始索引（含） */
+  startFlowRow?: number
+  /** flow-list-slice 专用：本片排布行结束索引（不含），半开区间保证相邻片连续无重复 */
+  endFlowRow?: number
   /** table-slice 专用：非首片时在切片前重复表头段 */
   repeatHeader?: boolean
   /** table-slice 专用：本片末尾是否渲染小计行（当前页数据小计，每页重复） */

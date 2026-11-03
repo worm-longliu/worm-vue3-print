@@ -341,6 +341,9 @@ function renderSection(section: PageSection, template: TemplateData, ctx: Render
   if (section.type === 'table-slice') {
     return renderTableSlice(el, section, ctx)
   }
+  if (section.type === 'flow-list-slice') {
+    return renderFlowListSlice(el, section, ctx)
+  }
   if (section.type === 'flow-group') {
     return renderFlowGroup(el, section, template, ctx)
   }
@@ -524,7 +527,7 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
         const rows: FlowRow[] = Array.isArray(opts._flowRows)
           ? opts._flowRows
           : layoutFlowList(items, { ...cfg, width: flowContentWidthMm(width, padding) })
-        return `<div class="print-element" style="${style}${textStyle(opts)}height:auto;overflow:visible;padding:${flowMm(padding.top)} ${flowMm(padding.right)} ${flowMm(padding.bottom)} ${flowMm(padding.left)};"${measureAttr}${fitAttr}>
+        return `<div class="print-element" style="${style}${textStyle(opts)}box-sizing:border-box;height:auto;overflow:visible;padding:${flowMm(padding.top)} ${flowMm(padding.right)} ${flowMm(padding.bottom)} ${flowMm(padding.left)};"${measureAttr}${fitAttr}>
   ${flowRowsHtml(rows, columns, gapX, rowHeight)}
 </div>`
       }
@@ -563,18 +566,66 @@ function flowRowGridStyle(columns: number, gapX: number, rowHeight: number): str
 /**
  * 动态模式逐行 HTML。每行独立标注 data-flow-row-index，供测量趟的 DOM 执行器
  * 按行读取真实高度；行内单元与固定模式同一 class 与跨列声明。
+ * 测量趟与最终切片共用本助手：切片传入 startIndex 保持全局行索引（不重排行序）。
  */
-function flowRowsHtml(rows: FlowRow[], columns: number, gapX: number, rowHeight: number): string {
+function flowRowsHtml(
+  rows: FlowRow[],
+  columns: number,
+  gapX: number,
+  rowHeight: number,
+  startIndex = 0,
+): string {
   return rows
     .map((row, index) => {
       const cells = row.cells
         .map(c => `<div class="print-flow-cell"${c.span > 1 ? ` style="grid-column:span ${c.span};"` : ''}>${esc(c.text)}</div>`)
         .join('\n    ')
-      return `<div class="print-flow-row" data-flow-row-index="${index}" style="${flowRowGridStyle(columns, gapX, rowHeight)};">
+      return `<div class="print-flow-row" data-flow-row-index="${startIndex + index}" style="${flowRowGridStyle(columns, gapX, rowHeight)};">
     ${cells}
   </div>`
     })
     .join('\n  ')
+}
+
+/**
+ * 动态流式列表分页切片：每片独立闭合容器（行 HTML 与测量趟同一助手）。
+ * 复用元素定位、边框、背景与文字样式及四边内边距，但不写死 height、
+ * 也不走 `.print-element` 的 overflow:hidden 裁切——容器高度由本片行撑开。
+ */
+function renderFlowListSlice(el: TemplateElement, section: PageSection, _ctx?: RenderCtx): string {
+  const opts = el.options ?? {}
+  const rows: FlowRow[] = Array.isArray(opts._flowRows) ? opts._flowRows : []
+  const startFlowRow = section.startFlowRow ?? 0
+  const endFlowRow = section.endFlowRow ?? rows.length
+  // 空行区间：不输出空切片（容器不带只有边框的页）
+  if (startFlowRow >= endFlowRow) return ''
+  const type = el.type || el.printElementType?.type || 'flowList'
+  // 续片在本页内容区从页顶(0)开始，首片用设计 top / 切片 renderTop
+  const style = elementPositionStyle(
+    opts.left ?? 0,
+    section.renderTop ?? opts.top ?? 0,
+    opts.width ?? 100,
+    undefined,
+    opts.zIndex,
+  )
+  const elBorders = resolveElementBorder(type, opts)
+  let fullStyle = style
+  if (elBorders?.all) {
+    fullStyle += `border:${elBorders.all.borderWidth} ${elBorders.all.borderStyle} ${elBorders.all.borderColor};`
+  }
+  if (elBorders) {
+    for (const side of ELEMENT_BORDER_SIDES) {
+      const e = elBorders.edges[side]
+      if (e) fullStyle += `border-${side}:${e.borderWidth} ${e.borderStyle} ${e.borderColor};`
+    }
+  }
+  const columns = resolveFlowColumns(opts.flowColumns)
+  const gapX = resolveFlowGapX(opts.flowGapX)
+  const rowHeight = resolveFlowRowHeight(opts.flowRowHeight)
+  const padding = resolveFlowPadding(opts)
+  return `<div class="print-flowlist-slice" style="${fullStyle}${textStyle(opts)}box-sizing:border-box;height:auto;overflow:visible;padding:${flowMm(padding.top)} ${flowMm(padding.right)} ${flowMm(padding.bottom)} ${flowMm(padding.left)};">
+  ${flowRowsHtml(rows.slice(startFlowRow, endFlowRow), columns, gapX, rowHeight, startFlowRow)}
+</div>`
 }
 
 /** codeImgHtml 的可选参数（调用方按元素/单元格场景选择） */
