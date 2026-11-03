@@ -30,6 +30,11 @@ describe('OPTION_META', () => {
     expect(OPTION_META.barWidth.kind).toBe('count')
     expect(OPTION_META.qrQuietZone.kind).toBe('count')
     expect(OPTION_META.flowColumns.kind).toBe('count')
+    expect(OPTION_META.flowLayoutMode).toEqual({ kind: 'enum', enum: ['fixed', 'dynamic'] })
+    expect(OPTION_META.flowPaddingTop.kind).toBe('mm')
+    expect(OPTION_META.flowPaddingRight.kind).toBe('mm')
+    expect(OPTION_META.flowPaddingBottom.kind).toBe('mm')
+    expect(OPTION_META.flowPaddingLeft.kind).toBe('mm')
     expect(OPTION_META.fitScale.min).toBe(100)
     expect(OPTION_META.fitScale.max).toBe(400)
     // types.ts 里 printerDpi 是 number，不是字符串枚举

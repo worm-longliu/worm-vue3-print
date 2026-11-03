@@ -33,6 +33,7 @@ export const OPTION_META: Record<OptionKey, Meta> = {
   // 几何（mm）
   ...mm('left', 'top', 'width', 'height'),
   ...mm('barHeight', 'maxWidth', 'maxHeight', 'flowRowHeight', 'flowGapX'),
+  ...mm('flowPaddingTop', 'flowPaddingRight', 'flowPaddingBottom', 'flowPaddingLeft'),
   ...mm('tableDefaultPadding'),
   ...mm('contentPaddingLeft', 'contentPaddingTop', 'contentPaddingRight', 'contentPaddingBottom'),
   // 字号行距（pt）
@@ -46,6 +47,7 @@ export const OPTION_META: Record<OptionKey, Meta> = {
     'formatter', 'styler', 'rowStyler', 'tableDefaultFontFamily', 'tableDefaultColor'),
   ...color('color', 'backgroundColor', 'borderColor'),
   ...obj('borders', 'pagination', 'tablePagination', 'tableRows', 'tableColWidths'),
+  flowLayoutMode: { kind: 'enum', enum: ['fixed', 'dynamic'] },
   textAlign: { kind: 'enum', enum: ['left', 'center', 'right', 'justify'] },
   verticalAlign: { kind: 'enum', enum: ['top', 'middle', 'bottom'] },
   textFit: { kind: 'enum', enum: ['clip', 'shrink', 'autoHeight'] },
