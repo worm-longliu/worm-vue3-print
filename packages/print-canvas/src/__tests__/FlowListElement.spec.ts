@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick, reactive } from 'vue'
 import FlowListElement from '../components/elements/FlowListElement.vue'
 import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 
@@ -85,5 +86,119 @@ describe('FlowListElement 设计态铺法', () => {
       props: { element: makeElement({ flowColumns: 0 }), data: PRINT_DATA, designMode: true },
     })
     expect(rootStyle(wrapper)).toContain('grid-template-columns:repeat(1,minmax(0,1fr))')
+  })
+})
+
+describe('FlowListElement 动态布局样式', () => {
+  it('动态模式根节点四边内边距、自动高度且不裁切', () => {
+    const wrapper = mount(FlowListElement, {
+      props: {
+        element: makeElement({
+          flowLayoutMode: 'dynamic',
+          flowPaddingTop: 2, flowPaddingRight: 3, flowPaddingBottom: 4, flowPaddingLeft: 5,
+        }),
+        data: PRINT_DATA,
+        designMode: true,
+      },
+    })
+    const style = rootStyle(wrapper)
+    expect(style).toContain('padding:2mm3mm4mm5mm')
+    expect(style).toContain('height:auto')
+    expect(style).toContain('overflow:visible')
+  })
+
+  it('固定模式保持原设计高度与裁切，不写动态内边距', () => {
+    const wrapper = mount(FlowListElement, {
+      props: {
+        element: makeElement({
+          flowLayoutMode: 'fixed',
+          flowPaddingTop: 2, flowPaddingRight: 3, flowPaddingBottom: 4, flowPaddingLeft: 5,
+        }),
+        data: PRINT_DATA,
+        designMode: true,
+      },
+    })
+    const style = rootStyle(wrapper)
+    expect(style).toContain('height:100%')
+    expect(style).toContain('overflow:hidden')
+    expect(style).not.toContain('padding:')
+  })
+
+  it('缺省（未声明模式）与非法值仍按 fixed 呈现', () => {
+    for (const mode of [undefined, 'unknown']) {
+      const wrapper = mount(FlowListElement, {
+        props: { element: makeElement({ flowLayoutMode: mode as any }), data: PRINT_DATA, designMode: true },
+      })
+      const style = rootStyle(wrapper)
+      expect(style).toContain('height:100%')
+      expect(style).toContain('overflow:hidden')
+    }
+  })
+})
+
+describe('FlowListElement 动态高度实测', () => {
+  const PX_PER_MM = 3.7795275591
+
+  async function flushMeasurement() {
+    await nextTick()
+    await nextTick()
+  }
+
+  function mockRootHeight(wrapper: ReturnType<typeof mount>, px: number) {
+    const root = wrapper.find('.print-flowlist').element
+    Object.defineProperty(root, 'offsetHeight', { configurable: true, value: px })
+  }
+
+  it('动态内容实测后回写毫米高度（两位小数）', async () => {
+    const element = reactive(makeElement({ flowLayoutMode: 'dynamic' }))
+    const wrapper = mount(FlowListElement, { props: { element, data: PRINT_DATA, designMode: true } })
+    mockRootHeight(wrapper, 76)
+    await flushMeasurement()
+    expect(element.options.height).toBe(20.11)
+  })
+
+  it('实测时加上父 .print-element 的上下边框像素', async () => {
+    const element = reactive(makeElement({ flowLayoutMode: 'dynamic' }))
+    const wrapper = mount(FlowListElement, {
+      props: { element, data: PRINT_DATA, designMode: true },
+      attachTo: document.body,
+    })
+    const host = document.createElement('div')
+    host.className = 'print-element'
+    host.style.borderTop = '2px solid #000'
+    host.style.borderBottom = '3px solid #000'
+    document.body.appendChild(host)
+    host.appendChild(wrapper.element)
+
+    mockRootHeight(wrapper, 72)
+    await flushMeasurement()
+    expect(element.options.height).toBe(Math.round(((72 + 2 + 3) / PX_PER_MM) * 100) / 100)
+
+    wrapper.unmount()
+    host.remove()
+  })
+
+  it('零高度不写模型高度', async () => {
+    const element = reactive(makeElement({ flowLayoutMode: 'dynamic' }))
+    const wrapper = mount(FlowListElement, { props: { element, data: PRINT_DATA, designMode: true } })
+    mockRootHeight(wrapper, 0)
+    await flushMeasurement()
+    expect(element.options.height).toBe(24)
+  })
+
+  it('固定模式不启动实测', async () => {
+    const element = reactive(makeElement({ flowLayoutMode: 'fixed' }))
+    const wrapper = mount(FlowListElement, { props: { element, data: PRINT_DATA, designMode: true } })
+    mockRootHeight(wrapper, 76)
+    await flushMeasurement()
+    expect(element.options.height).toBe(24)
+  })
+
+  it('非设计态不回写高度', async () => {
+    const element = reactive(makeElement({ flowLayoutMode: 'dynamic' }))
+    const wrapper = mount(FlowListElement, { props: { element, data: PRINT_DATA, designMode: false } })
+    mockRootHeight(wrapper, 76)
+    await flushMeasurement()
+    expect(element.options.height).toBe(24)
   })
 })

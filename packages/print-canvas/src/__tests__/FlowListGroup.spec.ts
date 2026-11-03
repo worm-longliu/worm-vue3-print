@@ -126,3 +126,53 @@ describe('FlowListGroup 属性台', () => {
     expect(element.options.flowMaxSpan).toBeUndefined()
   })
 })
+
+describe('FlowListGroup 动态布局模式', () => {
+  it('缺省固定模式，动态时才显示四边独立内边距', async () => {
+    const element = makeElement()
+    const wrapper = mount(FlowListGroup, { props: { element } })
+    const mode = wrapper.find('[data-test="flow-layout-mode"]')
+    expect((mode.element as HTMLSelectElement).value).toBe('fixed')
+    expect(visibleLabelsOf(wrapper).some(l => l.includes('上内边距'))).toBe(false)
+
+    await mode.setValue('dynamic')
+    expect(element.options.flowLayoutMode).toBe('dynamic')
+    for (const label of ['上内边距', '右内边距', '下内边距', '左内边距']) {
+      expect(visibleLabelsOf(wrapper).some(l => l.includes(label)), `${label} 应可见`).toBe(true)
+    }
+
+    await mode.setValue('fixed')
+    expect(element.options.flowLayoutMode).toBe('fixed')
+    expect(visibleLabelsOf(wrapper).some(l => l.includes('上内边距'))).toBe(false)
+  })
+
+  it('四个步进框分别提交到独立内边距字段', () => {
+    const element = makeElement({ flowLayoutMode: 'dynamic' })
+    const wrapper = mount(FlowListGroup, { props: { element } })
+    commitStepper(wrapper, '上内边距', '2')
+    commitStepper(wrapper, '右内边距', '3')
+    commitStepper(wrapper, '下内边距', '4')
+    commitStepper(wrapper, '左内边距', '5')
+    expect(element.options.flowPaddingTop).toBe(2)
+    expect(element.options.flowPaddingRight).toBe(3)
+    expect(element.options.flowPaddingBottom).toBe(4)
+    expect(element.options.flowPaddingLeft).toBe(5)
+  })
+
+  it('新增字段使用 core 注册的搜索 key', () => {
+    const mode = mount(FlowListGroup, {
+      props: { element: makeElement(), searching: true, matchedKeys: new Set(['fl-layout-mode']) },
+    })
+    expect(visibleLabelsOf(mode).some(l => l.includes('布局模式'))).toBe(true)
+
+    const padding = mount(FlowListGroup, {
+      props: {
+        element: makeElement({ flowLayoutMode: 'dynamic' }),
+        searching: true,
+        matchedKeys: new Set(['fl-padding-left']),
+      },
+    })
+    expect(visibleLabelsOf(padding).some(l => l.includes('左内边距'))).toBe(true)
+    expect(visibleLabelsOf(padding).some(l => l.includes('上内边距'))).toBe(false)
+  })
+})

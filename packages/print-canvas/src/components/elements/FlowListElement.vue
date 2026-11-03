@@ -1,5 +1,5 @@
 <template>
-  <div class="print-flowlist" :style="gridStyle">
+  <div ref="rootRef" class="print-flowlist" :style="gridStyle">
     <div
       v-for="(cell, i) in cells"
       :key="i"
@@ -9,7 +9,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 import {
   DEFAULT_DEMO_DATA,
@@ -17,6 +17,8 @@ import {
   engine,
   resolveFlowColumns,
   resolveFlowGapX,
+  resolveFlowLayoutMode,
+  resolveFlowPadding,
   resolveFlowRowHeight,
 } from '@worm-vue3-print/core/designer'
 
@@ -26,21 +28,39 @@ const props = defineProps<{
   designMode?: boolean
 }>()
 
+/** 96dpi 下 1mm ≈ 3.78px（与表格及出纸测量遍同一常量） */
+const PX_PER_MM = 3.7795275591
+/** 实测高度与模型高度差小于该值（mm）时不回写，避免无意义抖动 */
+const HEIGHT_EPSILON_MM = 0.1
+
+const rootRef = ref<HTMLElement | null>(null)
+const isDynamic = computed(() => resolveFlowLayoutMode(props.element.options.flowLayoutMode) === 'dynamic')
+
 /**
  * 设计台按「一列一格」铺，不预演跨列（specs 第八节第 7 项）：
- * 跨列档位要按单元实测宽度决定，而画布既不跑测量也不跑分页，
+ * 跨列档位要按单元实测宽度决定，而画布不运行出纸的跨列测量与分页，
  * 预演只能靠估算，画布与出纸就会出现两套栏数。栏数、间距、行高与出纸同源。
+ * 动态模式容器高度由内容撑开，固定模式维持设计高度裁切。
  */
 const gridStyle = computed(() => {
   const o = props.element.options
+  const padding = resolveFlowPadding(o as unknown as Record<string, unknown>)
   return {
     display: 'grid',
     gridTemplateColumns: `repeat(${resolveFlowColumns(o.flowColumns)},minmax(0,1fr))`,
     columnGap: `${resolveFlowGapX(o.flowGapX)}mm`,
     gridAutoRows: `minmax(${resolveFlowRowHeight(o.flowRowHeight)}mm,auto)`,
     width: '100%',
-    height: '100%',
-    overflow: 'hidden',
+    ...(isDynamic.value
+      ? {
+          padding: `${padding.top}mm ${padding.right}mm ${padding.bottom}mm ${padding.left}mm`,
+          height: 'auto',
+          overflow: 'visible',
+        }
+      : {
+          height: '100%',
+          overflow: 'hidden',
+        }),
     fontSize: `${o.fontSize || 12}pt`,
     fontFamily: o.fontFamily || undefined,
     fontWeight: o.fontWeight || undefined,
@@ -48,6 +68,44 @@ const gridStyle = computed(() => {
     backgroundColor: o.backgroundColor || 'transparent',
     boxSizing: 'border-box' as const,
   }
+})
+
+/** 父级元素边框不在内容根节点上，实测容器高度时需补齐上下边框像素 */
+function parentBorderPx(root: HTMLElement): number {
+  const parent = root.parentElement
+  if (!parent?.classList.contains('print-element')) return 0
+  const style = getComputedStyle(parent)
+  return (parseFloat(style.borderTopWidth) || 0) + (parseFloat(style.borderBottomWidth) || 0)
+}
+
+/**
+ * 动态模式高度自愈：内容行实际撑开的高度回写模型，选中框、位置标签与跟随区
+ * 设计底部才会使用同一尺寸。固定模式与非设计态不参与测量。
+ */
+function measureFlowList() {
+  if (!props.designMode || !isDynamic.value) return
+  const root = rootRef.value
+  if (!root) return
+  const heightPx = root.offsetHeight + parentBorderPx(root)
+  if (heightPx <= 0) return
+  const heightMm = heightPx / PX_PER_MM
+  const o = props.element.options
+  if (Math.abs(heightMm - (o.height ?? 0)) > HEIGHT_EPSILON_MM) {
+    o.height = Math.round(heightMm * 100) / 100
+  }
+}
+
+watch(
+  () => [props.element.options, props.designMode],
+  () => measureFlowList(),
+  { deep: true, flush: 'post' },
+)
+
+onMounted(() => {
+  // 等首帧布局完成再测；与 watch 的 post 钩子互补，覆盖挂载即渲染的场景
+  nextTick(() => measureFlowList())
+  // Web 字体加载完成后字宽可能变化导致换行变化，补测一次
+  document.fonts?.ready.then(() => measureFlowList())
 })
 
 /** 设计态缺样：新拖入的元素也要看得见内容形状（运行态绝不凭空造数据） */

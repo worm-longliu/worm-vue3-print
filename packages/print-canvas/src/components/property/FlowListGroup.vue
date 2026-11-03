@@ -1,6 +1,59 @@
 <template>
   <PropertyGroup title="流式列表" icon="Grid3x3" group-key="flowList">
     <form class="pd-form" @submit.prevent>
+      <div class="pd-field" v-show="showItem('fl-layout-mode')">
+        <span class="pd-label"><span class="pd-label-t">布局模式<button type="button" class="pd-help" :data-tip="layoutModeTip" aria-label="字段说明" /></span></span>
+        <select
+          class="pd-select"
+          data-test="flow-layout-mode"
+          style="width: 100%"
+          :value="layoutMode"
+          @change="onLayoutModeChange(($event.target as HTMLSelectElement).value)"
+        >
+          <option value="fixed">固定高度</option>
+          <option value="dynamic">动态分页</option>
+        </select>
+      </div>
+      <div class="pd-field" v-show="isDynamic && showItem('fl-padding-top')">
+        <span class="pd-label"><span class="pd-label-t">上内边距 (mm)<button type="button" class="pd-help" :data-tip="paddingTopTip" aria-label="字段说明" /></span></span>
+        <StepperInput
+          :model-value="padding.top"
+          :min="0"
+          :max="100"
+          :step="0.5"
+          @update:model-value="onPaddingChange('flowPaddingTop', $event)"
+        />
+      </div>
+      <div class="pd-field" v-show="isDynamic && showItem('fl-padding-right')">
+        <span class="pd-label"><span class="pd-label-t">右内边距 (mm)<button type="button" class="pd-help" :data-tip="paddingRightTip" aria-label="字段说明" /></span></span>
+        <StepperInput
+          :model-value="padding.right"
+          :min="0"
+          :max="100"
+          :step="0.5"
+          @update:model-value="onPaddingChange('flowPaddingRight', $event)"
+        />
+      </div>
+      <div class="pd-field" v-show="isDynamic && showItem('fl-padding-bottom')">
+        <span class="pd-label"><span class="pd-label-t">下内边距 (mm)<button type="button" class="pd-help" :data-tip="paddingBottomTip" aria-label="字段说明" /></span></span>
+        <StepperInput
+          :model-value="padding.bottom"
+          :min="0"
+          :max="100"
+          :step="0.5"
+          @update:model-value="onPaddingChange('flowPaddingBottom', $event)"
+        />
+      </div>
+      <div class="pd-field" v-show="isDynamic && showItem('fl-padding-left')">
+        <span class="pd-label"><span class="pd-label-t">左内边距 (mm)<button type="button" class="pd-help" :data-tip="paddingLeftTip" aria-label="字段说明" /></span></span>
+        <StepperInput
+          :model-value="padding.left"
+          :min="0"
+          :max="100"
+          :step="0.5"
+          @update:model-value="onPaddingChange('flowPaddingLeft', $event)"
+        />
+      </div>
       <div class="pd-field" v-show="showItem('fl-columns')">
         <span class="pd-label"><span class="pd-label-t">每行列数<button type="button" class="pd-help" :data-tip="columnsTip" aria-label="字段说明" /></span></span>
         <StepperInput
@@ -61,7 +114,9 @@ import {
   propertyTip,
   resolveFlowColumns,
   resolveFlowGapX,
+  resolveFlowLayoutMode,
   resolveFlowMaxSpan,
+  resolveFlowPadding,
   resolveFlowRowHeight,
   suggestFlowColumns,
 } from '@worm-vue3-print/core/designer'
@@ -73,6 +128,11 @@ const columnsTip = propertyTip('fl-columns')
 const rowHeightTip = propertyTip('fl-row-height')
 const gapXTip = propertyTip('fl-gap-x')
 const maxSpanTip = propertyTip('fl-max-span')
+const layoutModeTip = propertyTip('fl-layout-mode')
+const paddingTopTip = propertyTip('fl-padding-top')
+const paddingRightTip = propertyTip('fl-padding-right')
+const paddingBottomTip = propertyTip('fl-padding-bottom')
+const paddingLeftTip = propertyTip('fl-padding-left')
 
 const props = defineProps<{
   element: RuntimeElement
@@ -91,6 +151,21 @@ const rowHeight = computed(() => resolveFlowRowHeight(props.element.options.flow
 const gapX = computed(() => resolveFlowGapX(props.element.options.flowGapX))
 const autoSpan = computed(() => props.element.options.flowAutoSpan === true)
 const maxSpan = computed(() => resolveFlowMaxSpan(props.element.options.flowMaxSpan, columns.value))
+
+const layoutMode = computed(() => resolveFlowLayoutMode(props.element.options.flowLayoutMode))
+const isDynamic = computed(() => layoutMode.value === 'dynamic')
+const padding = computed(() => resolveFlowPadding(props.element.options as unknown as Record<string, unknown>))
+
+function onLayoutModeChange(value: string) {
+  props.element.options.flowLayoutMode = value === 'dynamic' ? 'dynamic' : 'fixed'
+}
+
+function onPaddingChange(
+  key: 'flowPaddingTop' | 'flowPaddingRight' | 'flowPaddingBottom' | 'flowPaddingLeft',
+  next: number | undefined,
+) {
+  props.element.options[key] = typeof next === 'number' && Number.isFinite(next) && next > 0 ? next : 0
+}
 
 function onColumnsChange(next: number | undefined) {
   const cols = resolveFlowColumns(next)
