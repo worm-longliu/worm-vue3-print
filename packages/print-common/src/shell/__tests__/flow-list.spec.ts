@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // 零框架外壳的流式列表验收：对照 canvas 的 FlowListElement.vue + FlowListGroup.vue，
 // 并核对与出纸同源的三条口径（列数与行高同源、只提示不写值、跨列上限钳到列数）。
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { resolveFlowGapX, suggestFlowColumns } from '@worm-vue3-print/core/designer'
 import type { ElementType } from '@worm-vue3-print/core/designer'
 import { DesignerStore } from '../../core/store'
@@ -78,6 +78,21 @@ const setColumns = (host: ParentNode, title: string, label: string, value: strin
   return input
 }
 
+const setSelect = (host: ParentNode, title: string, label: string, value: string) => {
+  const group = Array.from(host.querySelectorAll<HTMLElement>('.property-group'))
+    .find(g => g.querySelector('.group-title')?.textContent === title)
+  const row = Array.from(group?.querySelectorAll<HTMLElement>('.pd-field') ?? [])
+    .find(f => (f.querySelector('.pd-label')?.textContent ?? '').includes(label))
+  const select = row?.querySelector('select.pd-select') as HTMLSelectElement | null
+  if (!select) throw new Error(`未找到下拉属性行：${label}`)
+  select.value = value
+  select.dispatchEvent(new Event('change'))
+  return select
+}
+
+/** 探针与 repaint 都走 requestAnimationFrame，断言前先等一帧 */
+const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+
 const flowGroup = (host: ParentNode) => Array.from(host.querySelectorAll<HTMLElement>('.property-group'))
   .find(g => g.querySelector('.group-title')?.textContent === '流式列表')
 
@@ -121,6 +136,23 @@ describe('工具箱与元素层', () => {
     const ctx = makeCtx({ flowAutoSpan: true, flowMaxSpan: 2 })
     const host = paintElement(ctx)
     expect(host.innerHTML).not.toContain('grid-column:span')
+  })
+
+  it('动态模式根样式含四边内边距、height:auto、overflow:visible，固定模式保持裁切', () => {
+    const dynamic = paintElement(makeCtx({
+      flowLayoutMode: 'dynamic', flowPaddingTop: 2, flowPaddingRight: 3,
+      flowPaddingBottom: 4, flowPaddingLeft: 5, flowAutoSpan: true, flowMaxSpan: 2,
+    }))
+    const root = dynamic.querySelector('.print-flowlist') as HTMLElement
+    expect(root.style.padding).toBe('2mm 3mm 4mm 5mm')
+    expect(root.style.height).toBe('auto')
+    expect(root.style.overflow).toBe('visible')
+    expect(dynamic.innerHTML).not.toContain('grid-column:span')
+
+    const fixed = paintElement(makeCtx())
+    const fixedRoot = fixed.querySelector('.print-flowlist') as HTMLElement
+    expect(fixedRoot.style.height).toBe('100%')
+    expect(fixedRoot.style.overflow).toBe('hidden')
   })
 })
 
@@ -213,6 +245,102 @@ describe('属性台', () => {
     header.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(window.localStorage.getItem('property-group-flowList')).toBe('false')
     expect(window.localStorage.getItem('property-group-flow-list')).toBeNull()
+  })
+
+  it('动态模式显示布局模式与四边内边距，逐字段写回模型', () => {
+    const ctx = makeCtx({ flowLayoutMode: 'dynamic' })
+    const host = paintPanel(ctx)
+    const labels = fieldLabels(host, '流式列表')
+    expect(labels.some(l => l.includes('布局模式'))).toBe(true)
+    for (const label of ['上内边距 (mm)', '右内边距 (mm)', '下内边距 (mm)', '左内边距 (mm)']) {
+      expect(labels).toContain(label)
+    }
+    setColumns(host, '流式列表', '上内边距', '2')
+    setColumns(host, '流式列表', '右内边距', '3')
+    setColumns(host, '流式列表', '下内边距', '4')
+    setColumns(host, '流式列表', '左内边距', '5')
+    const o = ctx.store.elements[0]!.options
+    expect(o.flowPaddingTop).toBe(2)
+    expect(o.flowPaddingRight).toBe(3)
+    expect(o.flowPaddingBottom).toBe(4)
+    expect(o.flowPaddingLeft).toBe(5)
+  })
+
+  it('切换布局模式后动态内边距出现，固定模式隐藏', () => {
+    const ctx = makeCtx()
+    const fixed = paintPanel(ctx)
+    expect(fieldLabels(fixed, '流式列表').some(l => l.includes('上内边距'))).toBe(false)
+    setSelect(fixed, '流式列表', '布局模式', 'dynamic')
+    expect(ctx.store.elements[0]!.options.flowLayoutMode).toBe('dynamic')
+    const dynamic = paintPanel(ctx)
+    expect(fieldLabels(dynamic, '流式列表').some(l => l.includes('上内边距'))).toBe(true)
+    setSelect(dynamic, '流式列表', '布局模式', 'fixed')
+    expect(ctx.store.elements[0]!.options.flowLayoutMode).toBe('fixed')
+    expect(fieldLabels(paintPanel(ctx), '流式列表').some(l => l.includes('上内边距'))).toBe(false)
+  })
+})
+
+describe('动态高度自愈', () => {
+  const PX_PER_MM = 3.7795275591
+
+  function paintMeasured(ctx: ShellCtx, heightPx: number) {
+    const host = paintElement(ctx)
+    const root = host.querySelector('.print-flowlist') as HTMLElement
+    Object.defineProperty(root, 'offsetHeight', { configurable: true, value: heightPx })
+    return { host, root }
+  }
+
+  it('动态模式按根 offsetHeight 与父元素上下边框回写两位小数，且只重绘一次', async () => {
+    const ctx = makeCtx({ flowLayoutMode: 'dynamic', height: 24 })
+    let emits = 0
+    ctx.store.subscribe(() => { emits++ })
+    paintMeasured(ctx, 76)
+    await nextFrame()
+    await nextFrame()
+    const o = ctx.store.elements[0]!.options
+    expect(o.height).toBe(Math.round((76 / PX_PER_MM) * 100) / 100)
+    expect(emits).toBe(1)
+    await nextFrame()
+    await nextFrame()
+    expect(emits).toBe(1)
+  })
+
+  it('父 .print-element 的上下边框计入高度', async () => {
+    const ctx = makeCtx({ flowLayoutMode: 'dynamic', height: 24 })
+    paintMeasured(ctx, 76)
+    const real = window.getComputedStyle.bind(window)
+    const spy = vi.spyOn(window, 'getComputedStyle').mockImplementation((el: Element) => {
+      if ((el as HTMLElement).classList?.contains('print-element')) {
+        return { borderTopWidth: '2px', borderBottomWidth: '3px' } as CSSStyleDeclaration
+      }
+      return real(el)
+    })
+    try {
+      await nextFrame()
+      await nextFrame()
+      expect(ctx.store.elements[0]!.options.height)
+        .toBe(Math.round(((76 + 5) / PX_PER_MM) * 100) / 100)
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('固定模式不写高度', async () => {
+    const ctx = makeCtx({ height: 24 })
+    paintMeasured(ctx, 76)
+    await nextFrame()
+    await nextFrame()
+    expect(ctx.store.elements[0]!.options.height).toBe(24)
+  })
+
+  it('元素被移除后异步探针不再写回', async () => {
+    const ctx = makeCtx({ flowLayoutMode: 'dynamic', height: 24 })
+    const { host } = paintMeasured(ctx, 76)
+    document.body.replaceChildren()
+    host.remove()
+    await nextFrame()
+    await nextFrame()
+    expect(ctx.store.elements[0]!.options.height).toBe(24)
   })
 })
 

@@ -231,7 +231,7 @@ function content(el: RuntimeElement, designMode: boolean, host?: { store: Design
     case 'table':
       return host ? renderTable(el, host.store, host.fire) : h('div', { class: 'print-table' })
     case 'flowList':
-      return renderFlowListElement(el)
+      return renderFlowListElement(el, undefined, host?.store)
     default:
       return h('div', { text: type })
   }

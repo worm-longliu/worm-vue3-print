@@ -10,7 +10,7 @@ import {
   acceptsElementBorder, applyElementBorderPreset, elementBorderEdgeVisible, effectiveElementBorderSpec,
   resolveElementBorderDisplay, setElementBorderEdgeVisible, setElementBorderField, BORDER_LINE_STYLES,
   ELEMENT_BORDER_APPLY_HINT,
-  resolveFlowColumns, resolveFlowGapX, resolveFlowMaxSpan, resolveFlowRowHeight, suggestFlowColumns,
+  resolveFlowColumns, resolveFlowGapX, resolveFlowLayoutMode, resolveFlowMaxSpan, resolveFlowPadding, resolveFlowRowHeight, suggestFlowColumns,
   resolveCellGroupMode,
 } from '@worm-vue3-print/core/designer'
 import { computeMaxColumns } from '@worm-vue3-print/core'
@@ -304,9 +304,39 @@ function elementPane(ctx: ShellCtx, el: RuntimeElement) {
     const gap = resolveFlowGapX(o.flowGapX)
     const maxSpan = resolveFlowMaxSpan(o.flowMaxSpan, cols)
     const fitCols = suggestFlowColumns(o.width ?? 0, gap, o.fontSize ?? 12)
+    const layoutMode = resolveFlowLayoutMode(o.flowLayoutMode)
+    const isDynamic = layoutMode === 'dynamic'
+    const padding = resolveFlowPadding(o as unknown as Record<string, unknown>)
+    const commitPadding = (key: 'flowPaddingTop' | 'flowPaddingRight' | 'flowPaddingBottom' | 'flowPaddingLeft', v: number) => {
+      patch({ [key]: typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0 })
+    }
     // 分组键与 canvas FlowListGroup 的 group-key 同串，两侧折叠偏好才互通
     rows.push(group(ctx, 'flowList', '流式列表', 'Grid3x3', [
       h('form', { class: 'pd-form', onSubmit: (ev: Event) => ev.preventDefault() }, [
+        gateItem(ctx, 'fl-layout-mode', selectField(
+          ctx, '布局模式', layoutMode,
+          [{ value: 'fixed', label: '固定高度' }, { value: 'dynamic', label: '动态分页' }],
+          v => patch({ flowLayoutMode: v === 'dynamic' ? 'dynamic' : 'fixed' }),
+          propertyTip('fl-layout-mode'),
+        )),
+        ...(isDynamic ? [
+          gateItem(ctx, 'fl-padding-top', fieldHelp('上内边距 (mm)', stepper({
+            value: padding.top, min: 0, max: 100, step: 0.5,
+            onCommit: v => commitPadding('flowPaddingTop', v),
+          }), propertyTip('fl-padding-top'))),
+          gateItem(ctx, 'fl-padding-right', fieldHelp('右内边距 (mm)', stepper({
+            value: padding.right, min: 0, max: 100, step: 0.5,
+            onCommit: v => commitPadding('flowPaddingRight', v),
+          }), propertyTip('fl-padding-right'))),
+          gateItem(ctx, 'fl-padding-bottom', fieldHelp('下内边距 (mm)', stepper({
+            value: padding.bottom, min: 0, max: 100, step: 0.5,
+            onCommit: v => commitPadding('flowPaddingBottom', v),
+          }), propertyTip('fl-padding-bottom'))),
+          gateItem(ctx, 'fl-padding-left', fieldHelp('左内边距 (mm)', stepper({
+            value: padding.left, min: 0, max: 100, step: 0.5,
+            onCommit: v => commitPadding('flowPaddingLeft', v),
+          }), propertyTip('fl-padding-left'))),
+        ] : []),
         gateItem(ctx, 'fl-columns', fieldHelp('每行列数', stepper({
           value: cols, min: 1, max: 12,
           onCommit: v => patch({
