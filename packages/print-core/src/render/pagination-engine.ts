@@ -36,6 +36,11 @@ function isDynamicFlowListEl(el: FollowJudgementInput): boolean {
   return type === 'flowList' && resolveFlowLayoutMode(el.options?.flowLayoutMode) === 'dynamic'
 }
 
+/** 可切片锚点：表格或动态 flowList，二者共用跟随区与 flow-group 规则（spec 五） */
+function isSplittableEl(el: FollowJudgementInput): boolean {
+  return isTableEl(el) || isDynamicFlowListEl(el)
+}
+
 function elTypeOf(el: FollowJudgementInput): string {
   return el.type || el.printElementType?.type || 'text'
 }
@@ -109,6 +114,19 @@ export function tableDesignBottom(el: FollowJudgementInput): number {
 }
 
 /**
+ * 可切片锚点的设计底部（mm）：表格走 tableDesignBottom 原算法；
+ * 动态 flowList 无 tableRows 可推，只有画布实测回写的设计高度（options.height 自愈值），
+ * 没有可靠实测值时以该配置高度兜底。
+ */
+export function splittableDesignBottom(el: FollowJudgementInput): number {
+  if (isDynamicFlowListEl(el)) {
+    const opts = el.options ?? {}
+    return (opts.top ?? 0) + Math.max(opts.height ?? 0, 0)
+  }
+  return tableDesignBottom(el)
+}
+
+/**
  * 跟随区归属判据所需的最小元素信息：内部只读这些字段。
  * 对外入口按 `E extends { id: string }` 收，core 的 TemplateElement、canvas 的 PrintElementData、
  * 宿主运行时的 RuntimeElement 都能直接传入，宿主侧不需要任何断言。
@@ -151,7 +169,7 @@ export function collectFollowMemberIds<E extends { id?: string }>(
   // 显式编组成员不参与跟随归属（整组同页优先），与 paginate 同口径
   const explicitGroupIds = new Set<string>()
   for (const el of sorted) {
-    if (isTableEl(el)) continue
+    if (isSplittableEl(el)) continue
     if (el.options?.groupId) explicitGroupIds.add(el.id)
   }
   const ids = new Set<string>()
@@ -162,42 +180,42 @@ export function collectFollowMemberIds<E extends { id?: string }>(
 }
 
 /**
- * 构建「表格 → 跟随区成员」映射。
- * 规则：按 Y 排序遍历，每个非表格元素归入「它上方最近的表格」，
- * 且仅当元素设计 top ≥ 该表格设计底部（设计上位于表格下方）。
+ * 构建「可切片锚点（表格 / 动态 flowList）→ 跟随区成员」映射。
+ * 规则：按 Y 排序遍历，每个非锚点元素归入「它上方最近的可切片锚点」，
+ * 且仅当元素设计 top ≥ 该锚点设计底部（设计上位于锚点下方）。
  */
 function buildFollowMap(
   sorted: FollowJudgementInput[],
   excludedIds?: Set<string>,
 ): Map<string, string[]> {
   const map = new Map<string, string[]>()
-  let currentTableId: string | null = null
-  let currentTableBottom = -1
-  let currentTableLeft = 0
-  let currentTableRight = 0
+  let currentAnchorId: string | null = null
+  let currentAnchorBottom = -1
+  let currentAnchorLeft = 0
+  let currentAnchorRight = 0
   for (const el of sorted) {
-    if (isTableEl(el)) {
-      currentTableId = el.id
-      currentTableBottom = tableDesignBottom(el)
-      // 表格横向区间：列宽和与实际表宽同口径，缺列宽时退回元素宽（T-11 C2）
+    if (isSplittableEl(el)) {
+      currentAnchorId = el.id
+      currentAnchorBottom = splittableDesignBottom(el)
+      // 锚点横向区间：表格取列宽和（与实际表宽同口径，缺列宽时退回元素宽，T-11 C2）；列表取元素宽
       const left = el.options?.left ?? 0
       const cols = el.options?.tableColWidths ?? []
       const width = cols.length > 0 ? cols.reduce((sum: number, w: number) => sum + w, 0) : (el.options?.width ?? 0)
-      currentTableLeft = left
-      currentTableRight = left + width
+      currentAnchorLeft = left
+      currentAnchorRight = left + width
       map.set(el.id, [])
       continue
     }
-    // 显式编组成员不归属任何表格跟随区，交由组逻辑统一分页
+    // 显式编组成员不归属任何锚点跟随区，交由组逻辑统一分页
     if (excludedIds?.has(el.id)) continue
-    if (!currentTableId) continue
+    if (!currentAnchorId) continue
     const top = el.options?.top ?? 0
-    if (top < currentTableBottom) continue
-    // 与表格横向零交集的元素保持原地绝对定位：它既不在表格列上，也不该随表格底部漂移（T-11 C2）
+    if (top < currentAnchorBottom) continue
+    // 与锚点横向零交集的元素保持原地绝对定位：它既不在锚点列上，也不该随锚点底部漂移（T-11 C2）
     const left = el.options?.left ?? 0
     const right = left + (el.options?.width ?? 0)
-    if (right <= currentTableLeft || left >= currentTableRight) continue
-    map.get(currentTableId)!.push(el.id)
+    if (right <= currentAnchorLeft || left >= currentAnchorRight) continue
+    map.get(currentAnchorId)!.push(el.id)
   }
   return map
 }
@@ -213,14 +231,14 @@ function followGroupHeight(
   template: TemplateData,
   _measuredElements: Map<string, MeasuredElement>,
 ): number {
-  const tableBottom = tableDesignBottom(el)
-  let maxBottom = tableBottom
+  const anchorBottom = splittableDesignBottom(el)
+  let maxBottom = anchorBottom
   for (const id of members) {
     const m = template.elements.find(e => e.id === id)
     if (!m) continue
     maxBottom = Math.max(maxBottom, (m.options?.top ?? 0) + (m.options?.height ?? 0))
   }
-  return Math.max(maxBottom - tableBottom, 0)
+  return Math.max(maxBottom - anchorBottom, 0)
 }
 
 // ─── 分页单元（堆叠组 / 显式编组） ───
@@ -412,7 +430,7 @@ export function paginate(
   const explicitGroupIds = new Set<string>()
   const groupMap = new Map<string, TemplateElement[]>()
   for (const el of sorted) {
-    if (isTableEl(el)) continue
+    if (isSplittableEl(el)) continue
     const gid = el.options?.groupId
     if (!gid) continue
     explicitGroupIds.add(el.id)
@@ -421,11 +439,17 @@ export function paginate(
     else groupMap.set(gid, [el])
   }
 
-  // 方案 A+B：表格跟随区归属（表格 id → 成员元素 id）；显式编组成员不参与跟随归属
+  // 方案 A+B：跟随区归属（锚点 id → 成员元素 id）；显式编组成员不参与跟随归属
   const followMap = buildFollowMap(sorted, explicitGroupIds)
   const followOwner = new Map<string, string>()
-  for (const [tableId, members] of followMap) {
-    for (const m of members) followOwner.set(m, tableId)
+  for (const [anchorId, members] of followMap) {
+    for (const m of members) followOwner.set(m, anchorId)
+  }
+  // 已实际被 flow-group 承接的成员：仅这类成员才由主遍历跳过——
+  // 空数据锚点不产跟随区，其成员必须回退普通元素路径，避免整段内容丢失
+  const groupedFollowers = new Set<string>()
+  const markGrouped = (members: string[]): void => {
+    for (const m of members) groupedFollowers.add(m)
   }
 
   const elById = new Map<string, TemplateElement>()
@@ -547,8 +571,8 @@ export function paginate(
   while (i < sorted.length) {
     const el = sorted[i]
 
-    // 跟随区成员已由所属表格的 flow-group 处理，跳过
-    if (followOwner.has(el.id)) {
+    // 跟随区成员已由所属锚点的 flow-group 处理，跳过
+    if (followOwner.has(el.id) && groupedFollowers.has(el.id)) {
       i++
       continue
     }
@@ -992,14 +1016,16 @@ export function paginate(
     if (sliceStart < rowCount) {
       pushFlowSlice(rowCount)
     }
+    // 跟随区只接在最后一个切片之后（复用表格规则：同页升级 flow-group / 整体移页）
+    applyFollowGroup(el, measured, tb)
     return idx + 1
   }
 
   /**
-   * 方案 A+B：处理表格下方跟随区。
-   * - 放得下最后一片所在页：把该页最后一个 table-slice 升级为 flow-group（容器起点=表格设计 top）
-   * - 放不下：跟随区整体移到下一页（容器起点=新页内容区顶部 0）
-   * @param band 表格横向占用列：跟随区与表格同列，只按本列剩余判定
+   * 方案 A+B：处理可切片锚点（表格 / 动态 flowList）下方跟随区。
+   * - 放得下最后一片所在页：把该页最后一个切片升级为 flow-group（容器起点=锚点片首 renderTop）
+   * - 放不下：跟随区整体移到下一页（容器起点=新页内容区顶部 0），动态组行区间归零只渲染跟随区
+   * @param band 锚点横向占用列：跟随区与锚点同列，只按本列剩余判定
    */
   function applyFollowGroup(
     el: TemplateElement,
@@ -1013,10 +1039,10 @@ export function paginate(
     const opts = el.options ?? {}
 
     if (followH <= remainingIn(band)) {
-      // 与最后一片同页：把当前页最后一个 table-slice 升级为 flow-group
+      // 与最后一片同页：把当前页最后一个切片（table-slice / flow-list-slice）升级为 flow-group
       const lastIdx = currentPage.length - 1
       const last = currentPage[lastIdx]
-      if (last && last.type === 'table-slice' && last.elementId === el.id) {
+      if (last && (last.type === 'table-slice' || last.type === 'flow-list-slice') && last.elementId === el.id) {
         currentPage[lastIdx] = {
           ...last,
           type: 'flow-group',
@@ -1025,6 +1051,7 @@ export function paginate(
           groupTop: last.renderTop ?? opts.top ?? 0,
         }
         occupy(band, followH)
+        markGrouped(members)
         return
       }
       // 防御：最后一片不在当前页（理论不发生）→ 按移页处理
@@ -1037,10 +1064,13 @@ export function paginate(
       type: 'flow-group',
       startRow: 0,
       endRow: 0,
+      // 动态列表组：行区间归零，渲染端只出跟随区
+      ...(isDynamicFlowListEl(el) ? { startFlowRow: 0, endFlowRow: 0 } : {}),
       followElementIds: members,
       groupTop: 0,
     })
     occupy(band, followH)
+    markGrouped(members)
   }
 }
 
