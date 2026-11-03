@@ -68,7 +68,7 @@ qoder --cwd "$PWD" -p -m Efficient --permission-mode bypass_permissions "$(cat "
 - Produces: `FlowLayoutMode`、`FlowPadding`、`resolveFlowLayoutMode(value: unknown)`、`resolveFlowPadding(options: Record<string, unknown>)`、`flowContentWidthMm(width: number, padding: FlowPadding)`。
 - Produces: `ElementOptions.flowLayoutMode` 与四个 `flowPadding*` 字段；`designer/index.ts` 现有 `export *` 自动导出新函数。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```ts
 it('动态布局缺省保持 fixed，非法值不触发分页', () => {
@@ -94,12 +94,12 @@ it('工厂默认固定模式且四边内边距为零', () => {
 })
 ```
 
-- [ ] **Step 2: 验证测试因缺少导出和字段而失败**
+- [x] **Step 2: 验证测试因缺少导出和字段而失败**
 
 Run: `npm test -w @worm-vue3-print/core -- src/render/__tests__/flow-list.spec.ts src/designer/utils/__tests__/element-factory.spec.ts`
 Expected: FAIL，提示新函数未导出或断言不成立。
 
-- [ ] **Step 3: 最小实现字段与解析函数**
+- [x] **Step 3: 最小实现字段与解析函数**
 
 ```ts
 export type FlowLayoutMode = 'fixed' | 'dynamic'
@@ -127,12 +127,12 @@ export function flowContentWidthMm(width: number, padding: FlowPadding): number 
 
 在 `ElementOptions` 增加同名可选字段，在工厂写入固定模式和四个零值；属性注册增加 `fl-layout-mode`、`fl-padding-top/right/bottom/left`，单位与中文说明和字段含义一致。
 
-- [ ] **Step 4: 回归纯逻辑与工厂测试**
+- [x] **Step 4: 回归纯逻辑与工厂测试**
 
 Run: `npm test -w @worm-vue3-print/core -- src/render/__tests__/flow-list.spec.ts src/designer/utils/__tests__/element-factory.spec.ts src/designer/utils/__tests__/reset-default-factory.spec.ts`
 Expected: PASS。
 
-- [ ] **Step 5: 主 agent 审查并提交**
+- [x] **Step 5: 主 agent 审查并提交**
 
 ```bash
 git add packages/print-core/src/designer/types.ts packages/print-core/src/designer/utils/element-factory.ts packages/print-core/src/designer/utils/property-search.ts packages/print-core/src/render/flow-list.ts packages/print-core/src/render/__tests__/flow-list.spec.ts packages/print-core/src/designer/utils/__tests__/element-factory.spec.ts
@@ -159,7 +159,7 @@ git commit -m "feat: 添加流式列表动态布局配置"
 - Produces: 动态元素 `options._flowRows: FlowRow[]`；`.print-flow-row[data-flow-row-index]`；`MeasuredElement.measuredFlowRowHeights?: number[]`。
 - Preserves: `_flowItems`、表格 `measuredRowHeights`、固定模式现有 HTML。
 
-- [ ] **Step 1: 写动态绑定、DOM 标记和测量失败测试**
+- [x] **Step 1: 写动态绑定、DOM 标记和测量失败测试**
 
 ```ts
 it('动态模式保留排布行，固定模式不写内部行结构', () => {
@@ -188,12 +188,12 @@ it('动态列表的 rowHeightsPx 写入 measuredFlowRowHeights', () => {
 
 DOM executor 测试构造一个含两个 `.print-flow-row` 的 `[data-measure-id]` 容器，断言 `rowHeightsPx` 按行序返回；既有表格选择器测试保持不变。
 
-- [ ] **Step 2: 验证新增测试失败**
+- [x] **Step 2: 验证新增测试失败**
 
 Run: `npm test -w @worm-vue3-print/core -- src/render/__tests__/flow-list-render.spec.ts src/print/__tests__/measure.spec.ts src/browser/__tests__/dom-executor.spec.ts`
 Expected: FAIL，动态行和 `measuredFlowRowHeights` 尚不存在。
 
-- [ ] **Step 3: 最小实现绑定与测量**
+- [x] **Step 3: 最小实现绑定与测量**
 
 绑定时用扣除左右内边距的宽度调用现有排布函数：
 
@@ -213,12 +213,12 @@ el.options._flowRows = layoutFlowList(items, {
 
 `readMeasurements` 在没有表格时读取 `.print-flow-row[data-flow-row-index]`，返回同一个 `rowHeightsPx` 通道。`normalizeMeasurements` 仅对动态 `flowList` 写 `measuredFlowRowHeights`，表格仍写 `measuredRowHeights`。
 
-- [ ] **Step 4: 回归绑定、测量和既有固定输出**
+- [x] **Step 4: 回归绑定、测量和既有固定输出**
 
 Run: `npm test -w @worm-vue3-print/core -- src/render/__tests__/flow-list-render.spec.ts src/print/__tests__/measure.spec.ts src/browser/__tests__/dom-executor.spec.ts src/render/__tests__/flow-list.spec.ts`
 Expected: PASS，既有固定模式用例不修改断言。
 
-- [ ] **Step 5: 主 agent 审查并提交**
+- [x] **Step 5: 主 agent 审查并提交**
 
 ```bash
 git add packages/print-core/src/render/types.ts packages/print-core/src/print/types.ts packages/print-core/src/render/data-binder.ts packages/print-core/src/render/html-generator.ts packages/print-core/src/browser/dom-executor.ts packages/print-core/src/print/measure.ts packages/print-core/src/render/__tests__/flow-list-render.spec.ts packages/print-core/src/print/__tests__/measure.spec.ts packages/print-core/src/browser/__tests__/dom-executor.spec.ts
@@ -242,7 +242,7 @@ git commit -m "feat: 测量动态流式列表真实行高"
 - Produces: `PageSection.type='flow-list-slice'`、`startFlowRow?: number`、`endFlowRow?: number`。
 - Produces: 每片 `.print-flowlist-slice` 独立容器；续片 `renderTop=0`。
 
-- [ ] **Step 1: 写分页区间、内边距预算和超高行失败测试**
+- [x] **Step 1: 写分页区间、内边距预算和超高行失败测试**
 
 构造 A4、上下页边距 10mm、列表 `top=260`、三行实测高度均为 8mm、上下内边距各 2mm 的模板。首片只能放一行，续页放余下两行：
 
@@ -258,12 +258,12 @@ expect(flowSlices(paginate(tpl, measured))).toEqual([
 - 连续纸三行都在同一片，`endFlowRow=3`。
 - `generateHtml` 的每个 `.print-flowlist-slice` 都有四边 padding、元素边框和本片对应文本，下一片不包含上一片文本。
 
-- [ ] **Step 2: 验证分页测试失败**
+- [x] **Step 2: 验证分页测试失败**
 
 Run: `npm test -w @worm-vue3-print/core -- src/render/__tests__/flow-list-pagination.spec.ts`
 Expected: FAIL，动态列表仍按普通元素整体分页。
 
-- [ ] **Step 3: 实现按行切片**
+- [x] **Step 3: 实现按行切片**
 
 在分页主分派中，将动态 `flowList` 路由到 `paginateFlowList`，其记账方式与表格行切片一致，但不处理表头、小计或汇总：
 
@@ -281,14 +281,14 @@ sliceUsed = rowHeight // 单行超高由现有 overflow 口径收口
 
 边框毫米值从 `resolveElementBorder` 读取，pt 按 `25.4 / 72` 换算；上下分边分别计算。`pushFlowSlice` 写入半开区间并只对行高、内边距和边框记账一次。连续纸直接产生 `[0, rowCount)`。
 
-- [ ] **Step 4: 实现切片 HTML 并回归**
+- [x] **Step 4: 实现切片 HTML 并回归**
 
 `renderSection` 对 `flow-list-slice` 调 `renderFlowListSlice`，从 `_flowRows.slice(startFlowRow, endFlowRow)` 生成行；外容器复用元素定位、边框、背景、文字样式与四边 padding，但不写固定 `height` 和 `overflow:hidden`。动态测量完整列表与最终切片共用行 HTML 助手，避免跨列输出分叉。
 
 Run: `npm test -w @worm-vue3-print/core -- src/render/__tests__/flow-list-pagination.spec.ts src/render/__tests__/flow-list-render.spec.ts src/render/pagination-engine.test.ts src/render/pagination-engine.edge.test.ts src/render/pagination-engine.2d.test.ts`
 Expected: PASS，表格测试无回归。
 
-- [ ] **Step 5: 主 agent 审查并提交**
+- [x] **Step 5: 主 agent 审查并提交**
 
 ```bash
 git add packages/print-core/src/render/types.ts packages/print-core/src/render/pagination-engine.ts packages/print-core/src/render/html-generator.ts packages/print-core/src/render/__tests__/flow-list-pagination.spec.ts packages/print-core/src/render/__tests__/flow-list-render.spec.ts
@@ -311,7 +311,7 @@ git commit -m "feat: 实现动态流式列表按行分页"
 - Produces: 动态列表与表格共用 `followElementIds`、`groupTop` 和 `flow-group`。
 - Preserves: 对外已有 `tableDesignBottom`、`collectFollowMemberIds` 签名和表格输出。
 
-- [ ] **Step 1: 写列表跟随区失败测试**
+- [x] **Step 1: 写列表跟随区失败测试**
 
 创建两页动态列表，并在其设计底部下方放置同宽文本。分别用短跟随文本和小页高构造两种场景：
 
@@ -325,25 +325,25 @@ expect(pages.flatMap(p => p.sections)
 
 第一组断言跟随文本位于末片容器之后；第二组断言跟随区整体移到新页且 `groupTop=0`。再断言中间页没有 `after`，无横向交集或设计上位于列表顶部的元素不进入跟随区。
 
-- [ ] **Step 2: 验证新跟随测试失败**
+- [x] **Step 2: 验证新跟随测试失败**
 
 Run: `npm test -w @worm-vue3-print/core -- src/render/__tests__/flow-list-pagination.spec.ts`
 Expected: FAIL，动态列表被当普通成员或跟随区未生成。
 
-- [ ] **Step 3: 泛化归属和末片处理**
+- [x] **Step 3: 泛化归属和末片处理**
 
 在分页引擎内部增加 `isSplittableElement`：表格或动态 `flowList`。归属遍历时只把这两类作为跟随区锚点，普通动态列表不再被归入其他锚点。保留现有 `tableDesignBottom` 导出，新增内部 `splittableDesignBottom`：表格走原算法，动态列表使用画布回写高度和配置高度中的可靠值。
 
 将 `applyFollowGroup` 的“最后一个 table-slice”判断扩展为同一锚点的 `table-slice` 或 `flow-list-slice`，生成 `flow-group` 时保留该末片的行区间和 `renderTop`。跟随高度、横向交集、显式编组排除和换页逻辑不得复制出新规则。
 
-- [ ] **Step 4: 泛化 group HTML 并跑表格回归**
+- [x] **Step 4: 泛化 group HTML 并跑表格回归**
 
 `renderFlowGroup` 先按锚点类型渲染 `table-slice` 或 `flow-list-slice`，再渲染原 `.flow-follow`。动态列表末片必须使用切片自己的高度占位，后续成员相对偏移继续按现有公式计算。
 
 Run: `npm test -w @worm-vue3-print/core -- src/render/__tests__/flow-list-pagination.spec.ts src/render/pagination-engine.test.ts src/render/html-generator.test.ts src/render/table-merge-pagination.test.ts`
 Expected: PASS。
 
-- [ ] **Step 5: 主 agent 审查并提交**
+- [x] **Step 5: 主 agent 审查并提交**
 
 ```bash
 git add packages/print-core/src/render/pagination-engine.ts packages/print-core/src/render/html-generator.ts packages/print-core/src/render/__tests__/flow-list-pagination.spec.ts packages/print-core/src/render/html-generator.test.ts
@@ -365,7 +365,7 @@ git commit -m "feat: 动态流式列表支持下方跟随区"
 - Produces: 固定高度／动态分页模式字段和动态模式四边内边距；动态模式回写 `options.height`。
 - Preserves: 固定模式网格样式、设计态不预演跨列和演示数据。
 
-- [ ] **Step 1: 写属性联动与高度失败测试**
+- [x] **Step 1: 写属性联动与高度失败测试**
 
 ```ts
 it('动态模式显示四边内边距，固定模式隐藏', async () => {
@@ -387,23 +387,23 @@ it('动态内容实测后回写毫米高度', async () => {
 
 同时断言动态根样式含四边 padding、`height:auto`、`overflow:visible`，固定根仍为 `height:100%` 和 `overflow:hidden`。
 
-- [ ] **Step 2: 验证测试失败**
+- [x] **Step 2: 验证测试失败**
 
 Run: `npm test -w @worm-vue3-print/canvas -- src/__tests__/FlowListElement.spec.ts src/__tests__/FlowListGroup.spec.ts`
 Expected: FAIL，新模式字段和测量尚不存在。
 
-- [ ] **Step 3: 最小实现面板和画布测量**
+- [x] **Step 3: 最小实现面板和画布测量**
 
 属性组增加原生模式选择框，值为 `fixed/dynamic`；动态时显示四个 `StepperInput`，提交字段分别为 `flowPaddingTop/Right/Bottom/Left`。属性搜索 key 使用 Task 1 注册值。
 
 `FlowListElement` 增加根 ref，动态样式写 `padding`、`height:auto`、`overflow:visible`。参照 `TableElement.vue` 的 `onMounted + watch + nextTick` 实测：根 `offsetHeight` 加父元素上下边框像素，再除以 `3.7795275591`，与模型差超过 `0.1mm` 才回写并保留两位小数。隐藏或零高度时不写，固定模式不启动测量。
 
-- [ ] **Step 4: 运行 Vue 类型检查与相关测试**
+- [x] **Step 4: 运行 Vue 类型检查与相关测试**
 
 Run: `npm test -w @worm-vue3-print/canvas -- src/__tests__/FlowListElement.spec.ts src/__tests__/FlowListGroup.spec.ts src/__tests__/element-dblclick-expression.spec.ts`
 Expected: PASS，`pretest` 的 `vue-tsc --noEmit` 也通过。
 
-- [ ] **Step 5: 主 agent 审查并提交**
+- [x] **Step 5: 主 agent 审查并提交**
 
 ```bash
 git add packages/print-canvas/src/components/elements/FlowListElement.vue packages/print-canvas/src/components/property/FlowListGroup.vue packages/print-canvas/src/__tests__/FlowListElement.spec.ts packages/print-canvas/src/__tests__/FlowListGroup.spec.ts
@@ -425,29 +425,29 @@ git commit -m "feat: Vue 设计器支持动态流式列表"
 - Consumes: 与 Task 5 相同的 core 解析函数和字段。
 - Produces: 零框架外壳相同模式、内边距和高度自愈；不改变公开组件 API。
 
-- [ ] **Step 1: 写面板、样式和实测失败测试**
+- [x] **Step 1: 写面板、样式和实测失败测试**
 
 扩展现有 `flow-list.spec.ts`：切到动态模式后四个内边距字段可见，提交 `2/3/4/5` 后模型逐字段相等；固定模式字段隐藏。动态元素样式包含 `padding:2mm 3mm 4mm 5mm`、`height:auto`、`overflow:visible`，且不出现 `grid-column:span`。
 
 参照表格测试，为动态列表挂载探针并 mock 根 `offsetHeight=76`，等待两帧后断言 `options.height≈20.1mm`；再次等待不重复触发 store 重绘。
 
-- [ ] **Step 2: 验证测试失败**
+- [x] **Step 2: 验证测试失败**
 
 Run: `npm test -w @worm-vue3-print/common -- src/shell/__tests__/flow-list.spec.ts`
 Expected: FAIL，模式属性与测量探针尚不存在。
 
-- [ ] **Step 3: 最小实现外壳能力**
+- [x] **Step 3: 最小实现外壳能力**
 
 `renderFlowListElement` 按模式生成与 Vue 外壳相同的根样式。属性台复用现有 `fieldHelp`、`stepper`、`switchField` 或原生 select 助手，字段 key 与 Vue 端一致。
 
 参照 `shell/table.ts` 的 `measureProbe`：动态列表末尾插入注释探针，下一帧从父节点找到 `.print-flowlist`，读取内容高度和上下边框，量化到 `0.1mm` 后写回真实元素并 `store.emit(false)`。固定模式不插入探针；探针未连接或高度为零时直接返回。
 
-- [ ] **Step 4: 回归零框架测试并登记一致性**
+- [x] **Step 4: 回归零框架测试并登记一致性**
 
 Run: `npm test -w @worm-vue3-print/common -- src/shell/__tests__/flow-list.spec.ts src/shell/__tests__/property-panel-reset.spec.ts src/__tests__/expression-dblclick.spec.ts`
 Expected: PASS。`PARITY.md` 的流式列表条目补充动态模式、四边内边距和高度自愈。
 
-- [ ] **Step 5: 主 agent 审查并提交**
+- [x] **Step 5: 主 agent 审查并提交**
 
 ```bash
 git add packages/print-common/src/shell/flow-list.ts packages/print-common/src/shell/elements.ts packages/print-common/src/shell/property-panel.ts packages/print-common/PARITY.md packages/print-common/src/shell/__tests__/flow-list.spec.ts
@@ -466,7 +466,7 @@ git commit -m "feat: 零框架设计器支持动态流式列表"
 - Consumes: core 完整 `prepareDocument` 和 `BrowserPool`。
 - Produces: 固定纸多页、完整边框、跨列不拆行、跟随区和连续纸的真实浏览器回归。
 
-- [ ] **Step 1: 写真实 Chromium 管线回归测试**
+- [x] **Step 1: 写真实 Chromium 管线回归测试**
 
 构造 A4 动态列表：40 条数据、4 列、自动跨列上限 2、四边内边距 `2/3/4/5mm`、完整边框，列表下方放合计文本。通过现有运行时执行：
 
@@ -483,17 +483,17 @@ expect(slices.at(-1)?.endFlowRow).toBeGreaterThan(slices[0]?.endFlowRow ?? 0)
 
 连续纸用同一绑定数据断言只有一个列表切片。全程不断言截图，不生成或读取图片。
 
-- [ ] **Step 2: 运行真实管线并核对几何结果**
+- [x] **Step 2: 运行真实管线并核对几何结果**
 
 Run: `npm test -w @worm-vue3-print/render -- src/flow-list-dynamic.integration.test.ts`
 Expected: PASS。若发现真实管线缺陷，先记录失败几何数据，再回到对应 core 文件做最小修复并补 core 单测，禁止只放宽集成断言。
 
-- [ ] **Step 3: 跑渲染服务完整回归**
+- [x] **Step 3: 跑渲染服务完整回归**
 
 Run: `npm test -w @worm-vue3-print/render`
 Expected: PASS，包括既有 `follow-region.integration.test.ts`。
 
-- [ ] **Step 4: 主 agent 审查并提交**
+- [x] **Step 4: 主 agent 审查并提交**
 
 ```bash
 git add services/print-render/src/flow-list-dynamic.integration.test.ts
@@ -517,13 +517,13 @@ git commit -m "test: 验证动态流式列表真实分页"
 - Consumes: 已实施的字段名、缺省值、分页和跟随行为。
 - Produces: 中文用户文档、英文变更记录、模板技能 schema 与最终实施状态。
 
-- [ ] **Step 1: 更新文档并检查契约一致性**
+- [x] **Step 1: 更新文档并检查契约一致性**
 
 中文指南的流式列表小节明确：默认固定高度；动态分页按行换页；四边内边距只在动态模式生效；每页边框闭合；下方跟随元素复用表格规则；块内暂只支持文本。`docs/en/Overview.md` 增加对应的英文功能说明，中英 CHANGELOG 使用同一事实，不宣称支持图片或任意嵌套。
 
 schema 增加 `flowLayoutMode` 和四个 `flowPadding*` 字段、单位、缺省值与适用条件。旧规格添加指向新规格的兼容扩展说明，新规格状态改为已实施并记录验证结果。
 
-- [ ] **Step 2: 审查最终差异和敏感边界**
+- [x] **Step 2: 审查最终差异和敏感边界**
 
 ```bash
 git diff --check
@@ -534,7 +534,7 @@ npm run lint:print-architecture
 
 主 agent 逐文件确认：没有修改用户已有工作区文件，没有新增 UI 依赖，没有 SDK → canvas 反向依赖，没有改变 fixed 默认，没有付费模型调用。
 
-- [ ] **Step 3: 全量测试与构建**
+- [x] **Step 3: 全量测试与构建**
 
 ```bash
 npm test
@@ -544,7 +544,7 @@ npm run build
 
 Expected: 全部 PASS。若失败，区分本功能回归与用户既有改动导致的问题；本功能问题必须修复后重跑，非本功能问题保留现场并如实报告，不能声称全量通过。
 
-- [ ] **Step 4: 提交文档和最终验收记录**
+- [x] **Step 4: 提交文档和最终验收记录**
 
 ```bash
 git add docs/中文/指南/模板设计器.md docs/中文/CHANGELOG.md docs/en/CHANGELOG.en.md docs/en/Overview.md skills/print-template-json/references/template-schema.md docs/superpowers/specs/2026-10-22-flow-list-element-design.md docs/superpowers/specs/2026-11-03-dynamic-flow-list-design.md

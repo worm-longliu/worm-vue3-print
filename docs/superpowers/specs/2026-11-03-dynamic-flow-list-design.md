@@ -1,6 +1,6 @@
 # 动态流式列表容器设计
 
-> 状态：已确认设计，待实施。
+> 状态：**已实施（2026-11-03）**，验证记录见第十节；本文第九节保留为验证方案。
 > 日期：2026-11-03。
 > 前置文档：`2026-10-22-flow-list-element-design.md`。本文只扩展动态模式；固定模式的既有契约不变。
 
@@ -150,3 +150,27 @@ flowPaddingLeft?: number
 - 浏览器、服务端和桌面客户端继续共用 core 渲染结果。
 
 最终执行相关 workspace 测试、`npm run test -w @worm-vue3-print/render`、`npm test`、`npm run build`，并通过 `git diff` 检查包边界、类型、兼容性和无关改动。
+
+## 十、实施与验证记录（2026-11-03）
+
+### 已落地能力
+
+- `flowLayoutMode` 缺省 `fixed`，非法值按 `fixed` 处理；`fixed` 保持原有设计高度、裁切、HTML 结构与「一框一页」行为。
+- `dynamic` 模式保留内部 `_flowRows`，按真实文本行测量并在满页后切片续页；整行为最小分页单位，不拆行也不拆跨列单元；单行超高按 `overflow` 口径留在当前页。
+- 四边内边距 `flowPaddingTop/Right/Bottom/Left`（mm，缺省 `0`，负值与非有限值按 `0`）仅 `dynamic` 消费，左右值参与内容宽度、列宽与跨列计算。
+- 每个 `flow-list-slice` 独立输出容器并带完整四边边框；动态列表与表格共用跟随区判定，跟随区只接在末片之后。
+- 固定列数、行高、间距、自动跨列与最大跨列沿用原有 `layoutFlowList` 逻辑；画布仍不预演跨列、不运行分页引擎。
+
+### 当前验证结果
+
+以下为本次文档同步时实际运行的 core 与 canvas 定向测试：
+
+- `npm test -w @worm-vue3-print/core -- src/render/__tests__/flow-list.spec.ts src/render/__tests__/flow-list-render.spec.ts src/render/__tests__/flow-list-pagination.spec.ts src/print/__tests__/measure.spec.ts src/browser/__tests__/dom-executor.spec.ts`：5 个测试文件、76 项全部通过。
+- `npm test -w @worm-vue3-print/canvas -- src/__tests__/FlowListElement.spec.ts src/__tests__/FlowListGroup.spec.ts`：2 个测试文件、28 项全部通过，`pretest` 的 `vue-tsc --noEmit` 通过。
+
+### 集成与全量验收
+
+- `npm test -w @worm-vue3-print/common -- src/shell/__tests__/flow-list.spec.ts src/shell/__tests__/property-panel-reset.spec.ts src/__tests__/expression-dblclick.spec.ts`：3 个测试文件、45 项全部通过；零框架外壳全量 33 个测试文件、375 项通过。
+- `npm test -w @worm-vue3-print/render -- src/flow-list-dynamic.integration.test.ts`：真实 Chromium 的 A4 多页与连续纸 2 项端到端用例通过；渲染服务全量 11 个测试文件、40 项通过。
+- `npm test`：core 86 个文件／1284 项、contract 7 个文件／72 项、mcp 5 个文件／63 项、canvas 77 个文件／763 项、common 33 个文件／375 项、print-client 17 个文件／134 项全部通过。
+- `npm run lint:print-architecture`、`npm run build` 全部通过。真实渲染验证仅使用 DOM、计算样式与几何数据，未读取或判认截图。
