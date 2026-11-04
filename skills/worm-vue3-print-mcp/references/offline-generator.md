@@ -1,9 +1,4 @@
----
-name: print-template-json
-description: 生成 worm-vue3-print 可视化打印模板设计器可直接导入的打印模板 JSON（面单、标签、称签、价签、资产标签、小票、出库单/收货单等），也用于校验已有模板 JSON 能否安全出纸。当用户给出打印场景、纸张尺寸、字段清单或样例数据并要求生成打印模板 / 模板 JSON / 套打版式时使用。
-version: 1.0.0
-agent_created: true
----
+# 离线模板生成与校验
 
 # 打印模板 JSON 生成
 
@@ -19,7 +14,7 @@ agent_created: true
 
 | 需要 | 缺失时的默认 |
 |---|---|
-| 场景与内容区块 | 按同类场景配方补（`references/layout-recipes.md`） |
+| 场景与内容区块 | 按同类场景配方补（`layout-recipes.md`） |
 | 纸张 | 单据 A5、标签 `LABEL_60X40`、小票 `THERMAL_80`、面单自定义 100×150 |
 | 字段与数据 | 按场景造一份合理的静态示例数据，字段路径用业务语义（如 `order.no`、`goods[].name`） |
 | 是否拼版 | 标签默认不开；用户说「一张 A4 打多枚」才开 |
@@ -77,7 +72,7 @@ agent_created: true
 }
 ```
 
-简写键映射（完整对照见 `references/template-schema.md`）：
+简写键映射（完整对照见 `template-schema.md`）：
 
 | 简写 | 原生 | 简写 | 原生 |
 |---|---|---|---|
@@ -105,8 +100,8 @@ agent_created: true
 
 ## 参考资源
 
-- `references/template-schema.md` — 完整字段规范：纸张表、元素选项、表格模型、拼版几何、表达式函数
-- `references/layout-recipes.md` — 五类场景版式配方 + 10 条避坑清单
+- `template-schema.md` — 完整字段规范：纸张表、元素选项、表格模型、拼版几何、表达式函数
+- `layout-recipes.md` — 五类场景版式配方 + 10 条避坑清单
 - `assets/templates/` — 8 份可直接导入的成品模板（含配套 `.data.json` 与 `manifest.json`）：
   采购收货单、销售出库单、快递电子面单、综合示例模板、称签打印、价签打印（拼版）、资产/设备标签（拼版）、零售小票。
   新需求与某份相近时，复制改名后微调比从零排更快。
