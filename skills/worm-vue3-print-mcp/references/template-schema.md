@@ -81,6 +81,7 @@
 | `keepLineBreaks` | **缺省不写＝关**。打开后 `text` / `longText` 出纸带 `white-space:pre-wrap`：`\n` 各占一行、行首与连续空格原样保留，同时仍按框宽自动换行。与 `wordWrap: false` 冲突时**单行优先**（新档不出声明）。判据单点在 core `resolveElementWhiteSpace`，画布 / print-common / 三条出纸链路同一份；仅这两类元素消费，挂到表格上不改一个字节 |
 | `borderWidth` `borderStyle` `borderColor` | 边框（宽度 pt） |
 | `zIndex` `locked` `visible` | 层级 / 锁定 / 可见 |
+| `fixed` | **每页固定重复（缺省不写＝关）**：`true` 时该元素按设计坐标（原 `left/top/width/height`）叠加到**每一页**，不参与分页占位——不占分页高度预算、不参与显式编组（`groupId`）与表格/动态列表的跟随区，普通元素的分页结果与删掉它后完全一致；**连续纸/小票纸只有一页，固定元素也仅输出一次**。**与表格 `repeatOnPage` 的区别**：整元素 `fixed: true` 表示「这张表（或这个动态列表）整体每页完整重复」（数据行不切片、每页都渲染全部行），而表头行 `repeatOnPage: true` 只负责「拆页切片时每页重复表头」；整表 `fixed` 后不再切片，`repeatOnPage` 因而不参与该表的分页。需要「下方正文自动让位、按页留出空间」时**不要用 `fixed`，改用页眉/页脚**（它们占用分页预算）。注意这不是 CSS 的 `position: fixed`：坐标仍是设计稿上的内容区坐标，分页引擎在每页原位输出同一元素 |
 
 **单元格换行与断词口径（算行数必须按这个来）**：可换行档出纸内联是
 `white-space:pre-wrap;word-break:normal;overflow-wrap:break-word` —— `\n` 各占一行、连续空格与行首空格原样显形、

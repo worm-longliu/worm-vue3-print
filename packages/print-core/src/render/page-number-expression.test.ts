@@ -4,6 +4,7 @@
 import { describe, it, expect } from 'vitest'
 import { bindData } from './data-binder.js'
 import { generateHtml } from './html-generator.js'
+import { paginate } from './pagination-engine.js'
 
 function makeTemplate(elements: any[], header?: any[]): any {
   return {
@@ -102,5 +103,32 @@ describe('最终渲染：页码按页求值', () => {
     ], {}, {})
     expect(html).toContain('P1')
     expect(html).toContain('P2')
+  })
+})
+
+describe('fixed 元素：页码表达式逐页求值（真实绑定 + 真实分页）', () => {
+  it('固定元素在两页分别求值页码与总页数', () => {
+    const fixed = textEl('fixed-page', '第 {ADD(pageIndex,1)} / {totalPages} 页')
+    fixed.options.fixed = true
+    // body-1 top=10 h=150（底 160）、body-2 top=160 h=150：上下相切不聚类，稳定产出两页
+    const body1 = textEl('body-1', '正文一')
+    const body2 = textEl('body-2', '正文二')
+    Object.assign(body1.options, { height: 150 })
+    Object.assign(body2.options, { top: 160, height: 150 })
+    const bound = bindData(makeTemplate([fixed, body1, body2]), {})
+    const measured = new Map([
+      ['fixed-page', { id: 'fixed-page', measuredHeight: 8 }],
+      ['body-1', { id: 'body-1', measuredHeight: 150 }],
+      ['body-2', { id: 'body-2', measuredHeight: 150 }],
+    ])
+    const pages = paginate(bound, measured)
+    expect(pages).toHaveLength(2)
+    for (const page of pages) {
+      expect(page.sections).toContainEqual({ elementId: 'fixed-page', type: 'element', renderTop: 10 })
+    }
+    const html = generateHtml(bound, pages, {}, {})
+    // 第 1 页：ADD(1,1)=2；第 2 页：ADD(2,1)=3；totalPages 恒为 2
+    expect(html).toContain('第 2 / 2 页')
+    expect(html).toContain('第 3 / 2 页')
   })
 })

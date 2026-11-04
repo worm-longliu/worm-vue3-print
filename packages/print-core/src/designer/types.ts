@@ -297,6 +297,7 @@ export interface ElementOptions {
    * 同时仍按框宽自动换行。与「自动换行」互斥让位——`wordWrap === false` 时本档不出声明（单行优先）。
    */
   keepLineBreaks?: boolean
+  /** 每页固定重复：按设计坐标叠加到每页，不参与分页占位、编组或跟随区；表格/动态列表完整重复，连续纸仅输出一次 */
   fixed?: boolean
   locked?: boolean
   /** 元素可见性（图层面板切换） */

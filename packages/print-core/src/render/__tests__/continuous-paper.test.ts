@@ -50,6 +50,15 @@ describe('CONTINUOUS 纸型', () => {
     expect(pages).toHaveLength(1)
   })
 
+  it('连续纸只有一个页面，固定元素只出现一次', () => {
+    const fixed = el('fixed', 0, 10)
+    fixed.options.fixed = true
+    const t = continuousTemplate({ elements: [fixed] })
+    const pages = paginate(t, measuredOf(t, () => 10))
+    expect(pages).toHaveLength(1)
+    expect(pages[0]!.sections.filter(s => s.elementId === 'fixed')).toHaveLength(1)
+  })
+
   it('composeContinuousHeight：探针底边 + footer + mb（探针底边已含 mt/header/内容偏移）', () => {
     const t = continuousTemplate({
       margins: { top: 5, right: 5, bottom: 3, left: 5 },

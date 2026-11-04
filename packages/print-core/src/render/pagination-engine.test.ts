@@ -782,6 +782,13 @@ describe('fixed 表格：整表每页重复，不切片、不作跟随锚点', (
     }
   })
 
+  it('模板只有 fixed 元素时仍只有一页且元素不重复', () => {
+    const tpl = makeFreeTemplate([freeEl('fixed', 20, 10, { fixed: true })])
+    const pages = paginate(tpl, measureFree([['fixed', 10]]))
+    expect(pages).toHaveLength(1)
+    expect(pages[0]!.sections).toEqual([{ elementId: 'fixed', type: 'element', renderTop: 20 }])
+  })
+
   it('fixed 表格不作为跟随锚点，下方文本不进入任何跟随区', () => {
     const baseTable = makeTable(1, 0)
     const anchored = { ...baseTable, options: { ...baseTable.options, fixed: true } }
