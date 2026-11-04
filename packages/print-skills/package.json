@@ -1,0 +1,32 @@
+{
+  "name": "@worm-vue3-print/skills",
+  "version": "1.4.4",
+  "description": "从 Git 仓库安装 worm-vue3-print 使用技能",
+  "type": "module",
+  "bin": {
+    "worm-vue3-print-skills": "./bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node --check bin/cli.js && node --check src/cli.js && node --check src/install.js",
+    "test": "node --test test/*.test.js"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "license": "MIT",
+  "author": "worm <liu_long_qqcom@qq.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/worm-longliu/worm-vue3-print.git"
+  }
+}
