@@ -93,10 +93,11 @@ export async function installSkill({ name, repo, ref, dir, force = false, cwd = 
   const cloneParent = await mkdtemp(join(tmpdir(), 'worm-print-skills-'))
   const cloneDir = join(cloneParent, 'repo')
   try {
-    const args = ['clone', '--depth', '1']
+    const args = ['clone', '--depth', '1', '--filter=blob:none', '--sparse']
     if (ref) args.push('--branch', ref, '--single-branch')
     args.push(repo, cloneDir)
     await git(args)
+    await git(['-C', cloneDir, 'sparse-checkout', 'set', 'skills'])
     const source = join(cloneDir, 'skills', name)
     if (!await pathExists(source)) {
       const available = await availableSkills(cloneDir)

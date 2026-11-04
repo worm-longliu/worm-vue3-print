@@ -10,7 +10,7 @@ import { inspectTemplate } from '../inspect.js'
 const ROOT = join(fileURLToPath(new URL('../../../../', import.meta.url)))
 const DIRS = [
   { dir: 'demo/src', pattern: /^template-.*\.json$/ },
-  { dir: 'skills/print-template-json/assets/templates', pattern: /\.template\.json$/ },
+  { dir: 'skills/worm-vue3-print-mcp/assets/templates', pattern: /\.template\.json$/ },
   { dir: 'packages/print-core/src/render/__tests__/fixtures', pattern: /\.json$/ },
 ]
 
