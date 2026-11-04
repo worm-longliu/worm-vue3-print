@@ -1,0 +1,63 @@
+name: npm dist-tag
+
+# dist-tag 运维（如移除首发自动生成的 latest）。需要 npm 包维护者权限，走仓库 NPM_TOKEN。
+# 触发：
+#   gh workflow run npm-dist-tag.yml -f pkg=@worm-vue3-print/skills -f action=rm -f tag=latest
+#   gh workflow run npm-dist-tag.yml -f pkg=@worm-vue3-print/skills -f action=add -f tag=next -f version=1.4.4
+on:
+  workflow_dispatch:
+    inputs:
+      pkg:
+        description: '完整包名（如 @worm-vue3-print/skills）'
+        required: true
+        type: string
+      action:
+        description: '操作'
+        required: true
+        type: choice
+        options: [rm, add]
+      tag:
+        description: 'dist-tag 名（如 latest / next）'
+        required: true
+        type: string
+      version:
+        description: 'action=add 时的包版本（pkg@version）'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  dist-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: 操作前 dist-tags
+        run: npm view "${{ inputs.pkg }}" dist-tags --json --registry=https://registry.npmjs.org
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 执行 dist-tag ${{ inputs.action }}
+        run: |
+          if [ "${{ inputs.action }}" = "rm" ]; then
+            npm dist-tag rm "${{ inputs.pkg }}" "${{ inputs.tag }}" --registry=https://registry.npmjs.org
+          else
+            if [ -z "${{ inputs.version }}" ]; then
+              echo "::error::action=add 需要提供 version"
+              exit 1
+            fi
+            npm dist-tag add "${{ inputs.pkg }}@${{ inputs.version }}" "${{ inputs.tag }}" --registry=https://registry.npmjs.org
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 操作后 dist-tags
+        run: npm view "${{ inputs.pkg }}" dist-tags --json --registry=https://registry.npmjs.org
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
