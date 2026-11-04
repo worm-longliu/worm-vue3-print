@@ -1,6 +1,6 @@
 {
   "name": "@worm-vue3-print/skills",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "description": "从 Git 仓库安装 worm-vue3-print 使用技能",
   "type": "module",
   "bin": {

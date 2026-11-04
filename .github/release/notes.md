@@ -1,8 +1,16 @@
-# Worm Print V1.4.4 Preview (2026-11-04)
+# Worm Print V1.4.5 (2026-11-04)
 
-> **预览版（Prerelease）**：本版以 dist-tag `next` 发布到 npm（`@worm-vue3-print/core` / `canvas` / `common` / `skills` 的 `1.4.4`），其中 **core / canvas / common 的 latest 仍为 1.4.3**；GitHub Release 显式标记为 Prerelease。四个包的预览版均通过 `@next` 安装；生产环境建议 core / canvas / common 继续使用 1.4.3。
+> **正式版**：本版四个发布包 `@worm-vue3-print/core` / `canvas` / `common` / `skills` 均以 dist-tag `latest` 发布到 npm `1.4.5`；GitHub Release 标记为正式版（Prerelease=false）。安装命令：
+>
+> ```bash
+> npm install @worm-vue3-print/core@latest @worm-vue3-print/canvas@latest
+> npm install @worm-vue3-print/common@latest
+> npx @worm-vue3-print/skills@latest <技能名>
+> ```
+>
+> `@worm-vue3-print/common` 仍为实验性质，不建议用于生产；Vue 3 项目请优先使用 `@worm-vue3-print/canvas`。
 
-V1.4.4 把 AI 接入收敛成**一条链路**：浏览器设计器 ↔ 桌面客户端 ↔ AI Agent，并把「技能」做成开箱即用的 npx 安装器；设计器侧新增动态分页的流式列表容器与表格明细行按值合并。
+V1.4.5 将 V1.4.4 的预览能力转正：AI 接入保持唯一链路（浏览器设计器 ↔ 桌面客户端 ↔ AI Agent），技能 npx 安装器、动态分页流式列表容器、表格明细行按值合并等能力进入正式版；同时发布全平台桌面客户端安装包 1.4.5。
 
 ## 重大变更：MCP 只保留桌面端单链路
 
@@ -21,19 +29,27 @@ V1.4.4 把 AI 接入收敛成**一条链路**：浏览器设计器 ↔ 桌面客
 
 - **设计态条码默认码值可被 CODE128 编码**：内容与示例值都为空时，设计态回退显示从文字「条码」改为示例值 `12345678`，画布呈现真实的条码图样而非报错态。仅影响设计态展示，出纸逻辑不变。
 
-## 桌面客户端（Prerelease 安装包）
+## 桌面客户端（正式版安装包）
 
-- 本版重打全平台安装包（macOS Intel/Apple Silicon、Windows、Linux deb/rpm/AppImage），挂在本 Prerelease 附件与 `SHA256SUMS.txt`。
+- 本版重打全平台安装包（macOS Intel/Apple Silicon、Windows、Linux deb/rpm/AppImage），挂在本 Release 附件与 `SHA256SUMS.txt`。
 - **安装包未做 Developer ID 签名与 Windows 签名公证**（项目没有相应证书）：macOS 首次打开需 `xattr -dr com.apple.quarantine /Applications/WormPrintClient.app` 或在「系统设置 → 隐私与安全性」点「仍要打开」；Windows 在 SmartScreen 点「更多信息 → 仍要运行」。
 - Linux 包在 x64 Docker 内交叉构建，未经真机出纸验证；详见 README「下载客户端安装包」一节。
 
 ---
 
-# Worm Print V1.4.4 Preview (2026-11-04)
+# Worm Print V1.4.5 (2026-11-04)
 
-> **Prerelease**: this version ships to npm under the `next` dist-tag (`1.4.4` of `@worm-vue3-print/core` / `canvas` / `common` / `skills`), while **latest remains 1.4.3 for core / canvas / common**. The GitHub Release is explicitly marked as a prerelease. Install any of the four preview packages with `@next`; production users of core / canvas / common should stay on 1.4.3.
+> **Regular release**: all four published packages — `@worm-vue3-print/core`, `canvas`, `common` and `skills` — ship to npm under the `latest` dist-tag at version `1.4.5`. The GitHub Release is marked as a regular release (Prerelease=false). Install with:
+>
+> ```bash
+> npm install @worm-vue3-print/core@latest @worm-vue3-print/canvas@latest
+> npm install @worm-vue3-print/common@latest
+> npx @worm-vue3-print/skills@latest <skill>
+> ```
+>
+> `@worm-vue3-print/common` remains experimental and is not recommended for production; Vue 3 projects should prefer `@worm-vue3-print/canvas`.
 
-V1.4.4 collapses AI integration into **a single link** — browser designer ↔ desktop client ↔ AI Agent — and turns the skills into one-command npx installers; on the designer side it adds a dynamically paginating flow-list container and value-based row merging for table details.
+V1.4.5 promotes the V1.4.4 preview capabilities to stable: AI integration keeps a single link — browser designer ↔ desktop client ↔ AI Agent — together with the npx skill installers, dynamically paginated flow-list container and value-based row merging for table details. Desktop client installers are rebuilt for 1.4.5 across all platforms.
 
 ## Breaking change: MCP now only works through the desktop client
 
@@ -52,8 +68,8 @@ V1.4.4 collapses AI integration into **a single link** — browser designer ↔ 
 
 - **Design-time barcode falls back to a CODE128-encodable sample**: with empty content and empty `testData`, the design-time fallback now shows the sample value `12345678` instead of the text "条码", so the canvas shows a real barcode. Design-time display only; print output is unchanged.
 
-## Desktop client (Prerelease installers)
+## Desktop client (release installers)
 
-- All platform installers were rebuilt for this release (macOS Intel/Apple Silicon, Windows, Linux deb/rpm/AppImage) and are attached to this prerelease together with `SHA256SUMS.txt`.
+- All platform installers were rebuilt for this release (macOS Intel/Apple Silicon, Windows, Linux deb/rpm/AppImage) and are attached to this release together with `SHA256SUMS.txt`.
 - **The installers carry no Developer ID signature/notarization or Windows code-signing** (the project has no such certificates): on macOS run `xattr -dr com.apple.quarantine /Applications/WormPrintClient.app` or click "Open anyway" in System Settings → Privacy & Security; on Windows choose "More info → Run anyway" on the SmartScreen prompt.
 - The Linux packages are cross-built inside an x64 Docker container and have not been verified on real hardware; see the README's "Download client installers" section for details.

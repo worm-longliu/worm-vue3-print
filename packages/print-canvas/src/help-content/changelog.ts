@@ -2,6 +2,13 @@ export default {
   id: 'changelog',
   title: '更新记录',
   content: `
+<h2>V1.4.5<small>(2026-11-04)</small></h2>
+
+<h3>新增</h3>
+<ul>
+  <li><strong>正式版发布</strong>：core / canvas / common / skills 四包均以 dist-tag <code>latest=1.4.5</code> 发布，可直接通过 <code>@latest</code> 安装；MCP 唯一链路、技能 npx 安装器、动态分页流式列表与表格按值合并等 V1.4.4 预览能力全部转正。</li>
+</ul>
+
 <h2>V1.4.4<small>(2026-11-04)</small></h2>
 
 <h3>新增</h3>

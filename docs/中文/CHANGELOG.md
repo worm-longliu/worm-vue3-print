@@ -2,6 +2,18 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## V1.4.5(2026-11-04)
+
+> **正式版**：本版以 dist-tag `latest` 发布到 npm（`@worm-vue3-print/core` / `canvas` / `common` / `skills` 的 `1.4.5`）；GitHub Release 标记为正式版（Prerelease=false）。`@worm-vue3-print/common` 仍为实验性质，不建议用于生产。
+
+### 新增
+
+- **将 V1.4.4 预览能力转正为正式版**。AI 接入保持唯一链路（浏览器设计器 ↔ 桌面客户端 ↔ AI Agent），技能 npx 安装器、动态分页流式列表容器、表格明细行按值合并等能力进入 latest 正式通道。
+
+### 变更
+
+- **四包 dist-tag 从 `next` 切到 `latest=1.4.5`**：core、canvas、common、skills 均以 latest=1.4.5 发布，不再推荐通过 `@next` 安装。历史版本标签与 Release 保持不变。
+
 ## V1.4.4(2026-11-04)
 
 > **预览版**：本版以 dist-tag `next` 发布到 npm（core / canvas / common / skills 的 1.4.4），latest 仍为 1.4.3；GitHub Release 标记为 Prerelease。生产环境建议继续使用 1.4.3。
