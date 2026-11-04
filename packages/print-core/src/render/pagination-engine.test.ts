@@ -759,3 +759,33 @@ describe('换页流式光标：表格后续页的编组不叠压表格（回归�
     expect(topOf('d')).toBe(250)
   })
 })
+
+// ─── fixed 可切片元素：整表每页完整重复 ───
+
+describe('fixed 表格：整表每页重复，不切片、不作跟随锚点', () => {
+  it('普通表格设 fixed 后：两页均含 type=element 的完整表格 section，不出现 table-slice', () => {
+    const baseTable = makeTable(2, 0)
+    const fixedTable = { ...baseTable, options: { ...baseTable.options, fixed: true } }
+    const tpl = makeFreeTemplate([
+      fixedTable,
+      freeEl('body-1', 0, 150),
+      freeEl('body-2', 150, 150),
+    ])
+    const pages = paginate(tpl, new Map([
+      ...measure([8, 8], 0),
+      ...measureFree([['body-1', 150], ['body-2', 150]]),
+    ]))
+    expect(pages).toHaveLength(2)
+    for (const page of pages) {
+      expect(page.sections).toContainEqual({ elementId: 'tbl-1', type: 'element', renderTop: 0 })
+      expect(page.sections.some(s => s.elementId === 'tbl-1' && s.type !== 'element')).toBe(false)
+    }
+  })
+
+  it('fixed 表格不作为跟随锚点，下方文本不进入任何跟随区', () => {
+    const baseTable = makeTable(1, 0)
+    const anchored = { ...baseTable, options: { ...baseTable.options, fixed: true } }
+    const after = freeEl('after', 30, 10)
+    expect(collectFollowMemberIds([anchored, after]).size).toBe(0)
+  })
+})

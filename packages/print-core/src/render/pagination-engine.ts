@@ -43,11 +43,10 @@ function isSplittableEl(el: FollowJudgementInput): boolean {
 
 /**
  * 每页固定重复元素判据：options.fixed === true 的元素按设计坐标逐页叠加，
- * 不参与分页高度记账、显式/隐式编组和表格/动态列表跟随区。
- * 本阶段（Task 1）仅非可切片元素启用；表格 / 动态 flowList 的固定重复在 Task 2 放宽。
+ * 不参与分页高度记账、显式/隐式编组和表格/动态列表跟随区（表格/动态 flowList 为整表/整列表完整重复）。
  */
 function isFixedEl(el: FollowJudgementInput): boolean {
-  return el.options?.fixed === true && !isSplittableEl(el)
+  return el.options?.fixed === true
 }
 
 function elTypeOf(el: FollowJudgementInput): string {

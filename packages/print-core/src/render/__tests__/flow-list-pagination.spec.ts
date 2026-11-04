@@ -444,3 +444,29 @@ describe('切片 HTML 闭合容器', () => {
     expect(texts[1]).toEqual(['红花', '桃仁'])
   })
 })
+
+describe('fixed 动态列表：每页完整渲染', () => {
+  it('普通列表设 fixed 后：两页均输出完整 element section 与全部行 HTML，无切片与 flow-group', () => {
+    const tpl = multiTemplate([
+      flowListEl('fl-fixed', 0, 16, flowRows(['甲', '乙']), { fixed: true }),
+      followTextEl('body-1', 0, 150),
+      followTextEl('body-2', 150, 150),
+    ])
+    const pages = paginate(tpl, measuredMulti([
+      { id: 'fl-fixed', flowRowHeights: [8, 8] },
+      { id: 'body-1', measuredHeight: 150 },
+      { id: 'body-2', measuredHeight: 150 },
+    ]))
+    const html = generateHtml(tpl, pages)
+
+    expect(pages).toHaveLength(2)
+    for (const page of pages) {
+      expect(page.sections).toContainEqual({ elementId: 'fl-fixed', type: 'element', renderTop: 0 })
+      expect(page.sections.some(s => s.elementId === 'fl-fixed' && s.type !== 'element')).toBe(false)
+    }
+    expect(html).not.toContain('print-flowlist-slice')
+    expect(html).not.toContain('flow-group')
+    expect((html.match(/data-flow-row-index="0"/g) ?? [])).toHaveLength(2)
+    expect((html.match(/data-flow-row-index="1"/g) ?? [])).toHaveLength(2)
+  })
+})

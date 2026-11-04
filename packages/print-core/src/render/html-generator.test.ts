@@ -1,6 +1,7 @@
 // print-core/src/render/html-generator.test.ts
 import { describe, it, expect } from 'vitest'
 import { generateHtml, renderFinalPages, wrapHtmlDocument } from './html-generator.js'
+import { paginate } from './pagination-engine.js'
 import type { TemplateData, PageLayout, CodeRenderer, CodeRenderOptions } from './types.js'
 
 /** 测试用 CodeRenderer：返回可识别 SVG；EAN13 非数字码值抛错模拟非法码 */
@@ -1356,5 +1357,25 @@ describe('单元格换行与断词口径', () => {
 
   it('不换行档逐字保持强制单行（该档语义就是折叠换行符）', () => {
     expect(cellRow(cellHtml({ wordWrap: false }))).toContain('white-space:nowrap;overflow:hidden')
+  })
+})
+
+describe('fixed 表格：整表 HTML 每页完整输出', () => {
+  it('普通表格设 fixed 后经分页：两页各自渲染完整表格（无切片），A/B 数据行每页出现', () => {
+    const tpl = makeTemplate({ ...matrixOptions(), fixed: true })
+    ;(tpl.elements as any[]).push(
+      { id: 'body-1', type: 'text', options: { left: 0, top: 0, width: 60, height: 150 } },
+      { id: 'body-2', type: 'text', options: { left: 0, top: 150, width: 60, height: 150 } },
+    )
+    const pages = paginate(tpl, new Map([
+      ['tbl-1', { id: 'tbl-1', measuredHeight: 24 }],
+      ['body-1', { id: 'body-1', measuredHeight: 150 }],
+      ['body-2', { id: 'body-2', measuredHeight: 150 }],
+    ]))
+    expect(pages).toHaveLength(2)
+    const html = generateHtml(tpl, pages)
+    expect((html.match(/data-element-id="tbl-1"/g) ?? [])).toHaveLength(2)
+    expect((html.match(/>A<\/td>/g) ?? [])).toHaveLength(2)
+    expect((html.match(/>B<\/td>/g) ?? [])).toHaveLength(2)
   })
 })
