@@ -3,7 +3,7 @@
 ## 发版流程（CLAUDE.md 规定的硬要求）
 
 - 版本号**四处**同步：根 `package.json`、`packages/print-core`、`packages/print-canvas`、`demo/package.json`；另外别忘了 `demo/package-lock.json`（demo 有独立 lock，含 4 处版本号）。
-- CHANGELOG **三处**同步：`docs/中文/CHANGELOG.md`、`docs/en/CHANGELOG.en.md`、`packages/print-canvas/src/help-content/changelog.ts`。
+- CHANGELOG **四处**同步：`docs/中文/CHANGELOG.md`、`docs/en/CHANGELOG.en.md`、`packages/print-canvas/src/help-content/changelog.ts`、**`packages/print-common/src/shell/help-content/changelog.ts`**（最后一份是 canvas 同名文件的逐字副本，首行抬头注释除外；`print-common/src/shell/__tests__/help-modal.spec.ts` 有断言强制一致）。2026-11-01 就因为只记三处漏了它，CI 在 888dc0b 上红。改 canvas 那份后直接以它为基准重写 common 那份（`{ head -1 common; cat canvas; } > common`）。
 - Release 正文写在 `.github/release/notes.md`，由 `.github/workflows/release.yml` 的 `body_path` 读取。
 - release.yml 是 **workflow_dispatch 手动触发**，推送标签不会自动发版；触发时需填 tag 名（须已推送到 GitHub），工作流会校验 core/canvas 版本号与 tag 一致，先发 core 再发 canvas。
 - 两个远端必须都推：`origin`=Gitee（默认上游）、`github`=GitHub，只推一个会分叉。

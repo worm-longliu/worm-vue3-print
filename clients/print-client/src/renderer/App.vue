@@ -5,7 +5,7 @@ import type { PrinterInfo } from '@worm-vue3-print/core/client'
 import type { JobRecord } from '../main/job-history.js'
 import type { LogEntry } from '../main/logger.js'
 import type { McpState } from '../preload/preload.api.js'
-import { buildMcpConfigJson, MCP_SERVICE_NAME } from './mcp-config'
+import { buildMcpConfigJson, MCP_SERVICE_NAME, resolveMcpConnectionView } from './mcp-config'
 
 const tab = ref<'settings' | 'jobs' | 'logs'>('settings')
 const config = ref<AppConfig | null>(null)
@@ -42,6 +42,9 @@ async function refreshMcpState() {
 
 const mcpHeadersJson = computed(() =>
   buildMcpConfigJson(mcpState.value?.url ?? '', config.value?.pairingToken ?? ''),
+)
+const mcpConnectionView = computed(() =>
+  resolveMcpConnectionView(config.value?.mcpEnabled ?? false, mcpState.value?.enabled ?? false),
 )
 
 async function copyMcpConfig() {
@@ -240,26 +243,22 @@ function fmtTime(iso: string): string {
           <textarea v-model="originsText" placeholder="https://erp.example.com（每行一个；留空仅校验 token）"></textarea>
         </div>
       </template>
-      <div class="row">
-        <label></label>
-        <button class="primary" @click="save">保存设置</button>
-        <span class="muted">{{ saveMsg }}</span>
-      </div>
-
       <hr style="margin: 18px 0; border: none; border-top: 1px solid var(--divider, #eee)" />
       <div class="ai-section-title">AI 助手（MCP）</div>
       <div class="row">
         <label>启用 AI 助手</label>
         <input type="checkbox" v-model="config.mcpEnabled" />
-        <span class="muted">本地 AI Agent 经 MCP 读写浏览器中打开的设计器模板；开关即时生效，无需重启</span>
+        <span class="muted">本地 AI Agent 经 MCP 读写浏览器中打开的设计器模板；保存设置后生效，无需重启</span>
       </div>
-      <template v-if="mcpUrlDrift">
-        <div class="row">
+      <div v-if="mcpConnectionView === 'save-required'" class="row">
+        <label></label>
+        <span class="muted">已勾选启用，请先点击下方「保存设置」；保存后显示 MCP 地址、Bearer token 和 Agent 连接配置。</span>
+      </div>
+      <template v-else-if="mcpConnectionView === 'details' && mcpState">
+        <div v-if="mcpUrlDrift" class="row">
           <label></label>
           <span class="mcp-warn">⚠ {{ mcpUrlDrift }}</span>
         </div>
-      </template>
-      <template v-if="config.mcpEnabled && mcpState">
         <div class="row">
           <label>MCP 地址</label>
           <code class="mcp-code">{{ mcpState.url }}</code>
@@ -297,6 +296,11 @@ function fmtTime(iso: string): string {
         </div>
       </template>
       <div v-else class="row"><label></label><span class="muted">未启用：MCP endpoint 不对外提供服务</span></div>
+      <div class="row">
+        <label></label>
+        <button class="primary" @click="save">保存设置</button>
+        <span class="muted">{{ saveMsg }}</span>
+      </div>
 
       <hr style="margin: 18px 0; border: none; border-top: 1px solid var(--divider, #eee)" />
       <div class="row">

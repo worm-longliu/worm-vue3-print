@@ -12,9 +12,13 @@
   ],
   "scripts": {
     "dev:core": "npm run build -w @worm-vue3-print/core -- --watch",
+    "predev:canvas": "npm install && npm run build -w @worm-vue3-print/core",
     "dev:canvas": "npm exec -w @worm-vue3-print/canvas -- vite build --watch",
+    "predev:render": "npm install && npm run build -w @worm-vue3-print/core",
     "dev:render": "npm run dev -w @worm-vue3-print/render",
+    "predev:client": "npm install && npm run build -w @worm-vue3-print/core && npm run build -w @worm-vue3-print/contract && npm run build -w @worm-vue3-print/mcp",
     "dev:client": "npm run dev -w @worm-vue3-print/print-client",
+    "predev:demo": "npm install && npm run build -w @worm-vue3-print/core && npm run build -w @worm-vue3-print/canvas && npm install --prefix demo",
     "dev:demo": "npm run dev --prefix demo",
     "dev:demo-common:all": "node demo-common/scripts/dev-all.mjs",
     "nav:demo-common": "node demo-common/scripts/serve-nav.mjs",

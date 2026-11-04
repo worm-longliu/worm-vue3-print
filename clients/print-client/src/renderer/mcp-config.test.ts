@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildMcpConfigJson, MCP_SERVICE_NAME } from './mcp-config'
+import { buildMcpConfigJson, MCP_SERVICE_NAME, resolveMcpConnectionView } from './mcp-config'
 
 describe('buildMcpConfigJson', () => {
   it('产出可直接粘贴的完整 mcpServers 配置块', () => {
@@ -21,4 +21,18 @@ describe('buildMcpConfigJson', () => {
     expect(parsed.mcpServers['worm-vue3-print'].url).toBe('http://127.0.0.1:17522/mcp')
     expect(parsed.mcpServers['worm-vue3-print'].headers.Authorization).toBe('Bearer tok-xyz')
   })
+})
+
+describe('resolveMcpConnectionView', () => {
+  it.each([
+    { draftEnabled: false, savedEnabled: false, expected: 'disabled' },
+    { draftEnabled: true, savedEnabled: false, expected: 'save-required' },
+    { draftEnabled: true, savedEnabled: true, expected: 'details' },
+    { draftEnabled: false, savedEnabled: true, expected: 'details' },
+  ])(
+    '草稿开关=$draftEnabled、已保存开关=$savedEnabled 时返回 $expected',
+    ({ draftEnabled, savedEnabled, expected }) => {
+      expect(resolveMcpConnectionView(draftEnabled, savedEnabled)).toBe(expected)
+    },
+  )
 })

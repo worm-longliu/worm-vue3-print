@@ -3,6 +3,15 @@
 // 与 MCP 协议层 serverInfo.name（worm-vue3-print-client）不是同一个概念。
 export const MCP_SERVICE_NAME = 'worm-vue3-print'
 
+/** 连接区只跟随已保存开关；草稿开启但未保存时先提示保存。 */
+export function resolveMcpConnectionView(
+  draftEnabled: boolean,
+  savedEnabled: boolean,
+): 'disabled' | 'save-required' | 'details' {
+  if (savedEnabled) return 'details'
+  return draftEnabled ? 'save-required' : 'disabled'
+}
+
 export function buildMcpConfigJson(url: string, pairingToken: string): string {
   return JSON.stringify(
     {
