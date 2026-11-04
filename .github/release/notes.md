@@ -1,6 +1,6 @@
 # Worm Print V1.4.4 Preview (2026-11-04)
 
-> **预览版（Prerelease）**：本版以 dist-tag `next` 发布到 npm（`@worm-vue3-print/core` / `canvas` / `common` / `skills` 的 `1.4.4`），**latest 仍为 1.4.3**；GitHub Release 显式标记为 Prerelease。体验新能力请安装 `@worm-vue3-print/包名@next`；生产环境建议继续使用 1.4.3。
+> **预览版（Prerelease）**：本版以 dist-tag `next` 发布到 npm（`@worm-vue3-print/core` / `canvas` / `common` / `skills` 的 `1.4.4`），其中 **core / canvas / common 的 latest 仍为 1.4.3**；GitHub Release 显式标记为 Prerelease。四个包的预览版均通过 `@next` 安装；生产环境建议 core / canvas / common 继续使用 1.4.3。
 
 V1.4.4 把 AI 接入收敛成**一条链路**：浏览器设计器 ↔ 桌面客户端 ↔ AI Agent，并把「技能」做成开箱即用的 npx 安装器；设计器侧新增动态分页的流式列表容器与表格明细行按值合并。
 
@@ -31,7 +31,7 @@ V1.4.4 把 AI 接入收敛成**一条链路**：浏览器设计器 ↔ 桌面客
 
 # Worm Print V1.4.4 Preview (2026-11-04)
 
-> **Prerelease**: this version ships to npm under the `next` dist-tag (`1.4.4` of `@worm-vue3-print/core` / `canvas` / `common` / `skills`) — **latest stays at 1.4.3** — and the GitHub Release is explicitly marked as a prerelease. To try the new features install `@worm-vue3-print/<pkg>@next`; production users should stay on 1.4.3.
+> **Prerelease**: this version ships to npm under the `next` dist-tag (`1.4.4` of `@worm-vue3-print/core` / `canvas` / `common` / `skills`), while **latest remains 1.4.3 for core / canvas / common**. The GitHub Release is explicitly marked as a prerelease. Install any of the four preview packages with `@next`; production users of core / canvas / common should stay on 1.4.3.
 
 V1.4.4 collapses AI integration into **a single link** — browser designer ↔ desktop client ↔ AI Agent — and turns the skills into one-command npx installers; on the designer side it adds a dynamically paginating flow-list container and value-based row merging for table details.
 
