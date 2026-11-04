@@ -172,3 +172,12 @@ npm run build
 - **静默出纸结果与浏览器预览分页不一致**：模板字体需在客户端电脑已安装；同一份 `templateJson + printData + baseUrl`、同一 core 版本。
 - **连续纸末尾多走纸/裁切**：驱动对自定义纸高有步进/舍入，客户端探针推导公差不满足时，用 `paperSize.height`（微米）显式覆盖；宽度用 `paperSize.width`。
 - **macOS 首次打不开客户端**：绿色版未签名，首次右键 → 打开。
+
+## MCP 实时会话
+
+- **MCP 客户端看不到会话工具**：确认使用桌面客户端本机 HTTP 形态并已开启 AI 助手；stdio 只有六个静态工具。
+- **列表中没有当前页面**：检查页面 `PrintClient` 是否连接并 `attachTemplate`，页面关闭后会话立即失效。
+- **写回报 `REVISION_CONFLICT`**：重新调用读取工具获取最新模板和 revision，协调差异后再写，不强制覆盖。
+- **写回后快照不一致**：给 `initial-template` 赋新引用并等待 `nextTick()`，然后从 `designerRef.getTemplateJson()` 重读，不回显请求对象。
+- **卸载后仍收到请求**：在 `onUnmounted` 中 detach、取消状态监听并 close。
+- **模型密钥疑似暴露**：MCP 配对 token 不是模型密钥；模型调用与密钥只能留在宿主服务端或用户自己的 MCP 客户端。

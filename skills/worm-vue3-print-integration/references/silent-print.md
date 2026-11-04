@@ -196,7 +196,7 @@ npm run pack:client:dir
 - Windows：`dist/win-unpacked/` + `*.exe`（NSIS 安装程序）。
 - Linux：`dist/WormPrintClient-<版本>-linux-{amd64.deb,x86_64.rpm,x86_64.AppImage}`；容器脚本 `scripts/pack-client-linux.mjs`，构建卷 `worm-print-client-linux-work`。`snap` 目标需要真 Linux。
 - 产物默认无签名 + Electron 默认图标；分发前需补充 `build/` 图标资源与签名证书。
-- 客户端闭环说明、WebSocket 协议、连续纸纸长策略、配置/日志/任务记录文件位置见 [`clients/print-client/README.md`](../../../clients/print-client/README.md)。
+- 客户端闭环说明、WebSocket 协议、连续纸纸长策略、配置/日志/任务记录文件位置见 源码仓库的 `clients/print-client/README.md`（仅源码阅读，不是技能运行依赖）。
 
 ## 6. 常见排查
 

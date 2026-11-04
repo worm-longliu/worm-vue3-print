@@ -1,7 +1,6 @@
 ---
 name: worm-vue3-print-integration
 description: 用于在 Vue 3 项目中集成 @worm-vue3-print/core 或 @worm-vue3-print/canvas（可视化打印模板设计器）；覆盖 NPM/源码安装、设计器接入、业务字段契约、浏览器打印 / 服务端 PDF（print-render 微服务）/ 桌面客户端静默打印三条链路、宿主最小清单、AI 快速集成提示词与故障排查。
-version: 1.2.0
 ---
 
 # worm-vue3-print 集成支持
@@ -14,13 +13,12 @@ version: 1.2.0
 | --- | --- | --- |
 | 只做表达式求值、模板数据绑定、服务端 HTML/分页管线 | `@worm-vue3-print/core` | NPM 包 |
 | 需要 Vue 3 可视化设计器或浏览器端打印预览 | `@worm-vue3-print/canvas` + `@worm-vue3-print/core` | NPM 包 |
-| 非 Vue 3 宿主（React / Vue 2 / jQuery / 无框架）要可视化设计器 | `@worm-vue3-print/common` + `@worm-vue3-print/core` | NPM 正式版（`latest`，实验性，不建议上生产） |
 | 需要未发布修复、调试库源码、修改/回传补丁 | `core`，按需 `canvas` | 源码安装 |
 | 外部宿主要直接消费 monorepo 中的 `.vue/.ts` | 两者按需 | 源码 + Vite 别名 |
 | 服务端 PDF 微服务 | monorepo 内 `services/print-render`（private 服务包，workspace 软链 core，**不发布 npm**） | 按 [服务端渲染](references/server-render.md) 部署 |
 | 工位电脑无打印对话框静默出纸（小票/标签/针式多联/批量） | `@worm-vue3-print/core/client` + 桌面打印客户端（Electron） | core 子路径（无需另装 SDK）+ [静默打印](references/silent-print.md) |
 
-生产项目优先 NPM 包；当前已发布版本为 **1.3.0**。只有用户明确要改/调试库源码、消费未发布代码，或项目本身就在本 monorepo 中，才用源码安装。安装细节见 [安装方式](references/installation.md)。
+生产项目优先 NPM 包，core 与 canvas 使用相同版本。非 Vue 3 宿主改用 `worm-vue3-print-common` 技能。只有用户明确要改/调试库源码、消费未发布代码，或项目本身就在本 monorepo 中，才用源码安装。安装细节见 [安装方式](references/installation.md)。
 
 ## 2. 先让用户选打印链路（关键决策）
 
@@ -43,7 +41,8 @@ version: 1.2.0
 3. 与用户确认打印链路（A / B / C / 并存）。
 4. 按 [接入 API](references/integration-api.md) 引入组件与样式，再按 [全栈宿主集成指南](references/host-integration-guide.md) 落地模板管理、设计器页、业务打印入口与后端契约。
 5. 用一条最小链路验证：设计器保存 JSON → 预览渲染 → 浏览器打印；链路 B 再加「模板 JSON + printData → 后端 → render 服务 → PDF」；链路 C 再加「模板 JSON + printData → 本机客户端 → 物理打印机出纸」。
-6. 出现样式、类型、依赖解析、打包或 PDF 问题时，按 [故障排查](references/troubleshooting.md) 定位，不要先改用户业务代码。
+6. 需要 AI 读写当前画布时，按 [宿主 MCP 集成](references/mcp-host-integration.md) 接入实时会话或嵌入宿主 Node MCP。
+7. 出现样式、类型、依赖解析、打包、PDF 或 MCP 会话问题时，按 [故障排查](references/troubleshooting.md) 定位，不要先改用户业务代码。
 
 ## 4. 宿主最小清单速查
 
@@ -75,7 +74,7 @@ version: 1.2.0
 第 0 步（门控，未完成禁止改代码）：
 1. 完整阅读打印设计器集成技能文档：SKILL.md 及 references/ 下
    installation.md、integration-api.md、host-integration-guide.md
-   （链路 B 再加 server-render.md）、troubleshooting.md。
+   （链路 B 再加 server-render.md；宿主 MCP 再加 mcp-host-integration.md）、troubleshooting.md。
 2. 先输出「已读规范确认」：逐个列出文件路径 + 与本任务相关的 3 条以上约束。
 3. 阅读本项目的 AGENTS.md / README / 构建配置，确认 Vue 版本与包管理器。
 4. 任一文档不存在或读不懂，先提问，禁止臆测 API。
@@ -116,6 +115,7 @@ version: 1.2.0
 - 常用导出：`PrintDesigner`、`PrintHtmlPreview`、`createDefaultTemplate`、`DEFAULT_DEMO_DATA`/`getDemoData`（均来自 `@worm-vue3-print/canvas`；后两者由 `core/designer` 转出）。
 - 模板 JSON 不含名称、业务类型、备注等宿主元信息，元信息由宿主自行持久化。
 - 服务端 PDF 由独立微服务 `services/print-render` 承担；`core` 只提供同构渲染管线。接入方业务仓库不要虚构 `/render/pdf` 的实现。
+- 宿主 MCP 实时画布使用 `@worm-vue3-print/core/client` 的 `PrintClient`，写回必须校验 `baseRevision`；demo 的 `createTemplateSession` 不是库公开 API。
 - 静默打印客户端是 monorepo 内 `clients/print-client`（Electron，private，不发布 npm），浏览器侧 SDK 为 core 子路径 `@worm-vue3-print/core/client`（无需单独安装）；协议消息类型与错误码定义在该子路径内，客户端经 workspace 依赖复用，两端永不漂移。
 - 客户端仅绑定 `127.0.0.1`、单任务串行：并发任务返回 `BUSY`，由宿主端排队重试，客户端不做离线队列与失败补打。
 - 连续纸（模板 `paperSize: 'CONTINUOUS'`）模板无需传纸高，出纸高度由客户端按渲染内容自动推导；普通纸始终使用模板纸张，`print.paperSize`/`paperName` 仅作覆盖项。
