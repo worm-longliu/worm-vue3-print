@@ -1,6 +1,6 @@
 // print-render/src/pagination-engine.test.ts
 import { describe, it, expect } from 'vitest'
-import { paginate, tableDesignBottom } from './pagination-engine.js'
+import { paginate, tableDesignBottom, collectFollowMemberIds } from './pagination-engine.js'
 import type { TemplateData, MeasuredElement } from './types.js'
 
 describe('tableDesignBottom：表格设计底部 = top + max(options.height, Σ 行高)', () => {
@@ -576,6 +576,72 @@ describe('堆叠元素：纵向重叠按并集计高，不重复扣高', () => {
     expect(pages[0].sections).toHaveLength(1)
     expect(pages[0].sections[0]).toMatchObject({ elementId: 'e0', renderTop: 10 })
     expect(pages[1].sections[0]).toMatchObject({ elementId: 'e1', renderTop: 0 })
+  })
+})
+
+// ─── 元素 fixed：逐页同位叠加，不参与分页占位 ───
+
+/** 从分页产物中剔除 fixed 元素的 section，用于与无固定元素基线逐字比对 */
+function withoutFixed(pages: ReturnType<typeof paginate>) {
+  return pages.map(page => ({
+    ...page,
+    sections: page.sections.filter(section => section.elementId !== 'fixed'),
+  }))
+}
+
+describe('元素 fixed：逐页同位叠加，不参与分页占位', () => {
+  it('两页都包含固定元素，普通元素分页与移除固定元素时一致', () => {
+    const bodies = [
+      freeEl('body-1', 50, 150), freeEl('body-2', 200, 100), freeEl('body-3', 300, 50),
+    ]
+    const measured = measureFree([
+      ['body-1', 150], ['body-2', 100], ['body-3', 50], ['fixed', 40],
+    ])
+    const baseline = paginate(makeFreeTemplate(bodies), measured)
+    const pages = paginate(makeFreeTemplate([
+      freeEl('fixed', 0, 40, { fixed: true }),
+      ...bodies,
+    ]), measured)
+
+    expect(pages).toHaveLength(2)
+    for (const page of pages) {
+      expect(page.sections).toContainEqual({ elementId: 'fixed', type: 'element', renderTop: 0 })
+    }
+    expect(withoutFixed(pages)).toEqual(baseline)
+  })
+
+  it('fixed 与正文重叠且同 groupId 时仍不参与显式或隐式编组', () => {
+    const bodies = [freeEl('body-1', 100, 100), freeEl('body-2', 200, 100)]
+    const baseline = paginate(makeFreeTemplate(bodies), measureFree([
+      ['body-1', 100], ['body-2', 100],
+    ]))
+    const pages = paginate(makeFreeTemplate([
+      freeEl('fixed', 0, 200, { fixed: true, groupId: 'g' }),
+      freeEl('body-1', 100, 100, { groupId: 'g' }),
+      freeEl('body-2', 200, 100),
+    ]), measureFree([['fixed', 200], ['body-1', 100], ['body-2', 100]]))
+    expect(pages).toHaveLength(1)
+    expect(withoutFixed(pages)).toEqual(baseline)
+  })
+
+  it('fixed 普通元素不进入表格跟随区', () => {
+    const table = { id: 'table', type: 'table', options: {
+      left: 0, top: 0, width: 100, height: 20, tableRows: [{ height: 20 }],
+    } }
+    const fixed = freeEl('fixed', 30, 10, { fixed: true })
+    expect(collectFollowMemberIds([table, fixed]).has('fixed')).toBe(false)
+  })
+
+  it('fixed 不占分页预算但保留每页物理越界标记', () => {
+    const tpl = makeFreeTemplate([
+      freeEl('body-1', 0, 150), freeEl('body-2', 150, 150),
+      freeEl('fixed', 270, 20, { fixed: true }),
+    ])
+    const pages = paginate(tpl, measureFree([
+      ['body-1', 150], ['body-2', 150], ['fixed', 20],
+    ]))
+    expect(pages).toHaveLength(2)
+    expect(pages.every(page => page.overflow === true)).toBe(true)
   })
 })
 

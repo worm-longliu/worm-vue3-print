@@ -41,6 +41,15 @@ function isSplittableEl(el: FollowJudgementInput): boolean {
   return isTableEl(el) || isDynamicFlowListEl(el)
 }
 
+/**
+ * 每页固定重复元素判据：options.fixed === true 的元素按设计坐标逐页叠加，
+ * 不参与分页高度记账、显式/隐式编组和表格/动态列表跟随区。
+ * 本阶段（Task 1）仅非可切片元素启用；表格 / 动态 flowList 的固定重复在 Task 2 放宽。
+ */
+function isFixedEl(el: FollowJudgementInput): boolean {
+  return el.options?.fixed === true && !isSplittableEl(el)
+}
+
 function elTypeOf(el: FollowJudgementInput): string {
   return el.type || el.printElementType?.type || 'text'
 }
@@ -163,9 +172,11 @@ export function collectFollowMemberIds<E extends { id?: string }>(
   const inputs = elements
     .filter((e): e is E & { id: string } => typeof e.id === 'string')
     .map(e => e as unknown as FollowJudgementInput)
+  // fixed 元素不参与显式编组和跟随区，先排除再计算，与 paginate 的 flowSorted 同口径
+  const flowInputs = inputs.filter(el => !isFixedEl(el))
   const orderIndex = new Map<string, number>()
-  inputs.forEach((e, idx) => orderIndex.set(e.id, idx))
-  const sorted = [...inputs].sort(compareCanvasOrder(orderIndex))
+  flowInputs.forEach((e, idx) => orderIndex.set(e.id, idx))
+  const sorted = [...flowInputs].sort(compareCanvasOrder(orderIndex))
   // 显式编组成员不参与跟随归属（整组同页优先），与 paginate 同口径
   const explicitGroupIds = new Set<string>()
   for (const el of sorted) {
@@ -426,10 +437,14 @@ export function paginate(
   // 排序：top → zIndex（缺省按 0）→ 原数组序，与 collectFollowMemberIds 共用同一比较器
   const sorted = [...template.elements].sort(compareCanvasOrder(orderIndex))
 
+  // fixed 分流：固定元素逐页重复，不参与分页记账；完整 sorted 仍用于层序与元素查找
+  const fixedSorted = sorted.filter(isFixedEl)
+  const flowSorted = sorted.filter(el => !isFixedEl(el))
+
   // 显式编组（options.groupId）的非表格成员：强绑定，整组同页，且不降级为表格跟随区
   const explicitGroupIds = new Set<string>()
   const groupMap = new Map<string, TemplateElement[]>()
-  for (const el of sorted) {
+  for (const el of flowSorted) {
     if (isSplittableEl(el)) continue
     const gid = el.options?.groupId
     if (!gid) continue
@@ -439,8 +454,8 @@ export function paginate(
     else groupMap.set(gid, [el])
   }
 
-  // 方案 A+B：跟随区归属（锚点 id → 成员元素 id）；显式编组成员不参与跟随归属
-  const followMap = buildFollowMap(sorted, explicitGroupIds)
+  // 方案 A+B：跟随区归属（锚点 id → 成员元素 id）；显式编组成员与 fixed 元素不参与跟随归属
+  const followMap = buildFollowMap(flowSorted, explicitGroupIds)
   const followOwner = new Map<string, string>()
   for (const [anchorId, members] of followMap) {
     for (const m of members) followOwner.set(m, anchorId)
@@ -456,7 +471,7 @@ export function paginate(
   for (const el of sorted) elById.set(el.id, el)
 
   // 分页单元：显式编组 + 隐式纵向重叠聚类，成员整组同页、纵向只扣一次并集高度
-  const unitOf = buildPaginationUnits(sorted, measuredElements, groupMap)
+  const unitOf = buildPaginationUnits(flowSorted, measuredElements, groupMap)
 
   const pages: PageLayout[] = []
   let currentPage: PageSection[] = []
@@ -568,8 +583,8 @@ export function paginate(
 
   // ── 遍历元素 ──
   let i = 0
-  while (i < sorted.length) {
-    const el = sorted[i]
+  while (i < flowSorted.length) {
+    const el = flowSorted[i]
 
     // 跟随区成员已由所属锚点的 flow-group 处理，跳过
     if (followOwner.has(el.id) && groupedFollowers.has(el.id)) {
@@ -619,7 +634,7 @@ export function paginate(
     } else if (unit) {
       i = paginateUnit(unit, i)
     } else {
-      i = paginateNonTable(el, measuredElements, sorted, i)
+      i = paginateNonTable(el, measuredElements, flowSorted, i)
     }
   }
 
@@ -630,6 +645,31 @@ export function paginate(
   // 空模板至少一页
   if (pages.length === 0) {
     pages.push({ pageIndex: 0, sections: [] })
+  }
+
+  // fixed 元素合入每页：按设计坐标出独立 section，不调用 occupy()、不参与 pageBroken 记账；
+  // 排序按完整 sorted 的层序（top → zIndex → 模板数组序）稳定合入，物理越界只告警不换页
+  const sectionRank = new Map(sorted.map((el, index) => [el.id, index]))
+  for (const page of pages) {
+    const repeated = fixedSorted.map(el => ({
+      elementId: el.id,
+      type: 'element' as const,
+      renderTop: el.options?.top ?? 0,
+    }))
+    page.sections = [...page.sections, ...repeated].sort((a, b) =>
+      (sectionRank.get(a.elementId) ?? Number.MAX_SAFE_INTEGER)
+      - (sectionRank.get(b.elementId) ?? Number.MAX_SAFE_INTEGER))
+
+    // 物理告警：底边越过内容区标 overflow；旋转外接盒顶越过页首出专条警告。连续纸内容高无限，不会触发。
+    for (const el of fixedSorted) {
+      const settle = rotatedSettlement(el, measuredElements)
+      if (settle.top + settle.height > contentHeight) page.overflow = true
+      if (settle.rot !== undefined && settle.top < 0) {
+        const amount = Math.round(-settle.top * 100) / 100
+        page.warnings = [...(page.warnings ?? []),
+          `元素 ${el.id} 旋转 ${settle.rot}° 后顶部超出页首 ${amount}mm，打印将被裁切`]
+      }
+    }
   }
 
   noteHorizontalOverflow()
