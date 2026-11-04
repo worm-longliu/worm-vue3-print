@@ -46,6 +46,26 @@
 
 ## 一、待办清单
 
+### T-30 `fixed` 每页重复内容被续页表格覆盖 —— **方案已确认，待实施**（2026-11-05）
+
+- **【成立】复现与根因**：模板 `template-1793831902016.json` 中，`font1`～`font3` 为 `top=2 / height=8 / fixed=true`，
+  `infoTable` 为 `top=12 / fixed=true`，`goodsTable` 从 `top=31` 开始并含 20 条明细。真实 `bindData → paginate`
+  产物显示：第一页正常；第 2～4 页 `goodsTable` 的续片均为 `renderTop=0`，第 5 页跟随区为 `groupTop=0`，
+  与固定文本、固定信息表占据的 `2～28mm` 区域重叠。续片在 sections 中后绘制，因此其重复表头盖住固定内容。
+  **只提高固定内容的 `zIndex` 会反过来遮住明细表头，不是修复方案。**
+- **已确认的设计**：仅在存在 `fixed` 元素的**续页**，以固定元素实测外接框的最大底边作为流式内容起点；
+  表格切片、动态 `flowList`、普通换页元素、显式/隐式编组、汇总行与跟随区统一从该位置之后排布。
+  第一页仍按原设计坐标布局；无 `fixed` 元素的模板、连续纸和 fixed-only 模板保持既有行为。
+- **分页预算必须同步**：续页可用高度同时扣除固定区域高度，不能只做视觉下移，否则底部内容会侵入页脚或被裁切。
+  由此续页明细容量会减少，总页数可能增加，这是已接受的排版结果。
+- **实施范围**：集中在 `packages/print-core/src/render/pagination-engine.ts`，复用现有 `PageSection` 与渲染器，
+  不新增模板字段或第二套渲染路径；同步修正 `fixed` 字段注释及技能模板文档中旧的「所有页面均不占分页高度」表述。
+- **测试先行**：先用本模板的元素结构与 20 条明细写 RED，钉住续片 `renderTop=0` 的现有缺陷；
+  再验证续页所有流式 section 均不与固定区域重叠、续页底部不溢出、第一页与无 fixed 基线不变。
+  渲染服务补真实 Chromium + pdfjs 几何断言，不能只检查固定文本是否存在或只比较页数。
+- **验收**：core 分页/HTML/页码/连续纸定向测试，render 定向与全量测试，根工作区 `npm test`、`npm run build`、
+  `npm run lint:print-architecture`、`git diff --check`；Electron 真机若未提供双端 PDF，仍须明确记为未覆盖。
+
 ### T-15 common 发布面 —— **1.4.0 正式版已发 latest**
 
 - **dist-tag 实况（2026-10-28）**：`latest = 1.4.0`（正式版），`next = 1.4.0-beta.0`（上一轮预发布，不再作为安装入口）。
