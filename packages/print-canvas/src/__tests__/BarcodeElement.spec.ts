@@ -124,6 +124,11 @@ describe('BarcodeElement 设计态内容实时刷新', () => {
     mountBarcode({ formatter: '{不存在字段}' })
     expect(lastValue()).toBe('12345678')
   })
+
+  it('未提供内容和 testData 时使用可被 CODE128 编码的默认示例值', () => {
+    mountBarcode({ formatter: '', testData: '' })
+    expect(lastValue()).toBe('12345678')
+  })
 })
 
 describe('BarcodeElement 等比填满元素框', () => {

@@ -1,41 +1,59 @@
-# Worm Print V1.4.3 (2026-11-01)
+# Worm Print V1.4.4 Preview (2026-11-04)
 
-V1.4.3 是一个 patch 版本：修掉字段 Ctrl/⌘ 拖放在 macOS 与 Windows 上「整次拖拽被原生判为无效、松手没反应」的问题（Vue3 画布与零框架宿主同口径），并把「画布看得见、纸面永远空白」的 HTML 占位元素在模板装载链上剥离。
+> **预览版（Prerelease）**：本版以 dist-tag `next` 发布到 npm（`@worm-vue3-print/core` / `canvas` / `common` / `skills` 的 `1.4.4`），**latest 仍为 1.4.3**；GitHub Release 显式标记为 Prerelease。体验新能力请安装 `@worm-vue3-print/包名@next`；生产环境建议继续使用 1.4.3。
 
-本版改动全部落在设计器交互与模板装载链上，**未触及 core 渲染管线**（`git diff v1.4.2..HEAD` 对 `packages/print-core/src/render/*` 与 `functions/format.ts` 零命中）⇒ **桌面客户端出纸行为与 V1.4.2 完全一致，本版不重打安装包、发行版不挂附件**，可下载的最新安装包仍是 `v1.4.2`；已装 V1.4.2 客户端的用户不必升级。本版实改动两笔：8785b30（字段拖放全链路修复）与 7ccd852（core 屏蔽 HTML 占位元素类型），其余提交只作升版与发布载体同步。
+V1.4.4 把 AI 接入收敛成**一条链路**：浏览器设计器 ↔ 桌面客户端 ↔ AI Agent，并把「技能」做成开箱即用的 npx 安装器；设计器侧新增动态分页的流式列表容器与表格明细行按值合并。
+
+## 重大变更：MCP 只保留桌面端单链路
+
+- **唯一链路**：AI Agent → 桌面客户端内置 MCP（本机 HTTP `/mcp`，Bearer 鉴权）→ 浏览器设计器正在编辑的模板。不再提供 stdio 连接器、独立 MCP 服务或直连渲染服务的链路。
+- **工具集收敛为 8 个**：5 个纯计算工具（`print_element_kinds` / `print_validate_template` / `print_check_expression` / `print_inspect_layout` / `print_draft_template`，宿主可免审批）+ 3 个实时模板会话工具（`print_list_open_templates` / `print_get_open_template` / `print_apply_open_template`，操作浏览器里正在编辑的模板，`apply` 带防覆盖 revision，一次撤销可恢复）。
+- **移除** `print_render_preview`（渲染服务预览）与 `templatePath` 文件路径入参：模板一律以 `templateJson` 内联传入；真实分页请在设计器或打印预览中确认。
+- 接入方式见设置页「AI 助手」一键复制的 MCP 配置，文档：[AI 接入](docs/中文/指南/AI接入.md)。
 
 ## 新增
-- **core 出「屏蔽元素类型」单点判据与装载入口**。`/designer` 子路径新增 `BLOCKED_ELEMENT_TYPES`（当前 `['html']`）与 `isBlockedElementType()`、`stripBlockedElements()`（正文 / 页眉 / 页脚三区各自过滤，返回新对象、不改入参）、`countBlockedElements()`（宿主装载前计数提示用，与剥离同判据）。恢复某一类型只需把它移出该表并放回素材台，不必再动渲染分支。`countBlockedElements` 本仓库两宿主尚未接入，先作为集成方可用的入口发出。
+
+- **技能支持 npx 安装**：`npx @worm-vue3-print/skills <技能名>` 把 `worm-vue3-print-integration`（Vue 3）、`worm-vue3-print-common`（跨框架）、`worm-vue3-print-mcp`（MCP 与模板生成）三个使用技能安装到项目 `.agents/skills`，支持 `--repo` / `--ref` / `--dir` / `--force`。
+- **流式列表动态分页容器（`flowLayoutMode`）**：`dynamic` 模式下容器高度由内容撑开，按真实文本行整行续页，文本块与跨列单元不拆行；四边内边距随内容参与分页预算，每个切片绘制完整四边边框。缺省 `fixed`，旧模板无需迁移。本期块内仅支持文本。
+- **表格明细行按值纵向合并（`mergeSameValue`）**：数据行模板格声明 `"mergeSameValue": true` 后，相邻明细行该列求值文本相同即自动合并（rowspan），跨页段在页界断开、下一页首行重放该值；空值与含页码表达式的列不参与。设计器属性台与右键菜单同步提供「按值合并」开关。
 
 ## 修复
-- **字段拖放的 Ctrl/⌘ 切换不再整次会话失效**（真机复盘 macOS / Windows Chromium，三层平台陷阱逐层修）。落点 `dragover` 显式钉 `dropEffect='copy'`——不写时 Windows 按原生修饰键重算效果，按住 Ctrl 拖动会吞掉复制徽标甚至整次拒收；拖起件效果集由单一 `copy` 放宽为 `'all'`——macOS 的 ⌘ 是「切换默认拖拽动作」，锁单一效果时切换结果落在允许集外，原生会话直接判整次拖拽无效、`drop` 根本不派发（common 两处此前漏设、与 canvas 不对称，现补齐并各加守卫断言防日后收窄）；画布自绘落点徽标 `.drop-hint`，拖动期间按拖起件类型与锁存意图显示「＋ 取值字段 / ＋ 静态文本 / ＋ 元素」并跟随光标，外部拖入不显示，绕开不可控的操作系统光标；静态文本意图锁存——macOS 按住 ⌘ 松鼠标时 `drop` 仍可能不派发，改为拖拽中任一 `dragover` 见到过 ⌘/Ctrl 即锁定本次为静态文本，徽标显示同一锁存值（所见即所得），`drop` / `dragend` 后会话复位。入口文案同步为与实测一致的「拖动 / 双击途中按住 Ctrl（Mac 为 ⌘）切换」。
-- **导入旧模板不再带出 HTML 占位元素**。HTML 类型是占位实现：设计态画得出来，`html-generator` 的 `case 'html'` 却只输出一个空盒子，导入后留在画布上会让人以为有内容。现在装载模板时三区（正文 / 页眉 / 页脚）里的 HTML 元素一律剥离（接在 `normalizeTemplateUnits` 上，`unit` 已是 `mm` 的模板同样处理）；元素类型可能只写在 `printElementType.type` 上，判据两处都看。**口径边界**：本版只收导入这一路——两宿主素材台的「HTML」项未摘，用它手建的元素照旧不出纸，收编手建入口另起一笔。**存量影响**：含 HTML 元素的旧模板重新导入并保存后，出纸少掉那个空 `div`；若该元素当时设了边框（元素级边框判据没排除 HTML，框线是真的会上纸），那条框线随之消失——此前它也只是一圈没有内容的框。不含 HTML 元素的模板产物逐字不变。
 
-## 工程与验收
-- 测试：core 83 文件 1219 例 / canvas 77 文件 747 例 / common 32 文件 365 例 / print-client 14 文件 110 例，共 **206 文件 2441 例全绿**；渲染服务 10 文件 38 例全绿。
-- 安装包：本版未重打，Release 不挂附件；判据为 `git diff --name-only v1.4.2..HEAD` 未命中 core `render/*` 与 `functions/format.ts`。README 的直链表因此继续指向 `v1.4.2` 资产（改成 v1.4.3 反而会 404），`npm run check:release-carriers` 已支持这一形态。
-- 出纸链路：模板产物、分页与三条出纸链路（浏览器打印 / 服务端 PDF / 客户端静默打印）零变化；本版两条修复均为设计器侧。
+- **设计态条码默认码值可被 CODE128 编码**：内容与示例值都为空时，设计态回退显示从文字「条码」改为示例值 `12345678`，画布呈现真实的条码图样而非报错态。仅影响设计态展示，出纸逻辑不变。
 
-> 明细见 `docs/中文/CHANGELOG.md` 的 V1.4.3 段。
+## 桌面客户端（Prerelease 安装包）
+
+- 本版重打全平台安装包（macOS Intel/Apple Silicon、Windows、Linux deb/rpm/AppImage），挂在本 Prerelease 附件与 `SHA256SUMS.txt`。
+- **安装包未做 Developer ID 签名与 Windows 签名公证**（项目没有相应证书）：macOS 首次打开需 `xattr -dr com.apple.quarantine /Applications/WormPrintClient.app` 或在「系统设置 → 隐私与安全性」点「仍要打开」；Windows 在 SmartScreen 点「更多信息 → 仍要运行」。
+- Linux 包在 x64 Docker 内交叉构建，未经真机出纸验证；详见 README「下载客户端安装包」一节。
 
 ---
 
-# Worm Print V1.4.3 (2026-11-01)
+# Worm Print V1.4.4 Preview (2026-11-04)
 
-V1.4.3 is a patch release: it fixes Ctrl/⌘ field dragging being invalidated for the whole native session on macOS and Windows (same behaviour in the Vue 3 canvas and the zero-framework hosts), and strips the HTML placeholder element — visible on the canvas but never printed — when a template is loaded.
+> **Prerelease**: this version ships to npm under the `next` dist-tag (`1.4.4` of `@worm-vue3-print/core` / `canvas` / `common` / `skills`) — **latest stays at 1.4.3** — and the GitHub Release is explicitly marked as a prerelease. To try the new features install `@worm-vue3-print/<pkg>@next`; production users should stay on 1.4.3.
 
-Every change sits in designer interaction or the template loading chain. **Core's render pipeline is untouched** (`git diff v1.4.2..HEAD` has zero hits for `packages/print-core/src/render/*` and `functions/format.ts`), so **the desktop client prints exactly as in V1.4.2: no installers were rebuilt and this release carries no installer assets.** the newest downloadable installers remain those of `v1.4.2`, and users on the V1.4.2 client do not need to upgrade. Two substantive commits since v1.4.2 — 8785b30 (field-drag chain fix) and 7ccd852 (core blocks the HTML placeholder element type); the rest only sync version and release carriers.
+V1.4.4 collapses AI integration into **a single link** — browser designer ↔ desktop client ↔ AI Agent — and turns the skills into one-command npx installers; on the designer side it adds a dynamically paginating flow-list container and value-based row merging for table details.
+
+## Breaking change: MCP now only works through the desktop client
+
+- **The only link**: AI Agent → the desktop client's built-in MCP (local HTTP `/mcp`, Bearer auth) → the template open in the browser designer. There is no stdio connector, standalone MCP service, or direct render-service link anymore.
+- **The tool set is now 8 tools**: 5 pure computation tools (`print_element_kinds` / `print_validate_template` / `print_check_expression` / `print_inspect_layout` / `print_draft_template`, safe to run without approval) + 3 live template-session tools (`print_list_open_templates` / `print_get_open_template` / `print_apply_open_template`, which operate on the template being edited in the browser; `apply` carries an anti-clobber revision and is recoverable in one undo).
+- **Removed**: `print_render_preview` (render-service preview) and the `templatePath` file-path argument — templates are always passed inline as `templateJson`; confirm real pagination in the designer or print preview.
+- See the MCP config that the settings page's "AI assistant" copies in one click; docs: [AI integration](docs/中文/指南/AI接入.md) (Chinese, authoritative).
 
 ## Added
-- **Core gained a single source of truth for blocked element types plus its loading helpers.** The `/designer` subpath now exports `BLOCKED_ELEMENT_TYPES` (currently `['html']`) and `isBlockedElementType()`, `stripBlockedElements()` (filters body, header and footer separately, returning a new object instead of mutating the input) and `countBlockedElements()` (same predicate, for hosts wanting a count before loading). Re-enabling a type only means removing it from the table and putting it back in the palette. `countBlockedElements` is not wired into either host in this repo yet; it ships as an integration entry point.
+
+- **Skills installable via npx**: `npx @worm-vue3-print/skills <skill>` installs the three usage skills — `worm-vue3-print-integration` (Vue 3), `worm-vue3-print-common` (cross-framework) and `worm-vue3-print-mcp` (MCP & template generation) — into the project's `.agents/skills`, with `--repo` / `--ref` / `--dir` / `--force` support.
+- **Dynamic paginated container for flow lists (`flowLayoutMode`)**: in `dynamic` mode the container grows with its content and continues onto following pages by whole real text rows — text blocks and spanning cells are never split; four-side paddings join the page budget and every slice draws a complete border. The default `fixed` mode is unchanged, so old templates need no migration. Cells are text-only in this release.
+- **Value-based vertical merging for table data rows (`mergeSameValue`)**: a `data` row template cell declaring `"mergeSameValue": true` merges adjacent detail rows whose evaluated text is equal (rowspan); segments crossing a page break are cut at the boundary and the next page repeats the value in its first row; empty values and page-number columns never merge. Both designers expose a "merge by value" toggle and context-menu item.
 
 ## Fixed
-- **Ctrl/⌘ switching while dragging a field no longer dies for the whole session** (verified on real macOS / Windows Chromium; three platform traps, each fixed). `dragover` at the drop target now pins `dropEffect='copy'` — without it Windows recomputes the effect from the native modifiers, so holding Ctrl swallowed the copy badge or rejected the drop outright. The dragged item's effect set is widened from `copy` to `'all'` — on macOS ⌘ means "toggle the default drag action", and locking a single effect puts the toggled result outside the allowed set, which invalidates the entire drag so that `drop` never fires (two spots in common were missing this and are now symmetric with canvas, each guarded by an assertion against future narrowing). The canvas draws its own `.drop-hint` badge — "＋ bound field / ＋ static text / ＋ element" based on the dragged item and the latched intent — following the cursor and hidden for external drags, sidestepping the uncontrollable OS cursor. The static-text intent is latched: releasing the mouse while ⌘ is held may still not dispatch `drop`, so seeing ⌘/Ctrl in any `dragover` during the drag locks this drop as static text, the badge shows the latched value (what you see is what you get), and the session resets after `drop` / `dragend`. Hint wording now matches observed behaviour: "hold Ctrl (⌘ on Mac) at some point during the drag/double-click to switch".
-- **Importing an old template no longer brings in HTML placeholder elements.** HTML is a placeholder type: the canvas draws it while `html-generator`'s `case 'html'` emits an empty box, so imported templates looked like they had content. Those elements are now stripped from the body, header and footer while loading (hooked into `normalizeTemplateUnits`, so templates already marked `unit: 'mm'` are handled too); the type may live only in `printElementType.type`, and both places are checked. **Scope**: only the import path is closed in this release — the "HTML" item is still in both palettes, so elements created by hand still produce nothing; closing that entry is a separate change. **Existing templates**: re-importing and saving a template that contained HTML elements drops that empty `div` from the output; if such an element carried a border (the element-border rule does not exclude HTML, so the line did print), the line goes away with it — previously it was only an empty frame. Templates without HTML elements are byte-for-byte unchanged.
 
-## Engineering
-- Tests: core 83 files / 1219 cases, canvas 77 / 747, common 32 / 365, print-client 14 / 110 — **206 files / 2441 cases, all green**; render service 10 files / 38 cases green.
-- Installers: not rebuilt for this release and no assets attached; the criterion is that `git diff --name-only v1.4.2..HEAD` misses core's `render/*` and `functions/format.ts`. The README link table therefore keeps pointing at the `v1.4.2` assets (switching it to v1.4.3 would 404), a state `npm run check:release-carriers` now accepts.
-- Print chain: template output, pagination and the three print paths (browser, server PDF, silent desktop client) are unchanged — both fixes are designer-side.
+- **Design-time barcode falls back to a CODE128-encodable sample**: with empty content and empty `testData`, the design-time fallback now shows the sample value `12345678` instead of the text "条码", so the canvas shows a real barcode. Design-time display only; print output is unchanged.
 
-> Details in the V1.4.3 section of `docs/en/CHANGELOG.en.md` (the Chinese changelog is authoritative).
+## Desktop client (Prerelease installers)
+
+- All platform installers were rebuilt for this release (macOS Intel/Apple Silicon, Windows, Linux deb/rpm/AppImage) and are attached to this prerelease together with `SHA256SUMS.txt`.
+- **The installers carry no Developer ID signature/notarization or Windows code-signing** (the project has no such certificates): on macOS run `xattr -dr com.apple.quarantine /Applications/WormPrintClient.app` or click "Open anyway" in System Settings → Privacy & Security; on Windows choose "More info → Run anyway" on the SmartScreen prompt.
+- The Linux packages are cross-built inside an x64 Docker container and have not been verified on real hardware; see the README's "Download client installers" section for details.

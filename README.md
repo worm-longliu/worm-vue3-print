@@ -5,7 +5,7 @@ Vue 3 可视化打印模板设计器 + 模板表达式引擎 + 同构渲染管�
 可视化拖拽设计打印模板、数据绑定、表达式求值、分页排版；三端共用同一套渲染与分页算法（逻辑同源，像素级一致还需字体与 Chromium 内核同源）。
 纯 Vue 3 + HTML/CSS/SVG 原生控件实现，不依赖任何 UI 组件库，可以接入任意 Vue 3 项目中。
 
-> ⚠️ **实验性能力声明**：`packages/print-common`（`@worm-vue3-print/common`）与示例 `demo-common/` 属于**实验性质**，用于把设计器以零框架运行时形态（原生自定义元素）提供给 **Vue 3 / Vue 2 / React / jQuery 等多种运行时框架**（含无框架宿主）。该包**尚未完成稳定性测试**，已按**正式版本号**发布到 npm（dist-tag `latest`，当前 `1.4.4`，安装直接 `npm i @worm-vue3-print/common`），npm 主页面保留实验性声明并包含 Vue3 / Vue2 / React 用法示例；不建议用于生产，Vue 3 项目请使用成熟的 `@worm-vue3-print/canvas`。
+> ⚠️ **实验性能力声明**：`packages/print-common`（`@worm-vue3-print/common`）与示例 `demo-common/` 属于**实验性质**，用于把设计器以零框架运行时形态（原生自定义元素）提供给 **Vue 3 / Vue 2 / React / jQuery 等多种运行时框架**（含无框架宿主）。该包**尚未完成稳定性测试**，已按**正式版本号**发布到 npm（dist-tag `latest`，当前 `1.4.3`，安装直接 `npm i @worm-vue3-print/common`），npm 主页面保留实验性声明并包含 Vue3 / Vue2 / React 用法示例；不建议用于生产，Vue 3 项目请使用成熟的 `@worm-vue3-print/canvas`。
 
 ## 🔗 在线预览
 
@@ -32,6 +32,7 @@ GitHub Pages：**https://worm-longliu.github.io/worm-vue3-print/**
 - [三端渲染一致性方案](docs/中文/指南/三端渲染一致性方案.md)
 - [静默打印（桌面客户端 + 浏览器 SDK）](docs/中文/指南/静默打印.md)
 - [MCP 使用与集成（在自有项目/AI agent 里接入打印模板能力）](docs/中文/指南/MCP集成.md)
+- [Skills 安装与使用（Vue 3 / common / MCP 协作技能）](skills/README.md)
 - [技术复盘（偏差原因与客户端选型）](docs/技术复盘.md)
 - [CHANGELOG（版本变更记录）](docs/中文/CHANGELOG.md)
 
@@ -45,7 +46,7 @@ worm-vue3-print/
 │   ├── print-canvas/          # @worm-vue3-print/canvas Vue 3 可视化设计器画布
 │   ├── print-common/          # @worm-vue3-print/common 通用宿主适配版设计器（实验性 · 未完全稳定测试；支持多种运行时框架；生产请用 print-canvas）
 │   ├── print-contract/        # @worm-vue3-print/contract 模板契约层：zod schema / 表达式校验 / 静态版面体检 / 草稿生成（private，不发布 npm）
-│   ├── print-mcp/             # @worm-vue3-print/mcp     本地 MCP 连接器：stdio 供宿主 AI agent 直连；桌面客户端复用其工具在 /mcp 提供 HTTP 形态（private，不调模型、不持密钥）
+│   ├── print-mcp/             # @worm-vue3-print/mcp     桌面客户端内部 MCP 工具库：5 个纯计算工具 + 3 个实时模板会话工具（private）
 │   ├── print-skills/          # @worm-vue3-print/skills   使用技能的 npx/Git 安装器（Node.js >=20，无运行时依赖）
 ├── clients/
 │   └── print-client/          # @worm-vue3-print/print-client Electron 静默打印桌面客户端（private，不发布 npm）
@@ -79,7 +80,7 @@ worm-vue3-print/
 | `packages/print-canvas` | 设计器画布（`@worm-vue3-print/canvas`）：Vue 3 组件（`components`）、组合式函数（`composables`）、内置帮助内容（`help-content`）、原生控件样式（`styles`）。含 `PrintDesigner`、`PrintHtmlPreview` |
 | `packages/print-common` | ⚠️ **实验性 · 未完全稳定测试**：通用宿主适配设计器（`@worm-vue3-print/common`）：以原生自定义元素 `<print-designer>` 形态提供，**支持多种运行时框架**——任意框架（Vue 3 / Vue 2 / React / jQuery / Angular 等）或无框架宿主均可直接接入，供 React / Vue2 / jQuery 等非 Vue3 宿主使用，**不打包 Vue 运行时**。样式与图标由 `scripts/gen-styles.mjs`、`scripts/gen-icons.mjs` 从 canvas 构建产物派生（类名逐字对齐），交互与渲染逻辑复用 core 的 designer 导出；另产出浏览器直挂形态 `dist/common.js`（UMD，core 与码制库内联，挂 `window.WormPrintCommon`）与 `dist/common.css`，无打包器宿主一个 `<script>` + 一个 `<link>` 即可接入。与 Vue3 版的功能与样式一致性说明见包内 `PARITY.md`，宿主示例在 `demo-common/apps/` |
 | `packages/print-contract` | 模板契约层（`@worm-vue3-print/contract`，private）：把 `TemplateData`/`ElementOptions` 收敛为机器可读契约——`OPTION_META` 全键元数据（编译期必填映射，core 加字段而此处漏登记则 `tsc` 红）、zod schema 与 `validateTemplateJson`（废弃键/未知键只降级 warning，不判死存量模板）、`checkExpression`（语法交给 core 解析器、函数名走白名单）、`inspectTemplate`（静态版面体检，**不做排版测量**）、`draftTemplate`（走 core 元素工厂产草稿并回灌三道校验） |
-| `packages/print-mcp` | 本地 MCP 连接器（`@worm-vue3-print/mcp`，private，bin `worm-vue3-print-mcp`）：stdio 传输暴露 6 个工具（元素清单 / 模板校验 / 表达式校验 / 版面体检 / 草稿生成 / 渲染预览），另提供可嵌入的工具集——桌面客户端在 `/mcp` 复用 5 个纯计算工具 + 3 个模板会话读写工具（stdio 入口 `dist/stdio.js`）。**不调用模型、不读取任何模型密钥**，工具循环归宿主 agent；`print_render_preview` 把真实分页交给 `services/print-render`，本包不重复实现排版 |
+| `packages/print-mcp` | 桌面客户端内部 MCP 工具库（`@worm-vue3-print/mcp`，private）：提供 5 个纯计算工具与 3 个模板会话工具，由客户端在本机 `/mcp` 组合暴露。**不调用模型、不读取任何模型密钥**，工具循环归宿主 AI Agent |
 | `clients/print-client` | 静默打印桌面客户端（Electron，private）：主进程 WS 服务 / 打印引擎 / 打印机服务 / 配置与任务记录（`src/main`）、配置窗口 Vue 3 界面（`src/renderer`）、隐藏渲染 worker（`src/worker`）、沙箱 IPC 桥（`src/preload`）、IPC 通道契约（`src/shared`）；含 electron-builder 打包配置与真机冒烟脚本（`scripts/`） |
 | `services/print-render` | 服务端渲染微服务（private）：基于 Playwright 的 PDF 渲染（`driver-playwright` / `pdf-render` / `browser-pool` / `server`），workspace 软链依赖 core，与浏览器预览、桌面客户端共用同一份打印管线 |
 | `demo` | Vue 3 演示项目：设计器接入（`App.vue`）、静默打印集成、渲染客户端封装（`render-client.ts`）、业务字段（`business.ts`）、内置模板 JSON（`template-purchase-receipt.json`），端口 9303 |
@@ -101,7 +102,7 @@ worm-vue3-print/
 | `@worm-vue3-print/render` | `services/print-render` | 内部 | 基于 Playwright（Headless Chromium）的服务端 PDF 渲染微服务，Docker 部署；与浏览器预览、桌面客户端共用同一份渲染管线，保证三端出纸一致 |
 | `@worm-vue3-print/print-client` | `clients/print-client` | 内部 | 跨平台静默打印桌面客户端（Electron，回环 WebSocket + core 同构渲染 + `webContents.print` 静默出纸） |
 
-> 发布到 npm 的正式包为 `core`、`canvas`、`common` 与 `skills`：core/canvas/skills 由 `npm run publish:npm` 按标签发布；`@worm-vue3-print/common` 与主线同号发布正式版（dist-tag `latest`，当前 `1.4.4`），但保留实验性声明，发布走 `npm run publish:common` 或手动触发 `publish-common.yml`（流程见 [CONTRIBUTING.md](CONTRIBUTING.md)）；`render` 与 `print-client` 为私有工作区包，分别以 Docker 镜像和安装包形式分发，客户端安装包挂在 [GitHub Releases](https://github.com/worm-longliu/worm-vue3-print/releases)（见下文[下载客户端安装包](#下载客户端安装包)）。示例 `demo-common` 不在工作区内，仍以 `file:` 依赖消费本仓库的 common；该包**尚未完成稳定性测试**，不建议应用到生产，Vue 3 项目请使用 `@worm-vue3-print/canvas`。
+> 发布到 npm 的正式包为 `core`、`canvas`、`common` 与 `skills`：core/canvas/skills 由 `npm run publish:npm` 按标签发布；`@worm-vue3-print/common` 与主线同号发布正式版（dist-tag `latest`，当前 `1.4.3`），但保留实验性声明，发布走 `npm run publish:common` 或手动触发 `publish-common.yml`（流程见 [CONTRIBUTING.md](CONTRIBUTING.md)）；`render` 与 `print-client` 为私有工作区包，分别以 Docker 镜像和安装包形式分发，客户端安装包挂在 [GitHub Releases](https://github.com/worm-longliu/worm-vue3-print/releases)（见下文[下载客户端安装包](#下载客户端安装包)）。示例 `demo-common` 不在工作区内，仍以 `file:` 依赖消费本仓库的 common；该包**尚未完成稳定性测试**，不建议应用到生产，Vue 3 项目请使用 `@worm-vue3-print/canvas`。
 
 ## 功能特性
 
@@ -117,7 +118,7 @@ worm-vue3-print/
 
 ## 🗺 待办（Roadmap）
 
-- [x] 本地 MCP 连接器（`@worm-vue3-print/mcp`）：stdio 形态 6 个工具；桌面客户端内置 HTTP 形态 8 个工具（含浏览器模板会话读写）
+- [x] 浏览器 ↔ 桌面客户端 ↔ AI Agent 实时画布 MCP：本机 HTTP 8 个工具，支持模板校验与 revision 防覆盖写回
 - [ ] 画布内 AI 面板与宿主能力探测（第二阶段；只出注入式 transport 接口规范，本仓库不实现服务端 key 代理）
 
 ## 开发
@@ -267,6 +268,69 @@ function onLoadDefaultLayout() {
 - `PrintHtmlPreview`：同构预览组件，`template-json` 传画布模板 JSON，`print-data` 传业务数据，
   事件 `rendered` 回调预览页数，`ref.print()` 触发打印。
 
+## MCP 安装与使用
+
+MCP 能力只通过“浏览器设计器 ↔ 桌面客户端 ↔ AI Agent”链路提供，用于生成、校验和修改浏览器中正在编辑的模板。无需单独安装 `@worm-vue3-print/mcp`，它是桌面客户端的 private 内部工具库。
+
+### 1. 开启桌面客户端
+
+安装并打开[桌面客户端](#下载客户端安装包)，在设置页开启「AI 助手」，复制页面生成的 MCP 配置。默认配置示例如下，实际端口和 token 以设置页为准：
+
+```json
+{
+  "mcpServers": {
+    "worm-vue3-print": {
+      "url": "http://127.0.0.1:17521/mcp",
+      "headers": {
+        "Authorization": "Bearer <设置页展示的配对 token>"
+      }
+    }
+  }
+}
+```
+
+将配置合并到 Claude Desktop、Cursor 或其他 MCP 客户端的 `mcpServers` 中，然后重启或重新连接该客户端。
+
+### 2. 注册浏览器模板会话
+
+宿主页面通过 `@worm-vue3-print/core/client` 连接桌面客户端，使用 `setRequestHandler` 处理 `template.get` / `template.apply`，并调用 `attachTemplate` 签到。`template.apply` 必须核对 `baseRevision`、校验模板并拦截封禁元素；页面卸载时调用 `detachTemplate` 并关闭连接。完整代码见 [MCP 使用与集成指南](docs/中文/指南/MCP集成.md) 和 [`demo/src/template-session.ts`](demo/src/template-session.ts)。
+
+### 3. 让 AI 操作实时画布
+
+桌面客户端提供 8 个工具：
+
+- 模板能力：`print_element_kinds`、`print_draft_template`、`print_validate_template`、`print_check_expression`、`print_inspect_layout`。
+- 实时会话：`print_list_open_templates`、`print_get_open_template`、`print_apply_open_template`。
+
+推荐流程：列出会话 → 读取快照并保存 revision → 生成或修改模板 → 契约校验与静态体检 → 携带 `baseRevision` 写回。发生 `REVISION_CONFLICT` 时重新读取，不能强制覆盖。真实分页与出纸效果通过设计器或打印预览确认。
+
+## Skills 安装与使用
+
+Skills 为宿主 AI Agent 提供项目集成和 MCP 协作流程，不是 MCP 服务本身。安装器要求 Node.js 20 或更高版本，每次必须且只能安装一个技能，默认安装到当前项目的 `.agents/skills/`：
+
+```bash
+# Vue 3 项目：canvas/core 集成、打印链路、宿主 MCP 实时画布
+npx @worm-vue3-print/skills worm-vue3-print-integration
+
+# 跨框架项目：Vue 2.7 / React / jQuery / 原生宿主与 common 集成
+npx @worm-vue3-print/skills worm-vue3-print-common
+
+# MCP 协作：桌面客户端实时画布模板生成、校验与写回
+npx @worm-vue3-print/skills worm-vue3-print-mcp
+```
+
+指定技能父目录、Git 仓库、分支或 tag；目标已存在时默认拒绝覆盖，确认替换后再加 `--force`：
+
+```bash
+npx @worm-vue3-print/skills worm-vue3-print-mcp \
+  --repo https://github.com/worm-longliu/worm-vue3-print.git \
+  --ref v1.4.4 \
+  --dir /path/to/project/.agents/skills \
+  --force
+```
+
+安装后让宿主 Agent 重新加载技能，即可直接提出「在 Vue 3 项目接入打印设计器」「把 common 集成到 React 页面」或「通过 MCP 生成并校验打印模板」等任务。安装器只复制技能文件，**不会修改 MCP、Codex 或其他 Agent 配置**。完整参数与目录说明见 [Skills 安装说明](skills/README.md)。
+
 ## 静默打印（桌面客户端）
 
 跨平台（Windows / Linux / macOS）静默打印由两部分组成：
@@ -280,19 +344,19 @@ function onLoadDefaultLayout() {
 
 安装包**不在 npm 发布，也不入仓库**，而是作为 GitHub 发行版（Releases）的附件提供：
 
-> **[GitHub Releases 页面](https://github.com/worm-longliu/worm-vue3-print/releases)** —— 点击下载，无需登录。可下载的最新安装包来自 `v1.4.2`。
+> **[GitHub Releases 页面](https://github.com/worm-longliu/worm-vue3-print/releases)** —— 点击下载，无需登录。可下载的最新安装包来自 `v1.4.4`（预览版，Release 标记为 Prerelease）。
 
-下表是 `v1.4.2` 发行版的客户端安装包完整直链，可直接点击或复制。**`v1.4.3` 未挂安装包**：本版改动只在设计器交互与模板装载链上，未触及 core 的渲染管线（`render/*` 与 `functions/format.ts` 零改动），客户端出纸行为与 `v1.4.2` 完全一致，故沿用上一版产物、不重打。装 `v1.4.2` 的客户端继续用即可，不必升级。
+下表是 `v1.4.4` 发行版的客户端安装包完整直链，可直接点击或复制。**`v1.4.4` 是预览版（Prerelease）**：本版重打了全平台安装包（含 MCP 单链路收敛后的桌面客户端），装前请留意下一节的签名与公证提示。
 
 | 安装包直链 | 适用系统 |
 | --- | --- |
-| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.2/WormPrintClient-1.4.2-mac-x64.dmg](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.2/WormPrintClient-1.4.2-mac-x64.dmg) | Intel Mac |
-| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.2/WormPrintClient-1.4.2-mac-arm64.dmg](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.2/WormPrintClient-1.4.2-mac-arm64.dmg) | Apple Silicon Mac |
-| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.2/WormPrintClient-1.4.2-win-x64.exe](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.2/WormPrintClient-1.4.2-win-x64.exe) | Windows 10 / 11 x64（NSIS 安装程序，可选择安装目录、创建桌面快捷方式） |
-| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.2/WormPrintClient-1.4.2-linux-amd64.deb](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.2/WormPrintClient-1.4.2-linux-amd64.deb) | Debian / Ubuntu x64（`sudo apt install ./<文件>`） |
-| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.2/WormPrintClient-1.4.2-linux-x86_64.rpm](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.2/WormPrintClient-1.4.2-linux-x86_64.rpm) | Fedora / RHEL / openSUSE x64（`sudo rpm -i <文件>`） |
-| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.2/WormPrintClient-1.4.2-linux-x86_64.AppImage](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.2/WormPrintClient-1.4.2-linux-x86_64.AppImage) | 任意 x64 发行版，免安装单文件（需 `libfuse2`） |
-| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.2/SHA256SUMS.txt](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.2/SHA256SUMS.txt) | 上述安装包的 SHA-256 校验和 |
+| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.4/WormPrintClient-1.4.4-mac-x64.dmg](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.4/WormPrintClient-1.4.4-mac-x64.dmg) | Intel Mac |
+| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.4/WormPrintClient-1.4.4-mac-arm64.dmg](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.4/WormPrintClient-1.4.4-mac-arm64.dmg) | Apple Silicon Mac |
+| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.4/WormPrintClient-1.4.4-win-x64.exe](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.4/WormPrintClient-1.4.4-win-x64.exe) | Windows 10 / 11 x64（NSIS 安装程序，可选择安装目录、创建桌面快捷方式） |
+| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.4/WormPrintClient-1.4.4-linux-amd64.deb](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.4/WormPrintClient-1.4.4-linux-amd64.deb) | Debian / Ubuntu x64（`sudo apt install ./<文件>`） |
+| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.4/WormPrintClient-1.4.4-linux-x86_64.rpm](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.4/WormPrintClient-1.4.4-linux-x86_64.rpm) | Fedora / RHEL / openSUSE x64（`sudo rpm -i <文件>`） |
+| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.4/WormPrintClient-1.4.4-linux-x86_64.AppImage](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.4/WormPrintClient-1.4.4-linux-x86_64.AppImage) | 任意 x64 发行版，免安装单文件（需 `libfuse2`） |
+| [https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.4/SHA256SUMS.txt](https://github.com/worm-longliu/worm-vue3-print/releases/download/v1.4.4/SHA256SUMS.txt) | 上述安装包的 SHA-256 校验和 |
 
 下载不动或速度很慢时（GitHub 附件在国内直连常掉速，大文件容易中途断开）：
 

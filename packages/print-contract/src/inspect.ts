@@ -41,7 +41,7 @@ function zoneElements(tpl: TemplateData, zone: ElementZone): { list: PrintElemen
 /**
  * 静态版面体检：只看模板里写死的坐标，不做排版测量。
  * 表格真实行高、长文本换行后的实际占位、分页页数都不在能力范围内——那需要浏览器测量，
- * 走 MCP 的 print_render_preview 交给 print-render 服务出真实数字。
+ * 这些结果需要在设计器或打印预览中通过浏览器测量确认。
  */
 export function inspectTemplate(
   template: TemplateData,

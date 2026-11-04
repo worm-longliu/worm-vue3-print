@@ -6,7 +6,7 @@ import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/
  */
 export type ToolResult = CallToolResult
 
-/** 工具注册表条目：handler 与 SDK 解耦，便于直接单测而无需起 stdio 服务 */
+/** 工具注册表条目：handler 与 SDK 解耦，便于直接单测而无需启动桌面服务 */
 export interface ToolDef {
   name: string
   description: string

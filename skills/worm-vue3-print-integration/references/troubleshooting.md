@@ -175,7 +175,7 @@ npm run build
 
 ## MCP 实时会话
 
-- **MCP 客户端看不到会话工具**：确认使用桌面客户端本机 HTTP 形态并已开启 AI 助手；stdio 只有六个静态工具。
+- **MCP 客户端看不到会话工具**：确认桌面客户端已开启 AI 助手、配置地址与 token 来自设置页，并且浏览器页面已完成模板会话签到。
 - **列表中没有当前页面**：检查页面 `PrintClient` 是否连接并 `attachTemplate`，页面关闭后会话立即失效。
 - **写回报 `REVISION_CONFLICT`**：重新调用读取工具获取最新模板和 revision，协调差异后再写，不强制覆盖。
 - **写回后快照不一致**：给 `initial-template` 赋新引用并等待 `nextTick()`，然后从 `designerRef.getTemplateJson()` 重读，不回显请求对象。

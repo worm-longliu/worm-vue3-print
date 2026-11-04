@@ -6,11 +6,10 @@ import type { TemplateData } from '@worm-vue3-print/core/designer'
 import { validateTemplateJson } from '../validate.js'
 import { inspectTemplate } from '../inspect.js'
 
-// 仓内真实模板：demo 模板、AI 技能资产模板、客户端冒烟模板、core 回归 fixture
+// 仓内真实模板：demo 模板、客户端冒烟模板、core 回归 fixture
 const ROOT = join(fileURLToPath(new URL('../../../../', import.meta.url)))
 const DIRS = [
   { dir: 'demo/src', pattern: /^template-.*\.json$/ },
-  { dir: 'skills/worm-vue3-print-mcp/assets/templates', pattern: /\.template\.json$/ },
   { dir: 'packages/print-core/src/render/__tests__/fixtures', pattern: /\.json$/ },
 ]
 
@@ -41,8 +40,8 @@ function pagesOf(input: unknown): TemplateData[] {
 describe('仓内真实模板必须通过契约校验', () => {
   const files = collect()
 
-  it('至少覆盖到 10 份真实模板（清单失效要立刻知道）', () => {
-    expect(files.length).toBeGreaterThanOrEqual(10)
+  it('至少覆盖到 5 份真实模板（清单失效要立刻知道）', () => {
+    expect(files.length).toBeGreaterThanOrEqual(5)
   })
 
   for (const rel of files) {

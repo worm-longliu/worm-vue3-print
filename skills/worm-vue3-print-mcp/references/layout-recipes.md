@@ -8,7 +8,7 @@
 2. **算版心**：`内容宽 = 纸宽 − 左 − 右`，`内容高 = 纸高 − 上 − 下 − 页眉高 − 页脚高`
 3. **算安全线**：固定纸的内容底边必须离版心底边 ≥ 2mm，否则溢出到第二页
 4. **排元素**：从上到下切横条，每条一个元素；同一行用两个元素左右并排
-5. **校验**：`python3 scripts/validate_template.py out.json`，修到 0 ERROR
+5. **校验**：调用 `print_validate_template` 与 `print_inspect_layout`，修到全部 error 清零
 
 ## 配方一：单据（A5 / A4 / 针式纸）
 

@@ -1,10 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { createDesktopPrintTools, DESKTOP_BLOCKED_TOOL_NAMES } from '../desktop-tools.js'
 import { createTemplateSessionTools, unwrapTemplateShell, type TemplateSessionBridge, type OpenTemplateSession } from '../template-session-tools.js'
 import { TOOLS } from '../tools.js'
 
 const call = async (name: string, args: Record<string, unknown>) => {
-  const tool = [...createDesktopPrintTools(), ...createTemplateSessionTools(makeBridge([]))]
+  const tool = [...TOOLS, ...createTemplateSessionTools(makeBridge([]))]
     .find(t => t.name === name)
   if (!tool) throw new Error(`工具 ${name} 未注册`)
   const r = await tool.handler(args)
@@ -62,45 +61,6 @@ function makeBridge(sessions: OpenTemplateSession[], overrides: Partial<Template
     ...overrides,
   }
 }
-
-describe('桌面安全工具集 createDesktopPrintTools', () => {
-  it('共 5 个工具，不含 print_render_preview', () => {
-    const names = createDesktopPrintTools().map(t => t.name)
-    expect(names).toEqual([
-      'print_element_kinds', 'print_validate_template', 'print_check_expression',
-      'print_inspect_layout', 'print_draft_template',
-    ])
-    expect(names).not.toContain('print_render_preview')
-    expect(DESKTOP_BLOCKED_TOOL_NAMES).toContain('print_render_preview')
-  })
-
-  it('入参 schema 不再声明 templatePath，说明里也不再有路径措辞', () => {
-    for (const t of createDesktopPrintTools()) {
-      const schema = JSON.stringify(t.inputSchema)
-      expect(schema).not.toContain('"templatePath"')
-      expect(schema).not.toContain('与 templatePath 二选一')
-    }
-  })
-
-  it('运行时伪造 templatePath 直接 isError，不读文件', async () => {
-    const r = await call('print_validate_template', { templatePath: '/etc/passwd.json' })
-    expect(r.isError).toBe(true)
-    expect(r.text).toContain('templatePath')
-    const r2 = await call('print_inspect_layout', { templatePath: './secret.json' })
-    expect(r2.isError).toBe(true)
-  })
-
-  it('templatePath 与 templateJson 同时传入也拒绝（不静默剥除旁路）', async () => {
-    const r = await call('print_validate_template', { templateJson: validTemplate, templatePath: '/tmp/t.json' })
-    expect(r.isError).toBe(true)
-  })
-
-  it('纯 templateJson 照常通过校验', async () => {
-    const r = await call('print_validate_template', { templateJson: validTemplate })
-    expect(r.isError).toBe(false)
-    expect(JSON.parse(r.text).ok).toBe(true)
-  })
-})
 
 describe('模板会话工具 print_list_open_templates', () => {
   it('列出 bridge 会话信息', async () => {
@@ -242,14 +202,10 @@ describe('unwrapTemplateShell', () => {
 })
 
 describe('工具集组合', () => {
-  it('桌面组合（安全集 + 会话集）共 8 个工具且与 stdio 工具集无重复定义冲突', () => {
-    const desktop = [
-      ...createDesktopPrintTools(),
-      ...createTemplateSessionTools(makeBridge([])),
-    ]
+  it('桌面组合共 8 个工具且无重复定义', () => {
+    const desktop = [...TOOLS, ...createTemplateSessionTools(makeBridge([]))]
     expect(desktop).toHaveLength(8)
     expect(new Set(desktop.map(t => t.name)).size).toBe(8)
-    expect(TOOLS).toHaveLength(6)
   })
 
   it('apply 工具声明 destructiveHint，宿主应要求批准', () => {

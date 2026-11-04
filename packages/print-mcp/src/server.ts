@@ -1,12 +1,11 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js'
-import { TOOLS } from './tools.js'
 import { version } from './version.js'
 import type { ToolDef } from './tool-types.js'
 
-export interface PrintMcpServerOptions {
-  /** 工具注册表；缺省为 stdio 连接器的 6 个工具（桌面端组合桌面安全集 + 模板会话集） */
-  tools?: ToolDef[]
+export interface DesktopPrintMcpServerOptions {
+  /** 桌面客户端组合后的纯计算工具与模板会话工具 */
+  tools: ToolDef[]
   /** MCP server 名称；桌面端为 worm-vue3-print-client */
   name?: string
   /** MCP server 版本；桌面端取 app.getVersion() */
@@ -17,10 +16,11 @@ export interface PrintMcpServerOptions {
  * 创建低层 MCP Server（仅声明 tools 能力，transport 由调用方 connect）。
  * 不调用模型、不读取模型密钥——工具循环与模型都归宿主 agent（本阶段的设计前提）。
  */
-export function createPrintMcpServer(options: PrintMcpServerOptions = {}): Server {
-  const toolList = options.tools ?? TOOLS
+export function createDesktopPrintMcpServer(options: DesktopPrintMcpServerOptions): Server {
+  if (!options?.tools?.length) throw new Error('tools 必须显式提供')
+  const toolList = options.tools
   const server = new Server(
-    { name: options.name ?? 'worm-vue3-print', version: options.version ?? version },
+    { name: options.name ?? 'worm-vue3-print-client', version: options.version ?? version },
     { capabilities: { tools: {} } },
   )
 

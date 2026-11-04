@@ -1,8 +1,6 @@
 # 宿主端 MCP 集成
 
-按目标选择方案，不要把“配置一个外部 MCP 客户端”误当成宿主页面已经具备实时画布读写能力。
-
-## 方案 A：桌面客户端 + 当前画布（优先）
+通过桌面客户端把 AI Agent 接入 common 设计器的实时画布。只配置 MCP 客户端而不完成页面接线，不能读写当前模板。
 
 适用于宿主已有 Claude、Cursor 或其他 MCP 客户端，并希望 AI 修改用户正在编辑的模板。
 
@@ -113,27 +111,3 @@ export function startCommonTemplateSession(element, readExtras, token) {
 - 写回后返回的是从 element 重新读取的模板，不是直接把请求对象原样回显。
 - common 的 `loadTemplate()` 只记录装载后的历史检查点，当前不能承诺撤销到写回前；宿主需要该能力时应自行保留写回前快照。不要额外重复注入同一模板。
 - MCP 配对 token 用于本机客户端鉴权，不是模型密钥。模型密钥不得进入前端 bundle。
-
-## 方案 B：宿主 Node 进程嵌入 MCP
-
-适用于自建 Agent 或 MCP 网关。`@worm-vue3-print/mcp` 是 private 包，只能从源码或 workspace 使用，不能写成 `npm install @worm-vue3-print/mcp`。
-
-```js
-import { createPrintMcpServer } from '@worm-vue3-print/mcp'
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-
-const server = createPrintMcpServer()
-await server.connect(new StdioServerTransport())
-```
-
-库入口没有启动 transport 的副作用，transport 由宿主选择。默认注册 stdio 六工具；只需要部分能力时传入筛选后的 `tools`。自有实时会话源使用 `createTemplateSessionTools(bridge)`，bridge 实现 `TemplateSessionBridge` 的 list/get/apply，负责超时、串行化和 revision 语义。
-
-本仓库不提供远程 MCP、OAuth 或宿主模型代理。需要 HTTP 时由宿主明确配置 transport、鉴权和部署边界，不声称这是开箱能力。
-
-## 验收
-
-1. MCP 客户端能看到 5 个纯计算工具与 3 个会话工具。
-2. `template.get` 返回当前画布，不是初始模板缓存。
-3. AI 写回后画布更新，再次 get 得到新 revision。
-4. 读取后手动改一次画布，再以旧 revision 写入，必须得到 `REVISION_CONFLICT`。
-5. 页面卸载后会话消失，没有残留状态监听或 WebSocket。

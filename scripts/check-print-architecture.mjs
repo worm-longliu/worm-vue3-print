@@ -2,7 +2,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
-// MCP 连接器是第四个「端」：它同样只能调 core，不许自带测量或码制实现
+// 桌面 MCP 工具同样只能调 core，不许自带测量或码制实现
 const TARGETS = ['services/print-render/src', 'clients/print-client/src', 'packages/print-mcp/src']
 /** 白名单：允许出现宿主能力的文件（driver 与平台适配层） */
 const ALLOW = [

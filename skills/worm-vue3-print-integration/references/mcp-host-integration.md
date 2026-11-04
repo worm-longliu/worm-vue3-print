@@ -1,8 +1,6 @@
 # 宿主端 MCP 集成
 
-宿主集成分为“静态模板工具”和“实时画布会话”。只配置 stdio 可以生成和校验 JSON，但不能自动读写浏览器里的 `PrintDesigner`；实时读写需要下面的页面接线。
-
-## 方案 A：桌面客户端 + 当前画布（优先）
+仅通过桌面客户端把 AI Agent 接入浏览器里的 `PrintDesigner` 实时画布；只配置 MCP 客户端而不完成页面接线，不能读写当前模板。
 
 1. 工位电脑启动桌面客户端，在设置页开启「AI 助手」并完成配对。
 2. 将设置页生成的本机 HTTP MCP 配置交给宿主已有的 MCP 客户端。
@@ -101,27 +99,3 @@ export function usePrintTemplateSession({ designerRef, templateData, readExtras,
 `templateData` 就是传给 `PrintDesigner` 的 `initial-template` 响应式引用。必须赋深拷贝的新引用并等待 `nextTick()`，不能只修改嵌套字段。`readExtras()` 返回最新 `fields`、`printData`、`templateName`，避免闭包捕获首次渲染的旧数据。
 
 当前 canvas 对新的 `initial-template` 引用记录一次历史，MCP 写回可由设计器撤销一步；宿主不要重复赋值造成第二条历史。
-
-## 方案 B：宿主 Node 进程嵌入 MCP
-
-适用于自建 Agent 或 MCP 网关。`@worm-vue3-print/mcp` 是 private 包，只能从源码或 workspace 使用，不得指导用户执行 `npm install @worm-vue3-print/mcp`。
-
-```ts
-import { createPrintMcpServer } from '@worm-vue3-print/mcp'
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-
-const server = createPrintMcpServer()
-await server.connect(new StdioServerTransport())
-```
-
-`createPrintMcpServer` 的库入口无副作用，默认注册六个 stdio 工具，transport 由宿主决定。自有实时会话源通过 `createTemplateSessionTools(bridge)` 注入 `TemplateSessionBridge`，bridge 负责 list/get/apply、超时、串行化与 revision 校验。
-
-仓库不提供远程 MCP、OAuth 或模型代理。模型和工具循环归宿主；模型密钥不得进入 Vue 前端 bundle。MCP 配对 token 只用于本机客户端鉴权。
-
-## 验收
-
-1. stdio `tools/list` 返回六工具；桌面 HTTP 返回五计算工具加三会话语工具。
-2. `template.get` 返回画布当前内容，而不是页面初始模板。
-3. 写回后等待 Vue 更新并重新读取，返回新 revision；设计器可撤销一次。
-4. 读取后手动修改画布，再使用旧 revision 写回，必须得到 `REVISION_CONFLICT`。
-5. 页面卸载后会话移除，状态监听和 WebSocket 均释放。

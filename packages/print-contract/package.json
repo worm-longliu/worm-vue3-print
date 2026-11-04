@@ -3,7 +3,7 @@
   "version": "1.4.4",
   "private": true,
   "type": "module",
-  "description": "打印模板的机器可读契约层：zod schema、表达式校验、静态版面体检与草稿生成（供本地 MCP 连接器与宿主已有 AI 消费）",
+  "description": "打印模板的机器可读契约层：zod schema、表达式校验、静态版面体检与草稿生成（供桌面客户端 MCP 工具与宿主已有 AI 消费）",
   "license": "MIT",
   "author": "worm <liu_long_qqcom@qq.com>",
   "main": "./dist/index.cjs",

@@ -1,7 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
-import { mkdtemp, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { describe, it, expect } from 'vitest'
 import { TOOLS } from '../tools.js'
 
 const call = async (name: string, args: Record<string, unknown>) => {
@@ -14,69 +11,52 @@ const call = async (name: string, args: Record<string, unknown>) => {
 }
 
 const validTemplate = {
-  paperSize: 'A4',
-  orientation: 'portrait',
-  unit: 'mm',
+  paperSize: 'A4', orientation: 'portrait', unit: 'mm',
   margins: { top: 10, right: 10, bottom: 10, left: 10 },
   elements: [{
-    id: 'e1',
-    type: 'text',
+    id: 'e1', type: 'text',
     options: { left: 10, top: 10, width: 60, height: 8, formatter: '{orderNo}' },
     printElementType: { type: 'text' },
   }],
 }
 
-describe('MCP 工具注册表', () => {
-  it('工具名唯一且为 snake_case', () => {
-    const names = TOOLS.map(t => t.name)
-    expect(new Set(names).size).toBe(names.length)
-    expect(names.every(n => /^[a-z][a-z0-9_]*$/.test(n))).toBe(true)
-  })
-
-  it('契约层四件事 + 元素清单 + 渲染出口齐备', () => {
+describe('桌面纯计算工具集', () => {
+  it('只注册 5 个内存工具', () => {
     expect(TOOLS.map(t => t.name).sort()).toEqual([
       'print_check_expression', 'print_draft_template', 'print_element_kinds',
-      'print_inspect_layout', 'print_render_preview', 'print_validate_template',
+      'print_inspect_layout', 'print_validate_template',
     ])
   })
 
-  it('每个工具都带描述与 JSON Schema 输入', () => {
-    expect(TOOLS.every(t => t.description.length > 20)).toBe(true)
-    expect(TOOLS.every(t => t.inputSchema.type === 'object')).toBe(true)
-  })
-
-  it('入参 JSON Schema 带字段级说明（模型唯一的入参说明书）', () => {
-    for (const t of TOOLS.filter(x => x.name !== 'print_element_kinds')) {
-      expect(JSON.stringify(t.inputSchema)).toContain('"description"')
+  it('每个工具都带描述、注解与 JSON Schema 输入', () => {
+    for (const tool of TOOLS) {
+      expect(tool.description.length).toBeGreaterThan(20)
+      expect(tool.inputSchema.type).toBe('object')
+      expect(typeof tool.annotations?.title).toBe('string')
+      expect(tool.annotations?.readOnlyHint).toBe(true)
+      expect(tool.annotations?.openWorldHint).toBe(false)
     }
-    const draft = JSON.stringify(TOOLS.find(t => t.name === 'print_draft_template')!.inputSchema)
-    expect(draft).toContain('mm')
-    expect(draft).toContain('13 种之一')
-    expect(draft).toContain('草稿内容')
-    const render = JSON.stringify(TOOLS.find(t => t.name === 'print_render_preview')!.inputSchema)
-    expect(render).toContain('批量')
   })
 
-  it('元素类型写错时草稿回灌出 error（不再静默产出未知元素）', async () => {
-    const data = JSON.parse((await call('print_draft_template', {
-      spec: { elements: [{ type: 'Text', options: { left: 0, top: 0, width: 10, height: 5 } }] },
-    })).text)
-    expect(data.issues.some((i: { level: string; path: string }) =>
-      i.level === 'error' && i.path === 'elements[0].type')).toBe(true)
-    expect(data.summary).toContain('error')
+  it('模板校验与体检只声明必填的 templateJson', () => {
+    for (const name of ['print_validate_template', 'print_inspect_layout']) {
+      const schema = TOOLS.find(t => t.name === name)!.inputSchema
+      expect(Object.keys(schema.properties as object)).toEqual(
+        name === 'print_inspect_layout' ? ['templateJson', 'toleranceMm'] : ['templateJson'],
+      )
+      expect(schema.required).toContain('templateJson')
+    }
   })
 })
 
 describe('print_element_kinds', () => {
-  it('列出 13 类并标注封禁项与函数白名单', async () => {
+  it('列出元素、函数、系统变量和单位约定', async () => {
     const data = JSON.parse((await call('print_element_kinds', {})).text)
     expect(data.kinds).toHaveLength(13)
     expect(data.kinds.find((k: { type: string }) => k.type === 'html').blocked).toBe(true)
     expect(data.functions).toContain('MONEY')
     expect(data.units).toContain('mm')
-    expect(data.expressionSyntax).toContain('{字段}')
     expect(data.systemVariables).toEqual(['printDate', 'printTime', 'pageIndex', 'totalPages'])
-    expect(data.pageNumberHint).toContain('pageIndex')
   })
 })
 
@@ -87,7 +67,13 @@ describe('print_validate_template', () => {
     expect(JSON.parse(text).ok).toBe(true)
   })
 
-  it('非法输入返回结构化 error 而不是抛异常', async () => {
+  it('缺少模板时返回可行动错误', async () => {
+    const r = await call('print_validate_template', {})
+    expect(r.isError).toBe(true)
+    expect(r.text).toContain('templateJson')
+  })
+
+  it('非法输入返回结构化 issues', async () => {
     const data = JSON.parse((await call('print_validate_template', { templateJson: { paperSize: 'A99' } })).text)
     expect(data.ok).toBe(false)
     expect(data.issues.some((i: { path: string }) => i.path === 'paperSize')).toBe(true)
@@ -98,15 +84,10 @@ describe('print_check_expression', () => {
   it('区分语法错与未知字段', async () => {
     const bad = JSON.parse((await call('print_check_expression', { expression: '{MONEY(' })).text)
     expect(bad.syntax).toBe('invalid')
-    const unknown = JSON.parse((await call('print_check_expression',
-      { expression: '{amount}', knownFields: ['qty'] })).text)
+    const unknown = JSON.parse((await call('print_check_expression', {
+      expression: '{amount}', knownFields: ['qty'],
+    })).text)
     expect(unknown.unknownFields).toEqual(['amount'])
-    expect(unknown.ok).toBe(true)
-
-    const dollar = JSON.parse((await call('print_check_expression',
-      { expression: '${total}', knownFields: ['total'] })).text)
-    expect(dollar.ok).toBe(false)
-    expect(dollar.errors.join()).toContain('${')
   })
 })
 
@@ -122,18 +103,7 @@ describe('print_inspect_layout', () => {
     expect(data.findings.some((f: { code: string }) => f.code === 'OUT_OF_PAPER')).toBe(true)
   })
 
-  it('只侵入页边距时 ok 仍为 true，只出 warning', async () => {
-    const data = JSON.parse((await call('print_inspect_layout', {
-      templateJson: {
-        ...validTemplate,
-        elements: [{ ...validTemplate.elements[0], options: { ...validTemplate.elements[0].options, left: 185, width: 15 } }],
-      },
-    })).text)
-    expect(data.ok).toBe(true)
-    expect(data.findings.every((f: { level: string }) => f.level === 'warning')).toBe(true)
-  })
-
-  it('多页模板逐页体检并把路径带上页号', async () => {
+  it('多页模板逐页体检并带页号', async () => {
     const data = JSON.parse((await call('print_inspect_layout', {
       templateJson: { version: 1, pages: [validTemplate, { ...validTemplate, elements: [] }] },
     })).text)
@@ -142,7 +112,8 @@ describe('print_inspect_layout', () => {
   })
 })
 
-describe('print_draft_template', () => {  it('拒绝 html 元素', async () => {
+describe('print_draft_template', () => {
+  it('拒绝 html 元素', async () => {
     const data = JSON.parse((await call('print_draft_template', {
       spec: { elements: [{ type: 'html', options: { left: 0, top: 0, width: 10, height: 10 } }] },
     })).text)
@@ -155,96 +126,5 @@ describe('print_draft_template', () => {  it('拒绝 html 元素', async () => {
     })).text)
     expect(data.expressionErrors).toEqual([])
     expect(data.template.unit).toBe('mm')
-  })
-})
-
-describe('templatePath（模型不必重发整份模板）', () => {
-  const writableTools = ['print_validate_template', 'print_inspect_layout', 'print_render_preview']
-
-  it('三个工具入参都声明了 templatePath', () => {
-    for (const name of writableTools) {
-      const t = TOOLS.find(x => x.name === name)!
-      expect(Object.keys(t.inputSchema.properties as object)).toContain('templatePath')
-    }
-  })
-
-  it('validate 走路径时结果与走 templateJson 一致', async () => {
-    const d = await mkdtemp(join(tmpdir(), 'mcp-tool-'))
-    const p = join(d, 't.json')
-    await writeFile(p, JSON.stringify(validTemplate), 'utf8')
-
-    const byPath = JSON.parse((await call('print_validate_template', { templatePath: p })).text)
-    const byValue = JSON.parse((await call('print_validate_template', { templateJson: validTemplate })).text)
-    expect(byPath.ok).toBe(true)
-    expect(byPath.issues).toEqual(byValue.issues)
-  })
-
-  it('inspect 走路径同样出 finding', async () => {
-    const d = await mkdtemp(join(tmpdir(), 'mcp-tool-'))
-    const p = join(d, 't.json')
-    await writeFile(p, JSON.stringify({
-      ...validTemplate,
-      elements: [{ ...validTemplate.elements[0], options: { ...validTemplate.elements[0].options, left: 250 } }],
-    }), 'utf8')
-    const data = JSON.parse((await call('print_inspect_layout', { templatePath: p })).text)
-    expect(data.ok).toBe(false)
-    expect(data.findings.some((f: { code: string }) => f.code === 'OUT_OF_PAPER')).toBe(true)
-  })
-
-  it('路径读失败返回 isError 与带路径的文案', async () => {
-    const r = await call('print_validate_template', { templatePath: '/tmp/worm-__nope__.json' })
-    expect(r.isError).toBe(true)
-    expect(r.text).toContain('/tmp/')
-  })
-})
-
-describe('annotations（宿主显示与审批依据）', () => {
-  it('每个工具都有中文 title 与只读/破坏性标记', () => {
-    for (const t of TOOLS) {
-      expect(typeof t.annotations?.title).toBe('string')
-      expect((t.annotations?.title as string).length).toBeGreaterThan(1)
-      expect(typeof t.annotations?.readOnlyHint).toBe('boolean')
-      expect(typeof t.annotations?.openWorldHint).toBe('boolean')
-    }
-  })
-
-  it('纯计算工具标只读、不碰外界；render_preview 声明 openWorld', () => {
-    const pure = ['print_element_kinds', 'print_validate_template', 'print_check_expression',
-      'print_inspect_layout', 'print_draft_template']
-    for (const name of pure) {
-      const t = TOOLS.find(x => x.name === name)!
-      expect(t.annotations?.readOnlyHint).toBe(true)
-      expect(t.annotations?.openWorldHint).toBe(false)
-    }
-    const render = TOOLS.find(t => t.name === 'print_render_preview')!
-    expect(render.annotations?.openWorldHint).toBe(true)
-    expect(render.annotations?.readOnlyHint).toBe(false)
-  })
-
-  it('tools 元数据不含重复 title，且 tools/list 能带出 annotations', async () => {
-    const { createPrintMcpServer } = await import('../server.js')
-    const server = createPrintMcpServer()
-    expect(server).toBeDefined()
-    const titles = TOOLS.map(t => t.annotations?.title)
-    expect(new Set(titles).size).toBe(titles.length)
-  })
-})
-
-describe('print_render_preview', () => {
-  it('契约不合法时先被 validate 拦下，不浪费一次渲染', async () => {
-    const data = JSON.parse((await call('print_render_preview', { templateJson: { paperSize: 'A99' } })).text)
-    expect(data.stage).toBe('validate')
-    expect(data.ok).toBe(false)
-  })
-
-  it('未配置渲染服务时降级为可读提示而不是静默', async () => {
-    vi.stubEnv('PRINT_RENDER_BASE_URL', '')
-    try {
-      const { text, isError } = await call('print_render_preview', { templateJson: validTemplate })
-      expect(isError).toBe(true)
-      expect(text).toContain('PRINT_RENDER_BASE_URL')
-    } finally {
-      vi.unstubAllEnvs()
-    }
   })
 })

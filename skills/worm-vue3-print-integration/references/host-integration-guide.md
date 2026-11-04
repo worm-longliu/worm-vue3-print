@@ -250,4 +250,4 @@ async function handlePrint() {
 
 ## 宿主 MCP（可选）
 
-需要 AI 读取或修改当前设计器画布时，宿主页面还需通过 `@worm-vue3-print/core/client` 注册 `template.get/apply` 并向桌面客户端签到；写回必须携带 revision 并处理冲突。完整 Vue 3 骨架、Node 嵌入方案和验收步骤见 [宿主 MCP 集成](mcp-host-integration.md)。只做静态模板校验时不必接入实时会话。
+需要 AI 读取或修改当前设计器画布时，宿主页面还需通过 `@worm-vue3-print/core/client` 注册 `template.get/apply` 并向桌面客户端签到；写回必须携带 revision 并处理冲突。完整 Vue 3 骨架和验收步骤见 [宿主 MCP 集成](mcp-host-integration.md)。所有 MCP 模板操作都围绕已签到的实时会话执行。

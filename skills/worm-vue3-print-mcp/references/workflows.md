@@ -1,26 +1,26 @@
 # MCP 协作工作流
 
-## 生成新模板
+## 生成并写入新模板
 
 1. 明确场景、纸张、业务字段与样例数据。
-2. `print_element_kinds` 获取当前契约。
-3. 用 `print_draft_template` 生成草稿，检查其 issues 和 expressionErrors。
-4. 对草稿运行 `print_validate_template` 与 `print_inspect_layout`。
-5. 需要真实分页时，在 stdio 下配置 render 服务并调用 `print_render_preview`。
-6. 交付模板与独立示例数据，列出实际校验结果。
+2. 通过 `print_list_open_templates` 选择目标页面，再用 `print_get_open_template` 读取会话上下文。
+3. 调用 `print_element_kinds` 获取当前契约。
+4. 用 `print_draft_template` 生成草稿，检查其 issues 和 expressionErrors。
+5. 对草稿运行 `print_validate_template` 与 `print_inspect_layout`，修复全部 error。
+6. 使用会话读取时的 revision 调用 `print_apply_open_template`。
+7. 在设计器中核对预览；交付时列出实际校验和写回结果。
 
 ## 修改已有模板
 
-先保存原始 JSON，只改用户要求的元素。stdio 大文件使用 `templatePath`；桌面实时画布先读快照。修改后重新执行校验与体检，不能把修改前的通过结果复用为本次结果。
+先读取实时快照，只改用户要求的元素，保留业务字段与未要求修改的布局。修改后重新执行校验与体检，不能复用修改前的通过结果。写回成功后再读取一次快照可作为最终核对。
 
 ## 表达式与表格
 
-表达式错误先调用 `print_check_expression`。表格数据字段是数组，列绑定使用当前行字段路径；静态体检无法证明长文本、自动行高或真实页数正确，这些必须使用真实渲染。
+表达式错误先调用 `print_check_expression`。表格数据字段是数组，列绑定使用当前行字段路径。静态体检无法证明长文本、自动行高或真实页数正确，这些必须在设计器或打印预览中核对。
 
-## 真实 PDF 降级
+## 冲突与断连
 
-未配置 `PRINT_RENDER_BASE_URL` 时，`print_render_preview` 返回无法取得真实分页与 PDF 的错误。此时可以交付已通过静态校验的模板，但必须明确“未做真实 PDF 验证”，不得伪造 `pdfPath` 或页数。
-
-## 离线替代
-
-MCP 工具不可用时，使用技能 `scripts/build_template.py` 和 `scripts/validate_template.py`。脚本结果只代表离线规则检查；用户要求 MCP 或真实渲染验证时，说明能力未配置并给出接入步骤。
+- `REVISION_CONFLICT`：重新读取最新快照，向用户说明差异后再修改，不覆盖他人变更。
+- `SESSION_NOT_FOUND` / `SESSION_DISCONNECTED`：重新列出会话；页面未恢复前停止写回。
+- `INVALID_TEMPLATE`：按返回路径修复契约或封禁元素问题，再重新校验。
+- `CLIENT_TIMEOUT`：确认页面未卡顿且仍连接后重试，不声称已写回。

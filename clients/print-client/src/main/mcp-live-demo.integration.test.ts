@@ -137,7 +137,7 @@ describe('真实 demo + 真实 SDK + 真实 MCP 全栈串测', () => {
   const textOf = (r: unknown): string =>
     String((r as { content?: Array<{ text?: string }> }).content?.[0]?.text ?? '')
 
-  it('桌面端可见工具集恰为 8 个（含 3 个模板会话工具，无 render_preview）', async () => {
+  it('桌面端可见工具集恰为 8 个（含 3 个模板会话工具）', async () => {
     const { tools } = await mcp!.listTools()
     expect(tools.map(t => t.name).sort()).toEqual([
       'print_apply_open_template', 'print_check_expression', 'print_draft_template',

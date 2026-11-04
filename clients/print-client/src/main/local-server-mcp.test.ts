@@ -294,7 +294,6 @@ describe('MCP HTTP 集成（SDK Client 连真实 /mcp）', () => {
       'print_element_kinds', 'print_get_open_template', 'print_inspect_layout',
       'print_list_open_templates', 'print_validate_template',
     ])
-    expect(names).not.toContain('print_render_preview')
     await client.close()
   })
 
@@ -542,7 +541,8 @@ describe('MCP HTTP 集成（SDK Client 连真实 /mcp）', () => {
   })
 
   it('get 与 apply 共用会话串行链：apply 未结束时 get 不会先发往浏览器', async () => {
-    const { port } = await buildStack()
+    const bridgeEvents: string[] = []
+    const { port } = await buildStack({ bridgeEvents })
     const client = await mcpClient(port, 'pair-token-1')
     const events: string[] = []
     let releaseApply!: () => void
@@ -552,16 +552,17 @@ describe('MCP HTTP 集成（SDK Client 连真实 /mcp）', () => {
       sessionId: 'sess-serial-00000001', name: '页面甲', url: 'http://x/',
     })).ok).toBe(true)
 
-    // 同时发起 apply 与 get：apply 被浏览器挂起，get 必须被会话串行链挡住
     const applyP = client.callTool({
       name: 'print_apply_open_template',
       arguments: { baseRevision: 'rev-1', templateJson: validTemplate },
     })
+    await waitFor(() => events.includes('apply-req'), 3000, 'apply 未发往浏览器')
+
+    // 确认 get 已到达桌面端并排入会话链，再断言它尚未触达被 apply 占用的浏览器
     const getP = client.callTool({
       name: 'print_get_open_template', arguments: { sessionId: 'sess-serial-00000001' },
     })
-
-    await waitFor(() => events.includes('apply-req'), 3000, 'apply 未发往浏览器')
+    await waitFor(() => bridgeEvents.includes('get-enter'), 3000, 'get 未到达桌面会话桥')
     expect(events).not.toContain('get-req')
 
     releaseApply()

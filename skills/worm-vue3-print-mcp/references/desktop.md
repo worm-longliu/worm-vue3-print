@@ -1,6 +1,12 @@
 # 桌面客户端接入
 
-桌面客户端在本机提供 HTTP MCP，默认地址由设置页生成；端口可能递增，以页面实际 JSON 为准。开启「AI 助手」后，将配置交给宿主 MCP 客户端：
+## 链路组成
+
+1. 工位电脑运行桌面客户端，在设置页开启「AI 助手」。
+2. 浏览器设计器通过 `@worm-vue3-print/core/client` 连接桌面客户端，处理 `template.get` / `template.apply` 并调用 `attachTemplate` 签到。
+3. AI Agent 所在 MCP 客户端使用设置页生成的本机 HTTP 配置。
+
+默认配置示例如下，实际端口和 token 以设置页为准：
 
 ```json
 {
@@ -13,20 +19,15 @@
 }
 ```
 
-该形态有 5 个纯计算工具和 3 个会话工具：
+浏览器页面只连接本机桌面客户端。AI Agent 的每次写回经桌面客户端转发到已签到页面，不直接访问宿主业务服务。
 
-- `print_list_open_templates`：列出仍打开并已签到的设计器页面。
-- `print_get_open_template`：读取实时模板、字段、打印数据和 revision。
-- `print_apply_open_template`：整份写回，必须提供 `baseRevision`。
+## 工具边界
 
-桌面形态没有 `print_render_preview`，也不接受 `templatePath`。需要真实 PDF 时使用 stdio + render 服务，或使用设计器自身预览。
+纯计算工具只接收内存中的参数和 `templateJson`，不读取本地模板文件、不访问渲染服务。会话工具读写的是仍打开且已签到的页面；页面关闭或客户端退出后会话失效，不落盘。
 
-## 实时修改流程
+## 浏览器接入要点
 
-1. 列出会话；有多个页面时必须使用目标 `sessionId`，不要猜测。
-2. 读取快照并保留本次 `revision`。
-3. 在快照副本上完成最小修改，调用契约校验和静态体检。
-4. 使用读取时的 revision 作为 `baseRevision` 写回。
-5. 成功后以返回的新 revision 和模板为准；失败时保留原快照。
-
-`REVISION_CONFLICT` 表示读取后用户或另一客户端又修改了画布。必须重新读取并协调差异，不得循环强制写回。页面关闭或客户端退出后会话失效，不应对已失效会话重试写入。
+- `template.get` 返回当前模板、字段、打印数据、模板名称和根据当前内容计算的 revision。
+- `template.apply` 先核对 `baseRevision`，再校验模板形状与封禁元素，通过后写回设计器并重新读取实际结果。
+- 页面卸载时调用 `detachTemplate`，取消状态监听并关闭连接。
+- Vue 3 与 common 的完整宿主骨架分别在对应集成技能的 `references/mcp-host-integration.md` 中。

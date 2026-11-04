@@ -52,7 +52,7 @@ export interface TemplateSessionBridge {
   }>
 }
 
-/** { templateJson } 外壳统一解包成裸模板（与 print_render_preview 口径一致） */
+/** { templateJson } 外壳统一解包成裸模板 */
 export function unwrapTemplateShell(raw: unknown): unknown {
   if (raw && typeof raw === 'object' && !Array.isArray(raw)
     && Object.prototype.hasOwnProperty.call(raw, 'templateJson')) {

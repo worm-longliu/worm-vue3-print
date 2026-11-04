@@ -3,8 +3,8 @@
 import { timingSafeEqual, createHash } from 'node:crypto'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import {
-  createPrintMcpServer,
-  createDesktopPrintTools,
+  createDesktopPrintMcpServer,
+  TOOLS,
   createTemplateSessionTools,
   type TemplateSessionBridge,
 } from '@worm-vue3-print/mcp'
@@ -81,9 +81,9 @@ export function createMcpRequestHandler(deps: McpHostDeps) {
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
     })
-    const server = createPrintMcpServer({
+    const server = createDesktopPrintMcpServer({
       tools: [
-        ...createDesktopPrintTools(),
+        ...TOOLS,
         ...createTemplateSessionTools(deps.templateSessions),
       ],
       name: MCP_SERVER_NAME,

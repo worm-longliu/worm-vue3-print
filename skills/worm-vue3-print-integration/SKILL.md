@@ -41,7 +41,7 @@ description: 用于在 Vue 3 项目中集成 @worm-vue3-print/core 或 @worm-vue
 3. 与用户确认打印链路（A / B / C / 并存）。
 4. 按 [接入 API](references/integration-api.md) 引入组件与样式，再按 [全栈宿主集成指南](references/host-integration-guide.md) 落地模板管理、设计器页、业务打印入口与后端契约。
 5. 用一条最小链路验证：设计器保存 JSON → 预览渲染 → 浏览器打印；链路 B 再加「模板 JSON + printData → 后端 → render 服务 → PDF」；链路 C 再加「模板 JSON + printData → 本机客户端 → 物理打印机出纸」。
-6. 需要 AI 读写当前画布时，按 [宿主 MCP 集成](references/mcp-host-integration.md) 接入实时会话或嵌入宿主 Node MCP。
+6. 需要 AI 读写当前画布时，按 [宿主 MCP 集成](references/mcp-host-integration.md) 接入桌面客户端实时会话。
 7. 出现样式、类型、依赖解析、打包、PDF 或 MCP 会话问题时，按 [故障排查](references/troubleshooting.md) 定位，不要先改用户业务代码。
 
 ## 4. 宿主最小清单速查

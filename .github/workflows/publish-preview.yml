@@ -1,0 +1,141 @@
+name: Publish npm preview
+
+# 预览版专用：四个发布包全部以 dist-tag next 发布，latest 不动。
+# 与 publish-npm.yml（正式版 latest）互不影响；不要在本工作流里改用 latest。
+# 触发：
+#   gh workflow run publish-preview.yml -f tag=v1.4.4 -f dry_run=true
+# 先 dry_run 验证，确认后再 dry_run=false 真正上传。
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要发布的版本标签（如 v1.4.4，需已推送到远端）'
+        required: true
+        type: string
+      dry_run:
+        description: '只打包干跑，不上传'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-preview-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建 core、canvas、common 与 skills
+        run: |
+          npm run build -w @worm-vue3-print/core
+          npm run build -w @worm-vue3-print/canvas
+          npm run build -w @worm-vue3-print/common
+          npm run build -w @worm-vue3-print/skills
+
+      - name: 校验标签与包版本一致
+        run: |
+          TAG="${{ inputs.tag }}"
+          TAG="${TAG#v}"
+          for pkg in core canvas common skills; do
+            VER=$(node -p "require('./packages/print-$pkg/package.json').version")
+            if [ "$VER" != "$TAG" ]; then
+              echo "::error::print-$pkg 版本 $VER 与标签 $TAG 不一致"
+              exit 1
+            fi
+          done
+          echo "标签与四个包版本一致：$TAG"
+
+      - name: 验证 npm 登录态
+        run: npm whoami --registry=https://registry.npmjs.org
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # canvas 依赖 core，必须先发 core；common 同理排在 core 之后
+      - name: 发布 @worm-vue3-print/core（next）
+        working-directory: packages/print-core
+        run: |
+          EXTRA=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then EXTRA="--dry-run"; fi
+          npm publish --tag next --access public --registry=https://registry.npmjs.org $EXTRA
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 发布 @worm-vue3-print/canvas（next）
+        working-directory: packages/print-canvas
+        run: |
+          EXTRA=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then EXTRA="--dry-run"; fi
+          npm publish --tag next --access public --registry=https://registry.npmjs.org $EXTRA
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 发布 @worm-vue3-print/common（next）
+        working-directory: packages/print-common
+        run: |
+          EXTRA=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then EXTRA="--dry-run"; fi
+          npm publish --tag next --access public --registry=https://registry.npmjs.org $EXTRA
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 发布 @worm-vue3-print/skills（next）
+        working-directory: packages/print-skills
+        run: |
+          EXTRA=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then EXTRA="--dry-run"; fi
+          npm publish --tag next --access public --registry=https://registry.npmjs.org $EXTRA
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 复查 dist-tags（dry_run 时跳过）
+        if: inputs.dry_run != true
+        run: |
+          VER="${{ inputs.tag }}"
+          VER="${VER#v}"
+          for pkg in core canvas common skills; do
+            TAGS=$(npm view @worm-vue3-print/$pkg dist-tags --json --registry=https://registry.npmjs.org)
+            echo "== @worm-vue3-print/$pkg =="
+            echo "$TAGS"
+            NEXT=$(printf '%s' "$TAGS" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).next || ''")
+            if [ "$NEXT" != "$VER" ]; then
+              echo "::error::$pkg 的 next=$NEXT，期望 $VER"
+              exit 1
+            fi
+            if [ "$pkg" != "skills" ]; then
+              LATEST=$(printf '%s' "$TAGS" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).latest || ''")
+              if [ "$LATEST" = "$VER" ]; then
+                echo "::error::$pkg 的 latest 被 写入 $VER，预览版不得污染 latest"
+                exit 1
+              fi
+            fi
+          done
+          # skills 首次发布会自动生成 latest，按预览意图移除，只保留 next
+          TAGS=$(npm view @worm-vue3-print/skills dist-tags --json --registry=https://registry.npmjs.org)
+          LATEST=$(printf '%s' "$TAGS" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).latest || ''")
+          if [ "$LATEST" = "$VER" ]; then
+            echo "移除 skills 首发自动生成的 latest=$LATEST（保留 next）"
+            npm dist-tag rm @worm-vue3-print/skills latest --registry=https://registry.npmjs.org
+            echo "== skills 移除 latest 后 =="
+            npm view @worm-vue3-print/skills dist-tags --json --registry=https://registry.npmjs.org
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

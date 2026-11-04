@@ -6,7 +6,7 @@
 | --- | --- |
 | `worm-vue3-print-integration` | Vue 3 + canvas/core 集成、三条打印链路、宿主 MCP 实时画布 |
 | `worm-vue3-print-common` | Vue 2.7、React、jQuery/原生宿主、Custom Element、宿主 MCP |
-| `worm-vue3-print-mcp` | stdio/桌面 MCP、模板生成与校验、实时会话、离线模板脚本 |
+| `worm-vue3-print-mcp` | 桌面 MCP、实时画布模板生成与校验 |
 
 ## npx 安装
 

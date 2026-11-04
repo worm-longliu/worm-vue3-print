@@ -1,6 +1,4 @@
 import { z } from 'zod'
-import { join } from 'node:path'
-import { tmpdir } from 'node:os'
 import {
   ELEMENT_KINDS,
   EXPRESSION_FUNCTIONS,
@@ -14,9 +12,6 @@ import {
 } from '@worm-vue3-print/contract'
 import type { TemplateData } from '@worm-vue3-print/core/designer'
 import type { DraftSpec } from '@worm-vue3-print/contract'
-import { readConfig } from './config.js'
-import { requestRenderPdf } from './render-client.js'
-import { resolveTemplateSource } from './template-source.js'
 import type { ToolDef, ToolResult } from './tool-types.js'
 import { asError, asText } from './tool-types.js'
 
@@ -25,23 +20,11 @@ function schemaOf<T extends z.ZodTypeAny>(schema: T): Record<string, unknown> {
   return z.toJSONSchema(schema, { target: 'draft-2020-12' }) as Record<string, unknown>
 }
 
-const templateJsonField = z.unknown().optional().describe(
-  '打印模板 JSON，两种形态都接受：单页 TemplateData（顶层有 paperSize/orientation/margins/elements），'
+const templateJsonField = z.record(z.string(), z.unknown()).describe(
+  '打印模板 JSON：单页 TemplateData（顶层有 paperSize/orientation/margins/elements），'
   + '或多页 wrapper { version: 1, pages: [TemplateData, ...] }，或 { templateJson, printData } 外壳。'
-  + '坐标与尺寸单位 mm（fontSize/lineHeight/borderWidth 为 pt），新模板请写 unit: "mm"。'
-  + '与 templatePath 二选一，二者都给时以本字段为准。',
+  + '坐标与尺寸单位 mm（fontSize/lineHeight/borderWidth 为 pt），新模板请写 unit: "mm"。',
 )
-
-const templatePathField = z.string().optional().describe(
-  '本地模板文件路径（.json，≤5MB，UTF-8）。整份模板动辄上万字符，'
-  + '用路径比把 JSON 塞进参数省上下文；与 templateJson 二选一。',
-)
-
-/** 三个吃模板的工具共用的入参对；两者都缺时由 resolveTemplateSource 给出可行动文案 */
-const templateSourceFields = {
-  templateJson: templateJsonField,
-  templatePath: templatePathField,
-}
 
 /** 纯计算工具：不落文件、不出网，宿主可放心免审批 */
 const PURE_ANNOTATIONS = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const
@@ -71,11 +54,10 @@ export const TOOLS: ToolDef[] = [
       + 'level=error 必须修（渲染会出错或被拒）；level=warning 是存量兼容提示（废弃键 title/tableMode/fields、'
       + '契约未知键、缺 unit），不必强行清零。修完后重跑本工具直到 ok=true。',
     annotations: { title: '校验模板契约', ...PURE_ANNOTATIONS },
-    inputSchema: schemaOf(z.object(templateSourceFields)),
+    inputSchema: schemaOf(z.object({ templateJson: templateJsonField })),
     handler: async (args): Promise<ToolResult> => {
-      const src = await resolveTemplateSource(args as { templateJson?: unknown; templatePath?: string })
-      if (!src.ok) return asError(src.message)
-      const r = validateTemplateJson(src.template)
+      if (!Object.hasOwn(args, 'templateJson')) return asError('缺少必填参数 templateJson')
+      const r = validateTemplateJson(args.templateJson)
       const errorCount = r.issues.filter(i => i.level === 'error').length
       return asText({
         ok: r.ok,
@@ -120,19 +102,18 @@ export const TOOLS: ToolDef[] = [
       + '侵入页边距 OUT_OF_CONTENT_AREA（warning）、零尺寸 ZERO_SIZE_ELEMENT、表格无行 TABLE_MISSING_ROWS、'
       + '流式列表无列数 FLOW_MISSING_COLUMNS、列宽与元素宽不符 TABLE_COL_WIDTH_MISMATCH、同区交叠 ELEMENT_OVERLAP、'
       + '页眉页脚带装不下 BAND_TOO_SMALL。表格真实行高、长文本换行占位、真实页数一律不在这里判，'
-      + '需要那些数字请调 print_render_preview。',
+      + '需要那些数字请在设计器或打印预览中确认。',
     annotations: { title: '版面静态体检', ...PURE_ANNOTATIONS },
     inputSchema: schemaOf(z.object({
-      ...templateSourceFields,
+      templateJson: templateJsonField,
       toleranceMm: z.number().positive().max(5).optional().describe(
         '几何容差（mm），默认 0.2：贴边与浮点误差不算越界。',
       ),
     })),
     handler: async (args): Promise<ToolResult> => {
-      const a = args as { templateJson?: unknown; templatePath?: string; toleranceMm?: number }
-      const src = await resolveTemplateSource(a)
-      if (!src.ok) return asError(src.message)
-      const tpl = src.template as { pages?: unknown[] }
+      const a = args as { templateJson?: unknown; toleranceMm?: number }
+      if (!Object.hasOwn(args, 'templateJson')) return asError('缺少必填参数 templateJson')
+      const tpl = a.templateJson as { pages?: unknown[] }
       if (Array.isArray(tpl.pages)) {
         // 多页模板逐页体检，路径带页号，避免 agent 只知道「有一页有问题」
         const per = tpl.pages.map((page, i) => ({
@@ -194,58 +175,5 @@ export const TOOLS: ToolDef[] = [
       })
     },
   },
-  {
-    name: 'print_render_preview',
-    description: '调 print-render 渲染服务出真实 PDF（真分页、真行高），返回本地 pdfPath。'
-      + '送渲染前会先跑一遍契约校验，不合法直接回 { stage: "validate" } 而不浪费一次浏览器渲染。'
-      + '需要环境变量 PRINT_RENDER_BASE_URL（如 http://127.0.0.1:3001）与 RENDER_API_KEY（与服务端同名变量一致）；'
-      + '未配置时返回降级说明。本工具不重复实现排版逻辑。',
-    // 出网打渲染服务 + 落临时文件，不能标只读
-    annotations: { title: '渲染真实 PDF', readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-    inputSchema: schemaOf(z.object({
-      ...templateSourceFields,
-      printData: z.union([
-        z.record(z.string(), z.unknown()),
-        z.array(z.record(z.string(), z.unknown())),
-      ]).optional().describe(
-        '业务数据。对象 = 单份；非空对象数组 = 批量（长度即份数，上限 500）。'
-        + '表格/列表的数据源是数组里的字段路径，不是数组本身。',
-      ),
-      baseUrl: z.string().optional().describe('图片相对路径的基址（服务端拼成绝对 URL）'),
-      fontBaseUrl: z.string().optional().describe('字体相对路径基址；缺省回落 baseUrl'),
-      paperHeightMm: z.number().positive().optional().describe('连续纸显式纸高（mm），逃生门用'),
-    })),
-    handler: async (args): Promise<ToolResult> => {
-      const a = args as {
-        templateJson?: unknown
-        templatePath?: string
-        printData?: unknown
-        baseUrl?: string
-        fontBaseUrl?: string
-        paperHeightMm?: number
-      }
-      const src = await resolveTemplateSource(a)
-      if (!src.ok) return asError(src.message)
-      // 先过契约门：把明显不合法的模板送给渲染服务只是浪费一次浏览器渲染
-      const precheck = validateTemplateJson(src.template)
-      if (!precheck.ok) {
-        return asText({ stage: 'validate', ok: false, issues: precheck.issues })
-      }
-      const cfg = readConfig()
-      const pdfPath = join(tmpdir(), `worm-print-preview-${Date.now()}.pdf`)
-      const r = await requestRenderPdf(cfg, {
-        templateJson: src.template,
-        ...(a.printData !== undefined ? { printData: a.printData } : {}),
-        ...(a.baseUrl ? { baseUrl: a.baseUrl } : {}),
-        ...(a.fontBaseUrl ? { fontBaseUrl: a.fontBaseUrl } : {}),
-        ...(a.paperHeightMm ? { paperHeightMm: a.paperHeightMm } : {}),
-      }, pdfPath)
-      if (!r.ok) return asError(r.message)
-      return asText({
-        ok: true,
-        pdfPath,
-        hint: '读 PDF 页数与目视结果核对分页；静态体检不含真实行高，这里才是准数。',
-      })
-    },
-  },
+
 ]
