@@ -35,6 +35,7 @@
 - 以当前代码为准核对 `PrintDesigner`、`PrintHtmlPreview` 的 props、事件和 expose，包括 `show-help`、`validateTemplate()`。
 - 安装说明要求 core 与 canvas 使用相同版本，不用容易过期的“当前发布版本”硬编码代替版本核对。
 - 只保留 Vue 3 宿主需要的业务字段、模板保存与校验说明，不复制 MCP 技能的完整模板生成教程。
+- 增加宿主端集成 MCP 参考文档，覆盖桌面客户端实时画布接入和宿主 Node 进程编程式嵌入两种方案。
 
 ### common 集成技能
 
@@ -43,6 +44,28 @@
 - 明确 Custom Element 的 property/attribute 注入、`CustomEvent.detail`、事件解绑、块级宽高和 `validateTemplate()`。
 - 明确 Shadow DOM 与 light DOM 的样式差异，以及 `@worm-vue3-print/common/browser`、`./style.css` 公开子路径。
 - 保留“实验性、不建议生产；Vue 3 优先 canvas”的约束。
+- 增加与 Vue 3 技能同等能力、但使用 Custom Element API 的宿主端 MCP 集成参考文档。
+
+### Vue 3 与 common 的宿主端 MCP 集成
+
+两个技能各自附带自包含的 `references/mcp-host-integration.md`，不依赖用户另行安装 MCP 技能。按宿主目标提供两种方案：
+
+1. **桌面客户端实时画布方案（优先）**：宿主已有 MCP 客户端，且希望 AI 读写用户正在编辑的模板。宿主页面通过 `@worm-vue3-print/core/client` 的 `PrintClient` 注册 `template.get` / `template.apply` 处理器，并在连接后 `attachTemplate`；桌面客户端向 MCP 客户端暴露本机 HTTP 服务。
+2. **宿主 Node 进程嵌入方案**：宿主有自建 Agent 或 MCP 网关。通过源码/workspace 中的 private 包 `@worm-vue3-print/mcp` 使用无副作用库入口 `createPrintMcpServer`，由宿主选择 transport；需要自有会话源时注入 `TemplateSessionBridge`。不得把该 private 包描述成可直接从 npm 安装。
+
+实时画布接入必须说明：
+
+- `template.get` 返回实时 `templateJson`、内容 `revision`，并按宿主已有数据补充 `fields` / `printData`。
+- `template.apply` 校验 `baseRevision`、封禁元素和模板结构；成功后写回画布、重新读取实际快照并返回新 revision。
+- `REVISION_CONFLICT` 不得自动覆盖；写回应形成一次设计器历史记录，页面卸载时 detach 并释放监听。
+- MCP 配对 token 与模型密钥职责分离；模型密钥不得进入前端 bundle。仓库不虚构远程 MCP、OAuth 或服务端代理能力。
+
+框架接入差异：
+
+- Vue 3：从 `designerRef.getTemplateJson()` 读取；通过赋予新的 `initial-template` 引用写回，`nextTick()` 后重读；在组件挂载/卸载时启动和停止会话。
+- common：从 `print-designer.getTemplateJson()` 读取；通过 `el.template = 深拷贝模板` 写回并等待元素更新后重读；字段等复杂值使用 property；按 Vue 2.7、React、jQuery 各自生命周期清理会话。
+
+技能只提供与当前代码一致的接入骨架和验收步骤，不把 demo 中未抽取的 `createTemplateSession` 描述成库公开 API。
 
 ### MCP 协作技能
 
@@ -135,6 +158,7 @@ npx @worm-vue3-print/skills worm-vue3-print-mcp \
 - 对迁移后的示例执行 Python 构建和校验脚本。
 - 检查旧 `print-template-json` 路径引用已更新。
 - 重跑 stdio 握手、工具列表和受影响的 MCP 测试。
+- 对照真实公开 API 检查 Vue 3/common 的宿主 MCP 示例，并运行 demo 或相关模板会话测试验证读写、revision 冲突与清理流程。
 
 ### 项目回归
 
