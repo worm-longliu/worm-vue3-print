@@ -258,7 +258,7 @@ if (!layout.ok) console.warn(layout.findings)
 - **表达式用 `${total}` 不生效？** 语法是 `{total}`，`${...}` 会打出字面 `$` 且校验必失败；系统变量是 `printDate/printTime/pageIndex/totalPages`，没有 `pageNo`/`pageCount`。
 - **单位换算总踩坑？** 坐标/宽高是 mm，`fontSize`/`lineHeight`/`borderWidth` 是 pt，条码 `barWidth` 等是模块数（无量纲）。新模板记得写 `unit: 'mm'`。
 - **想给团队远程共享一个 MCP 服务？** 当前设计只支持本地 stdio 与客户端本机 HTTP，无 OAuth；需要远程请自行加代理层。
-- **宿主 AI 还想要「生成模板」的提示词知识？** 仓库 `skills/` 目录自带两个可分发技能：`print-template-json`（打印模板 JSON 生成与校验）与 `worm-vue3-print-integration`（库集成指引），可直接装进支持技能的 agent。
+- **宿主 AI 还想要技能指引？** 仓库只分发 `worm-vue3-print-integration`（Vue 3）、`worm-vue3-print-common`（跨框架宿主）与 `worm-vue3-print-mcp`（MCP + 模板生成/校验）三个技能，可用 `npx @worm-vue3-print/skills <技能名>` 安装到当前项目的 `.agents/skills/`；目录与参数见 `skills/README.md`。
 
 ## 九、验收
 

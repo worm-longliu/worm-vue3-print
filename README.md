@@ -40,12 +40,13 @@ GitHub Pages：**https://worm-longliu.github.io/worm-vue3-print/**
 
 ```
 worm-vue3-print/
-├── packages/                  # 工作区包（npm workspaces；core / canvas / common 发布到 npm，contract 与 mcp 暂不发布）
+├── packages/                  # 工作区包（npm workspaces；core / canvas / common / skills 发布到 npm，contract 与 mcp 暂不发布）
 │   ├── print-core/            # @worm-vue3-print/core   模板表达式引擎 + 同构渲染管线（含浏览器端静默打印 SDK 子路径 /client）
 │   ├── print-canvas/          # @worm-vue3-print/canvas Vue 3 可视化设计器画布
 │   ├── print-common/          # @worm-vue3-print/common 通用宿主适配版设计器（实验性 · 未完全稳定测试；支持多种运行时框架；生产请用 print-canvas）
 │   ├── print-contract/        # @worm-vue3-print/contract 模板契约层：zod schema / 表达式校验 / 静态版面体检 / 草稿生成（private，不发布 npm）
 │   ├── print-mcp/             # @worm-vue3-print/mcp     本地 MCP 连接器：stdio 供宿主 AI agent 直连；桌面客户端复用其工具在 /mcp 提供 HTTP 形态（private，不调模型、不持密钥）
+│   ├── print-skills/          # @worm-vue3-print/skills   使用技能的 npx/Git 安装器（Node.js >=20，无运行时依赖）
 ├── clients/
 │   └── print-client/          # @worm-vue3-print/print-client Electron 静默打印桌面客户端（private，不发布 npm）
 ├── services/
@@ -56,7 +57,7 @@ worm-vue3-print/
 │   ├── 中文/                  #   中文文档（指南 / 接口 / 示例 / 文档总览 / CHANGELOG）
 │   ├── en/                    #   英文文档（首页 Overview / CHANGELOG，AI 生成并声明）
 │   └── superpowers/           #   设计文档（specs）与实施计划（plans）
-├── skills/                    # opencode 集成技能（worm-vue3-print-integration，含对接指南）
+├── skills/                    # 三个可分发使用技能（Vue 3 / common / MCP）与 npx 安装说明
 ├── scripts/                   # 仓库级脚本（打印架构守卫、产物版权头注入）
 ├── .github/
 │   ├── workflows/             # CI / 自动发布工作流
@@ -84,7 +85,7 @@ worm-vue3-print/
 | `demo` | Vue 3 演示项目：设计器接入（`App.vue`）、静默打印集成、渲染客户端封装（`render-client.ts`）、业务字段（`business.ts`）、内置模板 JSON（`template-purchase-receipt.json`），端口 9303 |
 | `demo-common` | ⚠️ **实验性示例 · 未完全稳定测试**（对应上方实验性的 `print-common`）：通用宿主适配、**支持多种运行时框架**的多宿主集成示例：`apps/vue3`（9331，SFC）、`apps/vue2`（9332，SFC + Options API）、`apps/react`（9335，hooks）走 **NPM 包接入**；`apps/jquery`（9334）走 **JS + CSS 直挂**（无打包器、业务代码不 import 插件，只用 `window.WormPrintCommon` + `$`）。四个工程彼此独立（各有 `package.json` / lock / node_modules），**不共用任何壳层封装**——设计器挂载、`fields`/`template` 的 property 注入、`uploadImage` 宿主回调、`save`/`preview`/`help`/`dblclick-element`/`dblclick-cell` 事件、浏览器渲染预览与打印、服务端 PDF、客户端静默打印、批量份数都写在各自的文件里，照抄一个工程即可落到自己项目；示例模板/字段/数据也各自带一份（`src/templates.js`）。四个页面的界面版式与 `demo/` **完全一致**：同一份顶栏动作、同一个全屏打印预览层、同一套「打印输出 / 加载示例 / 自定义字段与数据」弹窗，样式由 `scripts/sync-demo-styles.mjs`（`npm run styles:demo-common`）从 `demo/` 逐字抽取成各工程同 MD5 的 `src/styles/demo-ui.css`，工程内不再写私有布局样式。`index.html` 是四入口静态导航页，`scripts/dev-all.mjs` / `install-all.mjs` 一次拉起或安装四个工程，`scripts/verify-demo.mjs` 做 32 项 UI 级验收（按 demo 类名逐项判定，含防「DOM 全绿但布局塌陷」的尺寸断言） |
 | `docs` | 文档：`中文/`（指南、接口、示例、文档总览、CHANGELOG，为权威版本）、`en/`（英文首页 Overview 与 CHANGELOG，由 AI 生成并在文内声明），`superpowers/` 为设计文档（specs）与实施计划（plans） |
-| `skills` | opencode 集成技能 `worm-vue3-print-integration`：往宿主项目接入 core / canvas / 静默打印的规范与指南（`SKILL.md` + `references/`） |
+| `skills` | 三个可分发使用技能：`worm-vue3-print-integration`（Vue 3）、`worm-vue3-print-common`（跨框架）、`worm-vue3-print-mcp`（MCP 与模板生成）；通过 `npx @worm-vue3-print/skills <技能名>` 安装，详见 `skills/README.md` |
 | `scripts` | 仓库级 Node 脚本：`check-print-architecture.mjs`（三端重复实现守卫，`npm run lint:print-architecture`）、`inject-license-banner.mjs`（发布包类型声明补版权头） |
 | `.github/workflows` | CI（构建 / 测试）与自动发布工作流 |
 | `package.json` | 根清单：workspaces 聚合、构建 / 测试 / 打包根命令（`npm run pack:client` 等） |
@@ -96,10 +97,11 @@ worm-vue3-print/
 | `@worm-vue3-print/core` | `packages/print-core` | npm | 模板表达式引擎与同构渲染管线（数据绑定 / HTML 生成 / 分页，含连续纸探针推导），纯 TypeScript，无 Vue、无宿主依赖，浏览器与 Node 均可运行；浏览器端静默打印 SDK 经子路径 `@worm-vue3-print/core/client` 提供 |
 | `@worm-vue3-print/canvas` | `packages/print-canvas` | npm | Vue 3 可视化设计器画布（原生控件，无 Element Plus；含 `PrintDesigner`、`PrintHtmlPreview` 组件） |
 | `@worm-vue3-print/common` | `packages/print-common` | npm 正式版（`latest`）· **实验性** | ⚠️ 通用宿主适配设计器 `<print-designer>`（零框架运行时，实现为原生 Custom Element + Shadow DOM）：**支持多种运行时框架**，功能与样式对齐 `@worm-vue3-print/canvas`，供 React / Vue2 / jQuery 等非 Vue3 宿主接入（详见包内 `PARITY.md`）。**按正式版本号发布，安装直接 `npm i @worm-vue3-print/common`**；npm 主页面含 Vue 3 / Vue 2 / React 用法示例；**尚在实验阶段、未完全稳定测试，不建议用于生产**，Vue 3 项目请继续使用 `@worm-vue3-print/canvas`（成熟方案） |
+| `@worm-vue3-print/skills` | `packages/print-skills` | npm | 三个使用技能的 npx/Git 安装器：显式技能名，支持 `--repo`、`--ref`、`--dir`、`--force`，默认安装到项目 `.agents/skills` |
 | `@worm-vue3-print/render` | `services/print-render` | 内部 | 基于 Playwright（Headless Chromium）的服务端 PDF 渲染微服务，Docker 部署；与浏览器预览、桌面客户端共用同一份渲染管线，保证三端出纸一致 |
 | `@worm-vue3-print/print-client` | `clients/print-client` | 内部 | 跨平台静默打印桌面客户端（Electron，回环 WebSocket + core 同构渲染 + `webContents.print` 静默出纸） |
 
-> 发布到 npm 的正式包为 `core`、`canvas` 与 `common`：core/canvas 由 `npm run publish:npm` 按标签发布；`@worm-vue3-print/common` 与主线同号发布正式版（dist-tag `latest`，当前 `1.4.4`），但保留实验性声明，发布走 `npm run publish:common` 或手动触发 `publish-common.yml`（流程见 [CONTRIBUTING.md](CONTRIBUTING.md)）；`render` 与 `print-client` 为私有工作区包，分别以 Docker 镜像和安装包形式分发，客户端安装包挂在 [GitHub Releases](https://github.com/worm-longliu/worm-vue3-print/releases)（见下文[下载客户端安装包](#下载客户端安装包)）。示例 `demo-common` 不在工作区内，仍以 `file:` 依赖消费本仓库的 common；该包**尚未完成稳定性测试**，不建议应用到生产，Vue 3 项目请使用 `@worm-vue3-print/canvas`。
+> 发布到 npm 的正式包为 `core`、`canvas`、`common` 与 `skills`：core/canvas/skills 由 `npm run publish:npm` 按标签发布；`@worm-vue3-print/common` 与主线同号发布正式版（dist-tag `latest`，当前 `1.4.4`），但保留实验性声明，发布走 `npm run publish:common` 或手动触发 `publish-common.yml`（流程见 [CONTRIBUTING.md](CONTRIBUTING.md)）；`render` 与 `print-client` 为私有工作区包，分别以 Docker 镜像和安装包形式分发，客户端安装包挂在 [GitHub Releases](https://github.com/worm-longliu/worm-vue3-print/releases)（见下文[下载客户端安装包](#下载客户端安装包)）。示例 `demo-common` 不在工作区内，仍以 `file:` 依赖消费本仓库的 common；该包**尚未完成稳定性测试**，不建议应用到生产，Vue 3 项目请使用 `@worm-vue3-print/canvas`。
 
 ## 功能特性
 

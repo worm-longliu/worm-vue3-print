@@ -43,14 +43,14 @@ jobs:
         run: |
           TAG="${{ inputs.tag }}"
           TAG="${TAG#v}"
-          for pkg in core canvas; do
+          for pkg in core canvas skills; do
             VER=$(node -p "require('./packages/print-$pkg/package.json').version")
             if [ "$VER" != "$TAG" ]; then
               echo "::error::print-$pkg 版本 $VER 与标签 $TAG 不一致"
               exit 1
             fi
           done
-          echo "标签与两个包版本一致：$TAG"
+          echo "标签与三个包版本一致：$TAG"
 
       # 顺带自动创建 GitHub 发行版（正文见 .github/release/notes.md，无需手工建）
       - name: 创建 GitHub Release

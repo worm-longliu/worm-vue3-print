@@ -4,7 +4,7 @@
   "description": "从 Git 仓库安装 worm-vue3-print 使用技能",
   "type": "module",
   "bin": {
-    "worm-vue3-print-skills": "./bin/cli.js"
+    "worm-vue3-print-skills": "bin/cli.js"
   },
   "files": [
     "bin",

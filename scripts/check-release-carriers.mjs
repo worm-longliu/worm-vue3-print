@@ -37,17 +37,18 @@ const coreVer = JSON.parse(read('packages/print-core/package.json')).version
 const canvasVer = JSON.parse(read('packages/print-canvas/package.json')).version
 const clientVer = JSON.parse(read('clients/print-client/package.json')).version
 const commonVer = JSON.parse(read('packages/print-common/package.json')).version
+const skillsVer = JSON.parse(read('packages/print-skills/package.json')).version
 
 const HELP = [
   'packages/print-canvas/src/help-content/changelog.ts',
   'packages/print-common/src/shell/help-content/changelog.ts',
 ]
 
-// 1) 版本号一致性：主线五包同号（common 已转正式版，随主线同号）
-const mainLine = [pkgVer, coreVer, canvasVer, clientVer, commonVer]
+// 1) 版本号一致性：主线六包同号（common、skills 随主线同号）
+const mainLine = [pkgVer, coreVer, canvasVer, clientVer, commonVer, skillsVer]
 if (new Set(mainLine).size !== 1) {
-  add('FAIL', `主线版本号不同号：root=${pkgVer} core=${coreVer} canvas=${canvasVer} client=${clientVer} common=${commonVer}`, '按升版文件集把五包同号后再发')
-} else add('PASS', `主线版本号一致 = ${coreVer}（含 common）`, '')
+  add('FAIL', `主线版本号不同号：root=${pkgVer} core=${coreVer} canvas=${canvasVer} client=${clientVer} common=${commonVer} skills=${skillsVer}`, '按升版文件集把六包同号后再发')
+} else add('PASS', `主线版本号一致 = ${coreVer}（含 common、skills）`, '')
 
 // 2) CHANGELOG 与版本号的关系
 if (mode === 'pre') {

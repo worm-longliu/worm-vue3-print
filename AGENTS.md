@@ -51,11 +51,12 @@
 - 工作区包：
   - `packages/print-core`（`@worm-vue3-print/core`）：模板表达式引擎、同构渲染管线与框架无关的设计器内核（纯 TypeScript，无 Vue/React 依赖）。根入口导出引擎与渲染能力，`/designer`、`/browser`、`/client`（静默打印浏览器端 SDK）为子路径导出。
   - `packages/print-canvas`（`@worm-vue3-print/canvas`）：Vue 3 可视化设计器画布（原生控件，不依赖 Element Plus 等 UI 组件库，无宿主业务依赖）。
+  - `packages/print-skills`（`@worm-vue3-print/skills`）：三个使用技能的 npx/Git 安装器；只读取远程仓库 `skills/`，不分发 `.agents/` 开发技能。
   - `services/print-render`（`@worm-vue3-print/render`）：基于 Playwright（Headless Chromium）的 PDF/截图打印渲染微服务，Docker 部署。
   - `clients/print-client`（`@worm-vue3-print/print-client`）：跨平台静默打印桌面客户端（Electron，本地 WebSocket + core 同构渲染）。
 - 其他目录：`demo`（Vite 集成示例）、`docs`（中英文档）、`skills`（集成技能）、`.release`（发布相关）。
 - 边界约定：`core`（纯逻辑）→ `canvas`（设计器 UI）→ 宿主应用；SDK、渲染服务与桌面客户端只依赖 `core`，分层清晰，改动不得破坏该边界。
-- 开发命令：`npm install` / `npm run build` / `npm test`；发布到 npm 的正式包为 `core`、`canvas` 与 `common` 三个（`publish:npm` / `publish:common`）。`common` 与主线同号发布正式版（dist-tag `latest`），但 npm 主页面与 README 必须保留实验性声明、不建议生产；发布走 `publish:common` 或手动 `publish-common.yml`，版本随主线同号。
+- 开发命令：`npm install` / `npm run build` / `npm test`；发布到 npm 的正式包为 `core`、`canvas`、`common` 与 `skills` 四个（`publish:npm` / `publish:common` / `publish:skills`）。`common` 与主线同号发布正式版（dist-tag `latest`），但 npm 主页面与 README 必须保留实验性声明、不建议生产；发布走 `publish:common` 或手动 `publish-common.yml`，版本随主线同号。
 
 ## 六、协作约定
 

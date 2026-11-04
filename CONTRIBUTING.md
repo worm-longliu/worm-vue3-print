@@ -16,15 +16,15 @@ npm test
 ## 分支与提交
 
 - 遵循 Conventional Commits：`fix:`、`feat:`、`refactor:`、`docs:`、`chore:`、`test:` 等。
-- 改动请在提交前运行 `npm run build` 与 `npm test`（根测试覆盖 core + canvas）。
+- 改动请在提交前运行 `npm run build` 与 `npm test`（根命令覆盖各 workspace，并包含技能与安装器检查）。
 - 涉及渲染管线的改动可在同仓库验证 `services/print-render`（两遍渲染逻辑在 core，render 经 workspace 软链消费 `@worm-vue3-print/core`）：先 `npx playwright install chromium`，再 `npm run test -w @worm-vue3-print/render`。
 
 ## 发布流程
 
 ### 方式一：GitHub Actions 自动发布（推荐）
 
-推送 `v` 开头的标签即触发 `.github/workflows/release.yml`，自动执行：
-构建 → 测试 → 校验标签与两个包版本一致 → 先发布 core 再发布 canvas → 创建 GitHub Release。
+先推送 `v` 开头的标签，再手动触发 `.github/workflows/release.yml` 与 `.github/workflows/publish-npm.yml`：
+Release 执行构建、测试、标签与 core/canvas/skills 版本校验并创建 GitHub Release；npm 发布按 core → canvas → skills 顺序执行。
 
 **前置条件（仅首次配置）：**
 
@@ -34,12 +34,13 @@ npm test
 **发版 checklist：**
 
 ```bash
-# 1. 更新四个包的版本号（必须一致：根包、print-core、print-canvas、demo）
-#    print-common 与主线同号，也在此同步（发布走方式三的 publish:common）
+# 1. 更新主线版本号（根包、print-core、print-canvas、print-client、print-common、print-skills 必须一致）
+#    print-common 发布走方式三，skills 随 core/canvas 走 publish:npm
 #    可用命令，例如发布 1.2.3：
 npm version 1.2.3 -w @worm-vue3-print/core
 npm version 1.2.3 -w @worm-vue3-print/canvas
-# 根包与 demo/package.json 版本号同步手动修改
+npm version 1.2.3 -w @worm-vue3-print/skills
+# 根包、print-client、print-common 与 lock 条目同步修改
 
 # 2. 同步更新记录（三处缺一不可）
 #    - docs/中文/CHANGELOG.md
@@ -80,12 +81,13 @@ npm login --registry=https://registry.npmjs.org
 npm run publish:npm
 ```
 
-等价于先 `build + test`，再按 core → canvas 顺序发布。也可分步执行：
+等价于先 `build + test`，再按 core → canvas → skills 顺序发布。也可分步执行：
 
 ```bash
-# 1. 版本号（遵循语义化版本，core 与 canvas 保持一致）
+# 1. 版本号（遵循语义化版本，core、canvas 与 skills 保持一致）
 npm version patch -w @worm-vue3-print/core
 npm version patch -w @worm-vue3-print/canvas
+npm version patch -w @worm-vue3-print/skills
 
 # 2. 构建产物（必须先 core 后 canvas，保证全新环境可解析到 core 的 dist）
 npm run build
@@ -93,6 +95,7 @@ npm run build
 # 3. 发布（需 npm 登录且拥有 @worm-vue3-print scope）
 npm publish -w @worm-vue3-print/core
 npm publish -w @worm-vue3-print/canvas
+npm publish -w @worm-vue3-print/skills
 ```
 
 > 范围说明：渲染微服务为本仓库私有 workspace 包 `services/print-render`（`@worm-vue3-print/render`），不发布 npm。`packages/print-common` 也发布 npm：与主线同号发正式版，但保留实验性声明，见方式三。
@@ -121,7 +124,7 @@ npm run publish:common:check
 - **本机默认 registry 是 `registry.npmmirror.com`**（2026-10-26 实测：不带 `--registry` 的 `npm publish --dry-run` 显示 `Publishing to https://registry.npmmirror.com`）——手敲发布必须显式带 `--registry=https://registry.npmjs.org`，`publish:npm` 与 `publish:common` 里已经写死；
 - **`publishConfig.tag` 不是兜底**（实测 npm 11.19：不带 `--tag` 的 dry-run 仍报 `with tag latest`，而 `publishConfig.access/registry` 确实生效）——预发布不要手敲 `npm publish`，走 `publish:common:beta`；
 - **GitHub Actions 只能 publish，改 dist-tag 需本机 OTP**：正式版直接写 `latest`，不需要改 tag；只有预发布需要摘除 `latest` 时，本机登录后执行 `npm dist-tag rm @worm-vue3-print/common latest --registry=https://registry.npmjs.org --otp=<OTP>`（仓库令牌对 `dist-tag rm` 返回 403）；
-- **common 与主线同号**：方式一/二升版时一起在 `packages/print-common/package.json` 与六份 lock 里改版本；`npm run check:release-carriers` 已把 common 纳入五包同号校验；
+- **common 与主线同号**：方式一/二升版时一起在 `packages/print-common/package.json` 与六份 lock 里改版本；`npm run check:release-carriers` 已把 common 纳入六包同号校验；
 - npm 账号若开启 2FA，最后一步会交互式索取验证码，照着 Authenticator 填即可。
 
 ### 发版载体自检（发版前后各跑一次）
@@ -132,7 +135,7 @@ npm run check:release-carriers -- --post   # 发版后核对：未发布段应�
 npm run check:release-carriers -- --base=v1.3.10   # 指定基线，判断改动是否命中 core 渲染管线（命中→七件安装包必须重打）
 ```
 
-查七项：主线五包版本号是否同号（含 `common`）、「未发布」段是否已折叠、两份 `help-content/changelog.ts` 是否含本版、`.github/release/notes.md` 指向、README 安装包直链表版本、`clients/print-client/dist` 是否混入旧包、变更是否命中 `render/*` 或 `functions/format.ts`。
+查七项：主线六包版本号是否同号（含 `common`、`skills`）、「未发布」段是否已折叠、两份 `help-content/changelog.ts` 是否含本版、`.github/release/notes.md` 指向、README 安装包直链表版本、`clients/print-client/dist` 是否混入旧包、变更是否命中 `render/*` 或 `functions/format.ts`。
 退出码：0 通过（允许 WARN）/ 1 有 FAIL / 2 读不到载体文件。**已知局限**：「未发布段条数」按 bullet 粗算，只用于判断该段是否已清空；README 直链匹配依赖 `WormPrintClient-<版本>-` 命名，改名要同步 `scripts/check-release-carriers.mjs`。
 历史事故对应：1.3.8 功能在包里但内置更新记录缺那条（被迫补发 1.3.9）、README 直链表忘改会指向上一版资产、`dist` 混入旧包会被 `pack-client-release.mjs` 一起收进 SHA256SUMS。
 
