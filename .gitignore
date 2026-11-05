@@ -34,3 +34,6 @@ demo-common/apps/*/dist/
 # demo-common 子工程的示例字体：sync-demo-samples.mjs 从 demo/public/fonts 拷来，单个 1.5~8MB 不入库
 demo-common/apps/*/public/fonts/
 .trae-html-share-packages/
+
+# electron-builder 本地下载缓存（构建时自动生成，不入库）
+.cache/

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #0b1020;
+        color: #e9eefb;
+        font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      }
+      [data-card] {
+        position: absolute;
+        inset: 0;
+        padding: 56px 72px 178px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+        background: radial-gradient(1200px 620px at 12% -8%, #16223f 0%, transparent 70%), #0b1020;
+      }
+      .kicker {
+        font-size: 24px;
+        letter-spacing: 3px;
+        color: #57e0c8;
+        font-weight: 700;
+      }
+      .title {
+        font-size: 56px;
+        font-weight: 800;
+        line-height: 1.2;
+        letter-spacing: 1px;
+      }
+      .title .accent {
+        color: #ff6bd0;
+      }
+      .body {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      pre.code {
+        margin: 0;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        background: #111a2f;
+        border: 1px solid #263450;
+        border-radius: 16px;
+        padding: 26px 30px;
+        font: 500 25px/1.62 Menlo, Consolas, monospace;
+        color: #cfe3ff;
+        white-space: pre;
+      }
+      pre.code .ln {
+        display: block;
+        padding: 0 12px;
+        border-radius: 7px;
+      }
+      pre.code .ln.hl {
+        background: rgba(87, 224, 200, 0.13);
+        box-shadow: inset 3px 0 0 #57e0c8;
+      }
+      pre.code .ln.dim {
+        color: #7f90ad;
+      }
+      pre.code .k {
+        color: #ff9d6b;
+      }
+      pre.code .s {
+        color: #8ee6a8;
+      }
+      .note {
+        font-size: 27px;
+        line-height: 1.55;
+        color: #9fb2d4;
+      }
+      .note b {
+        color: #57e0c8;
+      }
+      ul.points {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      ul.points li {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+        background: #121c33;
+        border: 1px solid #26344f;
+        border-radius: 14px;
+        padding: 20px 24px;
+      }
+      ul.points .no {
+        font: 800 30px/1.3 Menlo, monospace;
+        color: #ff6bd0;
+        min-width: 46px;
+      }
+      ul.points .h {
+        font-size: 31px;
+        font-weight: 700;
+      }
+      ul.points .d {
+        display: block;
+        font-size: 25px;
+        color: #9fb2d4;
+        margin-top: 6px;
+        line-height: 1.5;
+      }
+      table.cmp {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 27px;
+      }
+      table.cmp th {
+        text-align: left;
+        font-size: 25px;
+        color: #8fa4c8;
+        border-bottom: 2px solid #2b3a5a;
+        padding: 14px 18px;
+        letter-spacing: 1px;
+      }
+      table.cmp td {
+        padding: 16px 18px;
+        border-bottom: 1px solid #1f2c47;
+        vertical-align: top;
+        line-height: 1.45;
+      }
+      table.cmp tr:nth-child(even) td {
+        background: rgba(255, 255, 255, 0.018);
+      }
+      td.good {
+        color: #57e0c8;
+        font-weight: 700;
+      }
+      td.dim {
+        color: #8496b6;
+      }
+      td.warn {
+        color: #ffb020;
+        font-weight: 700;
+      }
+      pre.term {
+        margin: 0;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        background: #06090f;
+        border: 1px solid #1d2740;
+        border-radius: 14px;
+        padding: 22px 26px;
+        font: 500 22px/1.5 Menlo, Consolas, monospace;
+        color: #b7f7c9;
+        white-space: pre-wrap;
+      }
+      .cmd {
+        font: 600 24px/1.4 Menlo, monospace;
+        color: #8fa4c8;
+        background: #101828;
+        border: 1px solid #26344f;
+        border-radius: 10px;
+        padding: 12px 18px;
+      }
+      .foot {
+        font-size: 22px;
+        color: #6f83a8;
+        letter-spacing: 1px;
+      }
+    </style>
+  </head>
+  <body>
+    <!--DATA-->
+    <div data-card id="card"></div>
+    <script>
+      ;(() => {
+      const P = window.__PANEL || {}
+      const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      const tok = (s) =>
+        esc(s)
+          .replace(/("[^"]*"|'[^']*')/g, '<span class="s">$1</span>')
+          .replace(/\b(import|from|export|const|let|function|return|await|async|interface|type|new|if|else)\b/g, '<span class="k">$1</span>')
+      let inner = ''
+      if (P.kicker) inner += `<div class="kicker" data-block>${esc(P.kicker)}</div>`
+      inner += `<div class="title" data-block>${esc(P.title).replace(/\[(.+?)\]/g, '<span class="accent">$1</span>')}</div>`
+      if (P.kind === 'code') {
+        const lines = (P.lines || []).map((l) => (typeof l === 'string' ? { t: l } : l))
+        inner += `<pre class="code" data-block>${lines.map((l) => `<span class="ln ${l.hl ? 'hl' : l.dim ? 'dim' : ''}">${tok(l.t)}</span>`).join('')}</pre>`
+      } else if (P.kind === 'term') {
+        inner += `<div class="cmd" data-block>$ ${esc(P.cmd)}</div>`
+        inner += `<pre class="term" data-block>${esc((P.out || []).join('\n'))}</pre>`
+      } else if (P.kind === 'table') {
+        const rows = (P.rows || [])
+          .map((r) => `<tr>${r.map((c) => { const o = typeof c === 'string' ? { t: c } : c; return `<td class="${o.c || ''}">${esc(o.t)}</td>` }).join('')}</tr>`)
+          .join('')
+        inner += `<table class="cmp" data-block><thead><tr>${(P.head || []).map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`
+      } else {
+        inner += `<ul class="points" data-block>${(P.items || []).map((it, i) => `<li><span class="no">${String(i + 1).padStart(2, '0')}</span><span><span class="h">${esc(it.h)}</span><span class="d">${esc(it.d || '')}</span></span></li>`).join('')}</ul>`
+      }
+      if (P.note) inner += `<div class="note" data-block>${esc(P.note).replace(/\*(.+?)\*/g, '<b>$1</b>')}</div>`
+      if (P.foot) inner += `<div class="foot" data-block>${esc(P.foot)}</div>`
+      const card = document.getElementById('card')
+      card.style.width = P.stage.width + 'px'
+      card.style.height = P.stage.height + 'px'
+      card.innerHTML = inner
+      })()
+    </script>
+  </body>
+</html>

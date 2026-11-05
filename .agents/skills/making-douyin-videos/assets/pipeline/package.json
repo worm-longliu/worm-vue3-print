@@ -1,0 +1,29 @@
+{
+  "name": "worm-douyin-video-pipeline",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "video:voice": "node voiceover.mjs",
+    "video:polyphone-audio": "node polyphone-audio.mjs",
+    "video:cover": "node cover.mjs",
+    "video:cover-douyin": "node cover-douyin.mjs",
+    "video:panels": "node panels.mjs",
+    "video:record": "node record.mjs",
+    "video:compose": "node compose.mjs",
+    "video:check": "node check-sync.mjs",
+    "video:copy": "node douyin-copy.mjs",
+    "video:verify": "node verify.mjs",
+    "video": "npm run video:voice && npm run video:polyphone-audio && npm run video:cover && npm run video:record && npm run video:compose && npm run video:check && npm run video:cover-douyin && npm run video:copy && npm run video:verify",
+    "video:portrait:voice": "node portrait/voice.mjs",
+    "video:portrait:polyphone-audio": "VIDEO_SCRIPT=portrait/${VIDEO_SCRIPT:-script.json} node polyphone-audio.mjs",
+    "video:portrait:cards": "node portrait/cards.mjs",
+    "video:portrait:check": "node portrait/check-layout.mjs",
+    "video:portrait:compose": "node portrait/compose.mjs",
+    "video:portrait:subs": "node portrait/check-subs.mjs",
+    "video:portrait:cover": "VIDEO_SCRIPT=portrait/${VIDEO_SCRIPT:-script.json} node cover-douyin.mjs",
+    "video:portrait:copy": "VIDEO_SCRIPT=portrait/${VIDEO_SCRIPT:-script.json} node douyin-copy.mjs",
+    "video:portrait:verify": "VIDEO_SCRIPT=portrait/${VIDEO_SCRIPT:-script.json} node verify.mjs",
+    "video:portrait": "npm run video:portrait:voice && npm run video:portrait:polyphone-audio && npm run video:portrait:cards && npm run video:portrait:check && npm run video:portrait:compose && npm run video:portrait:subs && npm run video:portrait:cover && npm run video:portrait:copy && npm run video:portrait:verify"
+  }
+}

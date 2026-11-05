@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>抖音封面 · worm-vue3-print</title>
+<style>
+  :root {
+    --paper: #F2F1EC;
+    --dot: #DFDDD2;
+    --ink: #1B1C18;
+    --cyan: #009CDE;
+    --magenta: #E6007E;
+    --yellow: #F5C400;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: __W__px; height: __H__px; overflow: hidden; }
+  body {
+    position: relative;
+    background:
+      radial-gradient(var(--dot) 2.6px, transparent 2.6px) 0 0 / 48px 48px,
+      var(--paper);
+    color: var(--ink);
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  }
+
+  /* ── 打样单装饰：裁切线 / 刻度尺 / 规矩线 / 校色条 ── */
+  .crop { position: absolute; width: 84px; height: 84px; }
+  .crop::before, .crop::after { content: ""; position: absolute; background: var(--ink); }
+  .crop::before { width: 84px; height: 4px; top: 50%; margin-top: -2px; }
+  .crop::after { width: 4px; height: 84px; left: 50%; margin-left: -2px; }
+  .crop.tl { clip-path: inset(50% 50% 0 0); } .crop.tr { clip-path: inset(50% 0 0 50%); }
+  .crop.bl { clip-path: inset(0 50% 50% 0); } .crop.br { clip-path: inset(0 0 50% 50%); }
+
+  .ruler {
+    position: absolute; height: 40px;
+    border-bottom: 3px solid var(--ink);
+    background:
+      repeating-linear-gradient(90deg, var(--ink) 0 2px, transparent 2px 22px) bottom / 100% 12px no-repeat,
+      repeating-linear-gradient(90deg, var(--ink) 0 3px, transparent 3px 110px) bottom / 100% 22px no-repeat;
+  }
+  .ruler span { position: absolute; bottom: 28px; transform: translateX(-50%); font: 500 18px/1 Menlo, monospace; }
+
+  .reg { position: absolute; width: 56px; height: 56px; }
+  .reg::before { content: ""; position: absolute; inset: 0; border: 3px solid var(--ink); border-radius: 50%; }
+  .reg::after { content: ""; position: absolute; inset: -12px 50%; width: 3px; margin-left: -1.5px; background: var(--ink); }
+  .reg .h { position: absolute; inset: 50% -12px auto -12px; height: 3px; margin-top: -1.5px; background: var(--ink); }
+
+  .strip-label { position: absolute; font: 500 17px/1 Menlo, monospace; letter-spacing: 3px; }
+  .strip { position: absolute; display: flex; align-items: flex-end; gap: 5px; }
+  .strip b { display: block; width: 74px; height: 34px; }
+  .strip .ramp { display: flex; }
+  .strip .ramp u { width: 18px; height: 34px; text-decoration: none; }
+
+  .stamp {
+    position: absolute; border: 4px solid var(--ink); padding: 14px 24px 16px;
+    font: 500 22px/1.6 Menlo, monospace; letter-spacing: 2px; text-align: right; background: var(--paper);
+  }
+  .stamp em { font-style: normal; opacity: .55; margin-right: 16px; font-size: 18px; }
+
+  /* ── 主视觉 ─────────────────────────────── */
+  .eyebrow { position: absolute; font: 600 26px/1 Menlo, monospace; letter-spacing: 6px; }
+  .eyebrow i { font-style: normal; color: var(--magenta); }
+  /* .w / .t 是收缩包裹层：判据量它的布局盒，避免整宽居中元素的盒子横跨全幅、也避免 CJK 字体盒虚高 */
+  .eyebrow .w, .sub .w, .verdict .w { display: inline-block; }
+  .title { position: absolute; font-weight: 800; line-height: 1.06; letter-spacing: 6px; }
+  .title .t { position: relative; display: inline-block; }
+  .title .plate { position: absolute; inset: 0; mix-blend-mode: multiply; }
+  .title .c { color: var(--cyan); transform: translate(-8px, -6px); }
+  .title .m { color: var(--magenta); transform: translate(8px, 6px); }
+  .title .k { position: relative; }
+  .rule { position: absolute; height: 9px; background: var(--ink); }
+  .sub { position: absolute; font-weight: 600; letter-spacing: 3px; }
+  .verdict { position: absolute; font-size: 30px; font-weight: 600; letter-spacing: 2px; }
+  .verdict s { text-decoration-color: var(--magenta); text-decoration-thickness: 4px; }
+
+  .samples { position: absolute; display: flex; align-items: flex-start; }
+  .cell { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .cell .frame { background: #fff; border: 2px dashed #8b97ab; display: flex; }
+  .cell .frame img { width: 100%; height: 100%; object-fit: contain; }
+  .cell .q { font-size: 26px; font-weight: 700; }
+  .cell .q b { color: var(--cyan); }
+  .cell .pct { font-size: 21px; opacity: .62; font-family: Menlo, monospace; }
+  .cell .iso { font-size: 19px; color: var(--magenta); font-weight: 700; height: 24px; }
+  /* 数字卡形态（剧本写 coverCards 时用）：框内放实测差值而不是码图 */
+  .cell .frame .num { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; font: 800 44px/1.2 Menlo, monospace; color: var(--ink); }
+  .cell .frame .num i { font-style: normal; color: var(--cyan); }
+  .cell .frame .num em { font-style: normal; font-size: 19px; font-weight: 600; opacity: .55; letter-spacing: 1px; }
+
+  /* ── 16:9（横屏：主标题必须落在中央 3:4 裁切带内）── */
+  body.r-16x9 .crop.tl { top: 56px; left: 56px; } body.r-16x9 .crop.tr { top: 56px; right: 56px; }
+  body.r-16x9 .crop.bl { bottom: 56px; left: 56px; } body.r-16x9 .crop.br { bottom: 56px; right: 56px; }
+  body.r-16x9 .ruler { top: 96px; left: 164px; right: 164px; }
+  body.r-16x9 .reg.tr { top: 158px; right: 200px; } body.r-16x9 .reg.bl { bottom: 168px; left: 200px; transform: scale(.7); }
+  body.r-16x9 .eyebrow { top: 196px; left: 0; right: 0; text-align: center; }
+  body.r-16x9 .title { top: 244px; left: 0; right: 0; text-align: center; font-size: 116px; }
+  body.r-16x9 .rule { top: 400px; left: 856px; width: 208px; }
+  body.r-16x9 .sub { top: 434px; left: 0; right: 0; text-align: center; font-size: 38px; letter-spacing: 2px; }
+  body.r-16x9 .samples { top: 528px; left: 0; right: 0; justify-content: center; gap: 46px; }
+  body.r-16x9 .cell .frame { width: 196px; height: 196px; }
+  body.r-16x9 .verdict { top: 862px; left: 0; right: 0; text-align: center; }
+  body.r-16x9 .strip-label { left: 236px; bottom: 152px; }
+  body.r-16x9 .strip { left: 236px; bottom: 100px; }
+  body.r-16x9 .stamp { right: 236px; bottom: 96px; }
+
+  /* ── 9:16（竖屏：全部关键内容落在中段 3:4 安全带内）── */
+  body.r-9x16 .crop.tl { top: 168px; left: 56px; } body.r-9x16 .crop.tr { top: 168px; right: 56px; }
+  body.r-9x16 .crop.bl { bottom: 168px; left: 56px; } body.r-9x16 .crop.br { bottom: 168px; right: 56px; }
+  body.r-9x16 .ruler { top: 300px; left: 84px; right: 84px; }
+  body.r-9x16 .reg.tr { top: 372px; right: 116px; transform: scale(.8); }
+  body.r-9x16 .eyebrow { top: 374px; left: 84px; }
+  body.r-9x16 .title { top: 446px; left: 84px; right: 84px; text-align: center; font-size: 112px; }
+  body.r-9x16 .rule { top: 600px; left: 436px; width: 208px; }
+  body.r-9x16 .sub { top: 642px; left: 84px; right: 84px; text-align: center; font-size: 38px; }
+  body.r-9x16 .samples { top: 754px; left: 84px; right: 84px; justify-content: center; gap: 26px; }
+  body.r-9x16 .cell .frame { width: 252px; height: 252px; }
+  body.r-9x16 .verdict { top: 1152px; left: 84px; right: 84px; text-align: center; font-size: 33px; }
+  body.r-9x16 .strip-label { left: 84px; top: 1400px; }
+  body.r-9x16 .strip { left: 84px; top: 1436px; }
+  body.r-9x16 .stamp { right: 84px; top: 1392px; }
+</style>
+</head>
+<body class="__RATIO__">
+  <div class="crop tl"></div><div class="crop tr"></div><div class="crop bl"></div><div class="crop br"></div>
+  <div class="ruler" id="ruler" data-block="刻度尺"></div>
+  <div class="reg tr" data-block="规矩线"><span class="h"></span></div>
+
+  <div class="eyebrow" data-key="eyebrow" data-block-ink="品牌行"><span class="w">worm-vue3-print <i>·</i> 可视化打印模板设计器</span></div>
+  <div class="title" data-key="title" data-block-ink="主标题">
+    <span class="t">
+      <span class="plate c" aria-hidden="true">__TITLE__</span>
+      <span class="plate m" aria-hidden="true">__TITLE__</span>
+      <span class="k">__TITLE__</span>
+    </span>
+  </div>
+  <div class="rule" data-block="分隔条"></div>
+  <div class="sub" data-key="sub" data-block-ink="副标题"><span class="w">__SUB__</span></div>
+
+  <div class="samples" data-key="samples">__SAMPLES__</div>
+
+  <div class="verdict" data-key="verdict" data-block-ink="结论行"><span class="w">__VERDICT__</span></div>
+
+  <div class="strip-label" data-block-ink="校色条标签">CMYK CALIBRATION</div>
+  <div class="strip" data-block="校色条">
+    <b style="background:var(--cyan)"></b><b style="background:var(--magenta)"></b>
+    <b style="background:var(--yellow)"></b><b style="background:var(--ink)"></b>
+    <div class="ramp">
+      <u style="background:#1B1C18"></u><u style="background:#4A4B46"></u><u style="background:#797A73"></u>
+      <u style="background:#A8A9A1"></u><u style="background:#D7D7CF"></u>
+      <u style="background:#FFFFFF;outline:2px solid var(--ink);outline-offset:-2px"></u>
+    </div>
+  </div>
+  <div class="stamp" data-key="stamp" data-block="盖章">
+    <div><em>版本</em>__VERSION__</div>
+    <div><em>日期</em>__DATE__</div>
+    <div><em>时长</em>__DURATION__</div>
+  </div>
+
+<script>
+  const ruler = document.getElementById('ruler');
+  const max = 640;
+  for (let mm = 0; mm <= max; mm += 80) {
+    const s = document.createElement('span');
+    s.style.left = (mm / max * 100) + '%';
+    s.textContent = mm;
+    ruler.appendChild(s);
+  }
+</script>
+</body>
+</html>
