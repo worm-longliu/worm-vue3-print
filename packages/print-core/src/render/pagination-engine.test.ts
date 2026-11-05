@@ -796,3 +796,15 @@ describe('fixed 表格：整表每页重复，不切片、不作跟随锚点', (
     expect(collectFollowMemberIds([anchored, after]).size).toBe(0)
   })
 })
+
+describe('切片元素的上下外边距预算', () => {
+  it('12 行表格每片扣除上下外边距和重复表头', () => {
+    const table = makeTable(12, 1)
+    table.options = { ...table.options, marginTop: 30, marginBottom: 20 }
+    const pages = paginate(makeTemplate(table), measure(Array(12).fill(50), 1))
+    expect(pages.map(page => page.sections.filter(section => section.elementId === 'tbl-1')
+      .map(section => [section.startRow, section.endRow]))).toEqual([
+        [[0, 4]], [[4, 7]], [[7, 10]], [[10, 12]],
+      ])
+  })
+})

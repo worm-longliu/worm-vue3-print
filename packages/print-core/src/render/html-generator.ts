@@ -13,6 +13,7 @@ import type {
 import { escapeInlineStyleValue, toFontFamilyStack } from '../print/fonts.js'
 import { getPaperDimensions, isContinuousPaper, getOutputRotationAngle } from './types.js'
 import { buildPageCss, elementPositionStyle, mm } from './css-builder.js'
+import { elementMarginCss, resolveElementBoxes, resolveElementMargins } from './element-margin.js'
 import {
   cellFitCapMm,
   cellFitKey,
@@ -985,7 +986,9 @@ function renderFlowGroup(
   const anchorLeft = opts.left ?? 0
   const anchorWidth = opts.width ?? 100
   const groupTop = section.groupTop ?? opts.top ?? 0
-  const anchorBottom = splittableDesignBottom(el)
+  const anchorBottom = splittableDesignBottom(el) + resolveElementMargins(opts).bottom
+  const anchorMargin = elementMarginCss(opts)
+  const anchorMarginStyle = anchorMargin ? `${anchorMargin};` : ''
   const zStyle = typeof opts.zIndex === 'number' ? `z-index:${opts.zIndex};` : ''
   const style = `position:absolute;left:${mm(anchorLeft)};top:${mm(groupTop)};width:${mm(anchorWidth)};overflow:visible;${zStyle}`
 
@@ -1005,7 +1008,7 @@ function renderFlowGroup(
       const bodyHtml = renderMatrixRows(renderRows, startRow, endRow, opts, false, ctx, { elementId: el.id, kind: 'b' })
       const subtotalHtml = section.subtotal ? renderSubtotalRows(el, section, opts, ctx) : ''
       const summaryHtml = section.summary ? renderSummaryRows(el, opts, ctx) : ''
-      sliceHtml = `<div class="flow-slice" style="position:relative;width:${mm(anchorWidth)};overflow:visible;">
+      sliceHtml = `<div class="flow-slice" style="position:relative;width:${mm(anchorWidth)};overflow:visible;${anchorMarginStyle}">
   ${matrixTableHtml(el, `${repeatHtml}\n${bodyHtml}${subtotalHtml}${summaryHtml}`)}
 </div>`
     }
@@ -1017,7 +1020,7 @@ function renderFlowGroup(
   const followExtent = followIds.reduce((maxBottom, id) => {
     const m = findElement(template, id)
     if (!m) return maxBottom
-    return Math.max(maxBottom, (m.options?.top ?? 0) + (m.options?.height ?? 0))
+    return Math.max(maxBottom, resolveElementBoxes({ width: 0, ...m.options }).margin.bottom)
   }, anchorBottom)
 
   const followHtml = followIds
@@ -1031,6 +1034,7 @@ function renderFlowGroup(
       const mZ = m.options?.zIndex
       const type = m.type || m.printElementType?.type || 'text'
       const needsHeight = type === 'rect' || type === 'oval' || type === 'image' || type === 'vline'
+      const memberMargin = elementMarginCss(m.options)
       const flowStyle = [
         'position:absolute',
         `left:${mm(mLeft - anchorLeft)}`,
@@ -1039,6 +1043,7 @@ function renderFlowGroup(
         ...(needsHeight && mHeight > 0 ? [`height:${mm(mHeight)}`] : []),
         ...(typeof mZ === 'number' ? [`z-index:${mZ}`] : []),
         'overflow:visible',
+        ...(memberMargin ? [memberMargin] : []),
       ].join(';') + ';'
       return renderElement(m, false, flowStyle, undefined, ctx)
     })
@@ -1068,7 +1073,9 @@ function flowGroupSliceHtml(el: TemplateElement, section: PageSection): string {
   const columns = resolveFlowColumns(opts.flowColumns)
   const gapX = resolveFlowGapX(opts.flowGapX)
   const rowHeight = resolveFlowRowHeight(opts.flowRowHeight)
-  return `<div class="flow-slice" style="position:relative;width:${mm(opts.width ?? 100)};overflow:visible;">
+  const anchorMargin = elementMarginCss(opts)
+  const anchorMarginStyle = anchorMargin ? `${anchorMargin};` : ''
+  return `<div class="flow-slice" style="position:relative;width:${mm(opts.width ?? 100)};overflow:visible;${anchorMarginStyle}">
   <div class="print-flowlist-slice" style="position:relative;width:${mm(opts.width ?? 100)};${flowSliceChromeStyle(type, opts)}">
   ${flowRowsHtml(rows.slice(startFlowRow, endFlowRow), columns, gapX, rowHeight, startFlowRow)}
 </div>

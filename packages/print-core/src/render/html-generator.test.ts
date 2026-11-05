@@ -1392,3 +1392,24 @@ describe('元素四向外边距定位', () => {
     expect(legacy).not.toMatch(/margin-(top|right|bottom|left):/)
   })
 })
+
+describe('flow-group 外边距几何', () => {
+  it('锚点与成员分别消费自身边距，组容器不重复偏移', () => {
+    const t = makeTemplate({
+      ...flowGroupOptions(), left: 10, top: 20, width: 100, height: 30,
+      marginTop: 3, marginBottom: 4, marginLeft: 2,
+    })
+    t.elements.push({ id: 'follow-1', type: 'text', options: {
+      left: 15, top: 58, width: 80, height: 8,
+      marginTop: 5, marginBottom: 2, marginLeft: 1, formatter: '跟随备注',
+    } } as any)
+    const html = generateHtml(t, pageWith([{
+      elementId: 'tbl-1', type: 'flow-group', startRow: 0, endRow: 1,
+      followElementIds: ['follow-1'], groupTop: 20,
+    }]))
+    expect(html).toMatch(/flow-slice" style="[^"]*margin-top:3mm[^"]*margin-left:2mm/)
+    expect(html).toMatch(/position:absolute;left:5mm;top:1mm;[^"]*margin-top:5mm[^"]*margin-left:1mm/)
+    expect(html).toMatch(/class="flow-follow" style="[^"]*height:16mm/)
+    expect(html).not.toMatch(/flow-group" style="[^"]*margin-top/)
+  })
+})

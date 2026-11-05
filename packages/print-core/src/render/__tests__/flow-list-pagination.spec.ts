@@ -470,3 +470,22 @@ describe('fixed 动态列表：每页完整渲染', () => {
     expect((html.match(/data-flow-row-index="1"/g) ?? [])).toHaveLength(2)
   })
 })
+
+describe('动态列表上下外边距预算', () => {
+  it('每片只计一次上下外边距，不改写测量行高', () => {
+    const rows = flowRows(['一', '二'])
+    const build = (margin: Record<string, number>) => template({
+      top: 0, flowLayoutMode: 'dynamic', flowColumns: 1,
+      flowPaddingTop: 2, flowPaddingBottom: 2, _flowRows: rows, ...margin,
+    })
+    const rowHeights = measured('fl', [132, 132])
+    expect(flowSlices(paginate(build({}), rowHeights))).toEqual([
+      { pageIndex: 0, startFlowRow: 0, endFlowRow: 2, renderTop: 0 },
+    ])
+    expect(flowSlices(paginate(build({ marginTop: 6, marginBottom: 4 }), rowHeights))).toEqual([
+      { pageIndex: 0, startFlowRow: 0, endFlowRow: 1, renderTop: 0 },
+      { pageIndex: 1, startFlowRow: 1, endFlowRow: 2, renderTop: 0 },
+    ])
+    expect(rowHeights.get('fl')!.measuredFlowRowHeights).toEqual([132, 132])
+  })
+})

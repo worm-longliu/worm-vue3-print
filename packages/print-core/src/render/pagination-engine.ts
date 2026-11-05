@@ -139,7 +139,7 @@ export function tableDesignBottom(el: FollowJudgementInput): number {
   const rows: Array<{ height?: number }> = opts.tableRows ?? []
   const rowSum = rows.reduce((s, r) => s + (r.height ?? 0), 0)
   const designHeight = Math.max(opts.height ?? 0, rowSum)
-  return top + designHeight
+  return top + resolveElementMargins(opts).top + designHeight
 }
 
 /**
@@ -150,7 +150,7 @@ export function tableDesignBottom(el: FollowJudgementInput): number {
 export function splittableDesignBottom(el: FollowJudgementInput): number {
   if (isDynamicFlowListEl(el)) {
     const opts = el.options ?? {}
-    return (opts.top ?? 0) + Math.max(opts.height ?? 0, 0)
+    return (opts.top ?? 0) + resolveElementMargins(opts).top + Math.max(opts.height ?? 0, 0)
   }
   return tableDesignBottom(el)
 }
@@ -227,13 +227,13 @@ function buildFollowMap(
   for (const el of sorted) {
     if (isSplittableEl(el)) {
       currentAnchorId = el.id
-      currentAnchorBottom = splittableDesignBottom(el)
+      currentAnchorBottom = splittableDesignBottom(el) + resolveElementMargins(el.options).bottom
       // 锚点横向区间：表格取列宽和（与实际表宽同口径，缺列宽时退回元素宽，T-11 C2）；列表取元素宽
-      const left = el.options?.left ?? 0
       const cols = el.options?.tableColWidths ?? []
       const width = cols.length > 0 ? cols.reduce((sum: number, w: number) => sum + w, 0) : (el.options?.width ?? 0)
-      currentAnchorLeft = left
-      currentAnchorRight = left + width
+      const anchorBox = resolveElementBoxes({ ...el.options, width }).margin
+      currentAnchorLeft = anchorBox.left
+      currentAnchorRight = anchorBox.right
       map.set(el.id, [])
       continue
     }
@@ -243,9 +243,8 @@ function buildFollowMap(
     const top = el.options?.top ?? 0
     if (top < currentAnchorBottom) continue
     // 与锚点横向零交集的元素保持原地绝对定位：它既不在锚点列上，也不该随锚点底部漂移（T-11 C2）
-    const left = el.options?.left ?? 0
-    const right = left + (el.options?.width ?? 0)
-    if (right <= currentAnchorLeft || left >= currentAnchorRight) continue
+    const memberBox = resolveElementBoxes({ width: 0, ...el.options }).margin
+    if (memberBox.right <= currentAnchorLeft || memberBox.left >= currentAnchorRight) continue
     map.get(currentAnchorId)!.push(el.id)
   }
   return map
@@ -262,12 +261,12 @@ function followGroupHeight(
   template: TemplateData,
   _measuredElements: Map<string, MeasuredElement>,
 ): number {
-  const anchorBottom = splittableDesignBottom(el)
+  const anchorBottom = splittableDesignBottom(el) + resolveElementMargins(el.options).bottom
   let maxBottom = anchorBottom
   for (const id of members) {
     const m = template.elements.find(e => e.id === id)
     if (!m) continue
-    maxBottom = Math.max(maxBottom, (m.options?.top ?? 0) + (m.options?.height ?? 0))
+    maxBottom = Math.max(maxBottom, resolveElementBoxes({ width: 0, ...m.options }).margin.bottom)
   }
   return Math.max(maxBottom - anchorBottom, 0)
 }
@@ -878,6 +877,8 @@ export function paginate(
     const repeatH = measured.get(el.id)?.repeatHeaderHeight
       ?? rowHeights.slice(0, repeatCount).reduce((s, h) => s + h, 0)
     const freshAvail = fullPageHeight()
+    const elementMargins = resolveElementMargins(opts)
+    const elementChrome = elementMargins.top + elementMargins.bottom
     // 表格自身横向占用列：本片及后续内容都按该列记账
     const tb = marginXRange(el)
 
@@ -895,13 +896,13 @@ export function paginate(
         summary: summaryH > 0,
         renderTop: sectionTop(el, tb),
       })
-      occupy(tb, summaryH)
+      occupy(tb, Math.max(0, summaryH + elementChrome))
       applyFollowGroup(el, measured, tb)
       return idx + 1
     }
 
     const totalH = bodyHeights.slice(0, rowCount).reduce((s, h) => s + h, 0)
-    const totalNeed = totalH + subtotalH + summaryH
+    const totalNeed = Math.max(0, totalH + subtotalH + summaryH + elementChrome)
 
     // 表格分页未启用：整表单片不拆（当前页已有内容且放不下才换页，空页上允许溢出）
     if (tablePaginationOf(el)?.enabled === false) {
@@ -924,7 +925,7 @@ export function paginate(
     // 片起点须在行组记账前捕获（循环内 sliceUsed 会被本片自己的行组推进）
     let sliceTop = sectionTop(el, tb)
     // 本片在本列内已消耗的行高合计；换页后归零，重新取本列剩余
-    let sliceUsed = 0
+    let sliceUsed = elementChrome
     const avail = () => remainingIn(tb) - sliceUsed
 
     /** 收下当前片，并把本片消耗记入本列版面 */
@@ -935,7 +936,7 @@ export function paginate(
         ...(!firstSlice && repeatHeader ? { repeatHeader: true } : {}),
         renderTop: sliceTop,
       })
-      occupy(tb, sliceUsed)
+      occupy(tb, Math.max(0, sliceUsed))
       // 本片消耗已入账，剩余改由本列记账给出（避免 avail() 重复扣同一段行高）
       sliceUsed = 0
     }
@@ -955,7 +956,7 @@ export function paginate(
       }
       finishPage()
       sliceTop = sectionTop(el, tb)
-      sliceUsed = 0
+      sliceUsed = elementChrome
       // 首片本身包含物理表头行（行 0 起），换页时不扣 repeatH；非首片先扣重复表头段
       if (!firstSlice) sliceUsed += repeatH
       sliceUsed += gh // 组高于整页时允许溢出（剩余可能为负）
@@ -978,12 +979,12 @@ export function paginate(
           // 防御：最后一片非本表切片（理论不发生）→ 按单独移页处理
           finishPage()
           currentPage.push({ elementId: el.id, type: 'table-slice', startRow: rowCount, endRow: rowCount, summary: true, renderTop: 0 })
-          occupy(tb, summaryH)
+          occupy(tb, Math.max(0, summaryH + elementChrome))
         }
       } else {
         finishPage()
         currentPage.push({ elementId: el.id, type: 'table-slice', startRow: rowCount, endRow: rowCount, summary: true, renderTop: 0 })
-        occupy(tb, summaryH)
+        occupy(tb, Math.max(0, summaryH + elementChrome))
       }
     }
 
@@ -1019,7 +1020,8 @@ export function paginate(
       if (edge) return sideMm(edge)
       return sideMm(borders?.all ?? undefined)
     }
-    const chromeVertical = padding.top + padding.bottom + borderMm('top') + borderMm('bottom')
+    const margins = resolveElementMargins(opts)
+    const chromeVertical = margins.top + margins.bottom + padding.top + padding.bottom + borderMm('top') + borderMm('bottom')
 
     const tb = marginXRange(el)
     let sliceStart = 0
