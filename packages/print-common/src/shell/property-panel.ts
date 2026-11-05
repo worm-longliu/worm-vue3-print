@@ -443,7 +443,7 @@ function elementPane(ctx: ShellCtx, el: RuntimeElement) {
     h('form', { class: 'pd-form', onSubmit: (ev: Event) => ev.preventDefault() }, [
       h('div', { class: 'advanced-row' }, [
         gateItem(ctx, 'ad-locked', switchField(ctx, '锁定', !!o.locked, v => patch({ locked: v }), reset('locked', 'ad-locked'))),
-        gateItem(ctx, 'ad-fixed', switchField(ctx, '每页重复', !!o.fixed, v => patch({ fixed: v }), reset('fixed', 'ad-fixed'))),
+        gateItem(ctx, 'ad-fixed', switchField(ctx, '每页重复', !!o.repeatOnEveryPage, v => patch({ repeatOnEveryPage: v }), reset('repeatOnEveryPage', 'ad-fixed'))),
       ]),
       gateItem(ctx, 'ad-z-index', numField(ctx, '层级', o.zIndex, v => patch({ zIndex: v }), { min: 0, max: 999 }, reset('zIndex', 'ad-z-index'))),
       gateItem(ctx, 'ad-delete', h('div', { class: 'pd-field' }, [

@@ -445,10 +445,10 @@ describe('切片 HTML 闭合容器', () => {
   })
 })
 
-describe('fixed 动态列表：每页完整渲染', () => {
-  it('普通列表设 fixed 后：两页均输出完整 element section 与全部行 HTML，无切片与 flow-group', () => {
+describe('repeatOnEveryPage 动态列表：每页完整渲染', () => {
+  it('普通列表设 repeatOnEveryPage 后：两页均输出完整 element section 与全部行 HTML，无切片与 flow-group', () => {
     const tpl = multiTemplate([
-      flowListEl('fl-fixed', 0, 16, flowRows(['甲', '乙']), { fixed: true }),
+      flowListEl('fl-fixed', 0, 16, flowRows(['甲', '乙']), { repeatOnEveryPage: true }),
       followTextEl('body-1', 0, 150),
       followTextEl('body-2', 150, 150),
     ])
@@ -468,6 +468,46 @@ describe('fixed 动态列表：每页完整渲染', () => {
     expect(html).not.toContain('flow-group')
     expect((html.match(/data-flow-row-index="0"/g) ?? [])).toHaveLength(2)
     expect((html.match(/data-flow-row-index="1"/g) ?? [])).toHaveLength(2)
+  })
+})
+
+describe('repeatOnEveryPage 与动态列表续页', () => {
+  it('首页保持设计起点和容量，续片扣除 100mm 重复区域', () => {
+    const tpl = multiTemplate([
+      followTextEl('fixed', 0, 100, { repeatOnEveryPage: true }),
+      flowListEl('fl', 0, 600, flowRows(Array.from({ length: 12 }, (_, i) => `药${i}`))),
+    ])
+    const pages = paginate(tpl, measuredMulti([
+      { id: 'fixed', measuredHeight: 100 },
+      { id: 'fl', flowRowHeights: Array(12).fill(50) },
+    ]))
+
+    expect(pages).toHaveLength(4)
+    expect(flowSlices(pages)).toEqual([
+      { pageIndex: 0, startFlowRow: 0, endFlowRow: 5, renderTop: 0 },
+      { pageIndex: 1, startFlowRow: 5, endFlowRow: 8, renderTop: 100 },
+      { pageIndex: 2, startFlowRow: 8, endFlowRow: 11, renderTop: 100 },
+      { pageIndex: 3, startFlowRow: 11, endFlowRow: 12, renderTop: 100 },
+    ])
+  })
+
+  it('跟随区整体移页时 groupTop 从固定底边开始', () => {
+    const tpl = multiTemplate([
+      followTextEl('fixed', 0, 60, { repeatOnEveryPage: true }),
+      flowListEl('fl', 0, 300, flowRows(['黄芪', '红花'])),
+      followTextEl('after', 300, 100, { formatter: '合计' }),
+    ])
+    const pages = paginate(tpl, measuredMulti([
+      { id: 'fixed', measuredHeight: 60 },
+      { id: 'fl', flowRowHeights: [150, 150] },
+      { id: 'after', measuredHeight: 100 },
+    ]))
+
+    expect(pages).toHaveLength(3)
+    expect(pages.at(-1)!.sections).toContainEqual(expect.objectContaining({
+      elementId: 'fl', type: 'flow-group', startFlowRow: 0, endFlowRow: 0,
+      followElementIds: ['after'], groupTop: 60,
+    }))
   })
 })
 

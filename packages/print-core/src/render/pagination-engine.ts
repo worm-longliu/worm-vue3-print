@@ -43,11 +43,11 @@ function isSplittableEl(el: FollowJudgementInput): boolean {
 }
 
 /**
- * 每页固定重复元素判据：options.fixed === true 的元素按设计坐标逐页叠加，
- * 不参与分页高度记账、显式/隐式编组和表格/动态列表跟随区（表格/动态 flowList 为整表/整列表完整重复）。
+ * 每页重复元素判据：options.repeatOnEveryPage === true 的元素在页眉下方逐页重复，
+ * 不参与显式/隐式编组和表格/动态列表跟随区（表格/动态 flowList 为整表/整列表完整重复）。
  */
-function isFixedEl(el: FollowJudgementInput): boolean {
-  return el.options?.fixed === true
+function isRepeatedEl(el: FollowJudgementInput): boolean {
+  return el.options?.repeatOnEveryPage === true
 }
 
 function elTypeOf(el: FollowJudgementInput): string {
@@ -193,7 +193,7 @@ export function collectFollowMemberIds<E extends { id?: string }>(
     .filter((e): e is E & { id: string } => typeof e.id === 'string')
     .map(e => e as unknown as FollowJudgementInput)
   // fixed 元素不参与显式编组和跟随区，先排除再计算，与 paginate 的 flowSorted 同口径
-  const flowInputs = inputs.filter(el => !isFixedEl(el))
+  const flowInputs = inputs.filter(el => !isRepeatedEl(el))
   const orderIndex = new Map<string, number>()
   flowInputs.forEach((e, idx) => orderIndex.set(e.id, idx))
   const sorted = [...flowInputs].sort(compareCanvasOrder(orderIndex))
@@ -469,9 +469,19 @@ export function paginate(
   // 排序：top → zIndex（缺省按 0）→ 原数组序，与 collectFollowMemberIds 共用同一比较器
   const sorted = [...template.elements].sort(compareCanvasOrder(orderIndex))
 
-  // fixed 分流：固定元素逐页重复，不参与分页记账；完整 sorted 仍用于层序与元素查找
-  const fixedSorted = sorted.filter(isFixedEl)
-  const flowSorted = sorted.filter(el => !isFixedEl(el))
+  // 每页重复元素分流：首页正文保持设计布局，续页正文从页眉下方的重复区之后起排
+  const repeatedSorted = sorted.filter(isRepeatedEl)
+  const flowSorted = sorted.filter(el => !isRepeatedEl(el))
+  const repeatExtent = repeatedSorted.reduce((extent, el) => {
+    const settle = rotatedSettlement(el, measuredElements)
+    return {
+      minTop: Math.min(extent.minTop, settle.outerTop),
+      maxBottom: Math.max(extent.maxBottom, settle.outerBottom),
+    }
+  }, { minTop: Number.POSITIVE_INFINITY, maxBottom: Number.NEGATIVE_INFINITY })
+  const hasRepeatArea = !continuous && repeatedSorted.length > 0
+  const repeatStart = hasRepeatArea ? repeatExtent.minTop : 0
+  const repeatBottom = hasRepeatArea ? Math.max(0, repeatExtent.maxBottom - repeatStart) : 0
 
   // 显式编组（options.groupId）的非表格成员：强绑定，整组同页，且不降级为表格跟随区
   const explicitGroupIds = new Set<string>()
@@ -515,12 +525,12 @@ export function paginate(
    * 底边越过纸面时留本页并标 overflow，由上层阻断，此契约不变）。
    */
   let occupied: Array<{ x0: number; x1: number; height: number }> = []
-  // 是否已发生换页：换页后内容从新页内容区顶部(0)排布，不再使用设计坐标
+  // 是否已发生换页：首页保留正文相对设计坐标，续页按本列已占高度流式排布
   let pageBroken = false
 
-  /** 当前页完整可用高度（1.3.5 起首页与后续页同预算） */
+  /** 当前页完整可用高度：首页保持原预算，续页再扣除重复区；页眉/页脚已进入 contentHeight */
   function fullPageHeight(): number {
-    return contentHeight - SAFETY_MARGIN
+    return contentHeight - SAFETY_MARGIN - (pageBroken ? repeatBottom : 0)
   }
 
   /** 某横向区间在本列已占的高度合计（mm）；横向相切不算同列 */
@@ -542,18 +552,18 @@ export function paginate(
     occupied.push({ x0: x[0], x1: x[1], height })
   }
 
-  /** 本节在本页内容区内的定位 top：未换页用元素设计 top，换页后贴本列已占底部 */
+  /** 本节定位 top：首页使用设计坐标，续页从重复区下方的本列光标起排 */
   function sectionTop(el: TemplateElement, x: [number, number] = marginXRange(el)): number {
     return pageBroken ? pageCursorTop(x) : (el.options?.top ?? 0)
   }
 
   /**
-   * 换页后的流式光标：本列已占内容的底部（= 预算 − 本列剩余）。
+   * 换页后的流式光标：重复区域底边 + 本列已占内容高度。
    * 修复：此前一律用全页累加的光标，与自身横向不相交的元素会被别列高度推走，
    * 且表格切片之后的元素/编组会叠压在表格上。
    */
   function pageCursorTop(x: [number, number]): number {
-    return Math.max(0, fullPageHeight() - remainingIn(x))
+    return (pageBroken ? repeatBottom : 0) + depthIn(x)
   }
 
   /**
@@ -679,25 +689,27 @@ export function paginate(
     pages.push({ pageIndex: 0, sections: [] })
   }
 
-  // fixed 元素合入每页：按设计坐标出独立 section，不调用 occupy()、不参与 pageBroken 记账；
+  // 重复元素合入每页：top 相对页眉底部，不调用 occupy()；仅续页由 repeatBottom 预留区域
   // 排序按完整 sorted 的层序（top → zIndex → 模板数组序）稳定合入，物理越界只告警不换页
   const sectionRank = new Map(sorted.map((el, index) => [el.id, index]))
   for (const page of pages) {
-    const repeated = fixedSorted.map(el => ({
+    // 首页保留设计位置；续页将整组重复元素归一到页眉下方，组内相对间距不变
+    const repeatOffset = page.pageIndex > 0 ? -repeatStart : 0
+    const repeated = repeatedSorted.map(el => ({
       elementId: el.id,
       type: 'element' as const,
-      renderTop: el.options?.top ?? 0,
+      renderTop: (el.options?.top ?? 0) + repeatOffset,
     }))
     page.sections = [...page.sections, ...repeated].sort((a, b) =>
       (sectionRank.get(a.elementId) ?? Number.MAX_SAFE_INTEGER)
       - (sectionRank.get(b.elementId) ?? Number.MAX_SAFE_INTEGER))
 
     // 物理告警：底边越过内容区标 overflow；旋转外接盒顶越过页首出专条警告。连续纸内容高无限，不会触发。
-    for (const el of fixedSorted) {
+    for (const el of repeatedSorted) {
       const settle = rotatedSettlement(el, measuredElements)
-      if (settle.outerBottom > contentHeight) page.overflow = true
-      if (settle.rot !== undefined && settle.top < 0) {
-        const amount = Math.round(-settle.top * 100) / 100
+      if (settle.outerBottom + repeatOffset > contentHeight) page.overflow = true
+      if (settle.rot !== undefined && settle.top + repeatOffset < 0) {
+        const amount = Math.round(-(settle.top + repeatOffset) * 100) / 100
         page.warnings = [...(page.warnings ?? []),
           `元素 ${el.id} 旋转 ${settle.rot}° 后顶部超出页首 ${amount}mm，打印将被裁切`]
       }
@@ -818,7 +830,7 @@ export function paginate(
     const band = unit.band
 
     const place = (): void => {
-      // 首页（未换页）保持设计坐标；换页后整组平移：组顶（结算盒并集顶）贴本列已占底部，组内相对偏移不变
+      // 首页整组保持设计坐标；续页组顶贴重复区下方的本列光标，组内相对偏移不变
       const offset = pageBroken ? pageCursorTop(band) - minTop : 0
       noteOverflow(minTop + offset + unitHeight)
       if (rotatedAnchor && !pageBroken) {
@@ -840,7 +852,7 @@ export function paginate(
     }
 
     // 放不下：整组移到下一页，绝不拆分（与单元素同为"放不下即换页"语义）
-    const top = pageBroken ? 0 : minTop
+    const top = pageCursorTop(band) + (pageBroken ? 0 : minTop)
     finishPage(top + unitHeight > contentHeight)
     place()
     return idx + 1
@@ -978,12 +990,12 @@ export function paginate(
         } else {
           // 防御：最后一片非本表切片（理论不发生）→ 按单独移页处理
           finishPage()
-          currentPage.push({ elementId: el.id, type: 'table-slice', startRow: rowCount, endRow: rowCount, summary: true, renderTop: 0 })
+          currentPage.push({ elementId: el.id, type: 'table-slice', startRow: rowCount, endRow: rowCount, summary: true, renderTop: sectionTop(el, tb) })
           occupy(tb, Math.max(0, summaryH + elementChrome))
         }
       } else {
         finishPage()
-        currentPage.push({ elementId: el.id, type: 'table-slice', startRow: rowCount, endRow: rowCount, summary: true, renderTop: 0 })
+        currentPage.push({ elementId: el.id, type: 'table-slice', startRow: rowCount, endRow: rowCount, summary: true, renderTop: sectionTop(el, tb) })
         occupy(tb, Math.max(0, summaryH + elementChrome))
       }
     }
@@ -1026,8 +1038,8 @@ export function paginate(
     const tb = marginXRange(el)
     let sliceStart = 0
     let sliceTop = sectionTop(el, tb)
-    // 首片在首页时预算先扣设计 top 段（片顶是绝对坐标，页面物理下限固定，不再按 depthIn 扣）；
-    // 换页后片顶落内容区顶部(0)，先前占深由 remainingIn 扣除
+    // 首页扣正文设计 top，重复区不占首页预算；
+    // 换页后片顶落重复区域下方的列光标，先前占深由 remainingIn 扣除
     let sliceDebit = pageBroken ? 0 : sliceTop
     // 本片行高合计（不含内边距与边框）
     let sliceRows = 0
@@ -1045,8 +1057,7 @@ export function paginate(
         endFlowRow: endRow,
         renderTop: sliceTop,
       })
-      // 首页同列已有元素已包含设计 top 之前的占位，只补当前片实际新增的底边深度；
-      // 续页 sliceTop 即当前列游标，同样按片底与游标之差记账，避免重复扣顶距。
+      // 首页按原设计顶距记账；续页 sliceTop 已含重复区与本列占深。
       const depthBefore = pageBroken ? sliceTop : depthIn(tb)
       const sliceBottom = sliceTop + chromeVertical + sliceRows
       occupy(tb, Math.max(0, sliceBottom - depthBefore))
@@ -1084,7 +1095,7 @@ export function paginate(
         r++
         continue
       }
-      // 已积累的行先收片 → 换页 → 新片从内容区顶部(0)排布，重试当前行
+      // 已积累的行先收片 → 换页 → 新片从重复区域下方排布，重试当前行
       if (r > sliceStart) {
         pushFlowSlice(r)
         sliceStart = r
@@ -1104,7 +1115,7 @@ export function paginate(
   /**
    * 方案 A+B：处理可切片锚点（表格 / 动态 flowList）下方跟随区。
    * - 放得下最后一片所在页：把该页最后一个切片升级为 flow-group（容器起点=锚点片首 renderTop）
-   * - 放不下：跟随区整体移到下一页（容器起点=新页内容区顶部 0），动态组行区间归零只渲染跟随区
+   * - 放不下：跟随区整体移到下一页（容器起点=新页重复区域下方），动态组行区间归零只渲染跟随区
    * @param band 锚点横向占用列：跟随区与锚点同列，只按本列剩余判定
    */
   function applyFollowGroup(
@@ -1137,7 +1148,7 @@ export function paginate(
       // 防御：最后一片不在当前页（理论不发生）→ 按移页处理
     }
 
-    // 放不下：整体移到下一页，仅渲染跟随区，容器从页顶开始
+    // 放不下：整体移到下一页，仅渲染跟随区，容器从重复区域下方开始
     finishPage()
     currentPage.push({
       elementId: el.id,
@@ -1147,7 +1158,7 @@ export function paginate(
       // 动态列表组：行区间归零，渲染端只出跟随区
       ...(isDynamicFlowListEl(el) ? { startFlowRow: 0, endFlowRow: 0 } : {}),
       followElementIds: members,
-      groupTop: 0,
+      groupTop: sectionTop(el, band),
     })
     occupy(band, followH)
     markGrouped(members)

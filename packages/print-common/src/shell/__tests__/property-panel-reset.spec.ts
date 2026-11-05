@@ -158,7 +158,7 @@ describe('边框与背景三行「恢复默认值」', () => {
 
 describe('高级组三行「恢复默认值」', () => {
   it('锁定 / 每页重复 / 层级 都挂图标；出厂未设 ⇒ 偏离态 + 点击删键', () => {
-    const { el, host } = paint('text', { locked: true, fixed: true, zIndex: 5 })
+    const { el, host } = paint('text', { locked: true, repeatOnEveryPage: true, zIndex: 5 })
     for (const t of ['锁定', '每页重复', '层级']) {
       const b = btnOf(host, t)
       expect(b.classList.contains('is-dirty'), `应为偏离态：${t}`).toBe(true)
@@ -166,7 +166,7 @@ describe('高级组三行「恢复默认值」', () => {
       b.click()
     }
     expect(el.options.locked).toBeUndefined()
-    expect(el.options.fixed).toBeUndefined()
+    expect(el.options.repeatOnEveryPage).toBeUndefined()
     expect(el.options.zIndex).toBeUndefined()
   })
 

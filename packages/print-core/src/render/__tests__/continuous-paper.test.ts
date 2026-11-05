@@ -52,7 +52,7 @@ describe('CONTINUOUS 纸型', () => {
 
   it('连续纸只有一个页面，固定元素只出现一次', () => {
     const fixed = el('fixed', 0, 10)
-    fixed.options.fixed = true
+    fixed.options.repeatOnEveryPage = true
     const t = continuousTemplate({ elements: [fixed] })
     const pages = paginate(t, measuredOf(t, () => 10))
     expect(pages).toHaveLength(1)

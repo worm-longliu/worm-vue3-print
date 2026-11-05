@@ -16,9 +16,9 @@ function makeEl(options: Record<string, unknown> = {}): RuntimeElement {
   }) as unknown as RuntimeElement
 }
 
-function mountBase(element: RuntimeElement) {
+function mountBase(element: RuntimeElement, designMode = true) {
   return mount(BaseElement, {
-    props: { element, designMode: true, scale: 1, allElements: [element] },
+    props: { element, designMode, scale: 1, allElements: [element] },
     global: { provide: { [SELECTED_IDS_KEY as symbol]: ref(new Set<string>()) } },
   })
 }
@@ -54,6 +54,55 @@ describe('canvas 元素四向外边距', () => {
     await input.trigger('change')
     expect(element.options.marginLeft).toBe(-3)
   })
+
+  it('非零外边距在外接盒对应边上显示淡红线并继承元素边框', () => {
+    const wrapper = mountBase(makeEl({
+      marginTop: 2, marginRight: 3, marginBottom: 4, marginLeft: 5,
+      borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#000',
+    }))
+    const guide = wrapper.find('.element-margin-guide')
+    expect(guide.exists()).toBe(true)
+    const style = (guide.element as HTMLElement).style
+    expect(style.left).toBe('-5mm')
+    expect(style.top).toBe('-2mm')
+    expect(style.width).toBe('48mm')
+    expect(style.height).toBe('14mm')
+    expect(style.borderTop).toContain('1.5pt dashed')
+    expect(style.borderRight).toContain('1.5pt dashed')
+    expect(style.borderBottom).toContain('1.5pt dashed')
+    expect(style.borderLeft).toContain('1.5pt dashed')
+    expect(style.borderTopColor).toBe('rgba(239, 68, 68, 0.35)')
+  })
+
+  it('分边外边距只画对应指示线并继承分边线型', () => {
+    const wrapper = mountBase(makeEl({
+      marginTop: 2, marginBottom: 3,
+      borderWidth: 1, borderStyle: 'solid',
+      borders: { bottom: { width: 2, style: 'dotted', color: '#000' } },
+    }))
+    const style = (wrapper.find('.element-margin-guide').element as HTMLElement).style
+    expect(style.borderTop).toContain('1pt solid')
+    expect(style.borderBottom).toContain('2pt dotted')
+    expect(style.borderRight).toBe('')
+    expect(style.borderLeft).toBe('')
+  })
+
+  it('零外边距与非设计态不显示辅助线', () => {
+    expect(mountBase(makeEl({ marginTop: 0 })).find('.element-margin-guide').exists()).toBe(false)
+    expect(mountBase(makeEl({ marginTop: 2 }), false).find('.element-margin-guide').exists()).toBe(false)
+  })
+
+  it('负外边距按实际外接位置绘制且未设置边框时使用默认淡红实线', () => {
+    const wrapper = mountBase(makeEl({ marginTop: -2, marginLeft: -3 }))
+    const style = (wrapper.find('.element-margin-guide').element as HTMLElement).style
+    expect(style.left).toBe('3mm')
+    expect(style.top).toBe('2mm')
+    expect(style.width).toBe('37mm')
+    expect(style.height).toBe('6mm')
+    expect(style.borderTop).toContain('1px solid')
+    expect(style.borderLeft).toContain('1px solid')
+  })
+
   it('吸附候选与拖拽主元素都使用外边距盒', () => {
     const other = makeEl({ left: 20, top: 0, width: 40, height: 10, marginLeft: 2, marginRight: 3 })
     const { requestAdsorb } = useAdsorbManager({

@@ -124,6 +124,22 @@ describe('validateTemplateJson', () => {
     expect(r.issues.every(i => i.level === 'warning')).toBe(true)
   })
 
+  it('每页重复使用 repeatOnEveryPage，历史 fixed 仅按未知键忽略', () => {
+    const current = validateTemplateJson({
+      ...base,
+      elements: [{ ...textElement, options: { ...textElement.options, repeatOnEveryPage: true } }],
+    })
+    expect(current.ok).toBe(true)
+    expect(current.unknownKeys).not.toContain('elements[0].options.repeatOnEveryPage')
+
+    const legacy = validateTemplateJson({
+      ...base,
+      elements: [{ ...textElement, options: { ...textElement.options, fixed: true } }],
+    })
+    expect(legacy.ok).toBe(true)
+    expect(legacy.unknownKeys).toContain('elements[0].options.fixed')
+  })
+
   it('未知 option 键不判失败但列进 unknownKeys（AI 幻觉键）', () => {
     const r = validateTemplateJson({
       ...base,

@@ -107,9 +107,9 @@ describe('最终渲染：页码按页求值', () => {
 })
 
 describe('fixed 元素：页码表达式逐页求值（真实绑定 + 真实分页）', () => {
-  it('固定元素在两页分别求值页码与总页数', () => {
+  it('重复元素归一到续页页眉下方并分别求值页码与总页数', () => {
     const fixed = textEl('fixed-page', '第 {ADD(pageIndex,1)} / {totalPages} 页')
-    fixed.options.fixed = true
+    fixed.options.repeatOnEveryPage = true
     // body-1 top=10 h=150（底 160）、body-2 top=160 h=150：上下相切不聚类，稳定产出两页
     const body1 = textEl('body-1', '正文一')
     const body2 = textEl('body-2', '正文二')
@@ -123,9 +123,8 @@ describe('fixed 元素：页码表达式逐页求值（真实绑定 + 真实分�
     ])
     const pages = paginate(bound, measured)
     expect(pages).toHaveLength(2)
-    for (const page of pages) {
-      expect(page.sections).toContainEqual({ elementId: 'fixed-page', type: 'element', renderTop: 10 })
-    }
+    expect(pages[0]!.sections).toContainEqual({ elementId: 'fixed-page', type: 'element', renderTop: 10 })
+    expect(pages[1]!.sections).toContainEqual({ elementId: 'fixed-page', type: 'element', renderTop: 0 })
     const html = generateHtml(bound, pages, {}, {})
     // 第 1 页：ADD(1,1)=2；第 2 页：ADD(2,1)=3；totalPages 恒为 2
     expect(html).toContain('第 2 / 2 页')

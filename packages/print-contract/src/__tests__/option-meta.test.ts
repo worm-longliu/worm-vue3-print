@@ -31,6 +31,8 @@ describe('OPTION_META', () => {
     expect(OPTION_META.qrQuietZone.kind).toBe('count')
     expect(OPTION_META.flowColumns.kind).toBe('count')
     expect(OPTION_META.flowLayoutMode).toEqual({ kind: 'enum', enum: ['fixed', 'dynamic'] })
+    expect(OPTION_META.repeatOnEveryPage.kind).toBe('bool')
+    expect(OPTION_META).not.toHaveProperty('fixed')
     expect(OPTION_META.flowPaddingTop.kind).toBe('mm')
     expect(OPTION_META.flowPaddingRight.kind).toBe('mm')
     expect(OPTION_META.flowPaddingBottom.kind).toBe('mm')

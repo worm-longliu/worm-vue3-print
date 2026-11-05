@@ -1360,9 +1360,31 @@ describe('单元格换行与断词口径', () => {
   })
 })
 
-describe('fixed 表格：整表 HTML 每页完整输出', () => {
-  it('普通表格设 fixed 后经分页：两页各自渲染完整表格（无切片），A/B 数据行每页出现', () => {
-    const tpl = makeTemplate({ ...matrixOptions(), fixed: true })
+describe('repeatOnEveryPage 表格：整表 HTML 每页完整输出', () => {
+  it('整表重复消费分页 renderTop，不再回退设计 top', () => {
+    const tpl = makeTemplate({ ...matrixOptions(), repeatOnEveryPage: true, top: 12, height: 24 })
+    ;(tpl.elements as any[]).push(
+      { id: 'body-1', type: 'text', options: { left: 0, top: 0, width: 60, height: 150 } },
+      { id: 'body-2', type: 'text', options: { left: 0, top: 150, width: 60, height: 150 } },
+    )
+    const pages = paginate(tpl, new Map([
+      ['tbl-1', { id: 'tbl-1', measuredHeight: 24 }],
+      ['body-1', { id: 'body-1', measuredHeight: 150 }],
+      ['body-2', { id: 'body-2', measuredHeight: 150 }],
+    ]))
+    expect(pages[1]!.sections).toContainEqual({ elementId: 'tbl-1', type: 'element', renderTop: 0 })
+
+    const html = generateHtml(tpl, pages)
+    const wrappers = [...html.matchAll(/<div class="print-element" style="([^"]+)"[^>]*>\s*<table class="print-table" data-element-id="tbl-1"/g)]
+    expect(wrappers).toHaveLength(2)
+    expect(wrappers[0]![1]).toContain('top:12mm')
+    expect(wrappers[1]![1]).toContain('top:0mm')
+    expect(wrappers[0]![1]).not.toContain('height:24mm')
+    expect(wrappers[1]![1]).not.toContain('height:24mm')
+  })
+
+  it('普通表格设 repeatOnEveryPage 后经分页：两页各自渲染完整表格（无切片），A/B 数据行每页出现', () => {
+    const tpl = makeTemplate({ ...matrixOptions(), repeatOnEveryPage: true })
     ;(tpl.elements as any[]).push(
       { id: 'body-1', type: 'text', options: { left: 0, top: 0, width: 60, height: 150 } },
       { id: 'body-2', type: 'text', options: { left: 0, top: 150, width: 60, height: 150 } },

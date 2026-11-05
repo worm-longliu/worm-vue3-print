@@ -8,9 +8,9 @@
           <input type="checkbox" class="pd-switch" v-model="element.options.locked" />
         </div>
         <div class="pd-field" v-show="showItem('ad-fixed')"><span class="pd-label"><span class="pd-label-t">每页重复</span>
-          <ResetButton :target="element.options" :base="factoryOptions" prop-key="fixed" />
+          <ResetButton :target="element.options" :base="factoryOptions" prop-key="repeatOnEveryPage" />
         </span>
-          <input type="checkbox" class="pd-switch" v-model="element.options.fixed" />
+          <input type="checkbox" class="pd-switch" v-model="element.options.repeatOnEveryPage" />
         </div>
       </div>
       <div class="pd-field" v-show="showItem('ad-z-index')"><span class="pd-label"><span class="pd-label-t">层级</span>

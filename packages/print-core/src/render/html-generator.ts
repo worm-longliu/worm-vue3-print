@@ -476,7 +476,7 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
 
   switch (type) {
     case 'table':
-      return renderTableElement(el, isMeasure, measureAttr, ctx)
+      return renderTableElement(el, isMeasure, measureAttr, ctx, overrideTop)
     case 'image':
       return `<div class="print-element" style="${style}"${measureAttr}>
   <img src="${esc(opts.src ?? '')}" style="width:100%;height:100%;object-fit:${opts.fit || 'contain'};${cropStyle(opts.fit, opts.fitScale, opts.objectPosition)}" />
@@ -890,9 +890,10 @@ function renderTableElement(
   isMeasure: boolean,
   measureAttr: string,
   ctx?: RenderCtx,
+  overrideTop?: number,
 ): string {
   const opts = el.options
-  const style = elementPositionStyle(opts.left ?? 0, opts.top ?? 0, opts.width ?? 100, undefined, opts.zIndex, opts)
+  const style = elementPositionStyle(opts.left ?? 0, overrideTop ?? opts.top ?? 0, opts.width ?? 100, undefined, opts.zIndex, opts)
   const renderRows: RenderRow[] = opts._renderRows ?? []
   const bodyHtml = renderMatrixRows(renderRows, 0, renderRows.length, opts, isMeasure, ctx, { elementId: el.id, kind: 'b' })
   return `<div class="print-element" style="${style};overflow:visible;"${measureAttr}>

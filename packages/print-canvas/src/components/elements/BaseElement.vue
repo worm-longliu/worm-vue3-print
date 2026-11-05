@@ -27,6 +27,13 @@
       @dblclick-cell="onDblClickCell"
     />
 
+    <div
+      v-if="marginGuideStyle"
+      class="element-margin-guide"
+      :style="marginGuideStyle"
+      aria-hidden="true"
+    />
+
     <!-- 拖拽半透明预览副本 -->
     <div v-if="isDragging" class="drag-preview" />
 
@@ -176,6 +183,29 @@ const elementStyle = computed(() => {
     // 拖拽预览写 style.transform，两者互不覆盖；选中框/缩放手柄仍按设计盒（v1 口径）
     ...(rotateStyle.value ? { rotate: rotateStyle.value } : {}),
   }
+})
+
+const marginGuideStyle = computed(() => {
+  if (!props.designMode) return null
+  const o = props.element.options
+  const margin = resolveElementMargins(o)
+  if (ELEMENT_BORDER_SIDES.every(side => margin[side] === 0)) return null
+
+  const marginBox = resolveElementBoxes(o).margin
+  const borders = resolveElementBorder(props.element.printElementType.type, o)
+  const style: Record<string, string> = {
+    left: `${-margin.left}mm`,
+    top: `${-margin.top}mm`,
+    width: `${marginBox.width}mm`,
+    height: `${marginBox.height}mm`,
+  }
+  for (const side of ELEMENT_BORDER_SIDES) {
+    if (margin[side] === 0) continue
+    const border = borders?.edges[side] ?? borders?.all
+    const key = `border${side.charAt(0).toUpperCase()}${side.slice(1)}`
+    style[key] = `${border?.borderWidth ?? '1px'} ${border?.borderStyle ?? 'solid'} rgba(239, 68, 68, 0.35)`
+  }
+  return style
 })
 
 /** 画布旋转声明：与出纸端同一判据（排除类型、跟随区成员不转、码类低档吸附直角），0 不出声明 */
@@ -363,6 +393,11 @@ onUnmounted(() => {
   box-sizing: border-box;
   cursor: pointer;
   user-select: none;
+}
+.element-margin-guide {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
 }
 /* 设计态下所有元素显示浅灰虚线边框，标示占位空间大小 */
 .print-element.design-mode {
