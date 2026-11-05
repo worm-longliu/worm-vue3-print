@@ -172,3 +172,33 @@ describe('validateTemplateJson', () => {
     expect(r.issues.some(i => i.path.endsWith('tiling.columns'))).toBe(true)
   })
 })
+
+describe('元素四向外边距契约', () => {
+  it('接受有限正负边距且不报未知键', () => {
+    const r = validateTemplateJson({
+      ...base,
+      elements: [{
+        ...textElement,
+        options: {
+          ...textElement.options,
+          marginTop: 2, marginRight: -3, marginBottom: 4, marginLeft: -5,
+        },
+      }],
+    })
+    expect(r.ok).toBe(true)
+    expect(r.unknownKeys).not.toContain('elements[0].options.marginTop')
+    expect(r.issues.filter(i => i.level === 'error')).toEqual([])
+  })
+
+  it('非有限边距报在对应字段路径', () => {
+    const r = validateTemplateJson({
+      ...base,
+      elements: [{
+        ...textElement,
+        options: { ...textElement.options, marginTop: Number.POSITIVE_INFINITY },
+      }],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.issues.some(i => i.level === 'error' && i.path === 'elements[0].options.marginTop')).toBe(true)
+  })
+})

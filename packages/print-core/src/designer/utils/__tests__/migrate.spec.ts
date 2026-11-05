@@ -96,3 +96,19 @@ describe('stripBlockedElements', () => {
     expect(countBlockedElements({ unit: 'mm', elements: [] } as unknown as TemplateData)).toBe(0)
   })
 })
+
+describe('元素外边距单位迁移', () => {
+  it('旧 pt 模板换算四边距，mm 模板幂等', () => {
+    const tpl = {
+      elements: [{ id: 'e', options: {
+        left: 72, top: 72, width: 72, height: 72,
+        marginTop: 36, marginRight: -36, marginBottom: 72, marginLeft: 18,
+      } }],
+    } as unknown as TemplateData
+    const out = normalizeTemplateUnits(tpl)
+    expect(out.elements[0]!.options).toMatchObject({
+      marginTop: 12.7, marginRight: -12.7, marginBottom: 25.4, marginLeft: 6.35,
+    })
+    expect(normalizeTemplateUnits(out)).toEqual(out)
+  })
+})

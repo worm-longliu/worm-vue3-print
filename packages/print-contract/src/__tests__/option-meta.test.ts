@@ -35,6 +35,11 @@ describe('OPTION_META', () => {
     expect(OPTION_META.flowPaddingRight.kind).toBe('mm')
     expect(OPTION_META.flowPaddingBottom.kind).toBe('mm')
     expect(OPTION_META.flowPaddingLeft.kind).toBe('mm')
+    expect(OPTION_META.marginTop.kind).toBe('mm')
+    expect(OPTION_META.marginRight.kind).toBe('mm')
+    expect(OPTION_META.marginBottom.kind).toBe('mm')
+    expect(OPTION_META.marginLeft.kind).toBe('mm')
+    expect(OPTION_META.marginTop.min).toBeUndefined()
     expect(OPTION_META.fitScale.min).toBe(100)
     expect(OPTION_META.fitScale.max).toBe(400)
     // types.ts 里 printerDpi 是 number，不是字符串枚举

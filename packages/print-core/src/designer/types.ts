@@ -273,6 +273,11 @@ export interface ElementOptions {
   top: number
   width: number
   height: number
+  /** 四向外边距（mm）：left/top 为外边距盒坐标，width/height 为实际边框盒尺寸 */
+  marginTop?: number
+  marginRight?: number
+  marginBottom?: number
+  marginLeft?: number
   /** @deprecated 统一使用 formatter */
   title?: string
   testData?: string

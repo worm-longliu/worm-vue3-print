@@ -4,7 +4,7 @@ import type { TemplateData, PrintElementData } from '../types.js'
 import { ptToMm } from './units.js'
 import { isBlockedElementType } from './element-factory.js'
 
-const PT_KEYS = ['left', 'top', 'width', 'height'] as const
+const PT_KEYS = ['left', 'top', 'width', 'height', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft'] as const
 
 /** 元素类型可能落在 type 或 printElementType.type 两处（设计器模型与运行时模型同 JSON） */
 function elementTypeOf(el: PrintElementData): string | undefined {

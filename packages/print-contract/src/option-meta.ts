@@ -32,6 +32,7 @@ const obj = <K extends OptionKey>(...k: K[]) => groupOf('object', k)
 export const OPTION_META: Record<OptionKey, Meta> = {
   // 几何（mm）
   ...mm('left', 'top', 'width', 'height'),
+  ...mm('marginTop', 'marginRight', 'marginBottom', 'marginLeft'),
   ...mm('barHeight', 'maxWidth', 'maxHeight', 'flowRowHeight', 'flowGapX'),
   ...mm('flowPaddingTop', 'flowPaddingRight', 'flowPaddingBottom', 'flowPaddingLeft'),
   ...mm('tableDefaultPadding'),

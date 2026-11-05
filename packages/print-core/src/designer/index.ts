@@ -24,6 +24,9 @@ export * from '../render/crop-style.js'
 // ─── 元素级旋转的口径单点（与渲染端共用同一份，画布所见必须等于出纸角度） ───
 export * from '../render/rotation.js'
 
+// ─── 元素四向外边距的声明与几何口径 ───
+export * from '../render/element-margin.js'
+
 // ─── 表格跟随区归属单点（与分页同源）：成员元素 v1 不出旋转输入框、渲染不转 ───
 export { collectFollowMemberIds } from '../render/pagination-engine.js'
 export type { FollowJudgementInput } from '../render/pagination-engine.js'
