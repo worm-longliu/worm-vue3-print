@@ -464,6 +464,62 @@ check('纸面：表格旁侧一栏保持绝对定位、不在跟随区内', wrap
 await page.keyboard.press('Escape')
 await waitHidden(page, '.preview-mask')
 
+// ── 9. 付款申请单：动态明细分页、每页小计与付款方式按值合并 ──
+const paymentSample = SAMPLES.find(s => s.id === 'payment-request')
+check('付款申请单示例已注册（含 10 条明细）', paymentSample?.data?.items?.length === 10)
+if (paymentSample) {
+  const paymentTemplate = paymentSample.template
+  const applicationNo = paymentTemplate.header.elements.find(el => el.options.formatter?.includes('{applicationNo}'))
+  const attachment = paymentTemplate.elements.find(el => el.options.formatter?.includes('{attachmentCount}'))
+  const paymentTable = paymentTemplate.elements.find(el => el.id === 'payment-table')
+  check('付款申请单：单据编号位于页眉左上角，附件在正文右侧固定旋转',
+    applicationNo?.options.left === 0 && applicationNo?.options.top === 0
+      && !paymentTemplate.footer.elements.some(el => el.options.formatter?.includes('{applicationNo}'))
+      && attachment?.options.fixed === true && attachment?.options.rotate === 90
+      && paymentTable?.options.width === 212)
+  await clickByText(page, '加载示例')
+  await waitVisible(page, '.gallery-mask')
+  await page.locator('.gallery-mask .sample-card', { hasText: '付款申请单' }).first().click()
+  await page.waitForTimeout(200)
+  await clickByText(page, '使用该模板')
+  await waitHidden(page, '.gallery-mask')
+  await openDesignerPreview()
+  await waitVisible(page, '.preview-mask', 8000)
+  await waitPreviewSettled()
+  const paymentPages = await page.evaluate(() => {
+    const doc = document.querySelector('.preview-mask iframe').contentDocument
+    return [...doc.querySelectorAll('.print-page')].map(page => ({
+      rows: page.querySelectorAll('tbody tr').length,
+      text: (page.textContent || '').replace(/\s+/g, ' '),
+      merges: [...page.querySelectorAll('td[rowspan]')].map(cell => ({
+        text: cell.textContent,
+        rowspan: cell.getAttribute('rowspan'),
+      })),
+      attachmentRotate: [...page.querySelectorAll('.print-element')]
+        .find(el => el.textContent?.includes('附件单据'))?.style.rotate,
+    }))
+  })
+  check('付款申请单：输出 3 页，明细每页 4/4/2 条',
+    paymentPages.length === 3 && paymentPages.map(p => p.rows).join('/') === '10/10/8',
+    `页数=${paymentPages.length}·表格行=${paymentPages.map(p => p.rows).join('/')}`)
+  check('付款申请单：每页只汇总当前页',
+    ['43,520.50', '33,040.75', '21,100.00'].every((amount, i) => paymentPages[i]?.text.includes(amount)),
+    paymentPages.map(p => p.text.match(/合计金额（本页）[\d,.]+/)?.[0] ?? '未找到').join(' | '))
+  check('付款申请单：标题、收款信息、审批栏和页码每页重复',
+    paymentPages.every((p, i) => p.text.includes('付款申请单') && p.text.includes('上海示例供应链有限公司')
+      && p.text.includes('领导批示') && p.text.includes(`第 ${i + 1} 页 / 共 3 页`)))
+  check('付款申请单：附件单据在每页旋转显示', paymentPages.every(p => p.attachmentRotate === '90deg'))
+  check('付款申请单：同页相邻付款方式按值合并',
+    paymentPages[0]?.merges.some(m => m.text === '电汇' && m.rowspan === '3')
+      && paymentPages[1]?.merges.some(m => m.text === '现金' && m.rowspan === '2'),
+    JSON.stringify(paymentPages.map(p => p.merges)))
+  check('付款申请单：付款方式跨页断开并在续页重显',
+    paymentPages[0]?.text.includes('支票') && paymentPages[1]?.text.includes('支票')
+      && paymentPages[1]?.text.includes('承兑') && paymentPages[2]?.text.includes('承兑'))
+  await page.keyboard.press('Escape')
+  await waitHidden(page, '.preview-mask')
+}
+
 await page.screenshot({ path: join(OUT, `demo-${new URL(URL_).port}.png`), fullPage: false })
 const realErrors = errors.filter(e => !/Failed to load resource|WebSocket|favicon/.test(e))
 check('全程无页面异常', realErrors.length === 0, realErrors.slice(0, 2).join(' | '))

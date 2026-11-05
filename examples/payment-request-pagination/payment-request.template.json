@@ -1,0 +1,279 @@
+{
+  "unit": "mm",
+  "paperSize": "CUSTOM",
+  "orientation": "landscape",
+  "margins": {
+    "top": 10.0,
+    "right": 10.0,
+    "bottom": 10.0,
+    "left": 10.0
+  },
+  "header": {
+    "height": 16.0,
+    "elements": [
+      {
+        "id": "application-no",
+        "type": "text",
+        "options": {
+          "left": 0.0,
+          "top": 0.0,
+          "width": 70.0,
+          "height": 8.0,
+          "formatter": "单据编号：{applicationNo}",
+          "fontSize": 9,
+          "verticalAlign": "middle"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      },
+      {
+        "id": "title",
+        "type": "text",
+        "options": {
+          "left": 0.0,
+          "top": 0.0,
+          "width": 220.0,
+          "height": 8.0,
+          "formatter": "付款申请单",
+          "fontSize": 16,
+          "fontWeight": "bold",
+          "textAlign": "center",
+          "verticalAlign": "middle"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      },
+      {
+        "id": "page-number",
+        "type": "text",
+        "options": {
+          "left": 170.0,
+          "top": 0.0,
+          "width": 50.0,
+          "height": 8.0,
+          "formatter": "第 {pageIndex} 页 / 共 {totalPages} 页",
+          "fontSize": 9,
+          "textAlign": "right",
+          "verticalAlign": "middle"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      },
+      {
+        "id": "department",
+        "type": "text",
+        "options": {
+          "left": 0.0,
+          "top": 8.0,
+          "width": 110.0,
+          "height": 8.0,
+          "formatter": "申请部门：{department}",
+          "fontSize": 10,
+          "verticalAlign": "middle"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      },
+      {
+        "id": "apply-date",
+        "type": "text",
+        "options": {
+          "left": 110.0,
+          "top": 8.0,
+          "width": 110.0,
+          "height": 8.0,
+          "formatter": "申请日期：{applyDate}",
+          "fontSize": 10,
+          "textAlign": "right",
+          "verticalAlign": "middle"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      }
+    ]
+  },
+  "footer": {
+    "height": 16.0,
+    "elements": [
+      {
+        "id": "leader",
+        "type": "text",
+        "options": {
+          "left": 0.0,
+          "top": 4.0,
+          "width": 55.0,
+          "height": 8.0,
+          "formatter": "领导批示：",
+          "fontSize": 9,
+          "fontWeight": "bold",
+          "verticalAlign": "middle"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      },
+      {
+        "id": "finance",
+        "type": "text",
+        "options": {
+          "left": 55.0,
+          "top": 4.0,
+          "width": 55.0,
+          "height": 8.0,
+          "formatter": "财务负责人：",
+          "fontSize": 9,
+          "fontWeight": "bold",
+          "verticalAlign": "middle"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      },
+      {
+        "id": "manager",
+        "type": "text",
+        "options": {
+          "left": 110.0,
+          "top": 4.0,
+          "width": 55.0,
+          "height": 8.0,
+          "formatter": "部门负责人：",
+          "fontSize": 9,
+          "fontWeight": "bold",
+          "verticalAlign": "middle"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      },
+      {
+        "id": "applicant",
+        "type": "text",
+        "options": {
+          "left": 165.0,
+          "top": 4.0,
+          "width": 55.0,
+          "height": 8.0,
+          "formatter": "经办人：{applicant}",
+          "fontSize": 9,
+          "fontWeight": "bold",
+          "verticalAlign": "middle"
+        },
+        "printElementType": {
+          "type": "text",
+          "title": "文本"
+        }
+      }
+    ]
+  },
+  "elements": [
+    {
+      "id": "payment-table",
+      "type": "table",
+      "options": {
+        "left": 0.0,
+        "top": 0.0,
+        "width": 212.0,
+        "height": 54.0,
+        "dataSource": "items",
+        "tableDefaultFontSize": 9,
+        "tableDefaultPadding": 1,
+        "tableDefaultColor": "#333333",
+        "tableColWidths": [34.7, 38.5, 34.7, 34.7, 34.7, 34.7],
+        "tableRows": [
+          {
+            "id": "r1",
+            "type": "header",
+            "height": 7.0,
+            "cells": [{"id":"c1","formatter":"收款单位","align":"center","valign":"middle","fontWeight":"bold","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c2","formatter":"{payeeName}","colspan":2,"valign":"middle","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c3","merged":true,"borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c4","formatter":"项目名称","align":"center","valign":"middle","fontWeight":"bold","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c5","formatter":"{projectName}","colspan":2,"valign":"middle","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c6","merged":true,"borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}}],
+            "repeatOnPage": true
+          },
+          {
+            "id": "r2",
+            "type": "header",
+            "height": 7.0,
+            "cells": [{"id":"c7","formatter":"开户银行","align":"center","valign":"middle","fontWeight":"bold","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c8","formatter":"{bankName}","colspan":2,"valign":"middle","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c9","merged":true,"borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c10","formatter":"合同号","align":"center","valign":"middle","fontWeight":"bold","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c11","formatter":"{contractNo}","colspan":2,"valign":"middle","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c12","merged":true,"borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}}],
+            "repeatOnPage": true
+          },
+          {
+            "id": "r3",
+            "type": "header",
+            "height": 7.0,
+            "cells": [{"id":"c13","formatter":"开户账号","align":"center","valign":"middle","fontWeight":"bold","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c14","formatter":"{bankAccount}","colspan":2,"valign":"middle","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c15","merged":true,"borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c16","formatter":"合同总金额","align":"center","valign":"middle","fontWeight":"bold","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c17","formatter":"{MONEY(contractTotal)}","colspan":2,"align":"right","valign":"middle","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c18","merged":true,"borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}}],
+            "repeatOnPage": true
+          },
+          {
+            "id": "r4",
+            "type": "header",
+            "height": 7.0,
+            "cells": [{"id":"c19","formatter":"税号","align":"center","valign":"middle","fontWeight":"bold","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c20","formatter":"{taxNumber}","colspan":2,"valign":"middle","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c21","merged":true,"borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c22","formatter":"累计已支付金额","align":"center","valign":"middle","fontWeight":"bold","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c23","formatter":"{MONEY(paidTotal)}","colspan":2,"align":"right","valign":"middle","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c24","merged":true,"borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}}],
+            "repeatOnPage": true
+          },
+          {
+            "id": "r5",
+            "type": "header",
+            "height": 8.0,
+            "cells": [{"id":"c25","formatter":"付款项目摘要","colspan":3,"align":"center","valign":"middle","fontWeight":"bold","backgroundColor":"#f2f2f2","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c26","merged":true,"borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c27","merged":true,"borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c28","formatter":"付款金额","align":"center","valign":"middle","fontWeight":"bold","backgroundColor":"#f2f2f2","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c29","formatter":"付款方式","align":"center","valign":"middle","fontWeight":"bold","backgroundColor":"#f2f2f2","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c30","formatter":"备注","align":"center","valign":"middle","fontWeight":"bold","backgroundColor":"#f2f2f2","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}}],
+            "repeatOnPage": true
+          },
+          {
+            "id": "r6",
+            "type": "data",
+            "height": 10.0,
+            "cells": [{"id":"c31","formatter":"{summary}","colspan":3,"valign":"middle","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c32","merged":true,"borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c33","merged":true,"borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c34","formatter":"{MONEY(amount)}","align":"right","valign":"middle","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c35","formatter":"{paymentMethod}","align":"center","valign":"middle","mergeSameValue":true,"borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c36","formatter":"{remark}","align":"center","valign":"middle","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}}]
+          },
+          {
+            "id": "r7",
+            "type": "subtotal",
+            "height": 8.0,
+            "cells": [{"id":"c37","formatter":"合计金额（本页）","colspan":3,"align":"right","valign":"middle","fontWeight":"bold","backgroundColor":"#fafafa","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c38","merged":true,"borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c39","merged":true,"borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c40","formatter":"{MONEY(SUM(amount))}","align":"right","valign":"middle","fontWeight":"bold","backgroundColor":"#fafafa","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c41","formatter":"","backgroundColor":"#fafafa","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}},{"id":"c42","formatter":"","backgroundColor":"#fafafa","borders":{"top":{"width":0.75,"style":"solid","color":"#333333"},"right":{"width":0.75,"style":"solid","color":"#333333"},"bottom":{"width":0.75,"style":"solid","color":"#333333"},"left":{"width":0.75,"style":"solid","color":"#333333"}}}]
+          }
+        ],
+        "tablePagination": {
+          "enabled": true
+        }
+      },
+      "printElementType": {
+        "type": "table",
+        "title": "表格"
+      }
+    },
+    {
+      "id": "attachments",
+      "type": "text",
+      "options": {
+        "left": 177.5,
+        "top": 41.5,
+        "width": 80.0,
+        "height": 5.0,
+        "formatter": "附件单据：{attachmentCount} 张",
+        "fontSize": 10,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "textFit": "shrink",
+        "rotate": 90,
+        "fixed": true
+      },
+      "printElementType": {
+        "type": "text",
+        "title": "文本"
+      }
+    }
+  ],
+  "customWidth": 140.0,
+  "customHeight": 240.0,
+  "name": "付款申请单（明细分页与付款方式合并）"
+}

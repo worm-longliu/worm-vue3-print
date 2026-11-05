@@ -24,6 +24,7 @@ import { TCM_PRESCRIPTION_SAMPLE } from './tcm-prescription'
 import { COMPREHENSIVE_SHOWCASE_SAMPLE } from './comprehensive-showcase'
 import { PAGINATION_EDGE_SAMPLE } from './pagination-edge'
 import { TEXT_WRAP_FOLLOW_SAMPLE } from './text-wrap-follow'
+import { PAYMENT_REQUEST_SAMPLE } from './payment-request'
 
 export type { SampleTemplate, SampleGroup }
 
@@ -31,6 +32,7 @@ export type { SampleTemplate, SampleGroup }
 export const SAMPLE_TEMPLATES: SampleTemplate[] = [
   PURCHASE_RECEIPT_SAMPLE,
   SALES_OUTBOUND_SAMPLE,
+  PAYMENT_REQUEST_SAMPLE,
   TCM_PRESCRIPTION_SAMPLE,
   EXPRESS_WAYBILL_SAMPLE,
   COMPREHENSIVE_SHOWCASE_SAMPLE,

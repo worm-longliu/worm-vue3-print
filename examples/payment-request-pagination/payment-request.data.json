@@ -1,0 +1,27 @@
+{
+  "applicationNo": "FK-20261105-001",
+  "department": "供应链管理部",
+  "applyDate": "2026-11-05",
+  "applicant": "王威",
+  "attachmentCount": 12,
+  "payeeName": "上海示例供应链有限公司",
+  "bankName": "中国建设银行上海示例支行",
+  "bankAccount": "31050123456789012345",
+  "taxNumber": "91310115MA1K4XXXXX",
+  "projectName": "华东仓储中心设备采购项目",
+  "contractNo": "HT-CG-2026-1105",
+  "contractTotal": 198000,
+  "paidTotal": 100338.75,
+  "items": [
+    { "summary": "货架采购首期款", "amount": 12800, "paymentMethod": "电汇", "remark": "合同款" },
+    { "summary": "输送设备预付款", "amount": 8600, "paymentMethod": "电汇", "remark": "预付款" },
+    { "summary": "自动分拣机进度款", "amount": 15320.5, "paymentMethod": "电汇", "remark": "进度款" },
+    { "summary": "仓储笼采购款", "amount": 6800, "paymentMethod": "支票", "remark": "货到付款" },
+    { "summary": "叉车配件采购款", "amount": 9300, "paymentMethod": "支票", "remark": "维保物料" },
+    { "summary": "设备搬运零星支出", "amount": 1260, "paymentMethod": "现金", "remark": "备用金" },
+    { "summary": "现场安装交通及住宿费", "amount": 2480.75, "paymentMethod": "现金", "remark": "费用报销" },
+    { "summary": "打包机设备验收款", "amount": 20000, "paymentMethod": "承兑", "remark": "六个月" },
+    { "summary": "托盘采购尾款", "amount": 17500, "paymentMethod": "承兑", "remark": "三个月" },
+    { "summary": "旧设备拆卸及回收费", "amount": 3600, "paymentMethod": "其他", "remark": "抵扣结算" }
+  ]
+}

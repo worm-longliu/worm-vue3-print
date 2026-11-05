@@ -11,7 +11,7 @@
 `scripts/sync-demo-styles.mjs` 从 `demo/` 逐字抽取成一份 `apps/<宿主>/src/styles/demo-ui.css`
 （四份同 MD5，758 行），宿主工程内不再有任何私有布局样式。
 示例库也不各写各的：`scripts/sync-demo-samples.mjs` 把 `demo/src/samples` 求值展开成
-`apps/<宿主>/src/templates.js`（四份同 MD5，10 个示例），与 demo 用同一批模板、字段与数据。
+`apps/<宿主>/src/templates.js`（四份同 MD5，15 个示例），与 demo 用同一批模板、字段与数据。
 
 > 这里刻意不做逻辑抽象：demo 的价值在于读者能在一个文件里看完「注册元素 → 注入模板与字段 → 听事件 → 出纸」，
 > 而不是跳到某个 shared 包里去看封装。四个工程的重复是有意为之；同源只有样式与示例库两处，因为它们必须与 demo 一致。

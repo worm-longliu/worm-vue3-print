@@ -90,6 +90,18 @@ describe('inspectTemplate', () => {
     expect(r.findings).toEqual([])
   })
 
+  it('旋转元素按旋转后外接框判定横向越界', () => {
+    const inside = inspectTemplate(tpl([
+      el({ left: 140, top: 41.5, width: 80, height: 5, rotate: 90 }),
+    ]))
+    expect(inside.findings).toEqual([])
+
+    const outside = inspectTemplate(tpl([
+      el({ left: 190, top: 41.5, width: 80, height: 5, rotate: 90 }),
+    ]))
+    expect(outside.findings.some(f => f.code === 'OUT_OF_PAPER' && f.level === 'error')).toBe(true)
+  })
+
   it('表格列宽之和与元素宽不符报 warning', () => {
     const r = inspectTemplate(tpl([{
       id: 't1', type: 'table', printElementType: { type: 'table' },
