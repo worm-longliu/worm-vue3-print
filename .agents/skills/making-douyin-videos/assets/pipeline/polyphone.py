@@ -114,6 +114,7 @@ def main(argv):
         for ti, raw in enumerate(split_sentences(scene["voiceover"])):
             ctx = tone3(raw)
             marks = [None] * len(raw)
+            needs_review = False
             for a in ann:
                 for pos in range(len(raw)):
                     if not raw.startswith(a["w"], pos):
@@ -153,6 +154,7 @@ def main(argv):
                     continue
                 if a:
                     if a["target"] == "keep":
+                        needs_review = True
                         say.append(ch)
                         rows.append([si + 1, ti + 1, ch, snippet, "/".join(cand), f"认下 {cur}", ch, a["why"] or "语义上取上下文读音"])
                     else:
@@ -160,6 +162,7 @@ def main(argv):
                             errors.append(f"场景{si+1}句{ti+1}「{ch}」声明的 {a['target']} 不是它的合法读音（候选 {cand}）")
                             say.append(ch)
                             continue
+                        needs_review = True
                         sub = swap.get(a["target"])
                         if not sub:
                             errors.append(f"场景{si+1}句{ti+1}「{ch}」目标 {a['target']} 没有唯一读音替换字，请改措辞")
@@ -176,11 +179,12 @@ def main(argv):
                     if key not in accept:
                         errors.append(f"场景{si+1}句{ti+1} 风险表多读未认：「{ch}」取 {cur}（候选 {cand}），语境 …{snippet}… → 加 accept [\"{ch}\",\"{cur}\",\"理由\"]")
                     else:
+                        needs_review = True
                         say.append(ch)
                         rows.append([si + 1, ti + 1, ch, snippet, "/".join(cand), f"认下 {cur}", ch, accept[key] or "字级认下"])
                 else:
                     say.append(ch)
-            out_sents.append({"display": raw, "say": "".join(say)})
+            out_sents.append({"display": raw, "say": "".join(say), "needsReview": needs_review})
         for a in sann:
             if a["hits"] == 0:
                 errors.append(f"场景{si+1} 注解词「{a['w']}」台词里没出现（过期注解，删掉或改词）")

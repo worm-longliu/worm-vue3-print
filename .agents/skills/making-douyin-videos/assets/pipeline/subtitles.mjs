@@ -52,3 +52,14 @@ export function subtitlesFor(text, start, end, options = {}) {
     return { start: +segStart.toFixed(3), end: +cursor.toFixed(3), text: caption }
   })
 }
+
+/** 从短字幕时间轴恢复原句的完整听审窗口；兼容未拆条的旧 timings。 */
+export function sentenceWindow(parts, sentenceIndex) {
+  const matched = parts.filter((part) => part.sentence === sentenceIndex)
+  if (!matched.length && parts[sentenceIndex]?.sentence == null) {
+    const { start, end } = parts[sentenceIndex]
+    return { start, end }
+  }
+  if (!matched.length) throw new Error(`字幕时间轴缺原句 ${sentenceIndex}`)
+  return { start: matched[0].start, end: matched.at(-1).end }
+}

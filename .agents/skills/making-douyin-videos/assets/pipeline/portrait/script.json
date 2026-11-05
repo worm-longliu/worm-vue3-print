@@ -11,15 +11,38 @@
     "coreBottom": 1680,
     "rightFrom": 1100
   },
-  "subtitle": { "fontsize": 56, "marginV": 340 },
+  "subtitle": {
+    "fontsize": 56,
+    "marginV": 340,
+    "lineWidth": 16,
+    "maxLines": 2
+  },
   "coverTitle": "AI 改画布",
   "coverSub": "三方链路 · 9 个工具 · 3 道写回门",
   "coverVersion": "待发布",
   "coverVerdict": "AI 改的是<s>仓库里那份配置</s>，是你正开着的画布",
   "coverCards": [
-    { "num": "9", "unit": "个", "label": "MCP 工具", "pct": "3 个读写画布", "iso": "本机 /mcp" },
-    { "num": "32", "unit": "个", "label": "会话上限", "pct": "驻内存不落盘", "iso": "关页即失效" },
-    { "num": "0", "unit": "个", "label": "能连打印机", "pct": "出纸只在人这边", "iso": "硬边界" }
+    {
+      "num": "9",
+      "unit": "个",
+      "label": "MCP 工具",
+      "pct": "3 个读写画布",
+      "iso": "本机 /mcp"
+    },
+    {
+      "num": "32",
+      "unit": "个",
+      "label": "会话上限",
+      "pct": "驻内存不落盘",
+      "iso": "关页即失效"
+    },
+    {
+      "num": "0",
+      "unit": "个",
+      "label": "能连打印机",
+      "pct": "出纸只在人这边",
+      "iso": "硬边界"
+    }
   ],
   "scenes": [
     {
@@ -30,7 +53,7 @@
     {
       "name": "why",
       "body": "why",
-      "voiceover": "为什么要三方。画布在浏览器里，它没有本地打印能力，也没有别的进程能直接伸手进去改。桌面客户端有打印机和本机端口。AI 那侧只认一种交互，就是工具调用。三种能力凑不齐，中间就得有一层翻译。"
+      "voiceover": "为什么要三方。画布在浏览器里，它没有本地打印能力，也没有别的进程能直接伸手进去改。桌面客户端有打印机和本机端口。AI 那侧只认一种交互，就是工具调用。三种能力凑不齐，中间必须有一层翻译。"
     },
     {
       "name": "page-link",
@@ -40,7 +63,7 @@
     {
       "name": "attach",
       "body": "attach",
-      "voiceover": "连上只是认识，签到才算会话。页面调签到接口，把会话标识、页面名和地址登记进去。注册有门槛，必须带来源标识，标识得是十六到一百二十八位的随机串，一个连接只绑一个会话，全局上限三十二个。"
+      "voiceover": "连上只是认识，签到才算会话。页面调签到接口，把会话标识、页面名和地址登记进去。注册有门槛，必须带来源标识，标识必须为十六到一百二十八位的随机串，一个连接只绑一个会话，全局上限三十二个。"
     },
     {
       "name": "agent-link",
@@ -72,5 +95,171 @@
       "body": "cta",
       "voiceover": "现状说清楚。连接器包还没发到 npm，克隆构建完才可用，客户端也要自己装。页面侧的签到实现，demo 里有一份可以整份抄走。文档在指南里的 MCP 集成和静默打印这两篇。"
     }
-  ]
+  ],
+  "read": [
+    [
+      "模板",
+      "keep",
+      "模板读 mú；没有唯一读音替换字，保留原文并列入人工听审"
+    ],
+    [
+      "阻塞",
+      "se4",
+      "阻塞读 sè"
+    ],
+    [
+      "长连接",
+      "chang2",
+      "长连接读 cháng"
+    ],
+    [
+      "重试",
+      "chong2",
+      "再次尝试读 chóng"
+    ],
+    [
+      "重读",
+      "chong2",
+      "重新读取读 chóng"
+    ],
+    [
+      "同行",
+      "hang2",
+      "同行业读 háng"
+    ]
+  ],
+  "accept": [
+    [
+      "着",
+      "zhe",
+      "正在开着，动态助词"
+    ],
+    [
+      "中",
+      "zhong1",
+      "中间、其中读 zhōng"
+    ],
+    [
+      "为",
+      "wei4",
+      "为什么、因为读 wèi"
+    ],
+    [
+      "没",
+      "mei2",
+      "没有读 méi"
+    ],
+    [
+      "地",
+      "di4",
+      "本地、地址读 dì"
+    ],
+    [
+      "种",
+      "zhong3",
+      "一种、三种读 zhǒng"
+    ],
+    [
+      "调",
+      "diao4",
+      "调用读 diào"
+    ],
+    [
+      "长",
+      "zhang3",
+      "长这样读 zhǎng，长连接由 read 覆盖"
+    ],
+    [
+      "重",
+      "zhong4",
+      "词典认下，重试与重读由 read 覆盖"
+    ],
+    [
+      "会",
+      "hui4",
+      "会话读 huì"
+    ],
+    [
+      "给",
+      "gei3",
+      "交给、发给读 gěi"
+    ],
+    [
+      "转",
+      "zhuan3",
+      "转成消息读 zhuǎn"
+    ],
+    [
+      "系",
+      "xi4",
+      "系统读 xì"
+    ],
+    [
+      "都",
+      "dou1",
+      "每个工具都读 dōu"
+    ],
+    [
+      "宿",
+      "su4",
+      "宿主读 sù"
+    ],
+    [
+      "行",
+      "xing2",
+      "放行读 xíng，同行由 read 覆盖"
+    ],
+    [
+      "参",
+      "can1",
+      "入参读 cān"
+    ],
+    [
+      "传",
+      "chuan2",
+      "传入读 chuán"
+    ],
+    [
+      "模",
+      "mo2",
+      "模型读 mó，模板由 read 覆盖"
+    ],
+    [
+      "还",
+      "hai2",
+      "还没发布读 hái"
+    ]
+  ],
+  "douyin": {
+    "titles": [
+      "AI改的是你正开着的那张模板",
+      "浏览器·客户端·AI，三方怎么接",
+      "让AI直接写回画布上的打印模板",
+      "AI改模板，怎么不覆盖你的手",
+      "打印模板的MCP链路拆解"
+    ],
+    "description": "AI 改的不是仓库里一份静态配置，而是浏览器里正开着的打印模板。\n\n这条片拆清浏览器、桌面客户端、AI 工具三方链路：页面签到、实时快照、带内容指纹写回，以及为什么 MCP 工具只改模板、不直接出纸。\n\n发布前必须重新核验包是否仍为 private，以及工具数量和会话上限。",
+    "tags": [
+      "MCP",
+      "AI编程",
+      "前端开发",
+      "打印模板",
+      "开源项目"
+    ],
+    "pinnedComment": "为什么写回要带指纹？因为人也正在拖画布。你改过之后旧指纹就失效，AI 必须重新读取，不能直接覆盖。只生成模板 JSON 不必走实时画布链路；要读写正在编辑的页面才需要桌面客户端。",
+    "sources": [
+      {
+        "claim": "本地协议、页面签到与打印通路",
+        "evidence": "packages/print-core/src/client/protocol.ts；packages/print-core/src/client/print-client.ts"
+      },
+      {
+        "claim": "会话上限、Origin与写回冲突门槛",
+        "evidence": "clients/print-client/src/main/template-sessions.ts；packages/print-mcp/src/template-session-tools.ts"
+      },
+      {
+        "claim": "工具数量与发布状态必须现查",
+        "evidence": "packages/print-mcp/src/tools.ts；packages/print-mcp/src/desktop-tools.ts；packages/print-mcp/package.json"
+      }
+    ]
+  }
 }

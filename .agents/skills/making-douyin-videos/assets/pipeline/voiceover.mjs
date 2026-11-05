@@ -14,11 +14,14 @@ import { fileURLToPath } from 'node:url'
 import { ffmpegBin, ffprobeBin, ensureBins } from './bin.mjs'
 import { SCRIPT_PATH, OUT_DIR } from './paths.mjs'
 import { subtitlesFor } from './subtitles.mjs'
+import { validateDouyin } from './douyin-copy.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const VOICE_DIR = join(OUT_DIR, 'voice')
 const POLY_JSON = join(OUT_DIR, 'polyphone.json')
 const script = JSON.parse(readFileSync(SCRIPT_PATH, 'utf8'))
+validateDouyin(script)
+if ((script.subtitle?.maxLines ?? 2) !== 2) throw new Error('抖音字幕 subtitle.maxLines 必须为 2')
 const GAP = 0.3
 
 ensureBins()

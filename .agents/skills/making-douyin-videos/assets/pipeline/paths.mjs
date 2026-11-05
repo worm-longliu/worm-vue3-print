@@ -17,7 +17,8 @@ const m = basename(SCRIPT_PATH).match(/^script-(.+)\.json$/)
 const KEY = m ? m[1] : ''
 // 产物目录：优先按 out-registry.json 的「日期-主题」登记（out/2026-10-27-vue3-integration 这类），
 // 登记表里没有的新剧本回落到 out/<key>，跑完再登记即可。
-let dir = join(__dirname, 'out', KEY)
+const portraitScript = basename(dirname(SCRIPT_PATH)) === 'portrait'
+let dir = join(__dirname, portraitScript ? 'portrait/out' : 'out', KEY)
 try {
   const reg = JSON.parse(readFileSync(join(__dirname, 'out-registry.json'), 'utf8'))
   if (KEY && reg[KEY]) dir = join(__dirname, reg[KEY])

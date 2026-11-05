@@ -304,5 +304,41 @@
         }
       ]
     }
-  ]
+  ],
+  "subtitle": {
+    "lineWidth": 20,
+    "maxLines": 2
+  },
+  "douyin": {
+    "titles": [
+      "竖版单据怎么横着出纸？整页旋转一次看懂",
+      "整页旋转90度，横版设计也能竖版出纸",
+      "0°、90°、180°、270°：整页换向出纸",
+      "出纸方向反了？整页旋转四档一键换向",
+      "不重排版式，整页内容旋转后直接出纸"
+    ],
+    "description": "竖版排好版的单据，要横着出纸，不用重排内容。\n\n片子用 A5 竖版销售出库单走一遍页面属性的内容旋转角度：0°保持原方向，90°与270°交换纸张长宽，180°整页倒置。设计画布保持设计方向，实际效果看预览与出纸。\n\n发布前必须重新核对本示例的版本与源码口径。",
+    "tags": [
+      "打印模板",
+      "整页旋转",
+      "Vue3",
+      "前端开发",
+      "开源项目"
+    ],
+    "pinnedComment": "入口：页面属性 → 内容旋转角度。90°与270°交换纸张长宽，180°只翻转内容。连续纸与小票纸没有旋转概念；拼版后按每格内容生效。",
+    "sources": [
+      {
+        "claim": "页面属性提供0°/90°/180°/270°四档",
+        "evidence": "packages/print-canvas/src/components/PropertyPanel.vue"
+      },
+      {
+        "claim": "旋转由核心渲染CSS与出纸HTML共同实现",
+        "evidence": "packages/print-core/src/render/css-builder.ts；packages/print-core/src/render/html-generator.ts"
+      },
+      {
+        "claim": "发布版本必须在出片前重新核验",
+        "evidence": "package.json；git tag；npm view @worm-vue3-print/core version"
+      }
+    ]
+  }
 }

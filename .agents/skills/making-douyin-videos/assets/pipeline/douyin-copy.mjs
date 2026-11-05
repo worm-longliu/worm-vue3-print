@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { join, resolve, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-function validateDouyin(script) {
+export function validateDouyin(script) {
   const d = script.douyin
   if (!d) throw new Error('剧本缺 douyin：titles/description/tags/pinnedComment/sources')
   if (!Array.isArray(d.titles) || d.titles.length !== 5 || d.titles.some((x) => !x?.trim())) {
@@ -16,6 +16,7 @@ function validateDouyin(script) {
     throw new Error('douyin.tags 必须恰好 5 个非空标签')
   }
   if (new Set(d.tags).size !== 5) throw new Error('douyin.tags 必须恰好 5 个且不能重复')
+  if (d.tags.some((tag) => /\s/.test(tag.trim()))) throw new Error('douyin.tags 单个标签内部不能带空格')
   if (!d.description?.trim() || !d.pinnedComment?.trim()) throw new Error('发布简介和置顶评论不能为空')
   if (!Array.isArray(d.sources) || !d.sources.length || d.sources.some((x) => !x.claim?.trim() || !x.evidence?.trim())) {
     throw new Error('douyin.sources 至少一条，且每条必须含 claim 与 evidence')
@@ -51,7 +52,7 @@ async function main() {
   const { readFileSync } = await import('node:fs')
   const { SCRIPT_PATH, OUT_DIR } = await import('./paths.mjs')
   const script = JSON.parse(readFileSync(SCRIPT_PATH, 'utf8'))
-  const videoFile = SCRIPT_PATH.includes(`${resolve('portrait')}/`) ? 'portrait.mp4' : 'video_final.mp4'
+  const videoFile = SCRIPT_PATH.includes(`${sep}portrait${sep}`) ? 'portrait.mp4' : 'video_final.mp4'
   const out = join(OUT_DIR, 'douyin-copy.md')
   writeFileSync(out, renderDouyinCopy(script, { videoFile }))
   console.log(`抖音文案：${out}（5 个标签）`)
