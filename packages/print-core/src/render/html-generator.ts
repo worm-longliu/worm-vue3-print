@@ -449,7 +449,7 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
   // 实测高度即内容高度，分页与连续纸探针才能拿到真实占位；设计高度仍作为分页下限保留
   const fitHeight = fit === 'autoHeight' || dynamicFlow ? undefined : height
   // 方案 A+B：flow-group 内跟随元素用相对容器样式（containerStyle）覆盖绝对定位
-  const baseStyle = containerStyle ?? elementPositionStyle(left, top, width, fitHeight, opts.zIndex)
+  const baseStyle = containerStyle ?? elementPositionStyle(left, top, width, fitHeight, opts.zIndex, opts)
   // 元素级边框统一追加（rect/oval/hline/vline/table 由 resolveElementBorder 排除，不双重边框）；
   // 先整圈后逐边，CSS 后者覆盖前者
   const elBorders = resolveElementBorder(type, opts)
@@ -629,6 +629,7 @@ function renderFlowListSlice(el: TemplateElement, section: PageSection, _ctx?: R
     opts.width ?? 100,
     undefined,
     opts.zIndex,
+    opts,
   )
   const columns = resolveFlowColumns(opts.flowColumns)
   const gapX = resolveFlowGapX(opts.flowGapX)
@@ -890,7 +891,7 @@ function renderTableElement(
   ctx?: RenderCtx,
 ): string {
   const opts = el.options
-  const style = elementPositionStyle(opts.left ?? 0, opts.top ?? 0, opts.width ?? 100, undefined, opts.zIndex)
+  const style = elementPositionStyle(opts.left ?? 0, opts.top ?? 0, opts.width ?? 100, undefined, opts.zIndex, opts)
   const renderRows: RenderRow[] = opts._renderRows ?? []
   const bodyHtml = renderMatrixRows(renderRows, 0, renderRows.length, opts, isMeasure, ctx, { elementId: el.id, kind: 'b' })
   return `<div class="print-element" style="${style};overflow:visible;"${measureAttr}>
@@ -901,7 +902,7 @@ function renderTableElement(
 function renderTableSlice(el: TemplateElement, section: PageSection, ctx?: RenderCtx): string {
   const opts = el.options
   // 续片在本页内容区从页顶(0)开始，首片用设计 top
-  const style = elementPositionStyle(opts.left ?? 0, section.renderTop ?? opts.top ?? 0, opts.width ?? 100, undefined, opts.zIndex)
+  const style = elementPositionStyle(opts.left ?? 0, section.renderTop ?? opts.top ?? 0, opts.width ?? 100, undefined, opts.zIndex, opts)
   const renderRows: RenderRow[] = opts._renderRows ?? []
   const startRow = section.startRow ?? 0
   const endRow = section.endRow ?? renderRows.length

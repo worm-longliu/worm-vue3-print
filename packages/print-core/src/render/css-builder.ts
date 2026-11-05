@@ -5,6 +5,8 @@ import type { TemplateData } from './types.js'
 import { getPaperDimensions, getOutputPaperDimensions, getOutputRotationAngle, isContinuousPaper } from './types.js'
 import { FALLBACK_FONT_STACK } from '../print/fonts.js'
 import type { TileLayout } from '../print/tiling.js'
+import { elementMarginCss } from './element-margin.js'
+import type { ElementMarginOptions } from './element-margin.js'
 
 /** mm 值转 CSS 字符串 */
 export function mm(value: number): string {
@@ -387,6 +389,7 @@ export function elementPositionStyle(
   width: number,
   height?: number,
   zIndex?: number,
+  margins?: ElementMarginOptions,
 ): string {
   const parts = [
     `position:absolute`,
@@ -400,5 +403,7 @@ export function elementPositionStyle(
   if (zIndex !== undefined) {
     parts.push(`z-index:${zIndex}`)
   }
+  const margin = elementMarginCss(margins)
+  if (margin) parts.push(margin)
   return parts.join(';') + ';'
 }

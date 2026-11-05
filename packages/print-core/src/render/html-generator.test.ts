@@ -1379,3 +1379,16 @@ describe('fixed 表格：整表 HTML 每页完整输出', () => {
     expect((html.match(/>B<\/td>/g) ?? [])).toHaveLength(2)
   })
 })
+
+describe('元素四向外边距定位', () => {
+  const sections = pageWith([{ elementId: 'tbl-1', type: 'table-slice', startRow: 0, endRow: 0 }])
+
+  it('普通元素输出四边距，缺省模板 HTML 不含新声明', () => {
+    const options = { left: 2, top: 17, width: 80, marginTop: 1, marginRight: 2, marginBottom: 3, marginLeft: 4 }
+    const html = generateHtml(makeTemplate(options), sections)
+    expect(html).toContain('position:absolute;left:2mm;top:17mm;width:80mm;')
+    expect(html).toContain('margin-top:1mm;margin-right:2mm;margin-bottom:3mm;margin-left:4mm')
+    const legacy = generateHtml(makeTemplate({ left: 2, top: 17, width: 80 }), sections)
+    expect(legacy).not.toMatch(/margin-(top|right|bottom|left):/)
+  })
+})

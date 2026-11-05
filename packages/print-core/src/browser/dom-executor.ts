@@ -109,8 +109,14 @@ export function readContentBottom(doc: Document): number {
   const pageTop = page.getBoundingClientRect().top
   let maxBottom = 0
   area.querySelectorAll<HTMLElement>('*').forEach(node => {
+    if (node.classList.contains('print-element')) return
     const rect = node.getBoundingClientRect()
     if (rect.height > 0) maxBottom = Math.max(maxBottom, rect.bottom - pageTop)
+  })
+  area.querySelectorAll<HTMLElement>('.print-element').forEach(node => {
+    const rect = node.getBoundingClientRect()
+    const marginBottom = Number.parseFloat(doc.defaultView?.getComputedStyle(node).marginBottom ?? '0') || 0
+    if (rect.height > 0) maxBottom = Math.max(maxBottom, rect.bottom - pageTop + marginBottom)
   })
   const areaRect = area.getBoundingClientRect()
   if (areaRect.height > 0) maxBottom = Math.max(maxBottom, areaRect.bottom - pageTop)

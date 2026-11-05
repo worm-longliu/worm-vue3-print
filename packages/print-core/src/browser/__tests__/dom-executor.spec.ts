@@ -82,6 +82,21 @@ describe('readContentBottom', () => {
     expect(readContentBottom(document)).toBe(150)
   })
 
+  it('连续纸底边只补元素根盒 marginBottom', () => {
+    document.body.innerHTML = `<section class="print-page"><div class="content-area">
+      <div id="root" class="print-element" style="margin-bottom:7px"><div id="child" style="margin-bottom:20px"></div></div>
+    </div></section>`
+    const page = document.querySelector('.print-page') as HTMLElement
+    const area = document.querySelector('.content-area') as HTMLElement
+    const root = document.querySelector('#root') as HTMLElement
+    const child = document.querySelector('#child') as HTMLElement
+    Object.defineProperty(page, 'getBoundingClientRect', { value: () => ({ top: 10, bottom: 200 }) })
+    Object.defineProperty(area, 'getBoundingClientRect', { value: () => ({ top: 10, bottom: 100, height: 90 }) })
+    Object.defineProperty(root, 'getBoundingClientRect', { value: () => ({ top: 100, bottom: 130, height: 30 }) })
+    Object.defineProperty(child, 'getBoundingClientRect', { value: () => ({ top: 100, bottom: 120, height: 20 }) })
+    expect(readContentBottom(document)).toBe(127)
+  })
+
   it('缺少打印页或内容区时返回 0', () => {
     document.body.innerHTML = '<div></div>'
     expect(readContentBottom(document)).toBe(0)
