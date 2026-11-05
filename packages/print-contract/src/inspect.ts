@@ -12,6 +12,8 @@ export type InspectCode =
   | 'TABLE_MISSING_ROWS'
   | 'FLOW_MISSING_COLUMNS'
   | 'ELEMENT_OVERLAP'
+  | 'BACKGROUND_NOT_PAGEABLE'
+  | 'BARCODE_MISSING_BAR_HEIGHT'
 
 export interface InspectFinding {
   code: InspectCode
@@ -22,6 +24,28 @@ export interface InspectFinding {
 
 /** 线/矩形/椭圆属装饰层，与文字重叠是常规用法，不参与重叠判定 */
 const NON_OVERLAP_TYPES = new Set(['hline', 'vline', 'rect', 'oval'])
+
+/** 背景/装饰层候选：随版面比例判定的类型（文本/表格/码类不算背景） */
+const BACKGROUND_CANDIDATE_TYPES = new Set(['rect', 'oval', 'image', 'vline', 'hline'])
+
+/** 占版面比例阈值：宽或高达到内容区的 80% 即视为背景/装饰层 */
+const BACKGROUND_RATIO = 0.8
+
+/**
+ * 判断元素是否像背景/装饰层（按模板自身内容区比例，不含任何绝对尺寸假设）。
+ * 这类元素全宽/大幅占版面，若参与分页预算会吃掉整列额度把后续内容挤到下一页。
+ */
+function isBackgroundLike(
+  element: { type?: string },
+  o: { width?: number; height?: number },
+  contentWidth: number,
+  contentHeight: number,
+): boolean {
+  if (!BACKGROUND_CANDIDATE_TYPES.has(String(element.type))) return false
+  const wRatio = contentWidth > 0 ? (o.width ?? 0) / contentWidth : 0
+  const hRatio = contentHeight > 0 ? (o.height ?? 0) / contentHeight : 0
+  return wRatio >= BACKGROUND_RATIO || hRatio >= BACKGROUND_RATIO
+}
 
 interface Rect { left: number; top: number; width: number; height: number }
 
@@ -67,6 +91,8 @@ export function inspectTemplate(
   const footerH = template.footer?.height ?? 0
   const contentWidth = paper.width - template.margins.left - template.margins.right
   const printableHeight = paper.height - template.margins.top - template.margins.bottom
+  // 内容区可用高度（页眉页脚另占带高）
+  const contentHeight = printableHeight - headerH - footerH
 
   if (headerH + footerH > printableHeight + tol) {
     findings.push({
@@ -145,6 +171,18 @@ export function inspectTemplate(
       if (element.type === 'flowList' && !(o.flowColumns ?? 0)) {
         findings.push({ code: 'FLOW_MISSING_COLUMNS', level: 'error', path: `${p}.options.flowColumns`,
           message: '流式列表必须显式给 flowColumns（列数不自动推导）' })
+      }
+      // 背景类元素（全宽/大幅装饰）参与分页预算会占满整列额度，把后续内容挤到下一页
+      if (zone === 'content' && isBackgroundLike(element, o, contentWidth, contentHeight)
+        && (o.pagination as { pageable?: boolean } | undefined)?.pageable !== false) {
+        findings.push({ code: 'BACKGROUND_NOT_PAGEABLE', level: 'warning', path: `${p}.options.pagination`,
+          message: `该元素横向或纵向占版面 ${Math.round(Math.max((o.width ?? 0) / contentWidth, (o.height ?? 0) / contentHeight) * 100)}%，`
+            + '疑似背景/装饰层：建议设 pagination.pageable=false，否则会挤占分页预算导致后续内容换页' })
+      }
+      if (element.type === 'barcode' && typeof o.barHeight !== 'number') {
+        findings.push({ code: 'BARCODE_MISSING_BAR_HEIGHT', level: 'warning', path: `${p}.options.barHeight`,
+          message: '条码未给 barHeight，条纹按缺省档渲染，实际条高可能与元素高不一致；'
+            + '需要精确复刻时请显式设置 barHeight（mm）' })
       }
     })
 

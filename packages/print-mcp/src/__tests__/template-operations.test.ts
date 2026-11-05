@@ -46,14 +46,17 @@ describe('模板摘要投影', () => {
   it('返回页面与元素索引，不泄露完整模板', () => {
     const summary = projectTemplateSummary(template, {})
     expect(summary).toMatchObject({ paperSize: 'A4', pageCount: 1 })
-    expect(summary.elements).toHaveLength(2)
-    expect(summary.elements[0]).toMatchObject({ id: 'title', type: 'text', path: 'elements[0]' })
+    const elements = (summary as { elements: Array<Record<string, unknown>> }).elements
+    expect(elements).toHaveLength(2)
+    expect(elements[0]).toMatchObject({ id: 'title', type: 'text', path: 'elements[0]' })
     expect(summary).not.toHaveProperty('templateJson')
   })
 
   it('支持元素过滤和字段白名单', () => {
     const summary = projectTemplateSummary(template, { elementIds: ['title'], includeFields: ['formatter'] })
-    expect(summary.elements).toEqual([expect.objectContaining({ id: 'title', options: { formatter: '旧标题' } })])
+    expect((summary as { elements: unknown[] }).elements).toEqual([
+      expect.objectContaining({ id: 'title', options: { formatter: '旧标题' } }),
+    ])
   })
 
   it('拒绝重复或空白的元素 ID', () => {

@@ -118,7 +118,7 @@ worm-vue3-print/
 
 ## 🗺 待办（Roadmap）
 
-- [x] 浏览器 ↔ 桌面客户端 ↔ AI Agent 实时画布 MCP：本机 HTTP 9 个工具，支持批量 Patch、精简读取与 revision 防覆盖写回
+- [x] 浏览器 ↔ 桌面客户端 ↔ AI Agent 实时画布 MCP：本机 HTTP 12 个工具，支持批量 Patch、精简读取、参考图测量与 revision 防覆盖写回
 - [ ] 画布内 AI 面板与宿主能力探测（第二阶段；只出注入式 transport 接口规范，本仓库不实现服务端 key 代理）
 
 ## 开发
@@ -297,12 +297,13 @@ MCP 能力只通过“浏览器设计器 ↔ 桌面客户端 ↔ AI Agent”链�
 
 ### 3. 让 AI 操作实时画布
 
-桌面客户端提供 9 个工具：
+桌面客户端提供 12 个工具：
 
 - 模板能力：`print_element_kinds`、`print_draft_template`、`print_validate_template`、`print_check_expression`、`print_inspect_layout`。
+- 视觉与测量：`print_preview_template`（渲染 PNG + 元素实际包围盒）、`print_analyze_reference_image`（设计稿转几何数据）、`print_compare_with_reference`（与参考图逐线比对）。
 - 实时会话：`print_list_open_templates`、`print_get_open_template`、`print_patch_open_template`、`print_apply_open_template`。
 
-推荐流程：列出会话 → 小改优先摘要读取并保存 revision → 用 `print_patch_open_template` 批量修改 → 以上次返回的 revision 继续链式 Patch。新模板或复杂重排再读取完整快照、校验并整份写回。发生 `REVISION_CONFLICT` 时重新读取，不能强制覆盖。真实分页与出纸效果通过设计器或打印预览确认。
+推荐流程：列出会话 → 小改优先摘要读取并保存 revision → 用 `print_patch_open_template` 批量修改 → 以上次返回的 revision 继续链式 Patch。新模板或复杂重排再读取完整快照、校验、预览（有参考稿时逐线比对）并整份写回。发生 `REVISION_CONFLICT` 时重新读取，不能强制覆盖。真实分页与出纸效果通过设计器或打印预览确认。
 
 ## Skills 安装与使用
 

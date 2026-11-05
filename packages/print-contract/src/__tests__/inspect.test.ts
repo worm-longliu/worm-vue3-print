@@ -142,4 +142,34 @@ describe('inspectTemplate', () => {
     expect(r.findings.map(f => f.code)).toEqual(['OUT_OF_PAPER'])
     expect(r.findings[0].path).toBe('elements[1]')
   })
+
+  it('BACKGROUND_NOT_PAGEABLE：占版面 ≥80% 的装饰元素未设 pageable=false 时提示', () => {
+    const bg = { id: 'bg', type: 'rect', printElementType: { type: 'rect' },
+      options: { left: 0, top: 0, width: CONTENT_W, height: CONTENT_H } }
+    const r = inspectTemplate(tpl([bg] as PrintElementData[]))
+    expect(r.findings.some(f => f.code === 'BACKGROUND_NOT_PAGEABLE' && f.path === 'elements[0].options.pagination')).toBe(true)
+
+    // 已显式设 pageable=false 则不再提示
+    const fixed = { ...bg, options: { ...bg.options, pagination: { pageable: false, keepWithNext: false } } }
+    const r2 = inspectTemplate(tpl([fixed] as PrintElementData[]))
+    expect(r2.findings.some(f => f.code === 'BACKGROUND_NOT_PAGEABLE')).toBe(false)
+
+    // 小元素不提示
+    const small = { ...bg, options: { left: 5, top: 5, width: 30, height: 10 } }
+    const r3 = inspectTemplate(tpl([small] as PrintElementData[]))
+    expect(r3.findings.some(f => f.code === 'BACKGROUND_NOT_PAGEABLE')).toBe(false)
+  })
+
+  it('BARCODE_MISSING_BAR_HEIGHT：条码未给 barHeight 时提示实际条高可能不符', () => {
+    const barcode = {
+      id: 'bc', type: 'barcode', printElementType: { type: 'barcode' },
+      options: { left: 0, top: 0, width: 80, height: 20, formatter: '{code}', barcodeType: 'code128' },
+    }
+    const r = inspectTemplate(tpl([barcode] as PrintElementData[]))
+    expect(r.findings.some(f => f.code === 'BARCODE_MISSING_BAR_HEIGHT')).toBe(true)
+
+    const withHeight = { ...barcode, options: { ...barcode.options, barHeight: 15 } }
+    const r2 = inspectTemplate(tpl([withHeight] as PrintElementData[]))
+    expect(r2.findings.some(f => f.code === 'BARCODE_MISSING_BAR_HEIGHT')).toBe(false)
+  })
 })

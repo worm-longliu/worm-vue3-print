@@ -9,13 +9,16 @@ description: Use when 用户需要通过浏览器设计器、桌面客户端和 
 
 ## 1. 能力边界
 
-桌面客户端提供 5 个纯计算工具和 4 个模板会话工具：
+桌面客户端提供 5 个纯计算工具、4 个模板会话工具、1 个视觉回读工具和 2 个参考图工具：
 
-- `print_element_kinds`：元素、表达式函数、系统变量和单位速查。
-- `print_draft_template`：生成模板草稿并附校验结果。
+- `print_element_kinds`：元素、布局配方 preset 清单、表达式函数、系统变量和单位速查。
+- `print_draft_template`：生成模板草稿并附校验结果；常见单据/标签/小票/面单优先传 `preset`。
 - `print_validate_template`：模板契约校验。
 - `print_check_expression`：表达式语法、白名单和字段检查。
 - `print_inspect_layout`：静态几何与结构体检。
+- `print_preview_template`：把模板渲染成单页 PNG 返回，并附每个元素的实际渲染包围盒；写回前看图自评版式。
+- `print_analyze_reference_image`：把设计稿图片转成几何数据（内容区/线条/文本行/表格网格），做模板前先取基准。
+- `print_compare_with_reference`：渲染结果与参考图逐线比对，输出偏差、多余与缺失的线。
 - `print_list_open_templates`：列出已签到的设计器页面。
 - `print_get_open_template`：默认读取完整快照；小改优先 `view=summary`，用 `elementIds/includeFields` 精简元素与字段。
 - `print_patch_open_template`：按元素 ID 原子批量更新或移动，一次写回并返回新 revision。
@@ -27,9 +30,12 @@ description: Use when 用户需要通过浏览器设计器、桌面客户端和 
 
 1. 调用 `print_list_open_templates`；有多个页面时必须选择目标 `sessionId`，不要猜测。
 2. 小改调用 `print_get_open_template` 的 `view=summary`，按需要用 `elementIds/includeFields` 过滤并保留 `revision`。
-3. 小改把全部 `updateElement/moveElement` 操作一次交给 `print_patch_open_template`；工具内部会执行契约和封禁元素校验。连续修改直接使用上次返回的新 revision，不重复读取完整模板。
-4. 新模板或复杂重排才读取完整快照，用 `print_draft_template` 起草并保留宿主业务字段；执行 `print_validate_template` 和 `print_inspect_layout` 后调用 `print_apply_open_template`。
-5. 在设计器核对画布与预览。移动元素后若需静态体检，读取最新完整快照再检查；静态体检不等于真实分页。
+3. 调用 `print_element_kinds` 核对当前契约。
+4. 小改把全部 `updateElement/moveElement` 操作一次交给 `print_patch_open_template`；工具内部会执行契约和封禁元素校验。连续修改直接使用上次返回的新 revision，不重复读取完整模板。
+5. 新模板或复杂重排才读取完整快照：**有设计稿时先用 `print_analyze_reference_image` 拿线条/表格坐标**，据此手排 elements 或选用匹配的 `preset`，不要凭目测估坐标；保留宿主业务字段，执行 `print_validate_template` 和 `print_inspect_layout`。
+6. `print_preview_template` 看渲染图自评版式（对齐、密度、留白、溢出、条码），并用返回的 `elementBoxes` 核对实际落位是否等于模板里写的坐标；有参考稿时再调 `print_compare_with_reference` 做逐线验收。发现问题先修再预览。建议传样例 `printData`，否则表格与绑定渲染为空。
+7. 整份替换才用 `print_apply_open_template`（携带 `baseRevision`）；成功后以返回的新 revision 和模板为准。
+8. 在设计器核对画布与预览。移动元素后若需静态体检，读取最新完整快照再检查；静态体检不等于真实分页。
 
 详细异常处理见 [协作工作流](references/workflows.md)。
 
@@ -39,8 +45,7 @@ description: Use when 用户需要通过浏览器设计器、桌面客户端和 
 - Patch 任一操作失败会整批拒绝；`print_apply_open_template` 仍是带 `baseRevision` 的整份替换。
 - `REVISION_CONFLICT` 表示读取后画布又发生变化。重新读取并请用户确认差异，不自动覆盖或循环强制写回。
 - 页面关闭或客户端退出后会话失效；先重新列出会话，不向失效会话重试写入。
-- 真实页数、长文本换行和 PDF 效果通过设计器或打印预览确认，不属于 MCP 工具结果。
-- 交付时说明实际执行过的校验和写回结果，不把静态体检描述成真实出纸验证。
+- `print_preview_template` 走客户端完整渲染管线，分页、长文本换行与条码都是真实效果；像素尺寸以返回值为准。写回后仍需设计器或打印预览做最终确认，交付时说明实际执行过的校验、预览与写回结果。
 
 ## 4. 硬约束
 

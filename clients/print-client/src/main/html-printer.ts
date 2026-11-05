@@ -71,7 +71,7 @@ export function buildWebPrintOptions(
 }
 
 /** 等待字体与图片就绪（带兜底超时，不阻塞打印） */
-async function waitResourcesReady(wc: Electron.WebContents): Promise<void> {
+export async function waitResourcesReady(wc: Electron.WebContents): Promise<void> {
   await Promise.race([
     wc.executeJavaScript(
       `Promise.all([document.fonts ? document.fonts.ready : true,`

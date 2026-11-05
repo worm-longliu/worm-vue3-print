@@ -2,6 +2,10 @@
 
 所有数值单位 mm，字号 pt。坐标相对内容区左上角。先定纸 → 算版心 → 排元素 → 跑校验（见 SKILL.md）。
 
+> **优先用 preset**：`print_draft_template` 传 `preset`（清单见 `print_element_kinds`）即可得到
+> 下述 doc-a4 / doc-a5 / receipt-80mm / label-60x40 / label-40x30 / waybill-100x150 六类骨架，
+> 坐标与安全线由配方保证。本篇数值供长尾场景手排时参考。
+
 ## 通用排版流程
 
 1. **定纸**：按场景选 `paperSize`（纸张表见 template-schema.md §3）
@@ -9,6 +13,7 @@
 3. **算安全线**：固定纸的内容底边必须离版心底边 ≥ 2mm，否则溢出到第二页
 4. **排元素**：从上到下切横条，每条一个元素；同一行用两个元素左右并排
 5. **校验**：调用 `print_validate_template` 与 `print_inspect_layout`，修到全部 error 清零
+6. **预览**：`print_preview_template` 附样例数据看渲染图，自评对齐/密度/留白/溢出/条码
 
 ## 配方一：单据（A5 / A4 / 针式纸）
 

@@ -50,10 +50,12 @@ describe('桌面纯计算工具集', () => {
 })
 
 describe('print_element_kinds', () => {
-  it('列出元素、函数、系统变量和单位约定', async () => {
+  it('列出元素、配方 preset、函数、系统变量和单位约定', async () => {
     const data = JSON.parse((await call('print_element_kinds', {})).text)
     expect(data.kinds).toHaveLength(13)
     expect(data.kinds.find((k: { type: string }) => k.type === 'html').blocked).toBe(true)
+    expect(data.presets.map((p: { id: string }) => p.id)).toContain('receipt-80mm')
+    expect(data.presets.every((p: { scene: string; slots: string[] }) => p.scene && p.slots.length > 0)).toBe(true)
     expect(data.functions).toContain('MONEY')
     expect(data.units).toContain('mm')
     expect(data.systemVariables).toEqual(['printDate', 'printTime', 'pageIndex', 'totalPages'])
@@ -126,5 +128,38 @@ describe('print_draft_template', () => {
     })).text)
     expect(data.expressionErrors).toEqual([])
     expect(data.template.unit).toBe('mm')
+  })
+
+  it('preset 生成整份骨架，summary 提示改绑定', async () => {
+    const data = JSON.parse((await call('print_draft_template', { spec: { preset: 'receipt-80mm' } })).text)
+    expect(data.issues.filter((i: { level: string }) => i.level === 'error')).toEqual([])
+    expect(data.template.paperSize).toBe('THERMAL_80')
+    expect(data.template.elements.length).toBeGreaterThan(5)
+    expect(data.summary).toContain('占位绑定')
+  })
+
+  it('preset 与 elements 同时给出时互斥报错且 preset 优先', async () => {
+    const data = JSON.parse((await call('print_draft_template', {
+      spec: {
+        preset: 'label-40x30',
+        elements: [{ type: 'text', options: { left: 0, top: 0, width: 30, height: 5 } }],
+      },
+    })).text)
+    expect(data.issues.some((i: { level: string; message: string }) =>
+      i.level === 'error' && i.message.includes('互斥'))).toBe(true)
+    expect(data.template.elements[0].options.formatter).toBe('{goods.name}')
+  })
+
+  it('未知 preset 报可行动错误', async () => {
+    const data = JSON.parse((await call('print_draft_template', { spec: { preset: 'no-such' } })).text)
+    expect(data.issues.some((i: { level: string; message: string }) =>
+      i.level === 'error' && i.message.includes('doc-a4'))).toBe(true)
+  })
+
+  it('draft schema 里 elements 是可选（preset 模式不传）', () => {
+    const schema = TOOLS.find(t => t.name === 'print_draft_template')!.inputSchema
+    const specNode = (schema.properties as { spec: { properties: Record<string, unknown>; required?: string[] } }).spec
+    expect(specNode.properties.preset).toBeDefined()
+    expect(specNode.required ?? []).not.toContain('elements')
   })
 })

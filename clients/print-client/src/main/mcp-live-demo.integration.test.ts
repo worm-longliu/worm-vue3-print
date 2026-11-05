@@ -102,6 +102,21 @@ describe('真实 demo + 真实 SDK + 真实 MCP 全栈串测', () => {
           getTemplate: id => registry.getTemplate(id),
           applyTemplate: input => registry.applyTemplate(input),
         },
+        // 本文件只覆盖会话工具链路；渲染通路需要真实窗口，stub 直接拒绝
+        renderBridge: {
+          renderTemplatePage: async () => {
+            throw new Error('测试 stub 未接线渲染通路')
+          },
+        },
+        // 图像读取同样需要真实 Electron，stub 直接拒绝
+        imageReader: {
+          readGrayImage: async () => {
+            throw new Error('测试 stub 未接线图片读取')
+          },
+          decodePngBase64: async () => {
+            throw new Error('测试 stub 未接线图片解码')
+          },
+        },
         logger: silent,
       }),
       onConnectionClose: ws => registry.handleDisconnect(ws),
@@ -142,12 +157,13 @@ describe('真实 demo + 真实 SDK + 真实 MCP 全栈串测', () => {
   const textOf = (r: unknown): string =>
     String((r as { content?: Array<{ text?: string }> }).content?.[0]?.text ?? '')
 
-  it('桌面端可见工具集恰为 9 个（含 4 个模板会话工具）', async () => {
+  it('桌面端可见工具集恰为 12 个（含 4 个会话、1 个预览与 2 个参考图工具）', async () => {
     const { tools } = await mcp!.listTools()
     expect(tools.map(t => t.name).sort()).toEqual([
-      'print_apply_open_template', 'print_check_expression', 'print_draft_template',
-      'print_element_kinds', 'print_get_open_template', 'print_inspect_layout',
-      'print_list_open_templates', 'print_patch_open_template', 'print_validate_template',
+      'print_analyze_reference_image', 'print_apply_open_template', 'print_check_expression',
+      'print_compare_with_reference', 'print_draft_template', 'print_element_kinds',
+      'print_get_open_template', 'print_inspect_layout', 'print_list_open_templates',
+      'print_patch_open_template', 'print_preview_template', 'print_validate_template',
     ])
   })
 

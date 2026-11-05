@@ -85,6 +85,8 @@ export interface GenerateOptions {
   codeRenderer?: CodeRenderer
   /** 连续纸探针推导出的最终纸高（mm）；仅最终生成时传入，使 @page/.print-page/footer 对齐 */
   pageHeightMm?: number
+  /** 实际总页数：逐页截取场景只生成单页 HTML 时传真实值，避免页码表达式 {totalPages} 失真为 1 */
+  totalPageCount?: number
 }
 
 /**
@@ -102,7 +104,7 @@ export function generateHtml(
   // 模板声明的字体与页面 CSS 同批注入：测量趟与最终趟必须一致，否则分页会按兜底字体算
   const css = buildFontFaceCss(template.fonts) + buildPageCss(template, options?.pageHeightMm)
   const isMeasure = options?.isMeasurementPass === true
-  const totalPages = isMeasure ? 1 : pageLayouts.length
+  const totalPages = isMeasure ? 1 : (options?.totalPageCount ?? pageLayouts.length)
   const ctx: RenderCtx = {
     codeRenderer: options?.codeRenderer,
     pageHeightMm: options?.pageHeightMm,
@@ -209,11 +211,12 @@ function generateFinalHtml(
   template: TemplateData,
   pageLayouts: PageLayout[],
   css: string,
-  _totalPages: number,
+  totalPages: number,
   ctx: RenderCtx,
   printData?: Record<string, any> | Record<string, any>[],
 ): string {
-  const bodyInner = renderFinalPages(template, pageLayouts, printData ?? {}, ctx)
+  // totalPages 必须显式下传（含 generateHtml 的 totalPageCount 覆盖），否则单页截取时页码失真
+  const bodyInner = renderFinalPages(template, pageLayouts, printData ?? {}, ctx, { totalPages })
   return wrapHtmlDocument(
     css,
     bodyInner,
@@ -471,12 +474,15 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
     const rotateDeg = resolveElementRotation(type, opts)
     if (rotateDeg !== undefined) style += `rotate:${rotateDeg}deg;`
   }
-  const measureAttr = isMeasure ? ` data-measure-id="${el.id}"` : ''
+  // 测量趟带 data-measure-id（供测量回填）；最终趟带 data-element-id（供预览回报每个元素的实际渲染位置）
+  const measureAttr = isMeasure ? ` data-measure-id="${el.id}"` : ` data-element-id="${el.id}"`
   const fitAttr = fitAttrs(fit, el.id, opts.fontSize ?? 12, opts)
 
   switch (type) {
     case 'table':
-      return renderTableElement(el, isMeasure, measureAttr, ctx, overrideTop)
+      // 表格内部 <table> 自带 data-element-id，外层 div 只在测量趟带 data-measure-id，
+      // 否则同一元素会输出两次标识（预览按 id 收集包围盒时会重复计数）
+      return renderTableElement(el, isMeasure, isMeasure ? measureAttr : '', ctx, overrideTop)
     case 'image':
       return `<div class="print-element" style="${style}"${measureAttr}>
   <img src="${esc(opts.src ?? '')}" style="width:100%;height:100%;object-fit:${opts.fit || 'contain'};${cropStyle(opts.fit, opts.fitScale, opts.objectPosition)}" />
@@ -755,9 +761,11 @@ function matrixCellStyle(cell: RenderCell, opts: Record<string, any>): string {
   parts.push(cell.wordWrap === false
     ? 'white-space:nowrap;overflow:hidden'
     : 'white-space:pre-wrap;word-break:normal;overflow-wrap:break-word')
-  const b = cell.borders ?? {}
+  // 边框逐边兜底：单元格自身优先，缺的边继承元素级 tableDefaultBorders（整表统一网格，免逐格声明）
+  const cellBorders = cell.borders ?? {}
+  const defaultBorders = opts.tableDefaultBorders ?? {}
   for (const side of ['top', 'right', 'bottom', 'left'] as const) {
-    const border = b[side]
+    const border = cellBorders[side] ?? defaultBorders[side]
     parts.push(border
       ? `border-${side}:${border.width}pt ${border.style} ${border.color}`
       : `border-${side}:none`)

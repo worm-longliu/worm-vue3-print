@@ -74,6 +74,21 @@ async function buildStack(opts: {
           return registry.applyTemplate(input)
         },
       },
+      // 本文件只覆盖会话工具链路；渲染通路需要真实窗口，stub 直接拒绝
+      renderBridge: {
+        renderTemplatePage: async () => {
+          throw new Error('测试 stub 未接线渲染通路')
+        },
+      },
+      // 图像读取同样需要真实 Electron，stub 直接拒绝
+      imageReader: {
+        readGrayImage: async () => {
+          throw new Error('测试 stub 未接线图片读取')
+        },
+        decodePngBase64: async () => {
+          throw new Error('测试 stub 未接线图片解码')
+        },
+      },
       logger: opts.logger ?? silentLogger,
     }),
     onConnectionClose: ws => registry.handleDisconnect(ws),
@@ -285,15 +300,16 @@ describe('共端口 HTTP 层', () => {
 })
 
 describe('MCP HTTP 集成（SDK Client 连真实 /mcp）', () => {
-  it('tools/list 恰好 9 个工具：5 个桌面安全工具 + 4 个模板会话工具', async () => {
+  it('tools/list 恰好 12 个工具：5 个桌面安全工具 + 4 个模板会话工具 + 1 个预览 + 2 个参考图工具', async () => {
     const { port, state } = await buildStack()
     const client = await mcpClient(port, state.token)
     const { tools } = await client.listTools()
     const names = tools.map(t => t.name).sort()
     expect(names).toEqual([
-      'print_apply_open_template', 'print_check_expression', 'print_draft_template',
-      'print_element_kinds', 'print_get_open_template', 'print_inspect_layout',
-      'print_list_open_templates', 'print_patch_open_template', 'print_validate_template',
+      'print_analyze_reference_image', 'print_apply_open_template', 'print_check_expression',
+      'print_compare_with_reference', 'print_draft_template', 'print_element_kinds',
+      'print_get_open_template', 'print_inspect_layout', 'print_list_open_templates',
+      'print_patch_open_template', 'print_preview_template', 'print_validate_template',
     ])
     await client.close()
   })

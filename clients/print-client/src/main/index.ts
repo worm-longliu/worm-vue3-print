@@ -8,6 +8,8 @@ import { JobHistoryStore } from './job-history.js'
 import { getPrintHostWindow, destroyPrintHostWindow } from './print-host.js'
 import { PrinterService } from './printer-service.js'
 import { PrintEngine, createPrintRuntime } from './print-engine.js'
+import { createTemplateRenderer } from './template-renderer.js'
+import { createImageReader } from './image-reader.js'
 import { buildPdfOutputPolicy, type PdfOutputPolicy } from './pdf-output.js'
 import { WsServer } from './ws-server.js'
 import { TemplateSessionRegistry } from './template-sessions.js'
@@ -67,6 +69,10 @@ if (!gotLock) {
         logger,
         pdfOutput: resolvePdfPolicy,
       })
+      // 视觉回读通路：与打印引擎共用同一个 core runtime（core 会话内部每任务独立隐藏窗口）
+      const renderBridge = createTemplateRenderer({ runtime: createPrintRuntime(), logger })
+      // 参考图测量通路：本地图片解码（nativeImage）供 analyze/compare 工具使用
+      const imageReader = createImageReader({ logger })
 
       let actualPort = 0
       // 模板会话注册表：attach/detach 来自浏览器，get/apply 供 MCP 工具实时读写
@@ -87,6 +93,8 @@ if (!gotLock) {
           getPairingToken: () => configStore.current.pairingToken,
           version: app.getVersion(),
           templateSessions,
+          renderBridge,
+          imageReader,
           logger,
         }),
         logger,

@@ -5,6 +5,7 @@ export type ExecutorMethod =
   | 'waitReady'
   | 'readMeasurements'
   | 'readContentBottom'
+  | 'readElementRects'
   | 'renderCodes'
   | 'applyTextFit'
 
@@ -19,6 +20,7 @@ export const EXECUTOR_TARGETS: Record<ExecutorMethod, ExecutorTargetKind> = {
   waitReady: 'window',
   readMeasurements: 'document',
   readContentBottom: 'document',
+  readElementRects: 'document',
   renderCodes: 'none',
   applyTextFit: 'document',
 }

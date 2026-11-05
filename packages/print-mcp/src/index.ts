@@ -10,5 +10,11 @@ export type {
   OpenTemplateSession,
   GetOpenTemplateResult,
 } from './template-session-tools.js'
+export { createRenderTools } from './render-tools.js'
+export type { TemplateRenderBridge } from './render-tools.js'
+export { createImageTools } from './image-tools.js'
+export type { ImageReaderBridge } from './image-tools.js'
+export { analyzeGeometry, toMillimeters } from './image-analysis.js'
+export type { GrayBitmap, AnalyzedGeometry } from './image-analysis.js'
 export type { ToolDef, ToolResult } from './tool-types.js'
 export { asText, asError } from './tool-types.js'

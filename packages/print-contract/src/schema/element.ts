@@ -74,6 +74,8 @@ const bordersSchema = z.object({
  */
 const STRUCTURED_OVERRIDES: Record<string, z.ZodTypeAny> = {
   borders: bordersSchema,
+  // 表格级默认边框：与单元格 borders 同结构，逐边兜底
+  tableDefaultBorders: bordersSchema,
   pagination: z.object({
     pageable: z.boolean().optional(),
     keepWithNext: z.boolean().optional(),

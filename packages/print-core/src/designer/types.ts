@@ -336,6 +336,11 @@ export interface ElementOptions {
   barHeight?: number
   barAutoWidth?: string
   /**
+   * 条形码下方是否显示码值文本。与 hideTitle 等价（hideTitle 优先）：
+   * 渲染端 evaluateTemplate 取 `hideTitle !== undefined ? !hideTitle : showBarcodeText`。
+   */
+  showBarcodeText?: boolean
+  /**
    * 打印机分辨率（点/英寸，常见 203/300/600）：条形码尺寸由「条宽 → dpi → 等比缩小」结算
    * （见 render/barcode-dot.ts），给出本字段时首选尺寸吸附到整数打印点，dpi 优先于条宽的
    * 精确毫米值；可用框放不下则整体等比缩小。缺省不启用（按条宽的毫米值落纸）。
@@ -386,6 +391,11 @@ export interface ElementOptions {
   tableDefaultFontFamily?: string
   tableDefaultColor?: string
   tableDefaultPadding?: number           // mm
+  /**
+   * 单元格未设置 borders 时的继承基线（四边可分别缺省，缺的那边仍为 none）。
+   * 用于整表统一网格：写一次即覆盖全部单元格，不必逐格重复声明。
+   */
+  tableDefaultBorders?: TableCellBorders
   /** 列表数据源路径（data 行迭代的数据数组） */
   dataSource?: string
   /** @deprecated 兼容存量表格模型；列表数据源优先使用 dataSource */

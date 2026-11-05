@@ -1,0 +1,239 @@
+import { describe, it, expect, vi } from 'vitest'
+import { createImageTools, type ImageReaderBridge } from '../image-tools.js'
+import type { TemplateRenderBridge } from '../render-tools.js'
+import type { GrayBitmap } from '../image-analysis.js'
+
+const W = 400
+const H = 300
+
+function makeBitmap(w = W, h = H): GrayBitmap {
+  return { width: w, height: h, gray: new Uint8Array(w * h).fill(255) }
+}
+
+function drawFrame(bmp: GrayBitmap, l: number, t: number, r: number, b: number, width = 2): void {
+  const set = (x: number, y: number): void => { bmp.gray[y * bmp.width + x] = 0 }
+  for (let d = 0; d < width; d++) {
+    for (let y = t; y <= b; y++) { set(l + d, y); set(r - d, y) }
+    for (let x = l; x <= r; x++) { set(x, t + d); set(x, b - d) }
+  }
+}
+
+function drawVLine(bmp: GrayBitmap, x: number, y0: number, y1: number): void {
+  for (let y = y0; y <= y1; y++) bmp.gray[y * bmp.width + x] = 0
+}
+
+const validTemplate = {
+  paperSize: 'A5' as const,
+  orientation: 'landscape' as const,
+  unit: 'mm',
+  margins: { top: 5, right: 5, bottom: 5, left: 5 },
+  elements: [{
+    id: 'e1', type: 'text',
+    options: { left: 10, top: 10, width: 60, height: 8, formatter: 'x' },
+    printElementType: { type: 'text' },
+  }],
+}
+
+/** 生成一张"看起来像"渲染结果的白底图：外框 + 一条竖线 */
+function frameBitmap(withInnerLine = true): GrayBitmap {
+  const bmp = makeBitmap()
+  drawFrame(bmp, 10, 10, 389, 289)
+  if (withInnerLine) drawVLine(bmp, 200, 12, 288)
+  return bmp
+}
+
+function stubReader(overrides: Partial<ImageReaderBridge> = {}): ImageReaderBridge & { readCalls: string[] } {
+  const readCalls: string[] = []
+  return {
+    readCalls,
+    readGrayImage: vi.fn(async (path: string) => {
+      readCalls.push(path)
+      return frameBitmap()
+    }),
+    decodePngBase64: vi.fn(async () => frameBitmap()),
+    ...overrides,
+  } as never
+}
+
+function stubRender(error?: unknown): TemplateRenderBridge {
+  return {
+    renderTemplatePage: vi.fn(async (input) => {
+      if (error !== undefined) throw error
+      return {
+        pageCount: 1,
+        pageSizeMm: { width: 210, height: 148 },
+        pngBase64: 'stub',
+        widthPx: 1588,
+        heightPx: 1119,
+        ...(input ? {} : {}),
+      }
+    }),
+  } as never
+}
+
+function tools(reader = stubReader(), render = stubRender()) {
+  return createImageTools({ imageReader: reader, renderBridge: render })
+}
+
+const analyzeTool = (deps = tools()) => deps.find(t => t.name === 'print_analyze_reference_image')!
+const compareTool = (deps = tools()) => deps.find(t => t.name === 'print_compare_with_reference')!
+
+function firstText(r: { content: Array<{ type: string; text?: string }> }): string {
+  const block = r.content[0]
+  return block && block.type === 'text' ? String(block.text ?? '') : ''
+}
+
+describe('工具注册', () => {
+  it('导出两个图像工具，名称互不重复', () => {
+    const names = tools().map(t => t.name).sort()
+    expect(names).toEqual(['print_analyze_reference_image', 'print_compare_with_reference'])
+  })
+
+  it('都标注为只读、不联网', () => {
+    for (const t of tools()) {
+      expect(t.annotations?.readOnlyHint).toBe(true)
+      expect(t.annotations?.openWorldHint).toBe(false)
+    }
+  })
+})
+
+describe('print_analyze_reference_image', () => {
+  it('只给路径时返回像素层 + 归一化层，毫米层缺省并提示补齐', async () => {
+    const r = await analyzeTool().handler({ imagePath: '/tmp/ref.png' })
+    expect(r.isError).toBeFalsy()
+    const data = JSON.parse(firstText(r))
+    expect(data.image).toEqual({ widthPx: W, heightPx: H })
+    expect(data.contentArea.px.left).toBe(10)
+    expect(data.verticalLines.length).toBeGreaterThan(0)
+    expect(data.verticalLines[0].xNorm).toBeGreaterThanOrEqual(0)
+    expect(data.millimeters).toBeUndefined()
+    expect(data.hints.some((h: string) => h.includes('dpi'))).toBe(true)
+  })
+
+  it('给 dpi 时输出毫米层', async () => {
+    const r = await analyzeTool().handler({ imagePath: '/tmp/ref.png', dpi: 96 })
+    const data = JSON.parse(firstText(r))
+    expect(data.millimeters).toBeDefined()
+    expect(data.millimeters.pxPerMm).toBeCloseTo(96 / 25.4, 2)
+    expect(data.hints).toEqual([])
+  })
+
+  it('给 paper 时用宽度比例反推', async () => {
+    const r = await analyzeTool().handler({
+      imagePath: '/tmp/ref.png',
+      paper: { widthMm: 200, heightMm: 150 },
+    })
+    const data = JSON.parse(firstText(r))
+    expect(data.millimeters.contentAreaMm.width).toBeCloseTo(200, 0)
+  })
+
+  it('缺少 imagePath 报可行动错误', async () => {
+    const r = await analyzeTool().handler({})
+    expect(r.isError).toBe(true)
+    expect(firstText(r)).toContain('imagePath')
+  })
+
+  it('bridge 抛 IMAGE_NOT_FOUND 时映射为可行动文案', async () => {
+    const err = new Error('/nope.png')
+    ;(err as Error & { code?: string }).code = 'IMAGE_NOT_FOUND'
+    const reader = stubReader({ readGrayImage: vi.fn(async () => { throw err }) })
+    const r = await analyzeTool(tools(reader)).handler({ imagePath: '/nope.png' })
+    expect(r.isError).toBe(true)
+    expect(firstText(r)).toContain('图片不存在')
+    expect(firstText(r)).toContain('绝对路径')
+  })
+
+  it('bridge 抛 IMAGE_UNSUPPORTED 时给出支持格式', async () => {
+    const err = new Error('tiff')
+    ;(err as Error & { code?: string }).code = 'IMAGE_UNSUPPORTED'
+    const reader = stubReader({ readGrayImage: vi.fn(async () => { throw err }) })
+    const r = await analyzeTool(tools(reader)).handler({ imagePath: '/a.tiff' })
+    expect(firstText(r)).toContain('PNG')
+  })
+})
+
+describe('print_compare_with_reference', () => {
+  it('渲染与参考图一致时 pass，无多余/缺失线', async () => {
+    const r = await compareTool().handler({
+      templateJson: validTemplate,
+      referenceImagePath: '/tmp/ref.png',
+    })
+    expect(r.isError).toBeFalsy()
+    const data = JSON.parse(firstText(r))
+    expect(data.pass).toBe(true)
+    expect(data.extraInTemplate).toEqual([])
+    expect(data.missingInTemplate).toEqual([])
+    expect(data.matchedCount).toBeGreaterThan(0)
+  })
+
+  it('模板多一条线时进 extraInTemplate 并判不通过', async () => {
+    // 渲染图多一条竖线，参考图没有
+    const reader = stubReader({
+      decodePngBase64: vi.fn(async () => {
+        const bmp = frameBitmap(true)
+        drawVLine(bmp, 300, 12, 288)
+        return bmp
+      }),
+      readGrayImage: vi.fn(async () => frameBitmap(false)),
+    })
+    const r = await compareTool(tools(reader)).handler({
+      templateJson: validTemplate,
+      referenceImagePath: '/tmp/ref.png',
+    })
+    const data = JSON.parse(firstText(r))
+    expect(data.pass).toBe(false)
+    expect(data.extraInTemplate.length).toBeGreaterThan(0)
+    expect(data.extraInTemplate[0].kind).toBe('vline')
+  })
+
+  it('参考图有线而模板没有时进 missingInTemplate', async () => {
+    const reader = stubReader({
+      decodePngBase64: vi.fn(async () => frameBitmap(false)),
+      readGrayImage: vi.fn(async () => frameBitmap(true)),
+    })
+    const r = await compareTool(tools(reader)).handler({
+      templateJson: validTemplate,
+      referenceImagePath: '/tmp/ref.png',
+    })
+    const data = JSON.parse(firstText(r))
+    expect(data.missingInTemplate.length).toBeGreaterThan(0)
+  })
+
+  it('契约不通过时直接拒绝，不触达渲染', async () => {
+    const render = stubRender()
+    const r = await compareTool(tools(stubReader(), render)).handler({
+      templateJson: { paperSize: 'A99' },
+      referenceImagePath: '/tmp/ref.png',
+    })
+    expect(r.isError).toBe(true)
+    expect(JSON.parse(firstText(r)).stage).toBe('validate')
+    expect((render.renderTemplatePage as ReturnType<typeof vi.fn>)).not.toHaveBeenCalled()
+  })
+
+  it('缺 referenceImagePath 报错', async () => {
+    const r = await compareTool().handler({ templateJson: validTemplate })
+    expect(r.isError).toBe(true)
+    expect(firstText(r)).toContain('referenceImagePath')
+  })
+
+  it('渲染超时映射为精简建议', async () => {
+    const err = new Error('timeout')
+    ;(err as Error & { code?: string }).code = 'RENDER_TIMEOUT'
+    const r = await compareTool(tools(stubReader(), stubRender(err))).handler({
+      templateJson: validTemplate,
+      referenceImagePath: '/tmp/ref.png',
+    })
+    expect(firstText(r)).toContain('渲染超时')
+  })
+
+  it('输出带容差与近似的毫米偏差（模板有纸张尺寸时）', async () => {
+    const r = await compareTool().handler({
+      templateJson: validTemplate,
+      referenceImagePath: '/tmp/ref.png',
+      toleranceRatio: 0.01,
+    })
+    const data = JSON.parse(firstText(r))
+    expect(data.toleranceRatio).toBe(0.01)
+    expect(data.items.every((it: { diffMmApprox?: number }) => typeof it.diffMmApprox === 'number')).toBe(true)
+  })
+})

@@ -6,7 +6,11 @@ import {
   createDesktopPrintMcpServer,
   TOOLS,
   createTemplateSessionTools,
+  createRenderTools,
+  createImageTools,
   type TemplateSessionBridge,
+  type TemplateRenderBridge,
+  type ImageReaderBridge,
 } from '@worm-vue3-print/mcp'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Logger } from './logger.js'
@@ -21,6 +25,10 @@ export interface McpHostDeps {
   getPairingToken: () => string
   version: string
   templateSessions: TemplateSessionBridge
+  /** 视觉回读：print_preview_template 的渲染通路（core 管线 + 隐藏窗口截图） */
+  renderBridge: TemplateRenderBridge
+  /** 参考图测量：本地图片解码为灰度位图 */
+  imageReader: ImageReaderBridge
   logger: Pick<Logger, 'debug' | 'info' | 'warn' | 'error'>
 }
 
@@ -97,6 +105,8 @@ export function createMcpRequestHandler(deps: McpHostDeps) {
       tools: [
         ...TOOLS,
         ...createTemplateSessionTools(deps.templateSessions),
+        ...createRenderTools(deps.renderBridge),
+        ...createImageTools({ imageReader: deps.imageReader, renderBridge: deps.renderBridge }),
       ].map(definition => ({
         ...definition,
         handler: async (args: Record<string, unknown>) => {

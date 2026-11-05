@@ -136,6 +136,29 @@ describe('renderTableSlice 矩阵输出', () => {
     expect(html).toContain('text-align:right')
   })
 
+  it('tableDefaultBorders 作为逐格缺省：整表网格一次声明，单元格单边覆盖仍生效', () => {
+    const grid = { width: 1.5, style: 'solid', color: '#000000' }
+    const opts = matrixOptions()
+    opts.tableDefaultBorders = { top: grid, right: grid, bottom: grid, left: grid }
+    const html = generateHtml(makeTemplate(opts), pageWith([
+      { elementId: 'tbl-1', type: 'table-slice', startRow: 0, endRow: 3 },
+    ]))
+    // 未设 borders 的单元格四边都继承默认网格
+    expect(html).toContain('border-top:1.5pt solid #000000')
+    expect(html).toContain('border-left:1.5pt solid #000000')
+    // 表头首格显式给了 bottom，覆盖默认值
+    expect(html).toContain('border-bottom:0.75pt solid #333333')
+    expect(html).not.toContain('border-bottom:none')
+  })
+
+  it('未设 tableDefaultBorders 时边框仍为 none（存量行为不变）', () => {
+    const html = generateHtml(makeTemplate(matrixOptions()), pageWith([
+      { elementId: 'tbl-1', type: 'table-slice', startRow: 2, endRow: 3 },
+    ]))
+    expect(html).toContain('border-top:none')
+    expect(html).toContain('border-left:none')
+  })
+
   it('测量模式每行带 data-row-index', () => {
     const html = generateHtml(makeTemplate(matrixOptions()), [], undefined, { isMeasurementPass: true })
     expect(html).toContain('data-row-index="0"')
@@ -637,6 +660,17 @@ describe('内容区页码变量替换', () => {
     ] as any)
     expect(html).toContain('第1页/共2页')
     expect(html).toContain('第2页/共2页')
+  })
+
+  it('totalPageCount 覆盖总页数：单页截取场景页码不失真', () => {
+    const t = makeAreaTemplate({
+      elements: [makeAreaEl('text', { formatter: '第{pageIndex}页/共{totalPages}页' })] as any,
+    })
+    // 只给第 2 页的 pageLayout，但真实总页数是 5
+    const html = generateHtml(t, [
+      { pageIndex: 1, sections: [{ type: 'text', elementId: 'el-text' }] },
+    ] as any, undefined, { totalPageCount: 5 })
+    expect(html).toContain('第2页/共5页')
   })
 })
 

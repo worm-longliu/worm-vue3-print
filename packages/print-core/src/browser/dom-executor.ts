@@ -123,6 +123,46 @@ export function readContentBottom(doc: Document): number {
   return maxBottom
 }
 
+/** 元素在页面内的实测矩形（CSS px，相对 .print-page 的内容区左上角） */
+export interface ElementRect {
+  id: string
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+/**
+ * 读取每个 [data-element-id] 元素的实际渲染矩形（供预览回读「写的坐标 vs 实际落位」）。
+ * .print-page 用 padding 表达页边距，因此相对纸张的坐标要再减掉 padding，
+ * 才回到模板坐标系统（内容区左上角）。跨页元素按其在 DOM 中的位置取矩形。
+ */
+export function readElementRects(doc: Document, pageIndex = 0): ElementRect[] {
+  const pages = doc.querySelectorAll<HTMLElement>('.print-page')
+  const page = pages[pageIndex]
+  if (!page) return []
+  const pageRect = page.getBoundingClientRect()
+  const cs = doc.defaultView?.getComputedStyle(page)
+  const padLeft = Number.parseFloat(cs?.paddingLeft ?? '0') || 0
+  const padTop = Number.parseFloat(cs?.paddingTop ?? '0') || 0
+  const result: ElementRect[] = []
+  page.querySelectorAll<HTMLElement>('[data-element-id]').forEach(node => {
+    // 表格内部 <table> 与外层容器可能同时带标识时，只取最内层（表格本身）
+    if (node.querySelector('[data-element-id]')) return
+    const id = node.getAttribute('data-element-id')
+    if (!id) return
+    const rect = node.getBoundingClientRect()
+    result.push({
+      id,
+      left: rect.left - pageRect.left - padLeft,
+      top: rect.top - pageRect.top - padTop,
+      width: rect.width,
+      height: rect.height,
+    })
+  })
+  return result
+}
+
 /** 码值 → SVG 映射；单项失败跳过，交由 core 降级文本占位 */
 export function renderCodes(specs: CodeSpec[]): Record<string, string> {
   const map: Record<string, string> = {}
@@ -142,6 +182,7 @@ export const domExecutor = {
   waitReady,
   readMeasurements,
   readContentBottom,
+  readElementRects,
   renderCodes,
   /** 自动缩小（data-fit="shrink"）：须在 readMeasurements 之前调用，返回需回写的字号清单 */
   applyTextFit,

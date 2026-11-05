@@ -2,6 +2,13 @@ import { describe, it, expect, vi } from 'vitest'
 import { createTemplateSessionTools, unwrapTemplateShell, type TemplateSessionBridge, type OpenTemplateSession } from '../template-session-tools.js'
 import { TOOLS } from '../tools.js'
 
+
+/** ToolResult.content 是 text|image 联合，取首块文本需收窄 */
+function firstText(r: { content: Array<{ type: string; text?: string }> }): string {
+  const block = r.content[0]
+  return block && block.type === 'text' ? String(block.text ?? '') : ''
+}
+
 const call = async (name: string, args: Record<string, unknown>) => {
   const tool = [...TOOLS, ...createTemplateSessionTools(makeBridge([]))]
     .find(t => t.name === name)
@@ -76,8 +83,8 @@ describe('模板会话工具 print_list_open_templates', () => {
     const t = tools.find(x => x.name === 'print_get_open_template')!
     const r = await t.handler({})
     expect(r.isError).toBe(true)
-    expect(String(r.content[0].text)).toContain('aaaaaaaaaaaaaaaaaa1')
-    expect(String(r.content[0].text)).toContain('需要指定 sessionId')
+    expect(firstText(r)).toContain('aaaaaaaaaaaaaaaaaa1')
+    expect(firstText(r)).toContain('需要指定 sessionId')
   })
 
   it('无会话时返回可行动文案', async () => {
@@ -85,14 +92,14 @@ describe('模板会话工具 print_list_open_templates', () => {
     const t = tools.find(x => x.name === 'print_get_open_template')!
     const r = await t.handler({})
     expect(r.isError).toBe(true)
-    expect(String(r.content[0].text)).toContain('请先在浏览器打开')
+    expect(firstText(r)).toContain('请先在浏览器打开')
   })
 
   it('单会话时自动选中', async () => {
     const tools = createTemplateSessionTools(makeBridge([session({ sessionId: 'aaaaaaaaaaaaaaaaaa1' })]))
     const t = tools.find(x => x.name === 'print_get_open_template')!
     const r = await t.handler({})
-    const data = JSON.parse(String(r.content[0].text))
+    const data = JSON.parse(firstText(r))
     expect(data.revision).toBe('rev-1')
     expect(data.session.templateName ?? '').toBeDefined()
   })
@@ -108,7 +115,7 @@ describe('模板会话工具 print_list_open_templates', () => {
     const t = tools.find(x => x.name === 'print_get_open_template')!
     const r = await t.handler({})
     expect(r.isError).toBe(true)
-    const text = String(r.content[0].text)
+    const text = firstText(r)
     expect(text).toContain('会话不存在')
     expect(text).not.toContain('stack leak')
   })
@@ -123,12 +130,14 @@ describe('模板会话工具 print_apply_open_template', () => {
     const t = tools.find(x => x.name === 'print_apply_open_template')!
     const r = await t.handler({ baseRevision: 'rev-1', templateJson: validTemplate })
     expect(r.isError).toBeFalsy()
-    const data = JSON.parse(String(r.content[0].text))
+    const data = JSON.parse(firstText(r))
     expect(data.revision).toBe('rev-2')
     expect(data.ok).toBe(true)
     // 传递的是规范化后的数据
-    expect(apply.mock.calls[0]![0].baseRevision).toBe('rev-1')
-    expect((apply.mock.calls[0]![0].templateJson as { paperSize: string }).paperSize).toBe('A4')
+    const firstCall = (apply.mock.calls[0] as unknown[] | undefined)?.[0] as
+      { baseRevision: string; templateJson: { paperSize: string } } | undefined
+    expect(firstCall?.baseRevision).toBe('rev-1')
+    expect(firstCall?.templateJson.paperSize).toBe('A4')
   })
 
   it('契约 error 时拒绝且 bridge 未被调用', async () => {
@@ -137,7 +146,7 @@ describe('模板会话工具 print_apply_open_template', () => {
     const t = tools.find(x => x.name === 'print_apply_open_template')!
     const r = await t.handler({ baseRevision: 'r', templateJson: { paperSize: 'A99' } })
     expect(r.isError).toBe(true)
-    expect(JSON.parse(String(r.content[0].text)).stage).toBe('validate')
+    expect(JSON.parse(firstText(r)).stage).toBe('validate')
     expect(apply).not.toHaveBeenCalled()
   })
 
@@ -147,7 +156,7 @@ describe('模板会话工具 print_apply_open_template', () => {
     const t = tools.find(x => x.name === 'print_apply_open_template')!
     const r = await t.handler({ baseRevision: 'r', templateJson: htmlTemplate(nest) })
     expect(r.isError).toBe(true)
-    const data = JSON.parse(String(r.content[0].text))
+    const data = JSON.parse(firstText(r))
     expect(data.stage).toBe('blocked-elements')
     expect(data.blockedPaths.length).toBeGreaterThan(0)
     expect(apply).not.toHaveBeenCalled()
@@ -166,7 +175,7 @@ describe('模板会话工具 print_apply_open_template', () => {
     const t = tools.find(x => x.name === 'print_apply_open_template')!
     const r = await t.handler({ baseRevision: 'r', templateJson: fat })
     expect(r.isError).toBe(true)
-    expect(String(r.content[0].text)).toContain('MiB')
+    expect(firstText(r)).toContain('MiB')
     expect(apply).not.toHaveBeenCalled()
   })
 
@@ -188,7 +197,7 @@ describe('模板会话工具 print_apply_open_template', () => {
     const t = tools.find(x => x.name === 'print_apply_open_template')!
     const r = await t.handler({ baseRevision: 'old', templateJson: validTemplate })
     expect(r.isError).toBe(true)
-    const text = String(r.content[0].text)
+    const text = firstText(r)
     expect(text).toContain('重新读取')
     expect(text).toContain('revision')
   })
@@ -221,9 +230,9 @@ describe('模板会话性能工具', () => {
   it('默认读取保持完整快照，摘要读取不携带 templateJson/printData', async () => {
     const tools = createTemplateSessionTools(makeBridge([target]))
     const full = await tools.find(x => x.name === 'print_get_open_template')!.handler({})
-    expect(JSON.parse(String(full.content[0].text)).templateJson).toBeDefined()
+    expect(JSON.parse(firstText(full)).templateJson).toBeDefined()
     const summary = await tools.find(x => x.name === 'print_get_open_template')!.handler({ view: 'summary' })
-    const data = JSON.parse(String(summary.content[0].text))
+    const data = JSON.parse(firstText(summary))
     expect(data.view).toBe('summary')
     expect(data.templateJson).toBeUndefined()
     expect(data.printData).toBeUndefined()
@@ -236,9 +245,9 @@ describe('模板会话性能工具', () => {
     }))
     const get = tools.find(x => x.name === 'print_get_open_template')!
     const filtered = await get.handler({ view: 'summary', elementIds: ['e1'], includeFields: ['formatter'] })
-    expect(JSON.parse(String(filtered.content[0].text)).elements[0].options).toEqual({ formatter: '{orderNo}' })
+    expect(JSON.parse(firstText(filtered)).elements[0].options).toEqual({ formatter: '{orderNo}' })
     const withData = await get.handler({ view: 'summary', includePrintData: true })
-    expect(JSON.parse(String(withData.content[0].text)).printData).toEqual({ secret: 1 })
+    expect(JSON.parse(firstText(withData)).printData).toEqual({ secret: 1 })
   })
 
   it('批量 Patch 一次写回并返回可链式 revision/changedPaths', async () => {
@@ -249,12 +258,14 @@ describe('模板会话性能工具', () => {
       baseRevision: 'rev-1', reason: '调整标题',
       operations: [{ op: 'updateElement', elementId: 'e1', changes: { formatter: '销售出库单', fontSize: 18 } }],
     })
-    const data = JSON.parse(String(result.content[0].text))
+    const data = JSON.parse(firstText(result))
     expect(result.isError).toBeFalsy()
     expect(data).toMatchObject({ ok: true, revision: 'rev-2' })
     expect(data.changedPaths).toContain('elements[0].options.formatter')
     expect(apply).toHaveBeenCalledTimes(1)
-    expect((apply.mock.calls[0]![0].templateJson as typeof validTemplate).elements[0]!.options.formatter).toBe('销售出库单')
+    const applied = (apply.mock.calls[0] as unknown[] | undefined)?.[0] as
+      { templateJson: typeof validTemplate } | undefined
+    expect(applied?.templateJson.elements[0]!.options.formatter).toBe('销售出库单')
   })
 
   it('Patch 在快照 revision 陈旧或操作失败时不写回', async () => {
@@ -263,7 +274,7 @@ describe('模板会话性能工具', () => {
     const patch = tools.find(x => x.name === 'print_patch_open_template')!
     const stale = await patch.handler({ baseRevision: 'old', operations: [{ op: 'moveElement', elementId: 'e1', x: 1, y: 2 }] })
     expect(stale.isError).toBe(true)
-    expect(String(stale.content[0].text)).toContain('revision')
+    expect(firstText(stale)).toContain('revision')
     const missing = await patch.handler({ baseRevision: 'rev-1', operations: [{ op: 'moveElement', elementId: 'none', x: 1, y: 2 }] })
     expect(missing.isError).toBe(true)
     expect(apply).not.toHaveBeenCalled()

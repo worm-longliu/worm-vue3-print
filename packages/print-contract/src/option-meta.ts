@@ -42,12 +42,14 @@ export const OPTION_META: Record<OptionKey, Meta> = {
   ...pt('tableDefaultFontSize'),
   // 无量纲整数
   ...count('barWidth', 'barQuietZone', 'qrQuietZone', 'flowColumns', 'flowMaxSpan'),
-  ...flag('wordWrap', 'keepLineBreaks', 'repeatOnEveryPage', 'fixed', 'locked', 'visible', 'hideTitle', 'draggable', 'flowAutoSpan'),
+  ...flag('wordWrap', 'keepLineBreaks', 'repeatOnEveryPage', 'fixed', 'locked', 'visible', 'hideTitle', 'draggable', 'flowAutoSpan',
+    // 渲染端 html-generator.ts 同时认 hideTitle 与本键，此前契约漏登记导致正确写法被判未知键
+    'showBarcodeText'),
   ...text('testData', 'fontFamily', 'fontWeight', 'borderStyle', 'textDecoration', 'textType',
     'barcodeType', 'barAutoWidth', 'src', 'objectPosition', 'axis', 'groupId', 'dataSource',
     'formatter', 'styler', 'rowStyler', 'tableDefaultFontFamily', 'tableDefaultColor'),
   ...color('color', 'backgroundColor', 'borderColor'),
-  ...obj('borders', 'pagination', 'tablePagination', 'tableRows', 'tableColWidths'),
+  ...obj('borders', 'pagination', 'tablePagination', 'tableRows', 'tableColWidths', 'tableDefaultBorders'),
   flowLayoutMode: { kind: 'enum', enum: ['fixed', 'dynamic'] },
   textAlign: { kind: 'enum', enum: ['left', 'center', 'right', 'justify'] },
   verticalAlign: { kind: 'enum', enum: ['top', 'middle', 'bottom'] },
