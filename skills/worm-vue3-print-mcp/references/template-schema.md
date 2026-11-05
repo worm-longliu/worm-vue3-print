@@ -68,6 +68,7 @@
 | 字段 | 说明 |
 |---|---|
 | `left` `top` `width` `height` | 几何（mm，相对内容区） |
+| `marginTop` `marginRight` `marginBottom` `marginLeft` | 元素四向外边距（mm，缺省 0，允许有限负数）。`left/top` 定位外边距盒；左/上边距移动实际边框盒，右/下边距只扩大外部占位；W/H 不含边距。元素不会自动推挤，坐标和负边距可形成重叠，`zIndex` 控制层序。 |
 | `formatter` | 内容表达式，如 `'单价 ¥{MONEY(product.price)}'` |
 | `fontSize` | 字号 pt |
 | `fontWeight` | `bold` / `normal` |

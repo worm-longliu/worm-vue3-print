@@ -25,6 +25,8 @@ Two properties define the architecture:
 
 Layout is authored in millimetres with `pt` for line and font units, against fixed paper sizes (A4, labels, receipts) or continuous paper.
 
+Elements also accept `marginTop`, `marginRight`, `marginBottom`, and `marginLeft` in millimetres (default `0`, finite negative values allowed). `left/top` locate the margin box, while `width/height` remain the actual border-box dimensions. Left/top margins move the visible element; right/bottom margins only affect its external footprint. Absolute positioning remains; there is no automatic reflow or overlap prevention. Snapping, alignment, distribution, pagination, and continuous-paper measurement use the margin box, visible overlap uses the border box, and `zIndex` controls stacking.
+
 Flow lists (`flowList`) lay a data array out as text cells in a fixed number of columns per row, with row height, horizontal gap, and optional auto-span. `flowLayoutMode` defaults to `fixed`, which keeps the design height and a one-box-one-page behaviour. Setting it to `dynamic` lets the container grow with its content and continue onto following pages by whole real text rows, never splitting a row or a spanning cell; each page slice draws a complete four-sided border. The four `flowPadding*` values (millimetres, default `0`) apply only in `dynamic` mode, where they also participate in the page budget. Elements below a dynamic list reuse the table follow-region rules and attach only after the last slice. Cells are still text-only in this release — images, barcodes, tables, and arbitrary nesting are not supported inside a flow list.
 
 ## Packages
