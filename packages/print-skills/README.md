@@ -5,7 +5,7 @@
 ```bash
 npx @worm-vue3-print/skills worm-vue3-print-integration
 npx @worm-vue3-print/skills worm-vue3-print-common --dir /path/to/.agents/skills
-npx @worm-vue3-print/skills worm-vue3-print-mcp --ref v1.4.5 --force
+npx @worm-vue3-print/skills worm-vue3-print-mcp --ref v1.4.6 --force
 ```
 
 每次必须指定一个技能。`--repo` 指定 Git 仓库，`--ref` 指定分支或 tag，`--dir` 指定技能父目录；目标已存在时只有 `--force` 才替换。本包不会安装 `.agents/skills/` 中的项目开发技能。

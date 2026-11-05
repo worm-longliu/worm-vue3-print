@@ -37,7 +37,7 @@ export interface TemplateSessionHooks {
    */
   writeTemplate(templateJson: unknown): Promise<{ freshTemplateJson: unknown; warnings?: string[] } | void>
   /** apply 结果通知（仅 UI 提示用）：写回成功 / revision 冲突 */
-  onApplyResult?(kind: 'success' | 'conflict', message: string, revision?: string): void
+  onApplyResult?(kind: 'pending' | 'success' | 'conflict', message: string, revision?: string): void
 }
 
 export interface TemplateSessionHandle {
@@ -79,6 +79,19 @@ export async function revisionOf(value: unknown): Promise<string> {
   return h.toString(16).padStart(8, '0').repeat(8)
 }
 
+export function createRevisionCache(hash: (value: unknown) => Promise<string> = revisionOf) {
+  let lastText: string | undefined
+  let lastRevision: string | undefined
+  return async (value: unknown): Promise<string> => {
+    const text = JSON.stringify(value) ?? 'undefined'
+    if (lastRevision !== undefined && text === lastText) return lastRevision
+    const revision = await hash(value)
+    lastText = text
+    lastRevision = revision
+    return revision
+  }
+}
+
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize)
   if (value && typeof value === 'object') {
@@ -116,6 +129,7 @@ export function createTemplateSession(hooks: TemplateSessionHooks, token?: strin
   })()
 
   const client = new PrintClient({ timeoutMs: 20000, token: token ?? undefined })
+  const cachedRevision = createRevisionCache()
   let status: TemplateSessionStatus = 'unreachable'
   let lastError: string | null = null
   const statusSubs = new Set<(s: TemplateSessionStatus, err: string | null) => void>()
@@ -149,7 +163,7 @@ export function createTemplateSession(hooks: TemplateSessionHooks, token?: strin
       const snapshot = hooks.readSnapshot()
       return {
         sessionId,
-        revision: await revisionOf(snapshot.templateJson),
+        revision: await cachedRevision(snapshot.templateJson),
         templateJson: snapshot.templateJson,
         ...(snapshot.fields ? { fields: snapshot.fields } : {}),
         ...(snapshot.printData ? { printData: snapshot.printData } : {}),
@@ -157,8 +171,10 @@ export function createTemplateSession(hooks: TemplateSessionHooks, token?: strin
       }
     }
     if (type === MESSAGE_TYPES.TEMPLATE_APPLY) {
+      const startedAt = performance.now()
       const req = payload as { baseRevision?: string; templateJson?: unknown; reason?: string }
-      const currentRev = await revisionOf(hooks.readSnapshot().templateJson)
+      const currentRev = await cachedRevision(hooks.readSnapshot().templateJson)
+      const preRevisionMs = performance.now() - startedAt
       if (!req || typeof req.baseRevision !== 'string' || req.baseRevision !== currentRev) {
         const message = '模板在读取后被修改（如手动编辑或撤销重做）：请重新读取最新模板后再应用。'
         hooks.onApplyResult?.('conflict', message)
@@ -171,15 +187,25 @@ export function createTemplateSession(hooks: TemplateSessionHooks, token?: strin
       if (!isTemplateLikeShape(req.templateJson)) {
         throw new WormPrintError('INVALID_TEMPLATE', '模板 JSON 缺少 paperSize / margins / elements 关键结构（多页面模板需在 pages 内提供）。')
       }
+      hooks.onApplyResult?.('pending', 'AI 正在修改模板…')
+      const writeStartedAt = performance.now()
       const result = await hooks.writeTemplate(structuredClone(req.templateJson))
       if (!result) {
         throw new WormPrintError('INTERNAL', '写回失败：宿主未返回写回结果')
       }
+      const writeMs = performance.now() - writeStartedAt
+      const postRevisionStartedAt = performance.now()
       const reply = {
-        revision: await revisionOf(result.freshTemplateJson),
+        revision: await cachedRevision(result.freshTemplateJson),
         templateJson: result.freshTemplateJson,
         ...(result.warnings?.length ? { warnings: result.warnings } : {}),
       }
+      console.debug('AI 模板写回分段耗时', {
+        preRevisionMs,
+        writeMs,
+        postRevisionMs: performance.now() - postRevisionStartedAt,
+        totalMs: performance.now() - startedAt,
+      })
       hooks.onApplyResult?.('success', 'AI 已修改模板，可通过设计器撤销按钮回退', reply.revision)
       setStatus('attached', null)
       return reply
@@ -211,7 +237,7 @@ export function createTemplateSession(hooks: TemplateSessionHooks, token?: strin
 
   return {
     sessionId,
-    currentRevision: () => revisionOf(hooks.readSnapshot().templateJson),
+    currentRevision: () => cachedRevision(hooks.readSnapshot().templateJson),
     start,
     stop,
     onStatusChange(cb) {

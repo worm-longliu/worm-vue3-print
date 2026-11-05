@@ -1,6 +1,6 @@
 {
   "name": "@worm-vue3-print/contract",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "private": true,
   "type": "module",
   "description": "打印模板的机器可读契约层：zod schema、表达式校验、静态版面体检与草稿生成（供桌面客户端 MCP 工具与宿主已有 AI 消费）",
@@ -25,7 +25,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@worm-vue3-print/core": "^1.4.5",
+    "@worm-vue3-print/core": "^1.4.6",
     "zod": "^4.6.7"
   },
   "devDependencies": {

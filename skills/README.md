@@ -23,7 +23,7 @@ npx @worm-vue3-print/skills worm-vue3-print-mcp
 ```bash
 npx @worm-vue3-print/skills worm-vue3-print-mcp \
   --repo https://github.com/worm-longliu/worm-vue3-print.git \
-  --ref v1.4.5 \
+  --ref v1.4.6 \
   --dir /path/to/project/.agents/skills
 ```
 

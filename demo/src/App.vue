@@ -497,7 +497,9 @@ onMounted(() => {
     }),
     writeTemplate: writeAiTemplate,
     onApplyResult: (kind, message) => {
-      if (kind === 'conflict') {
+      if (kind === 'pending') {
+        showAiToast(message)
+      } else if (kind === 'conflict') {
         aiConflict.value = true
         showAiToast(`AI 写入冲突：${message}`, true)
       } else {

@@ -202,15 +202,70 @@ describe('unwrapTemplateShell', () => {
 })
 
 describe('工具集组合', () => {
-  it('桌面组合共 8 个工具且无重复定义', () => {
+  it('桌面组合共 9 个工具且无重复定义', () => {
     const desktop = [...TOOLS, ...createTemplateSessionTools(makeBridge([]))]
-    expect(desktop).toHaveLength(8)
-    expect(new Set(desktop.map(t => t.name)).size).toBe(8)
+    expect(desktop).toHaveLength(9)
+    expect(new Set(desktop.map(t => t.name)).size).toBe(9)
   })
 
   it('apply 工具声明 destructiveHint，宿主应要求批准', () => {
     const t = createTemplateSessionTools(makeBridge([])).find(x => x.name === 'print_apply_open_template')!
     expect(t.annotations?.readOnlyHint).toBe(false)
     expect(t.annotations?.destructiveHint).toBe(true)
+  })
+})
+
+describe('模板会话性能工具', () => {
+  const target = session({ sessionId: 'aaaaaaaaaaaaaaaaaa1' })
+
+  it('默认读取保持完整快照，摘要读取不携带 templateJson/printData', async () => {
+    const tools = createTemplateSessionTools(makeBridge([target]))
+    const full = await tools.find(x => x.name === 'print_get_open_template')!.handler({})
+    expect(JSON.parse(String(full.content[0].text)).templateJson).toBeDefined()
+    const summary = await tools.find(x => x.name === 'print_get_open_template')!.handler({ view: 'summary' })
+    const data = JSON.parse(String(summary.content[0].text))
+    expect(data.view).toBe('summary')
+    expect(data.templateJson).toBeUndefined()
+    expect(data.printData).toBeUndefined()
+    expect(data.elements).toHaveLength(1)
+  })
+
+  it('摘要按元素与字段过滤，printData 仅显式开启', async () => {
+    const tools = createTemplateSessionTools(makeBridge([target], {
+      getTemplate: async () => ({ session: target, revision: 'rev-1', templateJson: validTemplate, printData: { secret: 1 } }),
+    }))
+    const get = tools.find(x => x.name === 'print_get_open_template')!
+    const filtered = await get.handler({ view: 'summary', elementIds: ['e1'], includeFields: ['formatter'] })
+    expect(JSON.parse(String(filtered.content[0].text)).elements[0].options).toEqual({ formatter: '{orderNo}' })
+    const withData = await get.handler({ view: 'summary', includePrintData: true })
+    expect(JSON.parse(String(withData.content[0].text)).printData).toEqual({ secret: 1 })
+  })
+
+  it('批量 Patch 一次写回并返回可链式 revision/changedPaths', async () => {
+    const apply = vi.fn(async () => ({ revision: 'rev-2', templateJson: validTemplate, warnings: [] }))
+    const tools = createTemplateSessionTools(makeBridge([target], { applyTemplate: apply }))
+    const patch = tools.find(x => x.name === 'print_patch_open_template')!
+    const result = await patch.handler({
+      baseRevision: 'rev-1', reason: '调整标题',
+      operations: [{ op: 'updateElement', elementId: 'e1', changes: { formatter: '销售出库单', fontSize: 18 } }],
+    })
+    const data = JSON.parse(String(result.content[0].text))
+    expect(result.isError).toBeFalsy()
+    expect(data).toMatchObject({ ok: true, revision: 'rev-2' })
+    expect(data.changedPaths).toContain('elements[0].options.formatter')
+    expect(apply).toHaveBeenCalledTimes(1)
+    expect((apply.mock.calls[0]![0].templateJson as typeof validTemplate).elements[0]!.options.formatter).toBe('销售出库单')
+  })
+
+  it('Patch 在快照 revision 陈旧或操作失败时不写回', async () => {
+    const apply = vi.fn()
+    const tools = createTemplateSessionTools(makeBridge([target], { applyTemplate: apply }))
+    const patch = tools.find(x => x.name === 'print_patch_open_template')!
+    const stale = await patch.handler({ baseRevision: 'old', operations: [{ op: 'moveElement', elementId: 'e1', x: 1, y: 2 }] })
+    expect(stale.isError).toBe(true)
+    expect(String(stale.content[0].text)).toContain('revision')
+    const missing = await patch.handler({ baseRevision: 'rev-1', operations: [{ op: 'moveElement', elementId: 'none', x: 1, y: 2 }] })
+    expect(missing.isError).toBe(true)
+    expect(apply).not.toHaveBeenCalled()
   })
 })

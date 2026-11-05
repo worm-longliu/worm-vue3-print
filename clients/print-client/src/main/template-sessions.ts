@@ -177,10 +177,18 @@ export class TemplateSessionRegistry {
    */
   async getTemplate(sessionId: string): Promise<GetOpenTemplateResult> {
     const s = this.byId(sessionId)
+    const queuedAt = Date.now()
     return this.chained(s, async () => {
-      s.lastActiveAt = Date.now()
+      const roundTripStartedAt = Date.now()
+      s.lastActiveAt = roundTripStartedAt
       const result = (await this.broker1
-        .request(s.ws, MESSAGE_TYPES.TEMPLATE_GET, {}, GET_TIMEOUT_MS)) as TemplateGetResponsePayload
+        .request(s.ws, MESSAGE_TYPES.TEMPLATE_GET, {}, GET_TIMEOUT_MS).finally(() => {
+          this.logger?.debug('模板会话请求完成', {
+            operation: 'get', sessionId,
+            queueMs: roundTripStartedAt - queuedAt,
+            roundTripMs: Date.now() - roundTripStartedAt,
+          })
+        })) as TemplateGetResponsePayload
       return {
         session: {
           sessionId: s.sessionId,
@@ -213,10 +221,18 @@ export class TemplateSessionRegistry {
       templateJson: input.templateJson,
       ...(input.reason ? { reason: input.reason } : {}),
     }
+    const queuedAt = Date.now()
     return this.chained(s, async () => {
-      s.lastActiveAt = Date.now()
+      const roundTripStartedAt = Date.now()
+      s.lastActiveAt = roundTripStartedAt
       return (await this.broker1
-        .request(s.ws, MESSAGE_TYPES.TEMPLATE_APPLY, payload, APPLY_TIMEOUT_MS)) as TemplateApplyResponsePayload
+        .request(s.ws, MESSAGE_TYPES.TEMPLATE_APPLY, payload, APPLY_TIMEOUT_MS).finally(() => {
+          this.logger?.debug('模板会话请求完成', {
+            operation: 'apply', sessionId: input.sessionId,
+            queueMs: roundTripStartedAt - queuedAt,
+            roundTripMs: Date.now() - roundTripStartedAt,
+          })
+        })) as TemplateApplyResponsePayload
     })
   }
 

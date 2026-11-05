@@ -2,6 +2,14 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## V1.4.6(2026-11-05)
+
+> **正式版**：本版以 dist-tag `latest` 发布到 npm（`@worm-vue3-print/core` / `canvas` / `common` / `skills` 的 `1.4.6`）。GitHub Release 标记为正式版（Prerelease=false），并重新提供全平台客户端安装包。`@worm-vue3-print/common` 仍为实验性质，不建议用于生产。
+
+### 新增
+
+- **MCP 画布小改链路**：新增 `print_patch_open_template` 原子批量更新/移动元素与摘要读取，支持新 revision 链式修改；补充请求、会话和浏览器写回分段耗时、revision 单项缓存及画布处理中提示。保留整份写回、防覆盖、契约校验与封禁元素门禁。
+
 ## V1.4.5(2026-11-04)
 
 > **正式版**：本版以 dist-tag `latest` 发布到 npm（`@worm-vue3-print/core` / `canvas` / `common` / `skills` 的 `1.4.5`）；GitHub Release 标记为正式版（Prerelease=false）。`@worm-vue3-print/common` 仍为实验性质，不建议用于生产。

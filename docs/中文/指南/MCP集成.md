@@ -113,23 +113,25 @@ client.close()
 | `print_check_expression` | 表达式语法、函数白名单和未知字段检查 |
 | `print_inspect_layout` | 纸张越界、边距、交叠和表格结构等静态体检 |
 | `print_list_open_templates` | 列出仍打开且已签到的设计器页面 |
-| `print_get_open_template` | 读取实时模板、字段、打印数据和 revision |
+| `print_get_open_template` | 默认读取完整实时快照；`view=summary` 时精简为元素索引，支持字段过滤 |
+| `print_patch_open_template` | 按元素 ID 原子批量更新/移动，返回可链式使用的新 revision |
 | `print_apply_open_template` | 校验后整份写回画布，必须携带 `baseRevision` |
 
 推荐让 Agent 按以下顺序操作：
 
 1. `print_list_open_templates`，有多个页面时明确目标 `sessionId`。
-2. `print_get_open_template`，保存快照及本次 revision。
+2. 小范围修改用 `print_get_open_template` 的 `view=summary`，保存元素索引及本次 revision；复杂修改再读取完整快照。
 3. `print_element_kinds`，以当前返回的元素、函数和单位为准。
 4. 新模板用 `print_draft_template` 起草；已有模板只修改用户要求的部分。
 5. `print_validate_template` 修到 `ok=true`，再执行 `print_inspect_layout`；表达式问题用 `print_check_expression` 定位。
-6. `print_apply_open_template` 携带读取时的 `baseRevision` 写回。
+6. 小改优先用 `print_patch_open_template` 携带 `baseRevision` 一次提交全部操作；后续 Patch 直接使用上次返回的新 revision。整份替换才用 `print_apply_open_template`。
 7. 在设计器中核对预览，并说明实际执行过的校验与写回结果。
 
 纯计算工具只接收内存中的 `templateJson`。静态体检不计算真实行高或页数，不能把它描述成真实出纸验证。
 
 ## 五、写回安全与异常处理
 
+- **原子 Patch**：`updateElement` 浅合并 `options.changes`，`moveElement` 的 `x/y` 写入 `options.left/top`；任何操作失败都不写回。
 - **整份替换**：`print_apply_open_template` 不是增量 patch，未要求修改的字段和布局必须保留。
 - **防覆盖**：`REVISION_CONFLICT` 表示读取后用户或另一客户端又修改了画布。重新读取并协调差异，不循环强制写回。
 - **封禁元素**：`html` 等元素在草稿和写回两侧都被拦截，返回 `INVALID_TEMPLATE` 时按路径修复。
@@ -150,7 +152,7 @@ npm run test -w @worm-vue3-print/print-client
 
 常见问题：
 
-- **工具列表没有 8 个工具**：使用设置页当前配置重新连接，确认桌面客户端版本已更新。
+- **工具列表没有 9 个工具**：使用设置页当前配置重新连接，确认桌面客户端版本已更新。
 - **列表为空**：检查浏览器是否已连接客户端并调用 `attachTemplate`，页面刷新后是否重新签到。
 - **401**：使用设置页最新配对 token，请求头必须是 `Authorization: Bearer <token>`。
 - **404**：确认「AI 助手」已开启，地址和实际端口与设置页一致。

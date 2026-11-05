@@ -40,6 +40,7 @@ function bearerOf(req: IncomingMessage): string | null {
 
 export function createMcpRequestHandler(deps: McpHostDeps) {
   return async function handleMcp(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const startedAt = Date.now()
     const enabled = deps.isMcpEnabled()
     // 未启用的 MCP：与鉴权顺序无关，一律 404，不暴露 endpoint 存在性
     if (!enabled) {
@@ -65,8 +66,11 @@ export function createMcpRequestHandler(deps: McpHostDeps) {
     }
 
     let body: unknown
+    let payloadBytes = 0
     try {
-      body = await readJsonBody(req)
+      const parsed = await readJsonBody(req)
+      body = parsed.body
+      payloadBytes = parsed.bytes
     } catch (err) {
       if ((err as { limited?: boolean }).limited) {
         replyJson(res, 413, { error: `请求体超过 ${Math.floor(BODY_LIMIT_BYTES / 1024 / 1024)}MiB 上限` })
@@ -75,6 +79,14 @@ export function createMcpRequestHandler(deps: McpHostDeps) {
       }
       return
     }
+
+    const tool = body && typeof body === 'object' && (body as { method?: unknown }).method === 'tools/call'
+      && typeof (body as { params?: { name?: unknown } }).params?.name === 'string'
+      ? (body as { params: { name: string } }).params.name
+      : undefined
+    const serverSetupStartedAt = Date.now()
+    let serverSetupMs = 0
+    let toolOk: boolean | undefined
 
     // 无状态模式：sessionIdGenerator=undefined 关闭跨请求会话；JSON 响应关闭 SSE
     const transport = new StreamableHTTPServerTransport({
@@ -85,23 +97,45 @@ export function createMcpRequestHandler(deps: McpHostDeps) {
       tools: [
         ...TOOLS,
         ...createTemplateSessionTools(deps.templateSessions),
-      ],
+      ].map(definition => ({
+        ...definition,
+        handler: async (args: Record<string, unknown>) => {
+          try {
+            const result = await definition.handler(args)
+            toolOk = !result.isError
+            return result
+          } catch (error) {
+            toolOk = false
+            throw error
+          }
+        },
+      })),
       name: MCP_SERVER_NAME,
       version: deps.version,
     })
     try {
       await server.connect(transport)
+      serverSetupMs = Date.now() - serverSetupStartedAt
       await transport.handleRequest(req, res, body)
     } finally {
       // 请求完成后即关闭本次 transport 与 server，不保留长连接
       await transport.close().catch(() => {})
       await server.close().catch(() => {})
+      if (tool) {
+        deps.logger?.debug('MCP 请求完成', {
+          tool,
+          durationMs: Date.now() - startedAt,
+          serverSetupMs,
+          payloadBytes,
+          ok: toolOk ?? false,
+        })
+      }
     }
   }
 }
 
 /** 读请求体并按上限截断：超过即抛 { limited: true }，不缓冲无界内存 */
-async function readJsonBody(req: IncomingMessage): Promise<unknown> {
+async function readJsonBody(req: IncomingMessage): Promise<{ body: unknown; bytes: number }> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
     let size = 0
@@ -129,7 +163,7 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
       if (settled) return
       settled = true
       try {
-        resolve(JSON.parse(Buffer.concat(chunks).toString('utf-8')))
+        resolve({ body: JSON.parse(Buffer.concat(chunks).toString('utf-8')), bytes: size })
       } catch {
         reject(new Error('invalid json'))
       }

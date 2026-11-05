@@ -2,7 +2,7 @@
 // template-session.ts + 真实 @worm-vue3-print/core/client SDK + 真实 MCP SDK Client。
 // 与 local-server-mcp.test.ts 的区别：这里用「真实 demo 逻辑 + 真实 SDK」充当浏览器，
 // 证明 demo 接入的 get/apply/冲突/封禁处理经真实协议往返成立。
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { WebSocket as NodeWs } from 'ws'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
@@ -74,8 +74,12 @@ describe('真实 demo + 真实 SDK + 真实 MCP 全栈串测', () => {
   // 充当设计器画布的宿主存储：readSnapshot 读、writeTemplate 写回
   let canvas: unknown = structuredClone(validTemplate)
   const applyResults: Array<{ kind: string; message: string }> = []
+  const browserMetrics: Array<Record<string, number>> = []
 
   beforeAll(async () => {
+    vi.spyOn(console, 'debug').mockImplementation((message: unknown, meta: unknown) => {
+      if (message === 'AI 模板写回分段耗时') browserMetrics.push(meta as Record<string, number>)
+    })
     installBrowserShims()
     const registry = new TemplateSessionRegistry(silent)
     server = new WsServer({
@@ -129,6 +133,7 @@ describe('真实 demo + 真实 SDK + 真实 MCP 全栈串测', () => {
   }, 30_000)
 
   afterAll(async () => {
+    vi.restoreAllMocks()
     session?.stop()
     await mcp?.close().catch(() => {})
     await server?.stop().catch(() => {})
@@ -137,12 +142,12 @@ describe('真实 demo + 真实 SDK + 真实 MCP 全栈串测', () => {
   const textOf = (r: unknown): string =>
     String((r as { content?: Array<{ text?: string }> }).content?.[0]?.text ?? '')
 
-  it('桌面端可见工具集恰为 8 个（含 3 个模板会话工具）', async () => {
+  it('桌面端可见工具集恰为 9 个（含 4 个模板会话工具）', async () => {
     const { tools } = await mcp!.listTools()
     expect(tools.map(t => t.name).sort()).toEqual([
       'print_apply_open_template', 'print_check_expression', 'print_draft_template',
       'print_element_kinds', 'print_get_open_template', 'print_inspect_layout',
-      'print_list_open_templates', 'print_validate_template',
+      'print_list_open_templates', 'print_patch_open_template', 'print_validate_template',
     ])
   })
 
@@ -179,6 +184,11 @@ describe('真实 demo + 真实 SDK + 真实 MCP 全栈串测', () => {
     expect(newRev).not.toBe(snap.revision)
     // 浏览器写入的是契约规范化后的数据，断言内容而非对象全等
     expect(textFormatter(canvas)).toBe('PO-999')
+    expect(browserMetrics.at(-1)).toMatchObject({
+      preRevisionMs: expect.any(Number), writeMs: expect.any(Number),
+      postRevisionMs: expect.any(Number), totalMs: expect.any(Number),
+    })
+    expect(applyResults.at(-2)?.kind).toBe('pending')
     expect(applyResults.at(-1)?.kind).toBe('success')
 
     // 用旧 revision 再写 → 真实 demo handler 判 REVISION_CONFLICT，画布不变
@@ -205,6 +215,71 @@ describe('真实 demo + 真实 SDK + 真实 MCP 全栈串测', () => {
     expect(blocked.isError).toBe(true)
     expect(JSON.parse(textOf(blocked)).stage).toBe('blocked-elements')
     expect(textFormatter(canvas)).toBe('PO-999')
+  }, 30_000)
+
+  it('摘要读取后可连续 Patch，第二次直接使用新 revision', async () => {
+    const summary = await mcp!.callTool({
+      name: 'print_get_open_template', arguments: { view: 'summary', includeFields: ['formatter', 'left', 'top'] },
+    })
+    const projected = JSON.parse(textOf(summary))
+    expect(projected.view).toBe('summary')
+    expect(projected.templateJson).toBeUndefined()
+    expect(projected.elements).toHaveLength(1)
+    const first = await mcp!.callTool({
+      name: 'print_patch_open_template',
+      arguments: {
+        baseRevision: projected.revision,
+        operations: [{ op: 'updateElement', elementId: 'e1', changes: { formatter: 'PATCH-1' } }],
+      },
+    })
+    expect(first.isError, textOf(first)).toBeFalsy()
+    const patched = JSON.parse(textOf(first))
+    const second = await mcp!.callTool({
+      name: 'print_patch_open_template',
+      arguments: {
+        baseRevision: patched.revision,
+        operations: [{ op: 'moveElement', elementId: 'e1', x: 22, y: 33 }],
+      },
+    })
+    expect(second.isError, textOf(second)).toBeFalsy()
+    expect(textFormatter(canvas)).toBe('PATCH-1')
+    expect((canvas as typeof validTemplate).elements[0]!.options).toMatchObject({ left: 22, top: 33 })
+    expect(JSON.parse(textOf(second)).changedPaths).toHaveLength(2)
+  }, 30_000)
+
+  it('采样本地协议链路基准，不用 CI 延时冒充真实画布 P95', async () => {
+    const summary = await mcp!.callTool({ name: 'print_get_open_template', arguments: { view: 'summary' } })
+    let revision = JSON.parse(textOf(summary)).revision as string
+    const sample = async (run: (index: number) => Promise<void>) => {
+      const durations: number[] = []
+      for (let index = 0; index < 12; index++) {
+        const startedAt = performance.now()
+        await run(index)
+        durations.push(performance.now() - startedAt)
+      }
+      durations.sort((a, b) => a - b)
+      return { p50Ms: durations[Math.floor(durations.length * 0.5)], p95Ms: durations[Math.ceil(durations.length * 0.95) - 1] }
+    }
+    const fullApply = await sample(async index => {
+      const next = structuredClone(canvas) as typeof validTemplate
+      next.elements[0]!.options.left = 30 + index
+      const result = await mcp!.callTool({
+        name: 'print_apply_open_template', arguments: { baseRevision: revision, templateJson: next },
+      })
+      expect(result.isError, textOf(result)).toBeFalsy()
+      revision = JSON.parse(textOf(result)).revision
+    })
+    const patch = await sample(async index => {
+      const result = await mcp!.callTool({
+        name: 'print_patch_open_template',
+        arguments: { baseRevision: revision, operations: [{ op: 'moveElement', elementId: 'e1', x: 50 + index, y: 10 }] },
+      })
+      expect(result.isError, textOf(result)).toBeFalsy()
+      revision = JSON.parse(textOf(result)).revision
+    })
+    console.info('MCP 本地协议链路基准（非真实画布渲染）', JSON.stringify({ samples: 12, fullApply, patch }))
+    expect(fullApply.p95Ms).toBeGreaterThanOrEqual(0)
+    expect(patch.p95Ms).toBeGreaterThanOrEqual(0)
   }, 30_000)
 
   it('无 Bearer 时 MCP 恒 401（即便打印安全开关关闭）', async () => {

@@ -2,6 +2,14 @@ export default {
   id: 'changelog',
   title: '更新记录',
   content: `
+<h2>V1.4.6<small>(2026-11-05)</small></h2>
+
+<h3>新增</h3>
+<ul>
+  <li><strong>MCP 画布小改链路</strong>：新增 <code>print_patch_open_template</code>，按元素 ID 原子批量更新或移动元素，一次写回并返回可链式使用的新 revision；保留防覆盖、契约校验和封禁元素门禁。</li>
+  <li><strong>精简读取与写回反馈</strong>：模板读取支持摘要、元素与字段过滤；补充请求分段耗时、revision 单项缓存和画布处理中提示，减少小改时的数据往返。</li>
+</ul>
+
 <h2>V1.4.5<small>(2026-11-04)</small></h2>
 
 <h3>新增</h3>

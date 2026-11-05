@@ -7,12 +7,12 @@
 3. 调用 `print_element_kinds` 获取当前契约。
 4. 用 `print_draft_template` 生成草稿，检查其 issues 和 expressionErrors。
 5. 对草稿运行 `print_validate_template` 与 `print_inspect_layout`，修复全部 error。
-6. 使用会话读取时的 revision 调用 `print_apply_open_template`。
+6. 小改使用 `print_patch_open_template` 一次提交全部操作，连续 Patch 使用上次返回的新 revision；复杂重排才整份写回。
 7. 在设计器中核对预览；交付时列出实际校验和写回结果。
 
 ## 修改已有模板
 
-先读取实时快照，只改用户要求的元素，保留业务字段与未要求修改的布局。修改后重新执行校验与体检，不能复用修改前的通过结果。写回成功后再读取一次快照可作为最终核对。
+先用摘要读取元素索引，只改用户要求的元素。`updateElement` 浅合并 `options`，`moveElement` 使用 mm 单位的 `x/y`。一次调用提交全部修改，成功后以返回的 revision 继续；不要为每个属性单独调用。复杂修改仍重新执行校验与体检，不能复用修改前的通过结果。
 
 ## 表达式与表格
 

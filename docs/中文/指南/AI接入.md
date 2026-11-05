@@ -9,7 +9,7 @@
 模型与工具循环归宿主 AI Agent，项目负责模板知识、校验规则和实时画布通道：
 
 - `@worm-vue3-print/contract`：机器可读模板契约，提供 schema、表达式校验、静态版面体检和草稿生成。
-- `@worm-vue3-print/mcp`：桌面客户端 private 内部工具库，组合 5 个纯计算工具与 3 个模板会话工具。
+- `@worm-vue3-print/mcp`：桌面客户端 private 内部工具库，组合 5 个纯计算工具与 4 个模板会话工具。
 - `@worm-vue3-print/print-client`：在本机 `/mcp` 提供 Streamable HTTP，负责 Bearer 鉴权、请求限制和浏览器会话转发。
 - `@worm-vue3-print/core/client`：浏览器 SDK，处理 `template.get` / `template.apply` 并维护模板会话签到。
 - 宿主 AI Agent：调用模型、展示审批、执行工具循环并协调用户意图。
@@ -34,7 +34,7 @@ AI Agent
 ```text
 AI Agent
   → print_validate_template / print_inspect_layout
-  → print_apply_open_template（baseRevision + 完整模板）
+  → print_patch_open_template（baseRevision + 白名单操作；复杂重排才整份 apply）
   → 桌面客户端校验契约与封禁元素
   → WebSocket template.apply
   → 浏览器再次核对 revision 并写回设计器
@@ -54,6 +54,7 @@ AI Agent
 | `print_inspect_layout` | 是 | 静态几何和结构检查，不做浏览器测量 |
 | `print_list_open_templates` | 是 | 列出已签到页面 |
 | `print_get_open_template` | 是 | 获取实时快照与 revision |
+| `print_patch_open_template` | 否 | 原子批量更新/移动元素，返回新 revision，应要求用户批准 |
 | `print_apply_open_template` | 否 | 防冲突、校验后整份写回，应要求用户批准 |
 
 纯计算工具不读写本地文件、不访问外部服务。真实分页、自动行高、长文本换行与 PDF 效果由设计器或打印预览确认，不属于 MCP 的返回结论。
@@ -110,4 +111,4 @@ npm run test -w @worm-vue3-print/print-client
 npm run lint:print-architecture
 ```
 
-端到端验收必须覆盖：真实浏览器签到、8 个工具列表、读取快照、最小修改、校验与体检、revision 写回、陈旧 revision 冲突、封禁元素拒绝、页面断连回收。
+端到端验收必须覆盖：真实浏览器签到、9 个工具列表、摘要读取、连续 Patch、最小修改、校验与体检、revision 写回、陈旧 revision 冲突、封禁元素拒绝、页面断连回收。

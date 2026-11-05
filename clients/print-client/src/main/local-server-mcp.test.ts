@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { request as httpRequest } from 'node:http'
 import { WebSocket as WsClient, type WebSocket as WsConn } from 'ws'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
@@ -38,9 +38,10 @@ async function buildStack(opts: {
   maxPayloadBytes?: number
   /** 记录 MCP 工具进入注册表的顺序：证明并发请求确实同时到达 bridge */
   bridgeEvents?: string[]
+  logger?: Pick<Logger, 'debug' | 'info' | 'warn' | 'error'>
 } = {}) {
   const state = { enabled: opts.enabled ?? true, token: opts.token ?? 'pair-token-1' }
-  const registry = new TemplateSessionRegistry(silentLogger)
+  const registry = new TemplateSessionRegistry(opts.logger ?? silentLogger)
   let actualPort = 0
   const server = new WsServer({
     preferredPort: 17900 + Math.floor(Math.random() * 400),
@@ -73,7 +74,7 @@ async function buildStack(opts: {
           return registry.applyTemplate(input)
         },
       },
-      logger: silentLogger,
+      logger: opts.logger ?? silentLogger,
     }),
     onConnectionClose: ws => registry.handleDisconnect(ws),
     logger: silentLogger,
@@ -284,7 +285,7 @@ describe('共端口 HTTP 层', () => {
 })
 
 describe('MCP HTTP 集成（SDK Client 连真实 /mcp）', () => {
-  it('tools/list 恰好 8 个工具：5 个桌面安全工具 + 3 个模板会话工具', async () => {
+  it('tools/list 恰好 9 个工具：5 个桌面安全工具 + 4 个模板会话工具', async () => {
     const { port, state } = await buildStack()
     const client = await mcpClient(port, state.token)
     const { tools } = await client.listTools()
@@ -292,7 +293,7 @@ describe('MCP HTTP 集成（SDK Client 连真实 /mcp）', () => {
     expect(names).toEqual([
       'print_apply_open_template', 'print_check_expression', 'print_draft_template',
       'print_element_kinds', 'print_get_open_template', 'print_inspect_layout',
-      'print_list_open_templates', 'print_validate_template',
+      'print_list_open_templates', 'print_patch_open_template', 'print_validate_template',
     ])
     await client.close()
   })
@@ -573,6 +574,38 @@ describe('MCP HTTP 集成（SDK Client 连真实 /mcp）', () => {
     await client.close()
   })
 })
+
+  it('记录 MCP 总耗时和会话排队/往返分段，不记录模板内容', async () => {
+    const debug = vi.fn()
+    const logger = { debug, info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+    const { port } = await buildStack({ logger })
+    const client = await mcpClient(port, 'pair-token-1')
+    const ws = await fakeBrowser(port)
+    expect((await attach(ws, {
+      sessionId: 'sess-metrics-000001', name: '埋点页面', url: 'http://x/',
+    })).ok).toBe(true)
+    const result = await client.callTool({
+      name: 'print_get_open_template', arguments: { sessionId: 'sess-metrics-000001' },
+    })
+    expect(result.isError).toBeFalsy()
+    const requestLog = debug.mock.calls.find(call => call[0] === 'MCP 请求完成')
+    expect(requestLog?.[1]).toMatchObject({ tool: 'print_get_open_template', ok: true })
+    expect(requestLog?.[1].durationMs).toEqual(expect.any(Number))
+    expect(requestLog?.[1].serverSetupMs).toEqual(expect.any(Number))
+    expect(requestLog?.[1].payloadBytes).toEqual(expect.any(Number))
+    console.info('MCP 请求分段基准', JSON.stringify(requestLog?.[1]))
+    const sessionLog = debug.mock.calls.find(call => call[0] === '模板会话请求完成')
+    expect(sessionLog?.[1]).toMatchObject({ operation: 'get', sessionId: 'sess-metrics-000001' })
+    expect(sessionLog?.[1].queueMs).toEqual(expect.any(Number))
+    expect(sessionLog?.[1].roundTripMs).toEqual(expect.any(Number))
+    expect(JSON.stringify(debug.mock.calls)).not.toContain('placeholder')
+    await client.callTool({
+      name: 'print_get_open_template', arguments: { sessionId: 'sess-missing-000001' },
+    })
+    const failedLog = debug.mock.calls.filter(call => call[0] === 'MCP 请求完成').at(-1)
+    expect(failedLog?.[1].ok).toBe(false)
+    await client.close()
+  })
 
 describe('WS maxPayload 上限', () => {
   it('超限帧以 1009 关闭且 handler 不被调用；未超限帧正常处理', async () => {

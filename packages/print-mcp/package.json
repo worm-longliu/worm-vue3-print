@@ -1,6 +1,6 @@
 {
   "name": "@worm-vue3-print/mcp",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "private": true,
   "type": "module",
   "description": "桌面客户端内部 MCP 工具库：为浏览器实时画布会话提供模板校验、草稿与会话读写工具。",
@@ -17,8 +17,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "@worm-vue3-print/contract": "^1.4.5",
-    "@worm-vue3-print/core": "^1.4.5",
+    "@worm-vue3-print/contract": "^1.4.6",
+    "@worm-vue3-print/core": "^1.4.6",
     "zod": "^4.6.7"
   },
   "devDependencies": {
