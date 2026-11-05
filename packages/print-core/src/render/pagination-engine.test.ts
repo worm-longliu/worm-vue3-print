@@ -595,22 +595,61 @@ describe('堆叠元素：纵向重叠按并集计高，不重复扣高', () => {
   })
 })
 
+// ─── 元素 fixed：每页保持首页设计位置，不参与正文分页结算 ───
+
+describe('元素 fixed：每页保持首页设计位置', () => {
+  it('固定元素在首页和续页使用相同的设计 top', () => {
+    const tpl = makeFreeTemplate([
+      freeEl('fixed', 100, 40, { fixed: true }),
+      freeEl('body-1', 0, 200),
+      freeEl('body-2', 200, 100),
+    ])
+    const pages = paginate(tpl, measureFree([
+      ['fixed', 40], ['body-1', 200], ['body-2', 100],
+    ]))
+
+    expect(pages).toHaveLength(2)
+    for (const page of pages) {
+      expect(page.sections).toContainEqual({ elementId: 'fixed', type: 'element', renderTop: 100 })
+    }
+  })
+
+  it('固定元素不占续页正文分页预算', () => {
+    const tpl = makeFreeTemplate([
+      freeEl('fixed', 100, 40, { fixed: true }),
+      freeEl('body-1', 0, 200),
+      freeEl('body', 200, 200),
+    ])
+    const pages = paginate(tpl, measureFree([
+      ['fixed', 40], ['body-1', 200], ['body', 200],
+    ]))
+
+    expect(pages).toHaveLength(2)
+    expect(pages[1]!.sections).toContainEqual({ elementId: 'body', type: 'element', renderTop: 0 })
+  })
+
+  it('固定与每页重复同时开启时只按固定输出一次', () => {
+    const tpl = makeFreeTemplate([
+      freeEl('fixed', 100, 40, { fixed: true, repeatOnEveryPage: true }),
+      freeEl('body-1', 0, 200),
+      freeEl('body-2', 200, 100),
+    ])
+    const pages = paginate(tpl, measureFree([
+      ['fixed', 40], ['body-1', 200], ['body-2', 100],
+    ]))
+
+    expect(pages).toHaveLength(2)
+    for (const page of pages) {
+      expect(page.sections.filter(section => section.elementId === 'fixed')).toEqual([
+        { elementId: 'fixed', type: 'element', renderTop: 100 },
+      ])
+    }
+  })
+})
+
 // ─── 元素 repeatOnEveryPage：每页重复，首页与续页正文统一从重复区下方起排 ───
 
 describe('元素 repeatOnEveryPage：首页按设计布局，续页正文从重复区域下方起排', () => {
-  it('历史 fixed 字段不再触发每页重复', () => {
-    const tpl = makeFreeTemplate([
-      freeEl('legacy-fixed', 0, 100, { fixed: true }),
-      freeEl('body', 100, 200),
-    ])
-    const pages = paginate(tpl, measureFree([['legacy-fixed', 100], ['body', 200]]))
-
-    expect(pages).toHaveLength(2)
-    expect(pages[1]!.sections).toEqual([
-      { elementId: 'body', type: 'element', renderTop: 0 },
-    ])
-  })
-
   it('首页正文保持设计坐标和原预算，续页从重复底边开始', () => {
     const bodies = [
       freeEl('body-1', 50, 150), freeEl('body-2', 200, 100), freeEl('body-3', 300, 50),

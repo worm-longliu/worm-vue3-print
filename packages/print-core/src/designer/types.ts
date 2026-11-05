@@ -304,6 +304,8 @@ export interface ElementOptions {
   keepLineBreaks?: boolean
   /** 每页重复：首页保留设计 top；续页将整组重复元素归一到页眉底部 0 起排并保持相对间距，正文接在重复区后并扣减其预算；不参与编组或跟随区，表格/动态列表完整重复，连续纸仅输出一次 */
   repeatOnEveryPage?: boolean
+  /** 固定：每页保持首页设计 top/left，不参与正文分页结算、编组或跟随区；连续纸仅输出一次。与每页重复同时开启时优先固定 */
+  fixed?: boolean
   locked?: boolean
   /** 元素可见性（图层面板切换） */
   visible?: boolean

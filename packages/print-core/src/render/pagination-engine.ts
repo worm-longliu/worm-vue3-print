@@ -47,7 +47,12 @@ function isSplittableEl(el: FollowJudgementInput): boolean {
  * 不参与显式/隐式编组和表格/动态列表跟随区（表格/动态 flowList 为整表/整列表完整重复）。
  */
 function isRepeatedEl(el: FollowJudgementInput): boolean {
-  return el.options?.repeatOnEveryPage === true
+  return el.options?.fixed !== true && el.options?.repeatOnEveryPage === true
+}
+
+/** 固定元素：每页保留首页设计坐标，不参与正文分页结算 */
+function isFixedEl(el: FollowJudgementInput): boolean {
+  return el.options?.fixed === true
 }
 
 function elTypeOf(el: FollowJudgementInput): string {
@@ -193,7 +198,7 @@ export function collectFollowMemberIds<E extends { id?: string }>(
     .filter((e): e is E & { id: string } => typeof e.id === 'string')
     .map(e => e as unknown as FollowJudgementInput)
   // fixed 元素不参与显式编组和跟随区，先排除再计算，与 paginate 的 flowSorted 同口径
-  const flowInputs = inputs.filter(el => !isRepeatedEl(el))
+  const flowInputs = inputs.filter(el => !isRepeatedEl(el) && !isFixedEl(el))
   const orderIndex = new Map<string, number>()
   flowInputs.forEach((e, idx) => orderIndex.set(e.id, idx))
   const sorted = [...flowInputs].sort(compareCanvasOrder(orderIndex))
@@ -471,7 +476,8 @@ export function paginate(
 
   // 每页重复元素分流：首页正文保持设计布局，续页正文从页眉下方的重复区之后起排
   const repeatedSorted = sorted.filter(isRepeatedEl)
-  const flowSorted = sorted.filter(el => !isRepeatedEl(el))
+  const fixedSorted = sorted.filter(isFixedEl)
+  const flowSorted = sorted.filter(el => !isRepeatedEl(el) && !isFixedEl(el))
   const repeatExtent = repeatedSorted.reduce((extent, el) => {
     const settle = rotatedSettlement(el, measuredElements)
     return {
@@ -689,7 +695,7 @@ export function paginate(
     pages.push({ pageIndex: 0, sections: [] })
   }
 
-  // 重复元素合入每页：top 相对页眉底部，不调用 occupy()；仅续页由 repeatBottom 预留区域
+  // 重复/固定元素合入每页：均不调用 occupy()；仅每页重复在续页归一并预留区域
   // 排序按完整 sorted 的层序（top → zIndex → 模板数组序）稳定合入，物理越界只告警不换页
   const sectionRank = new Map(sorted.map((el, index) => [el.id, index]))
   for (const page of pages) {
@@ -700,16 +706,22 @@ export function paginate(
       type: 'element' as const,
       renderTop: (el.options?.top ?? 0) + repeatOffset,
     }))
-    page.sections = [...page.sections, ...repeated].sort((a, b) =>
+    const fixed = fixedSorted.map(el => ({
+      elementId: el.id,
+      type: 'element' as const,
+      renderTop: el.options?.top ?? 0,
+    }))
+    page.sections = [...page.sections, ...repeated, ...fixed].sort((a, b) =>
       (sectionRank.get(a.elementId) ?? Number.MAX_SAFE_INTEGER)
       - (sectionRank.get(b.elementId) ?? Number.MAX_SAFE_INTEGER))
 
-    // 物理告警：底边越过内容区标 overflow；旋转外接盒顶越过页首出专条警告。连续纸内容高无限，不会触发。
-    for (const el of repeatedSorted) {
+    // 重复/固定元素物理告警：连续纸内容高无限，不会触发。
+    for (const el of [...repeatedSorted, ...fixedSorted]) {
       const settle = rotatedSettlement(el, measuredElements)
-      if (settle.outerBottom + repeatOffset > contentHeight) page.overflow = true
-      if (settle.rot !== undefined && settle.top + repeatOffset < 0) {
-        const amount = Math.round(-(settle.top + repeatOffset) * 100) / 100
+      const offset = isRepeatedEl(el) ? repeatOffset : 0
+      if (settle.outerBottom + offset > contentHeight) page.overflow = true
+      if (settle.rot !== undefined && settle.top + offset < 0) {
+        const amount = Math.round(-(settle.top + offset) * 100) / 100
         page.warnings = [...(page.warnings ?? []),
           `元素 ${el.id} 旋转 ${settle.rot}° 后顶部超出页首 ${amount}mm，打印将被裁切`]
       }

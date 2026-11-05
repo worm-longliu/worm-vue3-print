@@ -29,9 +29,9 @@ describe('AdvancedGroup「恢复默认值」', () => {
     return mount(AdvancedGroup, { props: { element } })
   }
 
-  it('锁定/每页重复/层级三项都挂图标，且出厂未设 ⇒ 灰态', () => {
+  it('锁定/每页重复/固定/层级都挂图标，且出厂未设 ⇒ 灰态', () => {
     const w = mountAdvanced(makeElement('text'))
-    for (const t of ['锁定', '每页重复', '层级']) {
+    for (const t of ['锁定', '每页重复', '固定', '层级']) {
       const btn = rowOf(w, t).find('.pd-reset-btn')
       expect(btn.exists()).toBe(true)
       expect(btn.classes()).not.toContain('is-dirty')

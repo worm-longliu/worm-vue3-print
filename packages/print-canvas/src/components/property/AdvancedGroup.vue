@@ -12,6 +12,11 @@
         </span>
           <input type="checkbox" class="pd-switch" v-model="element.options.repeatOnEveryPage" />
         </div>
+        <div class="pd-field" v-show="showItem('ad-fixed-position')"><span class="pd-label"><span class="pd-label-t">固定</span>
+          <ResetButton :target="element.options" :base="factoryOptions" prop-key="fixed" />
+        </span>
+          <input type="checkbox" class="pd-switch" v-model="element.options.fixed" />
+        </div>
       </div>
       <div class="pd-field" v-show="showItem('ad-z-index')"><span class="pd-label"><span class="pd-label-t">层级</span>
         <ResetButton :target="element.options" :base="factoryOptions" prop-key="zIndex" />

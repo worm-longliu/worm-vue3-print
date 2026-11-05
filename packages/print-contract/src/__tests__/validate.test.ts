@@ -124,7 +124,7 @@ describe('validateTemplateJson', () => {
     expect(r.issues.every(i => i.level === 'warning')).toBe(true)
   })
 
-  it('每页重复使用 repeatOnEveryPage，历史 fixed 仅按未知键忽略', () => {
+  it('每页重复与固定均使用正式布尔字段', () => {
     const current = validateTemplateJson({
       ...base,
       elements: [{ ...textElement, options: { ...textElement.options, repeatOnEveryPage: true } }],
@@ -137,7 +137,7 @@ describe('validateTemplateJson', () => {
       elements: [{ ...textElement, options: { ...textElement.options, fixed: true } }],
     })
     expect(legacy.ok).toBe(true)
-    expect(legacy.unknownKeys).toContain('elements[0].options.fixed')
+    expect(legacy.unknownKeys).not.toContain('elements[0].options.fixed')
   })
 
   it('未知 option 键不判失败但列进 unknownKeys（AI 幻觉键）', () => {
