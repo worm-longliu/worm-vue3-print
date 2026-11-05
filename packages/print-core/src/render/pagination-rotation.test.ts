@@ -201,3 +201,18 @@ describe('collectFollowMemberIds：跟随区归属单点判据', () => {
     expect(collectFollowMemberIds([under('f1')]).size).toBe(0)
   })
 })
+
+describe('旋转元素的外边距分页', () => {
+  it('上下外边距参与换页预算，旋转偏移仍按实际边框盒计算', () => {
+    const tpl = a4Template([
+      { id: 'pre', type: 'text', options: { left: 0, top: 0, width: 100, height: 255 } },
+      { id: 'rot', type: 'text', options: {
+        left: 20, top: 260, width: 20, height: 40, rotate: 90,
+        marginTop: 5, marginBottom: 5,
+      } },
+    ])
+    const pages = paginate(tpl, new Map())
+    expect(pages).toHaveLength(2)
+    expect(pages[1]!.sections[0]).toMatchObject({ elementId: 'rot', renderTop: -10 })
+  })
+})

@@ -13,6 +13,7 @@ import { getPaperDimensions, isContinuousPaper } from './types.js'
 import { getRotatedAabb, resolveElementRotation } from './rotation.js'
 import { resolveFlowPadding, resolveFlowLayoutMode, resolveFlowRowHeight } from './flow-list.js'
 import { resolveElementBorder, type ElementBorderCss } from './element-border.js'
+import { resolveElementBoxes, resolveElementMargins } from './element-margin.js'
 
 /** 分页配置读取：options 内优先（前端序列化位置），顶层兼容旧测试/旧数据 */
 function paginationOf(el: TemplateElement): { pageable?: boolean; keepWithNext?: boolean } | undefined {
@@ -62,22 +63,40 @@ function elementRotationOf(el: TemplateElement): number | undefined {
  * 元素的分页结算盒：旋转元素按 AABB（占位高 = 外接盒高，shift = 设计盒顶相对外接盒顶的下沉量），
  * 未旋转退化回设计盒（shift = 0，产物逐字不变）。
  */
+interface Settlement {
+  height: number
+  shift: number
+  top: number
+  rot: number | undefined
+  outerTop: number
+  outerBottom: number
+  outerHeight: number
+}
+
 function rotatedSettlement(
   el: TemplateElement,
   measured: Map<string, MeasuredElement>,
-): { height: number; shift: number; top: number; rot: number | undefined } {
+): Settlement {
   const elHeight = measured.get(el.id)?.measuredHeight ?? el.options?.height ?? 0
-  const top = el.options?.top ?? 0
+  const margins = resolveElementMargins(el.options)
+  const { border } = resolveElementBoxes({
+    left: el.options?.left ?? 0,
+    top: el.options?.top ?? 0,
+    width: el.options?.width ?? 100,
+    height: elHeight,
+    ...el.options,
+  }, elHeight)
   const rot = elementRotationOf(el)
-  if (rot === undefined) {
-    return { height: elHeight, shift: 0, top, rot: undefined }
-  }
-  const aabb = getRotatedAabb(
-    { left: el.options?.left ?? 0, top, width: el.options?.width ?? 100, height: elHeight },
-    elHeight,
+  const box = rot === undefined ? border : getRotatedAabb(border, elHeight, rot)
+  return {
+    height: box.height,
+    shift: border.top - box.top,
+    top: box.top,
     rot,
-  )
-  return { height: aabb.height, shift: top - aabb.top, top: aabb.top, rot }
+    outerTop: box.top - margins.top,
+    outerBottom: box.top + box.height + margins.bottom,
+    outerHeight: Math.max(0, margins.top + box.height + margins.bottom),
+  }
 }
 
 /**
@@ -88,19 +107,21 @@ function horizontalExtent(
   el: TemplateElement,
   measured: Map<string, MeasuredElement>,
 ): { left: number; width: number } {
-  const designLeft = el.options?.left ?? 0
   const cols = el.options?.tableColWidths ?? []
   const designWidth = isTableEl(el) && cols.length > 0
     ? cols.reduce((sum: number, w: number) => sum + w, 0)
     : (el.options?.width ?? 0)
-  const rot = elementRotationOf(el)
-  if (rot === undefined) return { left: designLeft, width: designWidth }
   const height = measured.get(el.id)?.measuredHeight ?? el.options?.height ?? 0
-  const aabb = getRotatedAabb(
-    { left: designLeft, top: el.options?.top ?? 0, width: designWidth, height },
+  const { border } = resolveElementBoxes({
+    ...el.options,
+    left: el.options?.left ?? 0,
+    top: el.options?.top ?? 0,
+    width: designWidth,
     height,
-    rot,
-  )
+  }, height)
+  const rot = elementRotationOf(el)
+  if (rot === undefined) return { left: border.left, width: border.width }
+  const aabb = getRotatedAabb(border, height, rot)
   return { left: aabb.left, width: aabb.width }
 }
 
@@ -283,17 +304,23 @@ const PT_TO_MM = 25.4 / 72
  * vline 特殊处理：实际渲染为 width:0 + border-left，视觉横向占用 = borderWidth（pt → mm），
  * 而非画布编辑盒的 options.width——否则与横向不相交的表格会被误判为同列、挤占版面（Gitee #IKQSRG）。
  */
-function xRange(el: TemplateElement): [number, number] {
+function geometryInput(el: TemplateElement): Record<string, unknown> {
   const o = el.options ?? {}
-  const x0 = o.left ?? 0
   const type = el.type || el.printElementType?.type || 'text'
-  if (type === 'vline') {
-    const borderWidthPt = o.borderWidth ?? 0.75
-    // border 以中心线向外扩展（CSS 默认 center 描边），左右各半；加 0.05mm 安全余量避免边相切
-    const halfW = (borderWidthPt * PT_TO_MM) / 2 + 0.05
-    return [x0 - halfW, x0 + halfW]
-  }
-  return [x0, x0 + (o.width ?? 100)]
+  if (type !== 'vline') return { width: 100, ...o }
+  const borderWidthPt = o.borderWidth ?? 0.75
+  const halfW = (borderWidthPt * PT_TO_MM) / 2 + 0.05
+  return { ...o, left: (o.left ?? 0) - halfW, width: halfW * 2 }
+}
+
+function marginXRange(el: TemplateElement): [number, number] {
+  const box = resolveElementBoxes(geometryInput(el)).margin
+  return [box.left, box.right]
+}
+
+function borderXRange(el: TemplateElement): [number, number] {
+  const box = resolveElementBoxes(geometryInput(el)).border
+  return [box.left, box.right]
 }
 
 /** 横向区间是否相交（边相切不算，与纵向簇口径一致） */
@@ -326,7 +353,7 @@ function buildPaginationUnits(
       anchorId: members[0]!.id,
       ids: members.map(m => m.id),
       forceFirstPage: members.some(m => paginationOf(m)?.pageable === false),
-      band: members.map(xRange).reduce(xUnion),
+      band: members.map(marginXRange).reduce(xUnion),
     }
     for (const m of members) unitOf.set(m.id, unit)
   }
@@ -359,14 +386,21 @@ function buildPaginationUnits(
 
   // 扫描线：仅与仍可能相交（bottom > 当前 top）且横向相交的活跃元素做合并
   const active: Array<{ id: string; top: number; bottom: number; x: [number, number] }> = []
-  for (const el of eligible) {
-    const top = el.options?.top ?? 0
+  const borderBox = (el: TemplateElement) => resolveElementBoxes({
+    width: 100,
+    ...el.options,
+    height: effectiveHeight(el, measured),
+  }, effectiveHeight(el, measured)).border
+  const borderOrdered = [...eligible].sort((a, b) => borderBox(a).top - borderBox(b).top)
+  for (const el of borderOrdered) {
+    const box = borderBox(el)
+    const top = box.top
     // 淘汰底边已在当前 top 之上（含相切）的区间
     for (let i = active.length - 1; i >= 0; i--) {
       if (active[i]!.bottom <= top) active.splice(i, 1)
     }
-    const bottom = top + effectiveHeight(el, measured)
-    const x = xRange(el)
+    const bottom = box.bottom
+    const x = borderXRange(el)
     for (const a of active) {
       if (a.bottom > top && xIntersects(a.x, x)) union(el.id, a.id)
     }
@@ -388,7 +422,7 @@ function buildPaginationUnits(
       anchorId: ids[0]!,
       ids,
       forceFirstPage: false,
-      band: ids.map(id => xRange(eligibleById.get(id)!)).reduce(xUnion),
+      band: ids.map(id => marginXRange(eligibleById.get(id)!)).reduce(xUnion),
     }
     for (const id of ids) unitOf.set(id, unit)
   }
@@ -510,7 +544,7 @@ export function paginate(
   }
 
   /** 本节在本页内容区内的定位 top：未换页用元素设计 top，换页后贴本列已占底部 */
-  function sectionTop(el: TemplateElement, x: [number, number] = xRange(el)): number {
+  function sectionTop(el: TemplateElement, x: [number, number] = marginXRange(el)): number {
     return pageBroken ? pageCursorTop(x) : (el.options?.top ?? 0)
   }
 
@@ -662,7 +696,7 @@ export function paginate(
     // 物理告警：底边越过内容区标 overflow；旋转外接盒顶越过页首出专条警告。连续纸内容高无限，不会触发。
     for (const el of fixedSorted) {
       const settle = rotatedSettlement(el, measuredElements)
-      if (settle.top + settle.height > contentHeight) page.overflow = true
+      if (settle.outerBottom > contentHeight) page.overflow = true
       if (settle.rot !== undefined && settle.top < 0) {
         const amount = Math.round(-settle.top * 100) / 100
         page.warnings = [...(page.warnings ?? []),
@@ -712,10 +746,10 @@ export function paginate(
     sortedList: TemplateElement[],
     idx: number,
   ): number {
-    const x = xRange(el)
+    const x = marginXRange(el)
     // 旋转元素按 AABB 结算：占位高与底边都以旋转后外接盒计（未旋转退化回设计盒）
     const settle = rotatedSettlement(el, measured)
-    const elHeight = settle.height
+    const elHeight = settle.outerHeight
 
     /** 以本列光标（未换页时为设计 top）落位并记账。
      *  首页保持设计坐标（WYSIWYG）；换页后 renderTop = 游标 + shift，使外接盒顶（而非设计盒顶）贴列游标。
@@ -724,7 +758,7 @@ export function paginate(
       const designTop = sectionTop(el, x)
       const renderTop = pageBroken ? designTop + settle.shift : designTop
       const delta = renderTop - (el.options?.top ?? 0)
-      noteOverflow(settle.top + delta + settle.height)
+      noteOverflow(settle.outerBottom + delta)
       if (settle.rot !== undefined && !pageBroken) {
         noteTopWarning(el, settle.rot, -settle.top)
       }
@@ -739,7 +773,7 @@ export function paginate(
       // keepWithNext 处理
       if (paginationOf(el)?.keepWithNext && idx + 1 < sortedList.length) {
         const nextEl = sortedList[idx + 1]
-        const nextHeight = rotatedSettlement(nextEl, measured).height
+        const nextHeight = rotatedSettlement(nextEl, measured).outerHeight
 
         // keepWithNext 降级：组合总高度超过页面可用高度时失效
         if (elHeight + nextHeight > fullPageHeight()) {
@@ -777,8 +811,8 @@ export function paginate(
     let rotatedAnchor: { el: TemplateElement; rot: number } | undefined
     for (const m of members) {
       const s = rotatedSettlement(m, measuredElements)
-      minTop = Math.min(minTop, s.top)
-      maxBottom = Math.max(maxBottom, s.top + s.height)
+      minTop = Math.min(minTop, s.outerTop)
+      maxBottom = Math.max(maxBottom, s.outerBottom)
       if (s.rot !== undefined) rotatedAnchor = { el: m, rot: s.rot }
     }
     const unitHeight = Math.max(maxBottom - minTop, 0)
@@ -845,7 +879,7 @@ export function paginate(
       ?? rowHeights.slice(0, repeatCount).reduce((s, h) => s + h, 0)
     const freshAvail = fullPageHeight()
     // 表格自身横向占用列：本片及后续内容都按该列记账
-    const tb = xRange(el)
+    const tb = marginXRange(el)
 
     // 边界：重复表头段高度 > 整页可用高度 → 报错
     if (repeatH > freshAvail) {
@@ -987,7 +1021,7 @@ export function paginate(
     }
     const chromeVertical = padding.top + padding.bottom + borderMm('top') + borderMm('bottom')
 
-    const tb = xRange(el)
+    const tb = marginXRange(el)
     let sliceStart = 0
     let sliceTop = sectionTop(el, tb)
     // 首片在首页时预算先扣设计 top 段（片顶是绝对坐标，页面物理下限固定，不再按 depthIn 扣）；

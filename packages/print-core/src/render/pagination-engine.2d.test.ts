@@ -163,3 +163,24 @@ describe('隐式堆叠簇与换页光标同样按横向区间判定', () => {
     expect(pages[1].sections.find(s => s.elementId === 'b')).toMatchObject({ renderTop: 20 })
   })
 })
+
+describe('元素四向外边距的二维分页口径', () => {
+  it('续页光标保留上下外边距，首页坐标不自动推挤', () => {
+    const tpl = customPaper(100, 100, [
+      el('a', 'text', 0, 0, 100, 55, { marginTop: 5, marginBottom: 5 }),
+      el('b', 'text', 0, 65, 100, 10, { marginTop: 2, marginBottom: 3 }),
+    ])
+    const pages = paginate(tpl, heightMap([['a', 55], ['b', 10]]))
+    expect(pages).toHaveLength(2)
+    expect(pages[0]!.sections[0]).toMatchObject({ elementId: 'a', renderTop: 0 })
+    expect(pages[1]!.sections[0]).toMatchObject({ elementId: 'b', renderTop: 0 })
+  })
+
+  it('外边距盒相交但边框盒分离时不组成隐式重叠单元', () => {
+    const tpl = customPaper(100, 100, [
+      el('a', 'text', 0, 0, 100, 60, { marginBottom: 10 }),
+      el('b', 'text', 0, 65, 100, 20),
+    ])
+    expect(paginate(tpl, heightMap([['a', 60], ['b', 20]]))).toHaveLength(2)
+  })
+})
