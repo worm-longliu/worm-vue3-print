@@ -11,6 +11,7 @@ import {
   mmToPx,
   resolveElementBorder,
   resolveElementRotation,
+  resolveElementMargins,
   resolveElementTextFit,
   resolveElementWhiteSpace,
   resolveElementNowrap,
@@ -32,6 +33,7 @@ const H_ALIGN_FLEX: Record<string, string> = { left: 'flex-start', center: 'cent
 /** 元素几何与边框（对齐 BaseElement.elementStyle） */
 export function elementStyle(el: RuntimeElement, followMemberIds?: Set<string>): Record<string, string> {
   const o = el.options
+  const margin = resolveElementMargins(o)
   const borders = resolveElementBorder(el.printElementType.type, o)
   const borderStyles: Record<string, string> = {}
   if (borders?.all) {
@@ -52,6 +54,10 @@ export function elementStyle(el: RuntimeElement, followMemberIds?: Set<string>):
     top: `${o.top}mm`,
     width: `${o.width}mm`,
     height: `${o.height}mm`,
+    ...(margin.top !== 0 ? { marginTop: `${margin.top}mm` } : {}),
+    ...(margin.right !== 0 ? { marginRight: `${margin.right}mm` } : {}),
+    ...(margin.bottom !== 0 ? { marginBottom: `${margin.bottom}mm` } : {}),
+    ...(margin.left !== 0 ? { marginLeft: `${margin.left}mm` } : {}),
     zIndex: String(o.zIndex || 'auto'),
     ...borderStyles,
     // 元素级旋转：与 BaseElement/出纸端同一 CSS 独立属性 rotate（排除类型、跟随区成员不转、码类低档吸附直角）

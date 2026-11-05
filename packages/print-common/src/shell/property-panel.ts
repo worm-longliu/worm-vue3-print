@@ -93,19 +93,6 @@ function elementPane(ctx: ShellCtx, el: RuntimeElement) {
   const rows: unknown[] = []
   // 内容绑定组置顶：作者最常改的一栏，先于位置/外观（与 canvas PropertyPanel 同序）
   if (!multiCellSelected) rows.push(bindingGroup(ctx, el))
-  if (!cellSelected) {
-    rows.push(group(ctx, 'position-size', '位置与尺寸', 'Location', [
-      h('form', { class: 'pd-form', onSubmit: (ev: Event) => ev.preventDefault() }, [
-        h('div', { class: 'position-grid' }, [
-          gateItem(ctx, 'ps-left', numField(ctx, 'X', o.left, v => patch({ left: v }), { min: 0 })),
-          gateItem(ctx, 'ps-top', numField(ctx, 'Y', o.top, v => patch({ top: v }), { min: 0 })),
-          gateItem(ctx, 'ps-width', numField(ctx, 'W', o.width, v => patch({ width: v }), { min: 4 })),
-          gateItem(ctx, 'ps-height', numField(ctx, 'H', o.height, v => patch({ height: v }), { min: 4 })),
-        ]),
-      ]),
-    ]))
-  }
-
   /** 落点派生自该元素类型的出厂值：未预置的键 ⇒ undefined ⇒ 写回即删键；预置了字面值的键
    *  （text 的 fontSize、longText 的 lineHeight、image 的 fit）⇒ 写回字面值。一条规则覆盖两种
    *  相反的正确行为。reset 一律挂在外层 field/fieldHelp 上，不挂进 radioGroup 等控件构造参数。 */
@@ -117,6 +104,25 @@ function elementPane(ctx: ShellCtx, el: RuntimeElement) {
       tipValue: d?.value, tipUnit: d?.unit,
       write: () => patch({ [key]: FACTORY[key] } as never),
     })
+  }
+  if (!cellSelected) {
+    rows.push(group(ctx, 'position-size', '位置与尺寸', 'Location', [
+      h('form', { class: 'pd-form', onSubmit: (ev: Event) => ev.preventDefault() }, [
+        h('div', { class: 'position-grid' }, [
+          gateItem(ctx, 'ps-left', numField(ctx, 'X', o.left, v => patch({ left: v }), { min: 0 })),
+          gateItem(ctx, 'ps-top', numField(ctx, 'Y', o.top, v => patch({ top: v }), { min: 0 })),
+          gateItem(ctx, 'ps-width', numField(ctx, 'W', o.width, v => patch({ width: v }), { min: 4 })),
+          gateItem(ctx, 'ps-height', numField(ctx, 'H', o.height, v => patch({ height: v }), { min: 4 })),
+        ]),
+        h('h3', { class: 'pd-divider', text: '外边距 (mm)' }),
+        h('div', { class: 'margin-grid' }, [
+          gateItem(ctx, 'ps-margin-top', numField(ctx, '上', o.marginTop, v => patch({ marginTop: v === 0 ? undefined : v }), {}, reset('marginTop', 'ps-margin-top'))),
+          gateItem(ctx, 'ps-margin-right', numField(ctx, '右', o.marginRight, v => patch({ marginRight: v === 0 ? undefined : v }), {}, reset('marginRight', 'ps-margin-right'))),
+          gateItem(ctx, 'ps-margin-bottom', numField(ctx, '下', o.marginBottom, v => patch({ marginBottom: v === 0 ? undefined : v }), {}, reset('marginBottom', 'ps-margin-bottom'))),
+          gateItem(ctx, 'ps-margin-left', numField(ctx, '左', o.marginLeft, v => patch({ marginLeft: v === 0 ? undefined : v }), {}, reset('marginLeft', 'ps-margin-left'))),
+        ]),
+      ]),
+    ]))
   }
 
   // canvas 的 AppearanceGroup 恒渲染：非文本元素出空态提示，表格元素只留空 form（分组标题仍在）

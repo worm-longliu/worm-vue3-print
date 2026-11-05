@@ -118,10 +118,19 @@ describe('property-search 门控（对照 filteredGroups / matchedKeys / searchi
     expect(visibleItemKeys(host)).toEqual(['bb-border-style', 'bb-border-width', 'bb-border-color', 'bb-bg-color'])
   })
 
-  it('「位置」：命中位置与尺寸分组的四个字段', () => {
+  it('「位置」：命中位置与尺寸分组的八个字段', () => {
     const { host } = paint('text', '位置')
     expect(visibleGroups(host)).toEqual(['位置与尺寸'])
-    expect(visibleItemKeys(host)).toEqual(['ps-left', 'ps-top', 'ps-width', 'ps-height'])
+    expect(visibleItemKeys(host)).toEqual([
+      'ps-left', 'ps-top', 'ps-width', 'ps-height',
+      'ps-margin-top', 'ps-margin-right', 'ps-margin-bottom', 'ps-margin-left',
+    ])
+  })
+
+  it('「外边距」：只显示四个外边距字段', () => {
+    const { host } = paint('text', '外边距')
+    expect(visibleGroups(host)).toEqual(['位置与尺寸'])
+    expect(visibleItemKeys(host)).toEqual(['ps-margin-top', 'ps-margin-right', 'ps-margin-bottom', 'ps-margin-left'])
   })
 
   it('外观分组的字段全部纳入注册表门控（无游离字段）', () => {
@@ -196,6 +205,9 @@ describe('issue #4 新增字段：首行缩进与图片缩放/锚点', () => {
     expect(visibleGroups(paint('image', '裁剪锚点').host)).toEqual(['外观'])
     const pos = paint('text', '位置')
     expect(visibleGroups(pos.host)).toEqual(['位置与尺寸'])
-    expect(visibleItemKeys(pos.host)).toEqual(['ps-left', 'ps-top', 'ps-width', 'ps-height'])
+    expect(visibleItemKeys(pos.host)).toEqual([
+      'ps-left', 'ps-top', 'ps-width', 'ps-height',
+      'ps-margin-top', 'ps-margin-right', 'ps-margin-bottom', 'ps-margin-left',
+    ])
   })
 })

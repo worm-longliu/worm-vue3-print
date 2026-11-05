@@ -52,7 +52,7 @@ import { useDrag } from '../../composables/useDrag'
 import type { DragOptions } from '../../composables/useDrag'
 import { generateId } from '@worm-vue3-print/core/designer'
 import { useResize, RESIZE_POINTS } from '@worm-vue3-print/core/designer'
-import { mmToPx, resolveElementBorder, ELEMENT_BORDER_SIDES, resolveElementRotation } from '@worm-vue3-print/core/designer'
+import { mmToPx, resolveElementBorder, ELEMENT_BORDER_SIDES, resolveElementRotation, resolveElementMargins } from '@worm-vue3-print/core/designer'
 
 import { SELECTED_IDS_KEY, PREVIEW_IDS_KEY } from '../../composables/useSelection'
 import TextElement from './TextElement.vue'
@@ -143,6 +143,7 @@ const contentAttrs = computed(() =>
 
 const elementStyle = computed(() => {
   const o = props.element.options
+  const margin = resolveElementMargins(o)
   // 元素级边框与出纸共用 resolveElementBorder（box-sizing:border-box，边框不改变几何）；
   // 先整圈后逐边，键序即 CSS 写入序，逐边覆盖整圈
   const borders = resolveElementBorder(props.element.printElementType.type, o)
@@ -165,6 +166,10 @@ const elementStyle = computed(() => {
     top: o.top + 'mm',
     width: o.width + 'mm',
     height: o.height + 'mm',
+    ...(margin.top !== 0 ? { marginTop: `${margin.top}mm` } : {}),
+    ...(margin.right !== 0 ? { marginRight: `${margin.right}mm` } : {}),
+    ...(margin.bottom !== 0 ? { marginBottom: `${margin.bottom}mm` } : {}),
+    ...(margin.left !== 0 ? { marginLeft: `${margin.left}mm` } : {}),
     zIndex: o.zIndex || 'auto',
     ...borderStyles,
     // 元素级旋转：与出纸端同一 CSS 独立属性 rotate（绕盒中心），不占 transform——

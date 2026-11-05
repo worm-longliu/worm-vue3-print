@@ -36,6 +36,20 @@ function rowOf(host: HTMLElement, text: string) {
 
 const btnOf = (host: HTMLElement, text: string) => rowOf(host, text).querySelector<HTMLButtonElement>('.pd-reset-btn')!
 
+describe('common 外边距输入与恢复默认值', () => {
+  it('上外边距恢复缺省，左外边距允许负数', () => {
+    const { el, host } = paint('text', { marginTop: 4, marginLeft: 1 })
+    expect(btnOf(host, '上').dataset.tip).toBe('恢复默认值（0 mm）')
+    btnOf(host, '上').click()
+    expect(el.options.marginTop).toBeUndefined()
+    const input = rowOf(host, '左').querySelector<HTMLInputElement>('input')!
+    expect(input.min).toBe('')
+    input.value = '-3'
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+    expect(el.options.marginLeft).toBe(-3)
+  })
+})
+
 describe('common 外观组「恢复默认值」', () => {
   it('外观组各行都渲染出图标，且图标不带文字', () => {
     const { host } = paint('text', { fontSize: 18 })

@@ -19,6 +19,21 @@
             :min="4" />
         </div>
       </div>
+      <h3 class="pd-divider">外边距 (mm)</h3>
+      <div class="margin-grid">
+        <div class="pd-field" v-show="showItem('ps-margin-top')"><span class="pd-label">上</span>
+          <StepperInput v-model="element.options.marginTop" />
+        </div>
+        <div class="pd-field" v-show="showItem('ps-margin-right')"><span class="pd-label">右</span>
+          <StepperInput v-model="element.options.marginRight" />
+        </div>
+        <div class="pd-field" v-show="showItem('ps-margin-bottom')"><span class="pd-label">下</span>
+          <StepperInput v-model="element.options.marginBottom" />
+        </div>
+        <div class="pd-field" v-show="showItem('ps-margin-left')"><span class="pd-label">左</span>
+          <StepperInput v-model="element.options.marginLeft" />
+        </div>
+      </div>
     </form>
   </PropertyGroup>
 </template>
@@ -43,9 +58,14 @@ function showItem(key: string): boolean {
 </script>
 
 <style scoped>
-.position-grid {
+.position-grid,
+.margin-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+}
+
+.margin-grid {
+  margin-top: 8px;
 }
 </style>
