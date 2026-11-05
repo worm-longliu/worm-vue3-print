@@ -52,7 +52,7 @@ import { useDrag } from '../../composables/useDrag'
 import type { DragOptions } from '../../composables/useDrag'
 import { generateId } from '@worm-vue3-print/core/designer'
 import { useResize, RESIZE_POINTS } from '@worm-vue3-print/core/designer'
-import { mmToPx, resolveElementBorder, ELEMENT_BORDER_SIDES, resolveElementRotation, resolveElementMargins } from '@worm-vue3-print/core/designer'
+import { mmToPx, resolveElementBorder, ELEMENT_BORDER_SIDES, resolveElementRotation, resolveElementMargins, resolveElementBoxes } from '@worm-vue3-print/core/designer'
 
 import { SELECTED_IDS_KEY, PREVIEW_IDS_KEY } from '../../composables/useSelection'
 import TextElement from './TextElement.vue'
@@ -267,12 +267,13 @@ const dragConfig = reactive<DragOptions>({
 
     // 元素间吸附交给 CanvasPaper 层管理器（含引导线渲染）
     if (props.adsorbHandler) {
+      const marginBox = resolveElementBoxes(props.element.options).margin
       return props.adsorbHandler({
         id: props.element.id,
         left,
         top,
-        width: props.element.options.width,
-        height: props.element.options.height,
+        width: marginBox.width,
+        height: marginBox.height,
       })
     }
     return { left, top, lines: [] }

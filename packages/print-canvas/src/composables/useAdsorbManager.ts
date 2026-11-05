@@ -3,6 +3,7 @@
 // BaseElement 拖拽时通过函数 props 调用 requestAdsorb / clearGuides
 import type { RuntimeElement, ElementRect, AdsorbResult } from '@worm-vue3-print/core/designer'
 import { useAdsorb, type AdsorbConfig } from './useAdsorb'
+import { resolveElementBoxes } from '@worm-vue3-print/core/designer'
 
 export interface AdsorbManagerOptions {
   getElements: () => RuntimeElement[]
@@ -21,13 +22,7 @@ export function useAdsorbManager(options: AdsorbManagerOptions) {
   function requestAdsorb(movingRect: ElementRect): AdsorbResult {
     const others = options.getElements()
       .filter(e => e.id !== movingRect.id)
-      .map(e => ({
-        id: e.id,
-        left: e.options.left,
-        top: e.options.top,
-        width: e.options.width,
-        height: e.options.height,
-      } as ElementRect))
+      .map(e => ({ id: e.id, ...resolveElementBoxes(e.options).margin }))
     const result = check(movingRect, others, options.getGuides?.())
     const paper = options.getPaperSize()
     renderLines(result.lines, paper.width, paper.height)

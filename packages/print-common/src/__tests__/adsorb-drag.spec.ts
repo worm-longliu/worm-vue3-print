@@ -87,4 +87,18 @@ describe('吸附开启后的拖拽（对照 canvas）', () => {
     await dragById(root, id, 15)
     expect(store.elements[0]!.options.left).toBeCloseTo(25, 2)
   })
+  it('吸附候选右缘包含元素左右外边距', async () => {
+    const { root, store } = await mountDesigner([
+      { left: 10, top: 10, width: 20, height: 10 },
+      { left: 20, top: 100, width: 40, height: 10 },
+    ])
+    store.elements[1]!.options.marginLeft = 2
+    store.elements[1]!.options.marginRight = 3
+    const id = store.elements[0]!.id
+    store.snapToGrid = true
+    await dragById(root, id, 55.5, 90)
+    expect(store.elements[0]!.options.left).toBeCloseTo(65, 2)
+    expect(store.elements[0]!.options.marginLeft).toBeUndefined()
+  })
+
 })

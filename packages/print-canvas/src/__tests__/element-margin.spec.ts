@@ -3,6 +3,8 @@ import { mount } from '@vue/test-utils'
 import { reactive, ref } from 'vue'
 import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 import BaseElement from '../components/elements/BaseElement.vue'
+import { useAdsorbManager } from '../composables/useAdsorbManager'
+import { mmToPx } from '@worm-vue3-print/core/designer'
 import PositionSizeGroup from '../components/property/PositionSizeGroup.vue'
 import { SELECTED_IDS_KEY } from '../composables/useSelection'
 
@@ -52,4 +54,30 @@ describe('canvas 元素四向外边距', () => {
     await input.trigger('change')
     expect(element.options.marginLeft).toBe(-3)
   })
+  it('吸附候选与拖拽主元素都使用外边距盒', () => {
+    const other = makeEl({ left: 20, top: 0, width: 40, height: 10, marginLeft: 2, marginRight: 3 })
+    const { requestAdsorb } = useAdsorbManager({
+      getElements: () => [other],
+      getPaperSize: () => ({ width: 200, height: 200 }),
+      config: { adsorbMin: 1, showAdsorbLine: false },
+    })
+    expect(requestAdsorb({ id: 'moving', left: 65.5, top: 0, width: 20, height: 10 }).left).toBe(65)
+  })
+
+  it('带边距拖拽只回写外边距盒坐标，不重复偏移', async () => {
+    const element = makeEl({ marginLeft: 5, marginTop: 4 })
+    const wrapper = mountBase(element)
+    await wrapper.find('.print-element').trigger('mousedown', { clientX: 100, clientY: 100, button: 0 })
+    document.dispatchEvent(new MouseEvent('mousemove', {
+      clientX: 100 + 20 * mmToPx(1), clientY: 100 + 20 * mmToPx(1),
+    }))
+    document.dispatchEvent(new MouseEvent('mouseup', {
+      clientX: 100 + 20 * mmToPx(1), clientY: 100 + 20 * mmToPx(1),
+    }))
+    expect(element.options.left).toBeCloseTo(30)
+    expect(element.options.top).toBeCloseTo(40)
+    expect(element.options.marginLeft).toBe(5)
+    expect(element.options.marginTop).toBe(4)
+  })
+
 })

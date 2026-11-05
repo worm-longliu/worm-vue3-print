@@ -3,7 +3,7 @@
 // 类名与 print-canvas 对齐的原因见 shell/controls.ts 顶部说明。
 import {
   calcResizeRect, computeFitScale, computeAdsorb, findMainCell, FIT_SCALE_MIN_PERCENT,
-  generateId, getPaperDimensions, MIN_SCALE_PERCENT, mmToPx, nextWheelScale, pxToMm,
+  generateId, getPaperDimensions, MIN_SCALE_PERCENT, mmToPx, nextWheelScale, pxToMm, resolveElementBoxes,
 } from '@worm-vue3-print/core/designer'
 import { buildFontFaceCss, normalizeTemplate, validateTiling, collectPrintWarnings } from '@worm-vue3-print/core'
 import { fitTextNode } from '@worm-vue3-print/core/browser'
@@ -1090,18 +1090,19 @@ export class PrintDesignerElement extends HTMLElement {
         const { dx, dy } = dmm(ev.clientX - this.drag.startX, ev.clientY - this.drag.startY)
         if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) this.drag.moved = true
         const first = s.elements.find(e => e.id === this.drag!.primary)
-        const rect = first && {
+        const movingBox = first && resolveElementBoxes(first.options).margin
+        const rect = first && movingBox && {
           id: first.id,
           left: (this.drag.origin.get(first.id)?.left ?? 0) + dx,
           top: (this.drag.origin.get(first.id)?.top ?? 0) + dy,
-          width: first.options.width,
-          height: first.options.height,
+          width: movingBox.width,
+          height: movingBox.height,
         }
         let snapped: { left: number; top: number } | null = null
         if (rect && s.snapToGrid !== false) {
           const others = s.elements
             .filter(e => !this.drag!.ids.includes(e.id) && (e.zone || 'content') === this.drag!.zone)
-            .map(e => ({ id: e.id, left: e.options.left, top: e.options.top, width: e.options.width, height: e.options.height }))
+            .map(e => ({ id: e.id, ...resolveElementBoxes(e.options).margin }))
           const zone = zoneRectsMM(s.templateData, s.paperSize)[this.drag.zone]
           const result = computeAdsorb(rect, others, this.manualGuides()) as AdsorbLike
           snapped = { left: result.left, top: result.top }

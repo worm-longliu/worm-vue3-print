@@ -117,4 +117,28 @@ describe('useAlign', () => {
     expect(b.options.top).toBe(60)
     expect(c.options.top).toBe(120)
   })
+  it('右对齐按外边距盒右缘，不回写或压缩边距', () => {
+    const a = makeEl('a', 10, 0, 40, 20)
+    a.options.marginLeft = 2
+    a.options.marginRight = 3
+    const b = makeEl('b', 80, 0, 50, 20)
+    b.options.marginLeft = 4
+    useAlign().align([a, b], 'right')
+    expect(a.options.left).toBe(89)
+    expect(b.options.left).toBe(80)
+    expect(a.options).toMatchObject({ marginLeft: 2, marginRight: 3, width: 40 })
+  })
+
+  it('水平分布按外边距盒跨度计算间隙', () => {
+    const a = makeEl('a', 0, 0, 10, 10)
+    a.options.marginRight = 5
+    const b = makeEl('b', 30, 0, 10, 10)
+    const c = makeEl('c', 60, 0, 10, 10)
+    c.options.marginLeft = 5
+    useAlign().align([a, b, c], 'distributeHor')
+    expect(a.options.left).toBe(0)
+    expect(b.options.left).toBe(32.5)
+    expect(c.options.left).toBe(60)
+  })
+
 })
