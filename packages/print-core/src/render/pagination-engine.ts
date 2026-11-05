@@ -650,6 +650,16 @@ export function paginate(
 
     // 不参与分页的元素：始终放在第一页（含强制首页的整个编组）
     if (paginationOf(el)?.pageable === false || (unit?.forceFirstPage)) {
+      const firstPage = pages[0]
+      const firstPageSections = firstPage?.sections ?? currentPage
+      const noteFirstPageTopWarning = (target: TemplateElement, rot: number, amount: number): void => {
+        if (!firstPage) {
+          noteTopWarning(target, rot, amount)
+        } else if (amount > 0) {
+          firstPage.warnings = [...(firstPage.warnings ?? []),
+            `元素 ${target.id} 旋转 ${rot}° 后顶部超出页首 ${Math.round(amount * 100) / 100}mm，打印将被裁切`]
+        }
+      }
       if (unit) {
         // 固定首页的编组同样可能含旋转成员：设计坐标落位，外接盒顶越界记警告
         let minTop = Number.POSITIVE_INFINITY
@@ -661,14 +671,14 @@ export function paginate(
           minTop = Math.min(minTop, s.top)
           if (s.rot !== undefined) rotated = { el: m, rot: s.rot }
         }
-        if (rotated) noteTopWarning(rotated.el, rotated.rot, -minTop)
+        if (rotated) noteFirstPageTopWarning(rotated.el, rotated.rot, -minTop)
         for (const id of unit.ids) {
-          currentPage.push({ elementId: id, type: 'element', renderTop: (elById.get(id)?.options?.top) ?? 0 })
+          firstPageSections.push({ elementId: id, type: 'element', renderTop: (elById.get(id)?.options?.top) ?? 0 })
         }
       } else {
         const s = rotatedSettlement(el, measuredElements)
-        if (s.rot !== undefined) noteTopWarning(el, s.rot, -s.top)
-        currentPage.push({ elementId: el.id, type: 'element', renderTop: sectionTop(el) })
+        if (s.rot !== undefined) noteFirstPageTopWarning(el, s.rot, -s.top)
+        firstPageSections.push({ elementId: el.id, type: 'element', renderTop: el.options?.top ?? 0 })
       }
       // 步进交给循环顶部的「非锚点成员跳过」守卫，无需假设成员在 sorted 中连续
       i++

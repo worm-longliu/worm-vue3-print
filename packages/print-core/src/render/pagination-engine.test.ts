@@ -161,6 +161,31 @@ describe('分页配置读取位置（options 内）', () => {
     expect(pages[0].sections[0].elementId).toBe('e1')
   })
 
+  it('动态表格分页后，pageable=false 元素仍只落在第一页设计坐标', () => {
+    const table = makeTable(6, 0)
+    table.options.height = 54
+    const tpl = makeTemplate(table)
+    tpl.elements.push({
+      id: 'attachments', type: 'text',
+      options: {
+        left: 110, top: 10, width: 80, height: 5, rotate: 90,
+        pagination: { pageable: false, keepWithNext: false },
+      },
+    } as any)
+    const measured = measure(Array(6).fill(100), 0)
+    measured.set('attachments', { id: 'attachments', measuredHeight: 5 })
+
+    const pages = paginate(tpl, measured)
+
+    expect(pages).toHaveLength(3)
+    expect(pages.map(page => page.sections.filter(section => section.elementId === 'attachments')))
+      .toEqual([
+        [{ elementId: 'attachments', type: 'element', renderTop: 10 }],
+        [],
+        [],
+      ])
+  })
+
   it('tablePagination 在 options 内时 enabled=false 生效（超高也整表不拆）', () => {
     const tpl: any = {
       paperSize: 'A4', orientation: 'portrait',

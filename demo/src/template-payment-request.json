@@ -265,7 +265,11 @@
         "verticalAlign": "middle",
         "textFit": "shrink",
         "rotate": 90,
-        "fixed": true
+        "fixed": true,
+        "pagination": {
+          "pageable": false,
+          "keepWithNext": false
+        }
       },
       "printElementType": {
         "type": "text",

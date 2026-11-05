@@ -50,12 +50,10 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { helpSections } from '../help-content'
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   visible: boolean
   initialTab?: string
-}>(), {
-  initialTab: 'getting-started'
-})
+}>()
 
 const emit = defineEmits<{
   close: []
@@ -66,20 +64,18 @@ const sections = helpSections
 const activeTab = ref(props.initialTab)
 
 const STORAGE_KEY = 'worm-print-help-tab'
-onMounted(() => {
+function resolveInitialTab(): string {
+  if (sections.some(s => s.id === props.initialTab)) return props.initialTab!
   const saved = localStorage.getItem(STORAGE_KEY)
-  if (saved && sections.some(s => s.id === saved)) {
-    activeTab.value = saved
-  }
+  return saved && sections.some(s => s.id === saved) ? saved : 'getting-started'
+}
+
+onMounted(() => {
+  activeTab.value = resolveInitialTab()
 })
 
 watch(() => props.visible, (v) => {
-  if (v) {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved && sections.some(s => s.id === saved)) {
-      activeTab.value = saved
-    }
-  }
+  if (v) activeTab.value = resolveInitialTab()
 })
 
 function switchTab(tabId: string) {

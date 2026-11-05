@@ -72,7 +72,7 @@
               :matched-keys="matchedKeys"
               :searching="searching"
             />
-            <AdvancedGroup v-if="filteredGroups.includes('advanced')" :element="element" :matched-keys="matchedKeys" :searching="searching" @delete-element="$emit('delete-element')" />
+            <AdvancedGroup v-if="filteredGroups.includes('advanced')" :element="element" :matched-keys="matchedKeys" :searching="searching" @delete-element="$emit('delete-element')" @help="$emit('help')" />
           </div>
         </template>
         <p class="pd-empty" v-else>请在画布中选择一个元素</p>
@@ -223,6 +223,7 @@ const emit = defineEmits<{
   'update:templateData': [data: TemplateData]
   'update:activeTab': [tab: 'element' | 'page']
   'toggle-collapse': []
+  help: []
 }>()
 
 /** 纸张下拉分组：按 PAPER_PRESETS 的 group 聚合，保持预设声明顺序；多页时过滤连续纸（小票纸/热敏卷纸） */

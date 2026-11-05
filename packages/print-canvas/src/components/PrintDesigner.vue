@@ -29,7 +29,7 @@
       @ungroup="onUngroup"
       @fit-window="onFitWindow"
       @zoom="onToolbarZoom"
-      @help="helpVisible = true"
+      @help="openHelp()"
       @copy="copy"
       @paste="paste"
       @delete="onDeleteElement"
@@ -113,6 +113,7 @@
         :multi-page="pages.length > 1"
         v-model:active-tab="activePropertyTab"
         @delete-element="onDeleteElement"
+        @help="openHelp('advanced-settings')"
         @update:template-data="onTemplateDataChanged"
         @toggle-collapse="toggleRight"
       />
@@ -137,6 +138,7 @@
     <!-- 帮助文档模态框 -->
     <HelpModal
       :visible="helpVisible"
+      :initial-tab="helpInitialTab"
       @close="helpVisible = false"
     />
   </div>
@@ -202,6 +204,12 @@ const emit = defineEmits<{
 
 // 帮助文档状态
 const helpVisible = ref(false)
+const helpInitialTab = ref<string>()
+
+function openHelp(initialTab?: string) {
+  helpInitialTab.value = initialTab
+  helpVisible.value = true
+}
 
 // showHelp 关闭时强制收起帮助弹框（并隐藏工具栏帮助入口）
 watch(() => props.showHelp, (v) => {

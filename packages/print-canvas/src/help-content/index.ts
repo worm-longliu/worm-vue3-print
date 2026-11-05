@@ -1,5 +1,6 @@
 import gettingStarted from './getting-started'
 import features from './features'
+import advancedSettings from './advanced-settings'
 import shortcuts from './shortcuts'
 import faq from './faq'
 import changelog from './changelog'
@@ -13,6 +14,7 @@ export type HelpSection = {
 export const helpSections: HelpSection[] = [
   gettingStarted,
   features,
+  advancedSettings,
   shortcuts,
   faq,
   changelog,

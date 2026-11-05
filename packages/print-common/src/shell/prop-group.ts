@@ -29,6 +29,7 @@ function writeExpanded(key: string, value: boolean) {
 
 export function group(
   ctx: ShellCtx, key: string, title: string, icon: string, rows: unknown[], defaultExpanded = true,
+  headerActions: unknown[] = [],
 ): El {
   const expanded = readExpanded(key, defaultExpanded)
   // canvas 的分组显隐由 PropertyPanel 的 `v-if="filteredGroups.includes(key)"` 门控，
@@ -43,6 +44,7 @@ export function group(
     }, [
       h('span', { class: 'group-icon', text: GROUP_ICON[icon] || '•' }),
       h('span', { class: 'group-title', text: title }),
+      ...headerActions,
       h('span', { class: 'expand-icon', text: expanded ? '▾' : '▸' }),
     ]),
     // canvas 的收起态是 v-show：节点常驻只切 display，隐藏分组的字段仍在 DOM 里可被搜索门控

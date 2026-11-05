@@ -125,6 +125,7 @@ export class PrintDesignerElement extends HTMLElement {
   private exprMountedFor: ExpressionEditorTarget | null = null
   /** 帮助弹窗：canvas 的 helpVisible（showHelp 为 false 时强制收起，见 set showHelp） */
   private helpVisible = false
+  private helpInitialTab: string | undefined
   private unmountHelp: (() => void) | null = null
   private drag: DragState | null = null
   private snapTimer: ReturnType<typeof setTimeout> | null = null
@@ -367,7 +368,8 @@ export class PrintDesignerElement extends HTMLElement {
   // 接线口径与 canvas 一致：点工具栏「帮助」即打开，Esc / × / 点遮罩空白处关闭；
   // 与表达式编辑器同一「挂到 shadow root、作为 .designer-container 兄弟节点」的范式，
   // 差别在于本弹窗无输入态，用 mount/unmount 而不是按对象身份复用。
-  private openHelp() {
+  private openHelp(initialTab?: string) {
+    this.helpInitialTab = initialTab
     this.helpVisible = true
     this.syncHelp()
   }
@@ -382,7 +384,10 @@ export class PrintDesignerElement extends HTMLElement {
     // showHelp=false 时 canvas 由 watch 强制收起（并隐藏入口按钮）；这里同一口径兜住直接改属性的路径
     const want = this.helpVisible && this.getAttribute('show-help') !== 'false'
     if (want && !this.unmountHelp) {
-      this.unmountHelp = mountHelpModal(this.root, { onClose: () => this.closeHelp() })
+      this.unmountHelp = mountHelpModal(this.root, {
+        initialTab: this.helpInitialTab,
+        onClose: () => this.closeHelp(),
+      })
     } else if (!want && this.unmountHelp) {
       const off = this.unmountHelp
       this.unmountHelp = null
@@ -644,7 +649,7 @@ export class PrintDesignerElement extends HTMLElement {
       case 'help':
         // canvas：@help="helpVisible = true"。本包额外保留向外派发（宿主可监听），顺序是先派再开
         this.dispatchEvent(new CustomEvent('help', { bubbles: true, composed: true }))
-        this.openHelp()
+        this.openHelp(arg as string | undefined)
         break
       case 'guide-remove': s.removeGuide(arg as string); break
       case 'resize-start': this.beginResize(arg as { event: MouseEvent; id: string; point: string }); break

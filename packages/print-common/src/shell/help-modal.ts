@@ -30,7 +30,7 @@ function knownTab(id: string | null | undefined): string {
   return helpSections.some(s => s.id === id) ? String(id) : ''
 }
 
-/** 上次的页签优先（canvas 在 onMounted 与 watch(visible) 两处读同一份存储，口径一致） */
+/** 显式指定页签优先；未指定时沿用上次页签（与 canvas 的打开口径一致） */
 function resolveTab(initial?: string): string {
   let saved: string | null = null
   try {
@@ -39,7 +39,7 @@ function resolveTab(initial?: string): string {
   } catch {
     saved = null // 隐私模式或存储不可用：回落到 initialTab
   }
-  return knownTab(saved) || knownTab(initial) || DEFAULT_TAB
+  return knownTab(initial) || knownTab(saved) || DEFAULT_TAB
 }
 
 /** 渲染帮助弹窗（调用方负责挂到 shadow root 上） */

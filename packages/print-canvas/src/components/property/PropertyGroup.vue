@@ -3,6 +3,7 @@
     <div class="group-header" @click="toggle">
       <span class="group-icon">{{ iconChar }}</span>
       <span class="group-title">{{ title }}</span>
+      <slot name="header-actions" />
       <span class="expand-icon">{{ isExpanded ? '▾' : '▸' }}</span>
     </div>
     <div v-show="isExpanded" class="group-content">

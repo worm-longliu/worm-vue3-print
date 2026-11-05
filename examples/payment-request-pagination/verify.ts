@@ -38,6 +38,13 @@ try {
   assert.ok(slices.every((slice: any) => slice.subtotal), '每页都应包含本页合计')
   assert.ok(result.pageLayouts.every((layout: any) => (layout.warnings ?? []).length === 0), '不应存在出纸裁切提示')
 
+  const unfixedAttachmentSections = result.unfixed.pageLayouts.flatMap((layout: any) =>
+    layout.sections
+      .filter((section: any) => section.elementId === 'attachments')
+      .map((section: any) => ({ pageIndex: layout.pageIndex, renderTop: section.renderTop })),
+  )
+  assert.deepEqual(unfixedAttachmentSections, [{ pageIndex: 0, renderTop: 41.5 }])
+
   const previewHtml = result.html.split('\n').map(line => line.trimEnd()).join('\n')
   await writeFile(previewPath, previewHtml, 'utf8')
   await page.setContent(result.html, { waitUntil: 'load' })
@@ -70,6 +77,15 @@ try {
   assert.match((await pages.nth(1).textContent()) ?? '', /支票/)
   assert.match((await pages.nth(1).textContent()) ?? '', /承兑/)
   assert.match((await pages.nth(2).textContent()) ?? '', /承兑/)
+
+  await page.setContent(result.unfixed.html, { waitUntil: 'load' })
+  const unfixedPages = page.locator('.print-page')
+  assert.equal(await unfixedPages.count(), 3)
+  const attachmentCounts = await unfixedPages.evaluateAll(pageNodes => pageNodes.map(pageNode =>
+    [...pageNode.querySelectorAll('.print-element')]
+      .filter(element => element.textContent?.includes('附件单据')).length,
+  ))
+  assert.deepEqual(attachmentCounts, [1, 0, 0], '取消固定后附件应只显示在第一页')
 
   console.log(JSON.stringify({
     页数: result.pageCount,

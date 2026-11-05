@@ -1756,6 +1756,7 @@ export const SAMPLES = [
             textFit: 'shrink',
             rotate: 90,
             fixed: true,
+            pagination: { pageable: false, keepWithNext: false },
           },
           printElementType: { type: 'text', title: '文本' },
         },

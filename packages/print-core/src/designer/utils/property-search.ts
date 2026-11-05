@@ -221,7 +221,7 @@ export const PROPERTY_REGISTRY: PropertyGroupDef[] = [
     items: [
       { key: 'ad-locked', keywords: ['锁定', 'lock'] },
       { key: 'ad-fixed', keywords: ['每页重复', 'repeat'] },
-      { key: 'ad-fixed-position', keywords: ['固定', 'fixed'] },
+      { key: 'ad-fixed-position', keywords: ['固定', '每页固定', 'fixed'] },
       { key: 'ad-z-index', keywords: ['层级', 'zindex'] },
       { key: 'ad-delete', keywords: ['删除'] },
     ],

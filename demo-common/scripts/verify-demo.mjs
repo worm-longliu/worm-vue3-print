@@ -476,7 +476,7 @@ if (paymentSample) {
     applicationNo?.options.left === 0 && applicationNo?.options.top === 0
       && !paymentTemplate.footer.elements.some(el => el.options.formatter?.includes('{applicationNo}'))
       && attachment?.options.fixed === true && attachment?.options.rotate === 90
-      && paymentTable?.options.width === 212)
+      && attachment?.options.pagination?.pageable === false && paymentTable?.options.width === 212)
   await clickByText(page, '加载示例')
   await waitVisible(page, '.gallery-mask')
   await page.locator('.gallery-mask .sample-card', { hasText: '付款申请单' }).first().click()

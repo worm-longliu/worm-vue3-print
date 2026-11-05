@@ -74,8 +74,19 @@ describe('help-modal 结构（对照 canvas HelpModal.vue）', () => {
   it('侧栏页签顺序与文案与 canvas 一致', () => {
     const { host, off } = paint()
     expect(qa(host, '.help-tab').map(b => b.textContent)).toEqual(
-      ['快速入门', '功能说明', '快捷键', '常见问题', '更新记录'],
+      ['快速入门', '功能说明', '高级设置', '快捷键', '常见问题', '更新记录'],
     )
+    off()
+  })
+
+  it('显式指定高级设置章节时优先于记住的页签', () => {
+    window.localStorage.setItem('worm-print-help-tab', 'faq')
+    const host = document.createElement('div')
+    document.body.replaceChildren(host)
+    const off = mountHelpModal(host, { initialTab: 'advanced-settings', onClose: () => {} })
+
+    expect(q(host, '.help-tab.active')?.textContent).toBe('高级设置')
+    expect(q(host, '.help-content')?.textContent).toContain('每页固定')
     off()
   })
 
@@ -88,7 +99,7 @@ describe('help-modal 结构（对照 canvas HelpModal.vue）', () => {
 })
 
 describe('help-modal 内容与 canvas 逐字一致', () => {
-  const sections = ['getting-started', 'features', 'shortcuts', 'faq', 'changelog'] as const
+  const sections = ['getting-started', 'features', 'advanced-settings', 'shortcuts', 'faq', 'changelog'] as const
 
   it.each(sections)('%s 与 canvas 的同名文件内容一致（去掉本包抬头注释后逐字相同）', (name) => {
     const strip = (src: string) => src.split('\n').filter(l => !l.startsWith('//')).join('\n')
@@ -110,8 +121,9 @@ describe('help-modal 交互', () => {
   it('点侧栏页签切换正文并高亮，且记住页签（canvas 的 localStorage 口径）', () => {
     const { host, off } = paint()
     const tabs = qa(host, '.help-tab')
-    tabs[2]!.dispatchEvent(new Event('click', { bubbles: true }))
-    expect(tabs[2]!.classList.contains('active')).toBe(true)
+    const shortcuts = tabs.find(tab => tab.textContent === '快捷键')!
+    shortcuts.dispatchEvent(new Event('click', { bubbles: true }))
+    expect(shortcuts.classList.contains('active')).toBe(true)
     expect(tabs[0]!.classList.contains('active')).toBe(false)
     expect(q(host, '.help-content')?.textContent).toContain('常用操作')
     expect(window.localStorage.getItem('worm-print-help-tab')).toBe('shortcuts')

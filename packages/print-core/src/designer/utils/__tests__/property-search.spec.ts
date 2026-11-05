@@ -36,6 +36,7 @@ describe('searchProperties', () => {
   it('固定属性可按中文和字段名检索', () => {
     expect(searchProperties('固定').itemKeys.has('ad-fixed-position')).toBe(true)
     expect(searchProperties('fixed').itemKeys.has('ad-fixed-position')).toBe(true)
+  expect(searchProperties('每页固定').itemKeys.has('ad-fixed-position')).toBe(true)
   })
   it('条码设置分组已注册，可按码制/条宽/最大宽高检索', () => {
     expect(searchProperties('码制').groups).toContain('code')
