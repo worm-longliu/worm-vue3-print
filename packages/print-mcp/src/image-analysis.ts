@@ -57,6 +57,8 @@ export interface DetectedTextRow {
   xEndPx: number
   /** 由检测到的竖线划分出的分区序号（0 起），非硬编码比例 */
   regionIndex: number
+  /** 包围盒相对内容区的 0..1 归一化（对齐 mm 层，无 dpi/paper 时也能直接对比模板比例） */
+  norm: NormRect
 }
 
 export interface DetectedTable {
@@ -64,6 +66,8 @@ export interface DetectedTable {
   topPx: number
   colWidthsPx: number[]
   rowHeightsPx: number[]
+  /** 包围盒（左上 + 列宽行高合计出的右下）相对内容区的 0..1 归一化；analyzeGeometry() 填充（detectTables 本身不感知内容区） */
+  norm?: NormRect
 }
 
 export interface AnalyzedGeometry {
@@ -295,6 +299,8 @@ export function detectTextRows(
     }
     // 整段只落在线上（理论不会发生，已被 minInk 过滤），兜底保持区间可读
     if (minX > maxX) { minX = area.left; maxX = area.right }
+    const xStart = minX === area.right ? area.left : minX
+    const xEnd = maxX === area.left ? area.right : maxX
     const centerX = (minX + maxX) / 2
     let regionIndex = 0
     for (let i = 0; i < xs.length - 1; i++) {
@@ -304,9 +310,15 @@ export function detectTextRows(
     return {
       yStartPx: b.start,
       yEndPx: b.end,
-      xStartPx: minX === area.right ? area.left : minX,
-      xEndPx: maxX === area.left ? area.right : maxX,
+      xStartPx: xStart,
+      xEndPx: xEnd,
       regionIndex,
+      norm: {
+        left: toNorm(xStart, area.left, area.right),
+        top: toNorm(b.start, area.top, area.bottom),
+        right: toNorm(xEnd, area.left, area.right),
+        bottom: toNorm(b.end, area.top, area.bottom),
+      },
     }
   })
 }
@@ -396,7 +408,20 @@ export function analyzeGeometry(bitmap: GrayBitmap): AnalyzedGeometry {
     return false
   }
   const textRows = detectTextRows(bin, area, vLines, hLineCheck)
-  const tableCandidates = detectTables(vRaw, hRaw)
+  // 表格包围盒 = 左上角 + 列宽/行高合计（即最外圈线位），归一化在此补齐（detectTables 不感知内容区）
+  const tableCandidates = detectTables(vRaw, hRaw).map(t => {
+    const rightPx = t.leftPx + t.colWidthsPx.reduce((s, w) => s + w, 0)
+    const bottomPx = t.topPx + t.rowHeightsPx.reduce((s, h) => s + h, 0)
+    return {
+      ...t,
+      norm: {
+        left: toNorm(t.leftPx, area.left, area.right),
+        top: toNorm(t.topPx, area.top, area.bottom),
+        right: toNorm(rightPx, area.left, area.right),
+        bottom: toNorm(bottomPx, area.top, area.bottom),
+      },
+    }
+  })
 
   const warnings = [...areaInfo.warnings]
   if (bitmap.width < 300 || bitmap.height < 300) {

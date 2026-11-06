@@ -156,6 +156,39 @@ describe('analyzeGeometry', () => {
     expect(right).toBeDefined()
     expect(left!.regionIndex).not.toBe(right!.regionIndex)
   })
+
+  it('textRows / tableCandidates 都带相对内容区的 0..1 归一化包围盒', () => {
+    const bmp = makeBitmap(400, 300)
+    drawFrame(bmp, 10, 10, 389, 289, 2)
+    drawHLine(bmp, 100, 12, 388)
+    drawHLine(bmp, 180, 12, 388)
+    drawVLine(bmp, 200, 12, 288)
+    drawTextBlock(bmp, 40, 130, 60, 1)
+    const g = analyzeGeometry(bmp)
+
+    for (const row of g.textRows) {
+      // norm 存在且 clamp 到 0..1
+      expect(row.norm).toBeDefined()
+      for (const v of [row.norm.left, row.norm.top, row.norm.right, row.norm.bottom]) {
+        expect(v).toBeGreaterThanOrEqual(0)
+        expect(v).toBeLessThanOrEqual(1)
+      }
+      // 归一化与像素坐标互推一致（xStartPx 相对内容区 10..388）
+      expect(row.norm.left).toBeCloseTo((row.xStartPx - 10) / (388 - 10), 3)
+      expect(row.norm.bottom).toBeCloseTo((row.yEndPx - 10) / (288 - 10), 3)
+    }
+    expect(g.tableCandidates.length).toBeGreaterThan(0)
+    for (const t of g.tableCandidates) {
+      expect(t.norm).toBeDefined()
+      for (const v of [t.norm.left, t.norm.top, t.norm.right, t.norm.bottom]) {
+        expect(v).toBeGreaterThanOrEqual(0)
+        expect(v).toBeLessThanOrEqual(1)
+      }
+      // 左上角归一化与 leftPx/topPx 对应
+      expect(t.norm.left).toBeCloseTo((t.leftPx - 10) / (388 - 10), 3)
+      expect(t.norm.top).toBeCloseTo((t.topPx - 10) / (288 - 10), 3)
+    }
+  })
 })
 
 describe('detectTables', () => {

@@ -53,6 +53,25 @@ const CONTENT_BOTTOM_SAFETY_MM = 2
 
 const round2 = (n: number): number => Math.round(n * 100) / 100
 
+/**
+ * 表格列宽按元素最终宽度等比缩放，末列吸收舍入误差（保证两位小数下合计 = 元素宽）。
+ * 只改展开产物的新 options/数组，不触碰 preset 源数据；源数据没有列宽时跳过。
+ */
+function scaleTableColWidths(el: DraftElement): DraftElement {
+  const o = el.options
+  if (!o) return el
+  const widths = o.tableColWidths
+  const width = o.width
+  if (!Array.isArray(widths) || widths.length === 0 || typeof width !== 'number' || width <= 0) return el
+  const sum = widths.reduce((s, w) => s + w, 0)
+  if (!(sum > 0)) return el
+  const scaled = widths.map(w => round2(w * width / sum))
+  // 末列吸收累计舍入误差，避免列宽合计与元素宽差 0.01 触发体检告警
+  const start = scaled.slice(0, -1).reduce((s, w) => s + w, 0)
+  scaled[scaled.length - 1] = round2(width - start)
+  return { ...el, options: { ...o, tableColWidths: scaled } }
+}
+
 /** 展开几何：数据显式给的键优先，其余按区块计算补齐 */
 function withGeometry(
   el: DraftElement,
@@ -119,6 +138,9 @@ export function expandPreset(id: string, overrides?: DraftSpec['paper']): Expand
     y += block.height
   }
 
+  // 列宽跟随最终内容宽：纸张/边距被覆盖后，preset 源数据的列宽只当比例用
+  const scaledElements = elements.map(el => (el.type === 'table' ? scaleTableColWidths(el) : el))
+
   const issues: ExpandedPreset['issues'] = []
   // 连续纸高度按内容推导，没有版心安全线概念；固定纸末条底边必须留 2mm
   if (!isContinuousPaperSize(paperSize) && y > contentH - CONTENT_BOTTOM_SAFETY_MM + 1e-9) {
@@ -132,7 +154,7 @@ export function expandPreset(id: string, overrides?: DraftSpec['paper']): Expand
 
   return {
     paper: { paperSize, orientation, margins, ...paper },
-    elements,
+    elements: scaledElements,
     issues,
   }
 }

@@ -22,13 +22,15 @@
 
 一张图（扫描件/设计稿/旧模板截图）作为验收基准时：
 
-1. `print_analyze_reference_image` 只传路径 → 得到像素坐标与归一化比例，确认线条数量与结构符合预期。
+1. `print_analyze_reference_image` 只传路径 → 得到像素坐标与归一化比例（线条、文本行、表格候选都带 norm），
+   确认线条数量与结构符合预期。
 2. 同一张图补 `dpi` 或 `paper { widthMm, heightMm, margins }` → 得到毫米坐标，直接用于排版。
    - 只给纸张不给 dpi 时，用「内容区像素宽 ÷ 内容区毫米宽」反推；两者比例不一致会告警。
 3. 按测量值生成模板（`print_draft_template` 或手排 elements）。
-4. `print_compare_with_reference` 比对：`items` 看偏差，`extraInTemplate` 抓多余元素（如多画的边框），
-   `missingInTemplate` 抓漏掉的线。
-5. 修到 `pass: true` 并渲染预览确认后，再写回画布。
+4. `print_compare_with_reference` 比对：`items` 看偏差与线长（templateStart/End vs referenceStart/End），
+   `extraInTemplate` 抓多余元素（如多画的边框），`missingInTemplate` 抓漏掉的线。
+   无线可比、置信度低或宽高比不一致时返回 `status=inconclusive`，不要当成通过。
+5. 修到 `pass: true`（`status: 'pass'`）并渲染预览确认后，再写回画布。
 
 ## 修改已有模板
 

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeAll } from 'vitest'
-import { domExecutor, readMeasurements, readContentBottom, renderCodes, applyTextFit } from '../dom-executor.js'
+import { domExecutor, readMeasurements, readContentBottom, readElementRects, renderCodes, applyTextFit } from '../dom-executor.js'
 import { mmToPx } from '../../designer/utils/units.js'
 import { codeSpecKey } from '../../print/codes.js'
 import { EXECUTOR_TARGETS } from '../../print/driver.js'
@@ -100,6 +100,73 @@ describe('readContentBottom', () => {
   it('缺少打印页或内容区时返回 0', () => {
     document.body.innerHTML = '<div></div>'
     expect(readContentBottom(document)).toBe(0)
+  })
+})
+
+describe('readElementRects 区域坐标', () => {
+  /** stub 视口矩形：执行器读 getBoundingClientRect() 的 left/top/width/height */
+  function stubRect(el: HTMLElement, r: { left: number; top: number; width: number; height: number }): void {
+    Object.defineProperty(el, 'getBoundingClientRect', {
+      value: () => ({ ...r, right: r.left + r.width, bottom: r.top + r.height, x: r.left, y: r.top }),
+      configurable: true,
+    })
+  }
+
+  it('页眉/页脚/内容区元素分别以各自容器左上角为原点', () => {
+    document.body.innerHTML = `
+      <section class="print-page">
+        <div class="page-header"><div data-element-id="h"></div></div>
+        <div class="content-area"><div data-element-id="c"></div></div>
+        <div class="page-footer"><div data-element-id="f"></div></div>
+      </section>`
+    const page = document.querySelector('.print-page') as HTMLElement
+    const header = document.querySelector('.page-header') as HTMLElement
+    const area = document.querySelector('.content-area') as HTMLElement
+    const footer = document.querySelector('.page-footer') as HTMLElement
+    stubRect(page, { left: 0, top: 0, width: 800, height: 1100 })
+    stubRect(header, { left: 38, top: 38, width: 724, height: 76 })
+    stubRect(area, { left: 38, top: 114, width: 724, height: 900 })
+    stubRect(footer, { left: 38, top: 1052, width: 724, height: 48 })
+    stubRect(document.querySelector('[data-element-id="h"]') as HTMLElement, { left: 76, top: 46, width: 100, height: 20 })
+    stubRect(document.querySelector('[data-element-id="c"]') as HTMLElement, { left: 76, top: 171, width: 100, height: 20 })
+    stubRect(document.querySelector('[data-element-id="f"]') as HTMLElement, { left: 76, top: 1060, width: 100, height: 20 })
+    expect(readElementRects(document)).toEqual([
+      { id: 'h', left: 38, top: 8, width: 100, height: 20, zone: 'header' },
+      { id: 'c', left: 38, top: 57, width: 100, height: 20, zone: 'content' },
+      { id: 'f', left: 38, top: 8, width: 100, height: 20, zone: 'footer' },
+    ])
+  })
+
+  it('有页眉时内容元素以内容区为原点，不再叠加页眉高', () => {
+    document.body.innerHTML = `
+      <section class="print-page">
+        <div class="page-header"><span>页眉</span></div>
+        <div class="content-area"><div data-element-id="c"></div></div>
+      </section>`
+    const page = document.querySelector('.print-page') as HTMLElement
+    const area = document.querySelector('.content-area') as HTMLElement
+    stubRect(page, { left: 0, top: 0, width: 800, height: 1100 })
+    stubRect(area, { left: 38, top: 114, width: 724, height: 900 }) // 内容区顶起算于页眉之后
+    stubRect(document.querySelector('[data-element-id="c"]') as HTMLElement, { left: 38, top: 171, width: 100, height: 20 })
+    expect(readElementRects(document)).toEqual([
+      { id: 'c', left: 0, top: 57, width: 100, height: 20, zone: 'content' },
+    ])
+  })
+
+  it('缺 .content-area 时回退到 .print-page 内容框（减 padding），zone 仍为 content', () => {
+    document.body.innerHTML = `
+      <section class="print-page" style="padding: 38px"><div data-element-id="c"></div></section>`
+    const page = document.querySelector('.print-page') as HTMLElement
+    stubRect(page, { left: 0, top: 0, width: 800, height: 1100 })
+    stubRect(document.querySelector('[data-element-id="c"]') as HTMLElement, { left: 80, top: 120, width: 100, height: 20 })
+    expect(readElementRects(document)).toEqual([
+      { id: 'c', left: 42, top: 82, width: 100, height: 20, zone: 'content' },
+    ])
+  })
+
+  it('没有第 pageIndex 页时返回空数组', () => {
+    document.body.innerHTML = '<div></div>'
+    expect(readElementRects(document, 3)).toEqual([])
   })
 })
 

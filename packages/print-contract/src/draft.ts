@@ -69,6 +69,13 @@ export function draftTemplate(spec: DraftSpec): DraftResult {
         issues.push({ path: item.path, level: item.level, message: item.message })
       }
     }
+  } else if (!spec.elements?.length) {
+    // 空 spec 出来的是一张白纸，模型容易误当成「已生成」直接写回画布，必须当场报 error
+    issues.push({
+      path: 'elements',
+      level: 'error',
+      message: '未生成任何元素：请提供 preset（用 print_element_kinds 查看可用配方）或至少一个 elements 元素。',
+    })
   }
 
   const elements = (elementsSource ?? []).reduce<PrintElementData[]>((acc, item, i) => {

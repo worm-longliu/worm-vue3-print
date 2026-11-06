@@ -30,15 +30,17 @@ export interface TemplateRenderBridge {
     pngBase64: string
     widthPx: number
     heightPx: number
-    /** 1 CSS px 对应的毫米数（96dpi 口径），用于把截图坐标换算回模板坐标 */
+    /** 1 个截图输出像素对应的毫米数，用于把截图坐标换算回模板毫米坐标 */
     mmPerPx?: number
-    /** 本页每个元素的实际渲染包围盒（相对内容区左上角，mm），用于核对「设的坐标」与「实际落位」 */
+    /** 本页每个元素的实际渲染包围盒（mm）；content 元素相对内容区左上角，header/footer 元素相对各自容器左上角 */
     elementBoxes?: Array<{
       id: string
       leftMm: number
       topMm: number
       widthMm: number
       heightMm: number
+      /** 坐标基准区域：缺省按 content 处理 */
+      zone?: 'content' | 'header' | 'footer'
     }>
   }>
 }
@@ -157,7 +159,8 @@ export function createRenderTools(bridge: TemplateRenderBridge): ToolDef[] {
             heightPx: r.heightPx,
             ...(r.mmPerPx !== undefined ? { mmPerPx: r.mmPerPx } : {}),
             ...(r.elementBoxes ? { elementBoxes: r.elementBoxes } : {}),
-            note: '下方附本页渲染 PNG。elementBoxes 是每个元素的实际渲染包围盒（mm，相对内容区左上角），'
+            note: '下方附本页渲染 PNG。elementBoxes 是每个元素的实际渲染包围盒（mm）：'
+              + 'content 元素相对内容区左上角，header/footer 元素分别相对 .page-header / .page-footer 容器左上角（看 zone 字段）；'
               + '可与模板里写的 left/top/width/height 直接对照；连续纸的 top 按探针推导纸高计算。'
               + '自评清单：元素对齐与间距、文字密度（过大/过挤）、留白均衡、有无溢出/裁切、条码是否清晰。',
           }

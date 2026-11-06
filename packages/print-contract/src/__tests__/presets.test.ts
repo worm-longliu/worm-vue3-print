@@ -97,7 +97,7 @@ describe('expandPreset', () => {
     }
   })
 
-  it('paper 覆盖项生效：doc-a4 覆盖边距后几何跟着内容宽走', () => {
+  it('paper 覆盖项生效：doc-a4 覆盖边距后几何跟着内容宽走，列宽同步等比缩放', () => {
     const expanded = expandPreset('doc-a4', { margins: { top: 20, right: 20, bottom: 20, left: 20 } })
     expect(expanded!.paper.margins).toEqual({ top: 20, right: 20, bottom: 20, left: 20 })
     // 内容宽 210−40=170：全宽元素与表格宽度都应为 170
@@ -105,6 +105,48 @@ describe('expandPreset', () => {
     expect(text.options!.width).toBe(170)
     const table = expanded!.elements.find(el => el.type === 'table')
     expect(table!.options!.width).toBe(170)
+    // 列宽合计跟着 170 走（按两位小数）
+    const widths = table!.options!.tableColWidths as number[]
+    expect(widths.reduce((a, b) => Math.round((a + b) * 100) / 100, 0)).toBe(170)
+  })
+
+  it('全部 preset：默认纸张与覆盖边距后，每个 table 的列宽合计（两位小数）恒等于元素宽', () => {
+    for (const preset of DRAFT_PRESETS) {
+      for (const paper of [undefined, { margins: { top: 20, right: 20, bottom: 20, left: 20 } }] as const) {
+        const expanded = expandPreset(preset.id, paper)
+        const margins = expanded!.paper.margins!
+        const dims = getPaperDimensions({
+          paperSize: expanded!.paper.paperSize!,
+          orientation: expanded!.paper.orientation ?? 'portrait',
+          ...(expanded!.paper.customWidth !== undefined ? { customWidth: expanded!.paper.customWidth } : {}),
+          ...(expanded!.paper.customHeight !== undefined ? { customHeight: expanded!.paper.customHeight } : {}),
+        })
+        const contentW = dims.width - margins.left - margins.right
+        for (const [i, el] of expanded!.elements.entries()) {
+          if (el.type !== 'table') continue
+          const widths = el.options!.tableColWidths as number[]
+          const sum = Math.round(widths.reduce((a, b) => a + b, 0) * 100) / 100
+          expect(sum, `${preset.id} elements[${i}] 列宽合计（paper=${JSON.stringify(paper)}）`).toBe(contentW)
+          expect(el.options!.width, `${preset.id} elements[${i}] 表格宽度`).toBe(sum)
+        }
+      }
+    }
+  })
+
+  it('paperSize 覆盖项生效：doc-a4 改 A5 后表格宽 128、列宽合计 128', () => {
+    const expanded = expandPreset('doc-a4', { paperSize: 'A5' })
+    const table = expanded!.elements.find(el => el.type === 'table')
+    expect(table!.options!.width).toBe(128)
+    expect(Math.round((table!.options!.tableColWidths as number[]).reduce((a, b) => a + b, 0) * 100) / 100).toBe(128)
+  })
+
+  it('默认纸张下 preset 源数据列宽保持原值（doc-a4 默认 190，未被源数据修改）', () => {
+    const tableBlock = DRAFT_PRESETS.find(p => p.id === 'doc-a4')!.blocks.find(b => b.element?.type === 'table')!
+    expect(tableBlock.element!.options!.tableColWidths).toEqual([60, 40, 30, 60])
+    const expanded = expandPreset('doc-a4')
+    const table = expanded!.elements.find(el => el.type === 'table')
+    expect(table!.options!.width).toBe(190)
+    expect(table!.options!.tableColWidths).toEqual([60, 40, 30, 60])
   })
 
   it('undefined 覆盖键不抹掉 preset 已填值（waybill 的 CUSTOM 尺寸）', () => {

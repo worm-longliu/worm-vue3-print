@@ -3,6 +3,30 @@ import { draftTemplate, ELEMENT_KINDS } from '../draft.js'
 import { validateTemplateJson } from '../validate.js'
 
 describe('draftTemplate', () => {
+  it('空 spec（无 preset 且无 elements）报 elements error', () => {
+    const r = draftTemplate({})
+    expect(r.issues.some(i => i.level === 'error' && i.path === 'elements'
+      && i.message.includes('preset') && i.message.includes('elements'))).toBe(true)
+  })
+
+  it('elements 缺失与为空数组同样报 error', () => {
+    expect(draftTemplate({ elements: [] }).issues.some(i => i.level === 'error' && i.path === 'elements')).toBe(true)
+  })
+
+  it('只给 elements 的正常路径不受该 error 影响', () => {
+    const r = draftTemplate({
+      elements: [{ type: 'text', options: { left: 10, top: 10, width: 60, height: 8 }, formatter: '{no}' }],
+    })
+    expect(r.issues.some(i => i.level === 'error' && i.path === 'elements')).toBe(false)
+    expect(r.template.elements).toHaveLength(1)
+  })
+
+  it('preset 路径不受空 spec error 影响', () => {
+    const r = draftTemplate({ preset: 'label-40x30' })
+    expect(r.issues.some(i => i.path === 'elements')).toBe(false)
+    expect(r.template.elements.length).toBeGreaterThan(1)
+  })
+
   it('产出可通过契约校验与体检的 A4 模板', () => {
     const r = draftTemplate({
       elements: [

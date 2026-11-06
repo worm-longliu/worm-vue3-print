@@ -153,7 +153,7 @@ describe('print_analyze_reference_image', () => {
 })
 
 describe('print_compare_with_reference', () => {
-  it('渲染与参考图一致时 pass，无多余/缺失线', async () => {
+  it('渲染与参考图一致时 pass / status=pass，无多余/缺失线', async () => {
     const r = await compareTool().handler({
       templateJson: validTemplate,
       referenceImagePath: '/tmp/ref.png',
@@ -161,6 +161,7 @@ describe('print_compare_with_reference', () => {
     expect(r.isError).toBeFalsy()
     const data = JSON.parse(firstText(r))
     expect(data.pass).toBe(true)
+    expect(data.status).toBe('pass')
     expect(data.extraInTemplate).toEqual([])
     expect(data.missingInTemplate).toEqual([])
     expect(data.matchedCount).toBeGreaterThan(0)
@@ -182,6 +183,7 @@ describe('print_compare_with_reference', () => {
     })
     const data = JSON.parse(firstText(r))
     expect(data.pass).toBe(false)
+    expect(data.status).toBe('fail')
     expect(data.extraInTemplate.length).toBeGreaterThan(0)
     expect(data.extraInTemplate[0].kind).toBe('vline')
   })
@@ -197,6 +199,88 @@ describe('print_compare_with_reference', () => {
     })
     const data = JSON.parse(firstText(r))
     expect(data.missingInTemplate.length).toBeGreaterThan(0)
+    expect(data.pass).toBe(false)
+  })
+
+  it('空白图 vs 空白图：无线可比 → pass=false, status=inconclusive', async () => {
+    const reader = stubReader({
+      decodePngBase64: vi.fn(async () => makeBitmap()),
+      readGrayImage: vi.fn(async () => makeBitmap()),
+    })
+    const r = await compareTool(tools(reader)).handler({
+      templateJson: validTemplate,
+      referenceImagePath: '/tmp/ref.png',
+    })
+    const data = JSON.parse(firstText(r))
+    expect(data.pass).toBe(false)
+    expect(data.status).toBe('inconclusive')
+    expect(data.warnings.some((w: string) => w.includes('没有检测到任何线条'))).toBe(true)
+  })
+
+  it('两图内容区宽高比明显不同：pass=false, status=inconclusive', async () => {
+    // 参考图外框偏窄（内容区 ~300×280），与模板图 ~380×280 偏差 > 2%：不是同一版式
+    const reader = stubReader({
+      decodePngBase64: vi.fn(async () => frameBitmap(true)),
+      readGrayImage: vi.fn(async () => {
+        const bmp = makeBitmap()
+        drawFrame(bmp, 80, 10, 299, 289)
+        drawVLine(bmp, 180, 12, 288)
+        return bmp
+      }),
+    })
+    const r = await compareTool(tools(reader)).handler({
+      templateJson: validTemplate,
+      referenceImagePath: '/tmp/ref.png',
+    })
+    const data = JSON.parse(firstText(r))
+    expect(data.pass).toBe(false)
+    expect(data.status).toBe('inconclusive')
+    expect(data.warnings.some((w: string) => w.includes('宽高比不一致'))).toBe(true)
+  })
+
+  it('位置一致但线长只有 1/6：不算匹配 → pass=false（进 extra/missing）', async () => {
+    const reader = stubReader({
+      // 模板：竖线纵贯内容区
+      decodePngBase64: vi.fn(async () => {
+        const bmp = frameBitmap(false)
+        drawVLine(bmp, 200, 12, 288)
+        return bmp
+      }),
+      // 参考图：同一 x 的竖线只画 1/6 长
+      readGrayImage: vi.fn(async () => {
+        const bmp = frameBitmap(false)
+        drawVLine(bmp, 200, 12, 58)
+        return bmp
+      }),
+    })
+    const r = await compareTool(tools(reader)).handler({
+      templateJson: validTemplate,
+      referenceImagePath: '/tmp/ref.png',
+    })
+    const data = JSON.parse(firstText(r))
+    expect(data.pass).toBe(false)
+    expect(data.status).toBe('fail')
+    // 全长线与 1/6 长线不互相抵消：模板的进 extra，参考的进 missing
+    expect(data.extraInTemplate.length).toBeGreaterThan(0)
+    expect(data.missingInTemplate.length).toBeGreaterThan(0)
+  })
+
+  it('page 参数透传给渲染 bridge（缺省仍为 1）', async () => {
+    const render = {
+      renderTemplatePage: vi.fn(async () => ({
+        pageCount: 3,
+        pageSizeMm: { width: 210, height: 148 },
+        pngBase64: 'stub',
+        widthPx: 1588,
+        heightPx: 1119,
+      })),
+    }
+    const deps = createImageTools({
+      imageReader: stubReader(),
+      renderBridge: render as never,
+    })
+    await deps[1]!.handler({ templateJson: validTemplate, referenceImagePath: '/tmp/ref.png', page: 2 })
+    expect((render.renderTemplatePage as ReturnType<typeof vi.fn>).mock.calls[0][0].page).toBe(2)
   })
 
   it('契约不通过时直接拒绝，不触达渲染', async () => {

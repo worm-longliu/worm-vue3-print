@@ -6,9 +6,7 @@ import { isAbsolute, extname } from 'node:path'
 import type { ImageReaderBridge } from '@worm-vue3-print/mcp'
 import type { GrayBitmap } from '@worm-vue3-print/mcp'
 import type { Logger } from './logger.js'
-
-/** 单个图片文件上限：超过按 IMAGE_TOO_LARGE 拒绝（避免解码大图撑爆内存） */
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024
+import { MAX_IMAGE_BYTES, assertImageSizeWithinLimit, estimateBase64Bytes } from './image-limits.js'
 
 /** 允许的扩展名（实际格式还要靠 nativeImage 解码成功兜底） */
 const ALLOWED_EXT = new Set(['.png', '.jpg', '.jpeg', '.bmp', '.webp'])
@@ -62,6 +60,8 @@ function toGrayBitmap(image: Electron.NativeImage): GrayBitmap {
   if (width <= 0 || height <= 0) {
     throw imageError('IMAGE_DECODE_FAILED', '图片尺寸为 0')
   }
+  // 像素上限在 toBitmap() 之前拦截：解码分配内存前就拒绝，而不是分配完再溢出
+  assertImageSizeWithinLimit(width, height)
   const bgra = image.toBitmap()
   const expected = width * height * 4
   if (bgra.length < expected) {
@@ -98,6 +98,10 @@ export function createImageReader(deps: { logger?: Pick<Logger, 'info' | 'warn' 
     },
 
     async decodePngBase64(base64: string): Promise<GrayBitmap> {
+      // Buffer.from 前 先按 base64 长度估算解码字节数：超大载荷直接拒绝，不进解码分配
+      if (estimateBase64Bytes(base64) > MAX_IMAGE_BYTES) {
+        throw imageError('IMAGE_TOO_LARGE', `${estimateBase64Bytes(base64).toFixed(0)} 字节（估算） > 20MB`)
+      }
       let buffer: Buffer
       try {
         buffer = Buffer.from(base64, 'base64')

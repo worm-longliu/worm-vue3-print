@@ -52,12 +52,15 @@ AI Agent
 | `print_validate_template` | 是 | 模板契约校验，区分 error 与兼容 warning |
 | `print_check_expression` | 是 | 表达式语法、函数白名单、字段检查 |
 | `print_inspect_layout` | 是 | 静态几何和结构检查，不做浏览器测量 |
+| `print_preview_template` | 是 | 渲染成单页 PNG 回给 Agent 自评版式，附元素实际渲染包围盒 |
+| `print_analyze_reference_image` | 是 | 设计稿图片转几何数据：内容区、线条、文本行、表格网格（像素/归一化/毫米） |
 | `print_list_open_templates` | 是 | 列出已签到页面 |
 | `print_get_open_template` | 是 | 获取实时快照与 revision |
 | `print_patch_open_template` | 否 | 原子批量更新/移动元素，返回新 revision，应要求用户批准 |
 | `print_apply_open_template` | 否 | 防冲突、校验后整份写回，应要求用户批准 |
+| `print_compare_with_reference` | 是 | 渲染结果与参考图逐线比对（位置与线长），输出偏差、多余与缺失的线 |
 
-纯计算工具不读写本地文件、不访问外部服务。真实分页、自动行高、长文本换行与 PDF 效果由设计器或打印预览确认，不属于 MCP 的返回结论。
+纯计算工具不读写本地文件、不访问外部服务（预览渲染在桌面客户端本地出图，也不出网）。真实分页、自动行高、长文本换行与 PDF 效果由设计器或打印预览确认，不属于 MCP 的返回结论。
 
 ## 四、模板契约要点
 
@@ -111,4 +114,4 @@ npm run test -w @worm-vue3-print/print-client
 npm run lint:print-architecture
 ```
 
-端到端验收必须覆盖：真实浏览器签到、9 个工具列表、摘要读取、连续 Patch、最小修改、校验与体检、revision 写回、陈旧 revision 冲突、封禁元素拒绝、页面断连回收。
+端到端验收必须覆盖：真实浏览器签到、12 个工具列表、摘要读取、连续 Patch、最小修改、校验与体检、revision 写回、陈旧 revision 冲突、封禁元素拒绝、页面断连回收。
