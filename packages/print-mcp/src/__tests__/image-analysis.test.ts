@@ -205,13 +205,14 @@ describe('analyzeGeometry', () => {
     expect(g.tableCandidates.length).toBeGreaterThan(0)
     for (const t of g.tableCandidates) {
       expect(t.norm).toBeDefined()
-      for (const v of [t.norm.left, t.norm.top, t.norm.right, t.norm.bottom]) {
+      const norm = t.norm!
+      for (const v of [norm.left, norm.top, norm.right, norm.bottom]) {
         expect(v).toBeGreaterThanOrEqual(0)
         expect(v).toBeLessThanOrEqual(1)
       }
       // 左上角归一化与 leftPx/topPx 对应
-      expect(t.norm.left).toBeCloseTo((t.leftPx - 10) / (388 - 10), 3)
-      expect(t.norm.top).toBeCloseTo((t.topPx - 10) / (288 - 10), 3)
+      expect(norm.left).toBeCloseTo((t.leftPx - 10) / (388 - 10), 3)
+      expect(norm.top).toBeCloseTo((t.topPx - 10) / (288 - 10), 3)
     }
   })
 })
