@@ -303,3 +303,86 @@
 | 10 | **T-25** | 需目标机 | 本机不可验证 |
 
 ~~T-23 验证 #IKPXQL~~ —— 2026-10-26 已跑完真实管线复现，结论回写在该条；剩下的对外动作是补一句限定回帖。
+
+---
+
+## PR #12 收尾交接（2026-11-06）
+
+### 当前状态
+
+- 实施工作区：`/tmp/worm-pr12-fix`
+- 分支：`fix/pr12-review-findings`
+- 实现提交：`b4d48af`（本文件提交在其后）
+- 基线：本地 master `1e64514` + PR #12 `e2f6440`
+- 工作区在本文件写入前干净，未合并、未推送
+- 主工作区 `/Users/worm/worm-vue3-print` 有未提交的 `README.md`、`clients/print-client/README.md`、`package.json`，属于其他任务，交接时不要覆盖
+
+### 已完成
+
+- PR #12 原始能力：12 个 MCP 工具、6 个布局 preset、参考图测量、渲染预览、逐线比对。
+- 第一轮评审修复：preset 列宽跟随纸张、`mmPerPx` 按实际截图宽计算、`elementBoxes` 按 `content/header/footer` 分区、比对假阳性收敛、图片像素上限、预览超时、空草稿门禁、文档工具数量 12。
+- 第二轮评审修复：`RENDER_TIMEOUT` 归类、整版平移检测（`contentArea.pageNorm`/`contentAreaOffset`）、单截止时间、PNG/JPEG/BMP/WebP 头尺寸预检、`openWorldHint` 如实化、比对 extra/missing 可读性、窗口构造失败清理、抖音资产 9→12。
+- 已本地复验：`npm run build`、`npm test`（core 1340 / contract 84 / mcp 91 / render 775 / canvas 383 / print-client 209，skills 11）、`print-client` typecheck、`lint:print-architecture` 全部通过。
+
+### 待办
+
+1. **print-mcp 独立类型检查仍有 6 个 TS18048**
+   - 文件：`packages/print-mcp/src/__tests__/image-analysis.test.ts:208-214`
+   - 原因：`DetectedTable.norm` 是 optional，测试直接访问 `t.norm.left/top/right/bottom`。
+   - 要求：在测试中显式断言 `t.norm` 存在或做类型收窄，不要把业务类型改成 `any`；修复后运行：
+     `npx tsc --noEmit -p packages/print-mcp/tsconfig.json`
+
+2. **复核 `pageNorm` 整版平移容差**
+   - 位置：`packages/print-mcp/src/image-tools.ts` 的 `contentAreaOffset.max > tolerance`。
+   - 当前复用 `toleranceRatio=0.002`；真实扫描件 1–2px 的轻微偏移可能被误判为 `inconclusive`。
+   - 建议单独定义 `pageOffsetTolerance`（例如 `Math.max(0.01, tolerance * 5)`），补两组测试：
+     1px 轻微偏移仍继续线条比对；16/20px 明显整版平移必须 `pass=false`、`status=inconclusive`。
+   - 若决定不放宽，必须在验收报告中给出真实扫描件回归数据和理由。
+
+3. **复核图片解码格式兼容性**
+   - `clients/print-client/src/main/image-reader.ts` 已从 `nativeImage.createFromPath` 改为 `readFileSync + createFromBuffer`。
+   - 用真实 Electron 验证 PNG/JPEG/BMP/WebP 四种允许扩展名是否仍能解码。
+   - 若 `createFromBuffer` 不支持 BMP/WebP，保留原路径解码或收紧 `ALLOWED_EXT`，并补测试。
+   - 同时确认 12000×12000 PNG 在 `createFromBuffer` 前被头尺寸拦截，而不是解码后才拒绝。
+
+4. **真实 Electron 冒烟**
+   - A4、`scale=2`：确认 `mmPerPx = 纸张宽 mm / 实际截图宽`。
+   - 构造 `.page-header` 20mm、内容元素 `top=15mm`、页脚元素 `top=2mm`：
+     确认 `elementBoxes` 的 `topMm` 分别为 2/15/2，`zone` 为 `header/content/footer`。
+   - 可复用 `/tmp/zone-smoke.cjs`、`/tmp/mmperpx-smoke.cjs`，但必须确认使用当前分支构建出的 dist。
+
+5. **文档与资产复查**
+   - 排除历史 CHANGELOG 后搜索：`9 个工具`、`九个工具`、`11 个工具`。
+   - 确认客户端设置页提示词、客户端 README、MCP 集成指南、AI 接入指南、抖音资产均为 12 个工具，其中 4 个读写画布。
+
+6. **最终合并判断**
+   - 不要自动合并 master、不要推送前不确认。
+   - 输出：修改文件、每条命令真实结果、仍存在的问题、是否建议合并。
+   - 若准备合并，先处理主工作区未提交文件，避免 README 冲突。
+
+### 已知残余风险
+
+- `image-header` 的 WebP 解析只覆盖常见 VP8X/VP8L/VP8 子块。
+- `pageNorm` 依赖外框检出；无外框图像会退化为整图，整版平移保护不生效（仍有 confidence/宽高比判定）。
+- 预览 deadline 不包含 `SerialGate` 排队时间，这是设计取舍。
+- `diffMmApprox` 是近似值，可能偏高。
+- `gapSpanDeviation` 使用贪心最近邻，密集双线场景可能低估线长偏差，但不会把 fail 误判成 pass。
+
+### 交接给其他 Agent 的提示词
+
+```text
+你是接手 PR #12 收尾的 Agent。工作区 /tmp/worm-pr12-fix，分支 fix/pr12-review-findings，HEAD b4d48af（TODO 文档提交在其后），工作区应为干净。
+
+不要修改 /Users/worm/worm-vue3-print 主工作区：这里有未提交的 README.md、clients/print-client/README.md、package.json。
+
+背景：PR #12 已完成两轮评审修复，build/test/print-client typecheck/lint:print-architecture 均通过；不要重复实现已有功能。
+
+请完成：
+1. 运行基线：npm run build；npm test；npm run typecheck -w @worm-vue3-print/print-client；npm run lint:print-architecture；npx tsc --noEmit -p packages/print-mcp/tsconfig.json。
+2. 修复 print-mcp 的 6 个 TS18048（packages/print-mcp/src/__tests__/image-analysis.test.ts:208-214），修复后 print-mcp tsc 必须通过；建议给 print-mcp 增加 typecheck script，避免 npm test 掩盖类型错误。
+3. 复核 packages/print-mcp/src/image-tools.ts 的 contentAreaOffset 容差：当前复用 0.002，真实扫描件轻微偏移可能过严；补 1px 与 16/20px 两组测试。若放宽，说明新容差；若不放宽，给出真实稿回归依据。
+4. 用真实 Electron 验证 image-reader 对 PNG/JPEG/BMP/WebP 的解码兼容性，以及超大 PNG 在解码前被拦截；若 createFromBuffer 不支持某格式，保留路径解码或收紧扩展名。
+5. 用真实 Electron 验证 A4 scale=2 的 mmPerPx，以及 header/content/footer 的 elementBoxes 坐标。
+6. 复查文档/抖音资产工具数量为 12、读写画布为 4。
+7. 最后不要自动合并或推送。输出修改文件、命令真实结果、残余风险和合并建议；合并前先处理主工作区未提交文件。
+```
