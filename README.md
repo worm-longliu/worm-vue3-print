@@ -382,15 +382,33 @@ shasum -a 256 -c SHA256SUMS.txt
 客户端是 monorepo 内的私有工作区包（不发布 npm），产物为绿色目录或安装包，需在工位电脑安装并运行：
 
 ```bash
-# 在仓库根构建并产出安装包（macOS 可同时交叉打包 Windows）
+# 手工打包正式发行包（macOS + Windows）：构建安装包、生成 SHA256SUMS.txt，并打印上传命令
+npm run pack:client:release
+
+# 构建 macOS + Windows 安装包（macOS 可同时交叉打包 Windows）
 npm run pack:client
 
-# Linux 安装包（deb / rpm / AppImage），在 Docker 容器内交叉构建
+# 只构建 macOS 安装包（Intel + Apple Silicon）
+npm run pack:client:mac
+
+# 只构建 Windows 安装包（x64 NSIS；可在 macOS 上交叉构建）
+npm run pack:client:win
+
+# Linux 安装包（deb / rpm / AppImage）：推荐在 Docker Linux 容器内构建
 npm run pack:client:linux
+
+# Linux 原生构建（仅在已安装 rpmbuild 等工具链的 Linux 主机上使用）
+npm run pack:client:linux:native
 
 # 绿色目录版（免安装，默认只产出当前系统的目录）
 npm run pack:client:dir
 ```
+
+> `pack:client:mac` / `pack:client:win` 会先构建 core、contract、mcp 和客户端产物。macOS 包需在 macOS 上构建；Windows 可在 macOS 交叉构建，也可在 Windows 上构建。
+>
+> Linux 推荐使用 `npm run pack:client:linux`：本机需安装并启动 Docker（Linux 容器），首次会拉取 `node:22-bookworm` 镜像并在容器内安装 `rpm`，耗时较长；镜像可用 `WORM_LINUX_BUILDER_IMAGE` 覆盖，网络受限时可设置 `ELECTRON_MIRROR`、`ELECTRON_BUILDER_BINARIES_MIRROR`、`APT_MIRROR`。如果直接在原生 Linux 环境打包，需先安装 Node.js 与 `rpm`/`rpmbuild`（以及 electron-builder 所需的 Linux 打包工具），再执行 `npm ci && npm run build`，或直接运行 `npm run pack:client:linux:native`。
+>
+> `npm run pack:client:release` 只覆盖 macOS + Windows；Linux 发行包需先执行 `npm run pack:client:linux`（或原生 Linux 构建），再执行 `node scripts/pack-client-release.mjs` 重新汇总校验和与上传命令。
 
 ### 宿主侧接入（浏览器端 SDK）
 
