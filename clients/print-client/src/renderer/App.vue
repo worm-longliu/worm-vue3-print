@@ -5,7 +5,14 @@ import type { PrinterInfo } from '@worm-vue3-print/core/client'
 import type { JobRecord } from '../main/job-history.js'
 import type { LogEntry } from '../main/logger.js'
 import type { McpState } from '../preload/preload.api.js'
-import { buildMcpConfigJson, MCP_SERVICE_NAME, resolveMcpConnectionView } from './mcp-config'
+import {
+  buildMcpAgentPrompt,
+  buildMcpConfigJson,
+  MCP_PROMPT_SCENARIOS,
+  MCP_SERVICE_NAME,
+  resolveMcpConnectionView,
+  type McpPromptScenario,
+} from './mcp-config'
 
 const tab = ref<'settings' | 'jobs' | 'logs'>('settings')
 const config = ref<AppConfig | null>(null)
@@ -23,6 +30,8 @@ const bridgeError = ref('')
 const pdfActionError = ref<Record<string, string>>({})
 const mcpState = ref<McpState | null>(null)
 const mcpCopyMsg = ref('')
+const mcpPromptCopyMsg = ref('')
+const mcpPromptScenario = ref<McpPromptScenario>('mcp')
 /** 端口漂移检测：上次记录的 MCP URL 与当前不同时提示更新 Agent 配置 */
 const MCP_LAST_URL_KEY = 'worm-print-client:mcpLastUrl'
 const mcpUrlDrift = ref('')
@@ -43,6 +52,13 @@ async function refreshMcpState() {
 const mcpHeadersJson = computed(() =>
   buildMcpConfigJson(mcpState.value?.url ?? '', config.value?.pairingToken ?? ''),
 )
+const mcpAgentPrompt = computed(() =>
+  buildMcpAgentPrompt(
+    mcpState.value?.url ?? '',
+    config.value?.pairingToken ?? '',
+    mcpPromptScenario.value,
+  ),
+)
 const mcpConnectionView = computed(() =>
   resolveMcpConnectionView(config.value?.mcpEnabled ?? false, mcpState.value?.enabled ?? false),
 )
@@ -55,6 +71,16 @@ async function copyMcpConfig() {
     mcpCopyMsg.value = '复制失败：请手动选中下方文本'
   }
   setTimeout(() => (mcpCopyMsg.value = ''), 3000)
+}
+
+async function copyMcpAgentPrompt() {
+  try {
+    await navigator.clipboard.writeText(mcpAgentPrompt.value)
+    mcpPromptCopyMsg.value = '已复制接入提示词，请粘贴到你信任的 AI Agent'
+  } catch {
+    mcpPromptCopyMsg.value = '复制失败：请手动选中下方文本'
+  }
+  setTimeout(() => (mcpPromptCopyMsg.value = ''), 3000)
 }
 /** 路径条实际展示的目录：自定义目录优先，未设置时回退默认目录 */
 const effectivePdfDir = computed(() => config.value?.pdfOutputDir?.trim() || pdfDir.value)
@@ -274,6 +300,22 @@ function fmtTime(iso: string): string {
         <div class="row">
           <label></label>
           <span class="muted">服务名称固定为 {{ MCP_SERVICE_NAME }}；已配置其它 MCP 服务时，请把该条目合并进现有 mcpServers，勿整段覆盖。</span>
+        </div>
+        <div class="row row-stack">
+          <label>Agent 接入提示词</label>
+          <div class="field-stack">
+            <select v-model="mcpPromptScenario" class="mcp-prompt-scenario">
+              <option v-for="scenario in MCP_PROMPT_SCENARIOS" :key="scenario.id" :value="scenario.id">
+                {{ scenario.label }}
+              </option>
+            </select>
+            <textarea class="mcp-config mcp-agent-prompt" :value="mcpAgentPrompt" readonly></textarea>
+            <div class="field-hint">
+              <button type="button" class="link-btn" @click="copyMcpAgentPrompt">复制接入提示词</button>
+              <span class="muted">{{ mcpPromptCopyMsg }}</span>
+            </div>
+            <span class="muted">提示词已包含当前 MCP 地址、Bearer token 和技能安装命令，可直接粘贴到 AI Agent；token 属于本机凭证，请勿发送到不可信环境。</span>
+          </div>
         </div>
         <div class="row">
           <label>Bearer token</label>

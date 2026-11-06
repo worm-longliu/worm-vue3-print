@@ -255,6 +255,18 @@ td {
   font-size: 12px;
   white-space: pre;
 }
+.mcp-prompt-scenario {
+  align-self: flex-start;
+  min-width: 240px;
+  padding: 5px 8px;
+  border: 1px solid var(--divider, #ccc);
+  border-radius: 4px;
+}
+.mcp-agent-prompt {
+  height: 260px;
+  line-height: 1.55;
+  resize: vertical;
+}
 .mcp-session {
   font-size: 12px;
   color: var(--muted, #555);
