@@ -526,6 +526,13 @@ export class PrintDesignerElement extends HTMLElement {
     // 属性台搜索：门控在分组构建时已生效，这里再重放一次，覆盖重绘与输入两条路径
     applyPropertySearch(this.root, this.state.propSearch)
     this.applyShrinkFit()
+    // 整树重建换掉了滚动容器 .canvas-area，滚动位置归零会跳顶、标尺错位；
+    // 按最近一次滚动值恢复，随后的 measureRuler 在恢复后的矩形上实测（见 onScroll）
+    const area = this.root.querySelector<HTMLElement>('.canvas-area')
+    if (area) {
+      area.scrollLeft = this.scrollPos.x
+      area.scrollTop = this.scrollPos.y
+    }
     this.syncRulers()
     this.persistChrome()
   }
@@ -557,8 +564,10 @@ export class PrintDesignerElement extends HTMLElement {
     const measured = pr.width / mmToPx(this.store.paperSize.width)
     this.geom = {
       paperScale: Math.abs(measured - target) < 0.002 ? target : measured,
-      originX: pr.left - ar.left - RULER_THICK + this.scrollPos.x,
-      originY: pr.top - ar.top - RULER_THICK + this.scrollPos.y,
+      // 两矩形都是实时视口坐标（getBoundingClientRect 已含滚动偏移），
+      // 差值即为纸张原点相对尺条的偏移；再叠加 scrollPos 会双重计账（与 canvas CanvasArea.vue 同口径）
+      originX: pr.left - ar.left - RULER_THICK,
+      originY: pr.top - ar.top - RULER_THICK,
       viewW: area.clientWidth - RULER_THICK,
       viewH: area.clientHeight - RULER_THICK,
     }
@@ -1036,6 +1045,9 @@ export class PrintDesignerElement extends HTMLElement {
     this.store.setScale(target, minPercent)
     area.scrollLeft = ax * ratio - anchorX + padX
     area.scrollTop = ay * ratio - anchorY + padY
+    // 直写滚动触发的 scroll 事件可能晚于下一次 paint（rAF 整树重建），
+    // 此处同步记账，恢复才不落旧值
+    this.scrollPos = { x: area.scrollLeft, y: area.scrollTop }
   }
 
   /** 工具栏放大/缩小：与滚轮同一乘性步进，以视口几何中心为锚点 */
@@ -1075,10 +1087,12 @@ export class PrintDesignerElement extends HTMLElement {
 
   private onScroll() {
     const area = this.root.querySelector<HTMLElement>('.canvas-area')
-    if (area) {
-      this.scrollPos = { x: area.scrollLeft, y: area.scrollTop }
-      this.syncRulers()
-    }
+    if (!area) return
+    this.scrollPos = { x: area.scrollLeft, y: area.scrollTop }
+    // 滚动是高频路径，不全量重绘：浮层平移在此定点补齐，标尺才钉得住视口
+    const overlay = this.root.querySelector<HTMLElement>('.ruler-overlay')
+    if (overlay) overlay.style.transform = `translate(${this.scrollPos.x}px, ${this.scrollPos.y}px)`
+    this.syncRulers()
   }
 
   // ─── 全局指针移动：拖拽 / 缩放 / 吸附 ───
