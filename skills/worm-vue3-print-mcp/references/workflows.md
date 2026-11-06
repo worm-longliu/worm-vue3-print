@@ -27,9 +27,12 @@
 2. 同一张图补 `dpi` 或 `paper { widthMm, heightMm, margins }` → 得到毫米坐标，直接用于排版。
    - 只给纸张不给 dpi 时，用「内容区像素宽 ÷ 内容区毫米宽」反推；两者比例不一致会告警。
 3. 按测量值生成模板（`print_draft_template` 或手排 elements）。
-4. `print_compare_with_reference` 比对：`items` 看偏差与线长（templateStart/End vs referenceStart/End），
+4. `print_compare_with_reference` 比对：先看 `contentAreaOffset`（内容区在整幅图像中的位置，抓整版平移），
+   再用 `items` 看偏差与线长（templateStart/End vs referenceStart/End），
    `extraInTemplate` 抓多余元素（如多画的边框），`missingInTemplate` 抓漏掉的线。
-   无线可比、置信度低或宽高比不一致时返回 `status=inconclusive`，不要当成通过。
+   两侧同时非空多半是「同一位置线长不对」成对出现，按 `norm` 相同、`start/end` 不同配对核对；
+   `maxDeviationRatio` 取位置偏差与线长偏差的较大值，不会因位置对得上而显示 0。
+   无线可比、置信度低、宽高比不一致或整版平移超容差时返回 `status=inconclusive`，不要当成通过。
 5. 修到 `pass: true`（`status: 'pass'`）并渲染预览确认后，再写回画布。
 
 ## 修改已有模板

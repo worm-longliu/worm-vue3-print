@@ -54,6 +54,15 @@ describe('print_preview_template 注册与隔离', () => {
     expect(TOOLS.map(t => t.name)).not.toContain('print_preview_template')
     expect(createRenderTools(stubBridge()).map(t => t.name)).toEqual(['print_preview_template'])
   })
+
+  it('预览只读不落画布，但如实声明会触网（模板可引用远程图片/字体）', () => {
+    const tool = createRenderTools(stubBridge())[0]!
+    expect(tool.annotations?.readOnlyHint).toBe(true)
+    expect(tool.annotations?.destructiveHint).toBe(false)
+    expect(tool.annotations?.openWorldHint).toBe(true)
+    expect(tool.description).toContain('网络')
+    expect(tool.description).toContain('远程图片')
+  })
 })
 
 describe('print_preview_template 门禁', () => {

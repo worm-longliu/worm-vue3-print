@@ -9,7 +9,7 @@ const MCP_TOOL_NAMES = [
   'print_validate_template',
   'print_check_expression',
   'print_inspect_layout',
-  // 视觉与测量（本地渲染出图，不出网）
+  // 视觉与测量（本地渲染出图；模板引用的远程图片/字体可能触网）
   'print_preview_template',
   'print_analyze_reference_image',
   'print_compare_with_reference',

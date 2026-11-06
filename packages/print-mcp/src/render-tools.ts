@@ -63,8 +63,11 @@ function renderBridgeError(err: unknown): string {
   }
 }
 
-/** 纯计算注解：预览不落画布、不出网，只依赖客户端本地渲染 */
-const PURE_ANNOTATIONS = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const
+/**
+ * 预览注解：不落画布（只读、非破坏性），但渲染在宿主（桌面客户端）内进行——
+ * 模板里引用的远程图片/字体会真实触网，file:// 资源会读本地文件，故 openWorldHint 为 true。
+ */
+const PREVIEW_ANNOTATIONS = { readOnlyHint: true, destructiveHint: false, openWorldHint: true } as const
 
 /** zod → JSON Schema（与 tools.ts 同款） */
 function schemaOf<T extends z.ZodTypeAny>(schema: T): Record<string, unknown> {
@@ -86,8 +89,10 @@ export function createRenderTools(bridge: TemplateRenderBridge): ToolDef[] {
       description: '【视觉回读】把模板渲染成单页 PNG 返回给模型自评：走客户端完整渲染管线（测量→分页→出纸管线），'
         + '长文本换行、表格分页、页眉页脚重复都是真实效果。写回画布（print_apply_open_template）之前先看图自评版式'
         + '（对齐、密度、留白、溢出、条码清晰度），修完再写回。'
-        + '一次返回一张图：多页模板用 page 参数逐页看。不落画布、只读不写。',
-      annotations: { title: '预览模板渲染效果', ...PURE_ANNOTATIONS },
+        + '一次返回一张图：多页模板用 page 参数逐页看。不落画布、只读不写。'
+        + '注意：渲染在宿主（桌面客户端）内进行，模板内引用的远程图片/字体可能触发网络请求或读取本地文件，'
+        + '宿主应就此征求用户批准。',
+      annotations: { title: '预览模板渲染效果', ...PREVIEW_ANNOTATIONS },
       inputSchema: schemaOf(z.object({
         templateJson: z.record(z.string(), z.unknown()).describe(
           '要预览的模板 JSON（单页 TemplateData；多页 wrapper 逐页渲染后按 page 取）。'

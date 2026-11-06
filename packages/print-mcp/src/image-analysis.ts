@@ -71,7 +71,14 @@ export interface DetectedTable {
 }
 
 export interface AnalyzedGeometry {
-  contentArea: { px: PixelRect; norm: NormRect; confidence: 'high' | 'medium' | 'low' }
+  /**
+   * 内容区（最外圈长线围成的矩形）。
+   * - px：像素坐标
+   * - norm：相对内容区自身（恒等 0..1，保留给既有调用方兼容）
+   * - pageNorm：相对整幅图像的 0..1 坐标——整版平移只能在这里看出来，
+   *   线条坐标全部相对内容区归一化，会把整版位移吸收掉
+   */
+  contentArea: { px: PixelRect; norm: NormRect; pageNorm: NormRect; confidence: 'high' | 'medium' | 'low' }
   verticalLines: DetectedVLine[]
   horizontalLines: DetectedHLine[]
   textRows: DetectedTextRow[]
@@ -378,6 +385,22 @@ export function toNorm(px: number, start: number, end: number): number {
   return Math.max(0, Math.min(1, v))
 }
 
+/** 归一化：相对整幅图像的 0..1 坐标（像素序号 ÷ 图像边长），clamp 到 0..1 */
+export function toPageNorm(px: number, extent: number): number {
+  if (!Number.isFinite(extent) || extent <= 0) return 0
+  return Math.max(0, Math.min(1, px / extent))
+}
+
+/** 内容区在整幅图像中的归一化位置 */
+export function toPageNormRect(area: PixelRect, imageWidth: number, imageHeight: number): NormRect {
+  return {
+    left: toPageNorm(area.left, imageWidth),
+    top: toPageNorm(area.top, imageHeight),
+    right: toPageNorm(area.right, imageWidth),
+    bottom: toPageNorm(area.bottom, imageHeight),
+  }
+}
+
 /** 完整分析：一次产出几何特征 */
 export function analyzeGeometry(bitmap: GrayBitmap): AnalyzedGeometry {
   const bin = binarize(bitmap)
@@ -440,6 +463,7 @@ export function analyzeGeometry(bitmap: GrayBitmap): AnalyzedGeometry {
         right: 1,
         bottom: 1,
       },
+      pageNorm: toPageNormRect(area, bitmap.width, bitmap.height),
       confidence: areaInfo.confidence,
     },
     verticalLines: vLines,

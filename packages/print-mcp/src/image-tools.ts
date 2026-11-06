@@ -12,6 +12,7 @@ import {
   toMillimeters,
   type AnalyzedGeometry,
   type GrayBitmap,
+  type NormRect,
 } from './image-analysis.js'
 import type { TemplateRenderBridge } from './render-tools.js'
 
@@ -30,7 +31,14 @@ export interface ImageReaderBridge {
   decodePngBase64(base64: string): Promise<GrayBitmap>
 }
 
+/** 只读本地图片、不触网 */
 const PURE_ANNOTATIONS = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const
+
+/**
+ * 走渲染管线的工具：模板可引用远程图片/字体，宿主渲染时会真实触网或读本地资源，
+ * 因此 openWorldHint 必须为 true（渲染不落画布，destructiveHint 仍为 false）。
+ */
+const RENDER_ANNOTATIONS = { readOnlyHint: true, destructiveHint: false, openWorldHint: true } as const
 
 function schemaOf<T extends z.ZodTypeAny>(schema: T): Record<string, unknown> {
   return z.toJSONSchema(schema, { target: 'draft-2020-12' }) as Record<string, unknown>
@@ -141,12 +149,16 @@ export function createImageTools(deps: ImageToolDeps): ToolDef[] {
     },
     {
       name: 'print_compare_with_reference',
-      description: '【验收】把模板渲染出来，与参考设计稿逐线比对：输出每条线在内容区内的相对位置偏差与线长（起止范围）偏差、'
-        + '模板多出的线（extraInTemplate）与缺失的线（missingInTemplate）。两者没有可比内容或不是同一版式时返回 '
-        + 'status=inconclusive（不产生通过结论）；位置与线长都在容差内且无多余/缺失才 status=pass。'
+      description: '【验收】把模板渲染出来，与参考设计稿逐线比对：先比内容区在整幅图像中的位置（抓整版平移），'
+        + '再输出每条线在内容区内的相对位置偏差与线长（起止范围）偏差、'
+        + '模板多出的线（extraInTemplate）与缺失的线（missingInTemplate）。两者没有可比内容、不是同一版式、'
+        + '或内容区在整图中的位置偏移超过容差时返回 status=inconclusive（不产生通过结论）；'
+        + '位置与线长都在容差内且无多余/缺失才 status=pass。'
         + '比对用归一化比例，不要求参考图的 DPI 与模板纸张一致，但两者必须是同一版式（宽高比接近）。'
-        + '改模板后跑一次即可确认是否复刻到位，不必人工目检。',
-      annotations: { title: '与参考图比对验收', ...PURE_ANNOTATIONS },
+        + '改模板后跑一次即可确认是否复刻到位，不必人工目检。'
+        + '注意：渲染在宿主（桌面客户端）内进行，模板内引用的远程图片/字体可能触发网络请求或读取本地文件，'
+        + '宿主应就此征求用户批准。',
+      annotations: { title: '与参考图比对验收', ...RENDER_ANNOTATIONS },
       inputSchema: schemaOf(z.object({
         templateJson: z.record(z.string(), z.unknown()).describe(
           '要比对的模板 JSON（单页 TemplateData）。多页模板请先用 print_get_open_template 取目标页。',
@@ -255,10 +267,18 @@ interface CompareItem {
   diffMmApprox?: number
 }
 
+/** 未配对上的线：norm 为线所在轴的位置，start/end 为沿另一轴的归一化起止（便于与另一侧成对核对） */
+interface LineGap {
+  kind: 'vline' | 'hline'
+  norm: number
+  start: number
+  end: number
+}
+
 interface MatchOutcome {
   items: CompareItem[]
-  extraInTemplate: Array<{ kind: 'vline' | 'hline'; norm: number }>
-  missingInTemplate: Array<{ kind: 'vline' | 'hline'; norm: number }>
+  extraInTemplate: LineGap[]
+  missingInTemplate: LineGap[]
 }
 
 /** 线条 → 归一化 RunNorm：位置 + 起止范围都以内容区为基准 clamp 到 0..1 */
@@ -322,11 +342,13 @@ function matchLines(
         ...(diffMm !== undefined ? { diffMmApprox: diffMm } : {}),
       })
     } else {
-      extraInTemplate.push({ kind, norm: round4(t.pos) })
+      extraInTemplate.push({ kind, norm: round4(t.pos), start: round4(t.start), end: round4(t.end) })
     }
   }
   for (let i = 0; i < reference.length; i++) {
-    if (!used.has(i)) missingInTemplate.push({ kind, norm: round4(reference[i]!.pos) })
+    if (used.has(i)) continue
+    const r = reference[i]!
+    missingInTemplate.push({ kind, norm: round4(r.pos), start: round4(r.start), end: round4(r.end) })
   }
   return { items, extraInTemplate, missingInTemplate }
 }
@@ -355,6 +377,8 @@ function compareGeometry(
   const refAspect = aspectOf(reference)
   const aspectDrift = Math.abs(renderAspect - refAspect) / Math.max(refAspect, 1e-6)
 
+  const contentAreaOffset = offsetOfPage(render.contentArea.pageNorm, reference.contentArea.pageNorm)
+
   const base = {
     toleranceRatio: tolerance,
     maxDeviationRatio: 0,
@@ -362,6 +386,7 @@ function compareGeometry(
     extraInTemplate: [] as unknown[],
     missingInTemplate: [] as unknown[],
     referenceConfidence: reference.contentArea.confidence,
+    contentAreaOffset,
   }
 
   // 不可判定：任何一项都不给 pass，防止「什么都测不出来」被当成「比对通过」
@@ -395,6 +420,18 @@ function compareGeometry(
     return inconclusive()
   }
 
+  // 整版平移：线条坐标全部相对「各自内容区」归一化，整版位移会被这层归一化吸收掉，
+  // 所以必须单独比较内容区在整幅图像中的位置；任一边偏移超容差不给 pass
+  if (contentAreaOffset.max > tolerance) {
+    warnings.push(
+      `内容区在整幅图像中的位置偏移超出容差（左 ${contentAreaOffset.left} / 上 ${contentAreaOffset.top} / `
+        + `右 ${contentAreaOffset.right} / 下 ${contentAreaOffset.bottom}，容差 ${tolerance}）：`
+        + '两图存在整版平移（版面在纸上的位置不同），归一化线条比对无法判定复刻是否到位，'
+        + '请先把版面在纸张中的位置对齐再比对',
+    )
+    return inconclusive()
+  }
+
   const outcome: MatchOutcome = { items: [], extraInTemplate: [], missingInTemplate: [] }
   for (const [kind, renderLines, referenceLines] of [
     ['vline', render.verticalLines, reference.verticalLines],
@@ -412,10 +449,19 @@ function compareGeometry(
     outcome.missingInTemplate.push(...m.missingInTemplate)
   }
 
-  // 线长比对何时算「不匹配」在 matchLines 里已筛掉：看界外与 extra/missing
-  const maxDeviationRatio = outcome.items.reduce((m, it) => Math.max(m, it.diffRatio), 0)
-  const outOfTolerance = outcome.items.some(it => it.diffRatio > tolerance)
-  const hasMismatch = outOfTolerance || outcome.extraInTemplate.length > 0 || outcome.missingInTemplate.length > 0
+  // 偏差取「位置偏差」与「线长（起止范围）偏差」的较大值：只报位置会把同位不同长的线掩盖成 0
+  const itemDeviation = outcome.items.reduce((m, it) => Math.max(m, it.diffRatio, it.spanDiffRatio), 0)
+  // 配不上对的线按位置两两配对后比线长：这正是「位置对得上但长度不同」的偏差来源
+  const gapDeviation = gapSpanDeviation(outcome.extraInTemplate, outcome.missingInTemplate, tolerance)
+  const maxDeviationRatio = Math.max(itemDeviation, gapDeviation)
+  // 位置超容差的线在 matchLines 里已配不上（进 extra），这里只需看多余/缺失
+  const hasMismatch = outcome.extraInTemplate.length > 0 || outcome.missingInTemplate.length > 0
+  if (outcome.extraInTemplate.length > 0 && outcome.missingInTemplate.length > 0) {
+    warnings.push(
+      'extraInTemplate 与 missingInTemplate 同时非空：通常是同一位置的线长不匹配'
+      + '（模板线进 extra、参考线进 missing），请按 norm 相同、start/end 不同来配对核对，不要当成两条互相独立的差异处理',
+    )
+  }
   const status: 'pass' | 'fail' = hasMismatch ? 'fail' : 'pass'
 
   return {
@@ -429,10 +475,60 @@ function compareGeometry(
     missingInTemplate: outcome.missingInTemplate,
     warnings,
     note: status === 'pass'
-      ? '线条位置与线长都和参考图一致（位置偏差在容差内、起止范围差异在容差三倍内，且没有多余/缺失的线）。'
-      : '存在偏差、线长差异、多余或缺失的线条：'
+      ? '线条位置与线长都和参考图一致（内容区在整幅图像中的位置、位置偏差、起止范围差异都在容差内，且没有多余/缺失的线）。'
+      : '存在线长差异、多余或缺失的线条：'
         + 'items 看各线的位置偏差与起止范围（templateStart/End vs referenceStart/End），'
-        + 'extraInTemplate / missingInTemplate 看多余与缺失的线，修完模板重新比对。',
+        + 'extraInTemplate / missingInTemplate 看多余与缺失的线（含各自 start/end 范围，可成对核对线长），修完模板重新比对。',
+  }
+}
+
+/**
+ * extra / missing 按位置配对（同 kind 且 norm 差在容差内）后取线长差异。
+ * 配成对说明「这条线该在这儿，只是长度不对」，偏差必须计进 maxDeviationRatio，
+ * 否则 status=fail 但偏差仍是 0，输出无法解释为什么不通过。
+ */
+function gapSpanDeviation(extra: LineGap[], missing: LineGap[], tolerance: number): number {
+  const used = new Set<number>()
+  let max = 0
+  for (const e of extra) {
+    let bestIndex = -1
+    let bestDiff = Number.POSITIVE_INFINITY
+    for (let i = 0; i < missing.length; i++) {
+      if (used.has(i)) continue
+      const m = missing[i]!
+      if (m.kind !== e.kind) continue
+      const d = Math.abs(m.norm - e.norm)
+      if (d <= tolerance && d < bestDiff) {
+        bestDiff = d
+        bestIndex = i
+      }
+    }
+    if (bestIndex < 0) continue
+    used.add(bestIndex)
+    const m = missing[bestIndex]!
+    max = Math.max(max, Math.abs(e.start - m.start), Math.abs(e.end - m.end))
+  }
+  return max
+}
+
+/** 内容区在整幅图像中位置的归一化偏移（各边取绝对差，max 用于与容差比较） */
+function offsetOfPage(render: NormRect, reference: NormRect): {
+  left: number
+  top: number
+  right: number
+  bottom: number
+  max: number
+} {
+  const left = Math.abs(render.left - reference.left)
+  const top = Math.abs(render.top - reference.top)
+  const right = Math.abs(render.right - reference.right)
+  const bottom = Math.abs(render.bottom - reference.bottom)
+  return {
+    left: round4(left),
+    top: round4(top),
+    right: round4(right),
+    bottom: round4(bottom),
+    max: round4(Math.max(left, top, right, bottom)),
   }
 }
 

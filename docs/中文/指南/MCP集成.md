@@ -114,7 +114,7 @@ client.close()
 | `print_inspect_layout` | 纸张越界、边距、交叠和表格结构等静态体检 |
 | `print_preview_template` | 把模板渲染成单页 PNG 返回，附每个元素的实际渲染包围盒 |
 | `print_analyze_reference_image` | 分析设计稿图片：内容区、线条、文本行、表格网格（像素/归一化/毫米三层） |
-| `print_compare_with_reference` | 渲染结果与参考图逐线比对，输出偏差与多余/缺失的线 |
+| `print_compare_with_reference` | 渲染结果与参考图逐线比对：先比内容区在整幅图像中的位置（抓整版平移），再输出偏差与多余/缺失的线 |
 | `print_list_open_templates` | 列出仍打开且已签到的设计器页面 |
 | `print_get_open_template` | 默认读取完整实时快照；`view=summary` 时精简为元素索引，支持字段过滤 |
 | `print_patch_open_template` | 按元素 ID 原子批量更新/移动，返回可链式使用的新 revision |
@@ -133,6 +133,8 @@ client.close()
 8. 在设计器中核对最终效果，并说明实际执行过的校验、预览与写回结果。
 
 纯计算工具只接收内存中的 `templateJson`。静态体检不计算真实行高或页数；`print_preview_template` 走客户端完整渲染管线（测量→分页→出纸管线），分页、长文本换行与条码都是真实效果，但写回后仍以设计器打印预览为最终确认。
+
+**渲染工具会触网/读本地资源（如实声明）**：`print_preview_template`、`print_compare_with_reference` 在桌面客户端本地渲染，本身不上传数据，但模板里引用的远程图片/字体 URL、`file://` 资源会由渲染内核真实取回。这两个工具的注解为 `openWorldHint: true`（`readOnlyHint: true`、`destructiveHint: false`），宿主应把它们当作可能产生外部访问的只读操作，必要时征求用户批准。`print_analyze_reference_image` 只按绝对路径读本地图片（`openWorldHint: false`），不访问网络。
 
 ## 五、写回安全与异常处理
 

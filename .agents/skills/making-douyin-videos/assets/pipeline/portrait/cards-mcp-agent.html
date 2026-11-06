@@ -98,7 +98,7 @@
       <div class="chiprow">
         <span class="chip pur">1 条本地 WebSocket</span>
         <span class="chip">1 个本机 /mcp</span>
-        <span class="chip">9 个工具</span>
+        <span class="chip">12 个工具</span>
       </div>`,
     why: `
       <div class="kicker">为什么非要三方</div>
@@ -143,7 +143,7 @@ client.onStatusChange(s =&gt;
   } } }</div>
       </div>
       <div class="grp g"><div class="gh">这台 MCP server 的接法</div><div class="gn">无状态 Streamable HTTP，<b>每个请求新建再关</b><br/>只收 POST · 请求体上限 4 MiB · 令牌常量时间比较<br/>开关没开时一律 <b>404</b>，不暴露入口存在</div></div>
-      <div class="note">贴进去就多出 9 个工具，<b>其中 3 个专门读写画布</b></div>`,
+      <div class="note">贴进去就多出 12 个工具，<b>其中 4 个专门读写画布</b></div>`,
     sequence: `
       <div class="kicker">一轮完整读写长这样</div>
       <div class="steps">
@@ -184,7 +184,7 @@ get   → <span class="v">新 revision</span> → apply <span class="v">ok ✓</
       <div class="note">旧的 <b>print.submit</b>（客户端内渲染）保留兼容；打印机列表 <b>printers.list</b> 也走这条通道</div>
       <div class="warn">
         <div class="t">但 AI 不能替你按打印键</div>
-        <div class="c">9 个工具里没有任何一个能连到打印机<br/>AI 只改模板，按不按打印在人这边</div>
+        <div class="c">12 个工具里没有任何一个能连到打印机<br/>AI 只改模板，按不按打印在人这边</div>
       </div>`,
     guard: `
       <div class="kicker">给同行的两条边界</div>

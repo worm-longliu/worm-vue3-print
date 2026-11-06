@@ -125,6 +125,31 @@ describe('analyzeGeometry', () => {
     expect(inner.xNorm).toBeCloseTo((150 - 10) / (388 - 10), 3)
   })
 
+  it('contentArea.pageNorm 是内容区相对整幅图像的位置（整版平移的唯一可观测信号）', () => {
+    const bmp = makeBitmap(400, 300)
+    drawFrame(bmp, 10, 10, 389, 289, 2)
+    const g = analyzeGeometry(bmp)
+    // 检出的外框在 10..388 / 10..288（2px 线宽的代表列）
+    expect(g.contentArea.pageNorm).toEqual({
+      left: 10 / 400,
+      top: 10 / 300,
+      right: 388 / 400,
+      bottom: 288 / 300,
+    })
+
+    // 整版平移 16px：内容区相对自身恒等（norm 无信息量），pageNorm 才有差异
+    const shifted = makeBitmap(400, 300)
+    drawFrame(shifted, 26, 10, 389, 289, 2)
+    const s = analyzeGeometry(shifted)
+    expect(s.contentArea.norm).toEqual(g.contentArea.norm)
+    expect(s.contentArea.pageNorm.left).toBeGreaterThan(g.contentArea.pageNorm.left + 14 / 400)
+    expect(s.contentArea.pageNorm.left).toBeLessThan(g.contentArea.pageNorm.left + 18 / 400)
+
+    // 无外框退化为整图时 pageNorm 覆盖到图像边缘
+    const plain = analyzeGeometry(makeBitmap(300, 200))
+    expect(plain.contentArea.pageNorm).toEqual({ left: 0, top: 0, right: 299 / 300, bottom: 199 / 200 })
+  })
+
   it('无外框时退化为整图并降级 confidence', () => {
     const bmp = makeBitmap(300, 200)
     drawHLine(bmp, 100, 10, 290)

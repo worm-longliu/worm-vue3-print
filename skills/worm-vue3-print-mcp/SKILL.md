@@ -18,7 +18,9 @@ description: Use when 用户需要通过浏览器设计器、桌面客户端和 
 - `print_inspect_layout`：静态几何与结构体检。
 - `print_preview_template`：把模板渲染成单页 PNG 返回，并附每个元素的实际渲染包围盒；写回前看图自评版式。
 - `print_analyze_reference_image`：把设计稿图片转成几何数据（内容区/线条/文本行/表格网格），做模板前先取基准。
-- `print_compare_with_reference`：渲染结果与参考图逐线比对，输出偏差、多余与缺失的线。
+- `print_compare_with_reference`：渲染结果与参考图逐线比对，先比内容区在整幅图像中的位置（抓整版平移），再输出偏差、多余与缺失的线。
+
+`print_preview_template` / `print_compare_with_reference` 在桌面客户端本地渲染，但模板引用的远程图片/字体会真实触网（`openWorldHint: true`）；`print_analyze_reference_image` 只读本地图片路径，不访问网络。
 - `print_list_open_templates`：列出已签到的设计器页面。
 - `print_get_open_template`：默认读取完整快照；小改优先 `view=summary`，用 `elementIds/includeFields` 精简元素与字段。
 - `print_patch_open_template`：按元素 ID 原子批量更新或移动，一次写回并返回新 revision。

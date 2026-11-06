@@ -1,12 +1,15 @@
 // 图片读取 bridge（ImageReaderBridge 实现端）：本地路径读图 + base64 PNG 解码，统一转灰度位图。
 // 解码用 Electron nativeImage（零新依赖、无 asarUnpack 风险）；MCP 包只拿像素，不碰文件系统。
+// 像素上限检查顺序：容器头（readImageDimensions，解码前）→ 解码结果（toGrayBitmap 内兜底，
+// 覆盖头读不出尺寸的格式，如部分 WebP）。
 import { nativeImage } from 'electron'
-import { realpathSync, statSync } from 'node:fs'
+import { readFileSync, realpathSync, statSync } from 'node:fs'
 import { isAbsolute, extname } from 'node:path'
 import type { ImageReaderBridge } from '@worm-vue3-print/mcp'
 import type { GrayBitmap } from '@worm-vue3-print/mcp'
 import type { Logger } from './logger.js'
 import { MAX_IMAGE_BYTES, assertImageSizeWithinLimit, estimateBase64Bytes } from './image-limits.js'
+import { readImageDimensions } from './image-header.js'
 
 /** 允许的扩展名（实际格式还要靠 nativeImage 解码成功兜底） */
 const ALLOWED_EXT = new Set(['.png', '.jpg', '.jpeg', '.bmp', '.webp'])
@@ -50,6 +53,15 @@ function validateImagePath(rawPath: string): string {
 }
 
 /**
+ * 解码前按容器头拦截超限像素：尺寸读得出就直接套用与解码后同一条上限规则，
+ * 读不出（未知容器/罕见 WebP 编码）则跳过，交给 toGrayBitmap 的解码后兜底。
+ */
+function assertHeaderSizeWithinLimit(buffer: Buffer): void {
+  const dims = readImageDimensions(buffer)
+  if (dims !== undefined) assertImageSizeWithinLimit(dims.width, dims.height)
+}
+
+/**
  * nativeImage.toBitmap() 返回 BGRA（预乘 alpha）。这里转灰度：
  * 对透明像素按白底合成，避免带 alpha 的截图边缘被判成墨迹。
  */
@@ -60,7 +72,8 @@ function toGrayBitmap(image: Electron.NativeImage): GrayBitmap {
   if (width <= 0 || height <= 0) {
     throw imageError('IMAGE_DECODE_FAILED', '图片尺寸为 0')
   }
-  // 像素上限在 toBitmap() 之前拦截：解码分配内存前就拒绝，而不是分配完再溢出
+  // 解码后的兜底检查：容器头读不出尺寸的格式（如部分 WebP）走到这里，
+  // 在 toBitmap() 复制 BGRA 之前拒绝，避免再放大一倍内存
   assertImageSizeWithinLimit(width, height)
   const bgra = image.toBitmap()
   const expected = width * height * 4
@@ -84,7 +97,16 @@ export function createImageReader(deps: { logger?: Pick<Logger, 'info' | 'warn' 
   return {
     async readGrayImage(filePath: string): Promise<GrayBitmap> {
       const real = validateImagePath(filePath)
-      const image = nativeImage.createFromPath(real)
+      let buffer: Buffer
+      try {
+        buffer = readFileSync(real)
+      } catch {
+        throw imageError('IMAGE_NOT_FOUND', real)
+      }
+      // 文件体积已在 validateImagePath 限到 20MB；这里再按容器头拦下超大像素，
+      // 让 12000×12000 这类「压缩后很小」的载荷在解码分配内存之前就被拒绝
+      assertHeaderSizeWithinLimit(buffer)
+      const image = nativeImage.createFromBuffer(buffer)
       if (image.isEmpty()) {
         throw imageError('IMAGE_DECODE_FAILED', `无法解码：${real}`)
       }
@@ -111,6 +133,7 @@ export function createImageReader(deps: { logger?: Pick<Logger, 'info' | 'warn' 
       if (buffer.length === 0) {
         throw imageError('IMAGE_DECODE_FAILED', 'base64 内容为空')
       }
+      assertHeaderSizeWithinLimit(buffer)
       const image = nativeImage.createFromBuffer(buffer)
       if (image.isEmpty()) {
         throw imageError('IMAGE_DECODE_FAILED', '无法解码渲染结果')

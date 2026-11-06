@@ -164,6 +164,34 @@ describe('readElementRects 区域坐标', () => {
     ])
   })
 
+  it('回退路径：padding 只扣一次（非对称内边距 + 页面自身有偏移）', () => {
+    document.body.innerHTML = `
+      <section class="print-page" style="padding: 20px 40px"><div data-element-id="c"></div></section>`
+    const page = document.querySelector('.print-page') as HTMLElement
+    stubRect(page, { left: 100, top: 200, width: 800, height: 1100 })
+    stubRect(document.querySelector('[data-element-id="c"]') as HTMLElement, { left: 160, top: 220, width: 100, height: 20 })
+    // 原点 = 页面边框左上 + padding（140, 220）；若把 padding 扣两样会得到 (-20, -20)
+    expect(readElementRects(document)).toEqual([
+      { id: 'c', left: 20, top: 0, width: 100, height: 20, zone: 'content' },
+    ])
+  })
+
+  it('.content-area 存在时以容器为原点，不再叠加页面 padding', () => {
+    document.body.innerHTML = `
+      <section class="print-page" style="padding: 38px">
+        <div class="content-area"><div data-element-id="c"></div></div>
+      </section>`
+    const page = document.querySelector('.print-page') as HTMLElement
+    const area = document.querySelector('.content-area') as HTMLElement
+    stubRect(page, { left: 0, top: 0, width: 800, height: 1100 })
+    stubRect(area, { left: 38, top: 38, width: 724, height: 1024 }) // 已在 padding 内侧
+    stubRect(document.querySelector('[data-element-id="c"]') as HTMLElement, { left: 76, top: 57, width: 100, height: 20 })
+    // 若再减一次 padding 会变成 (0, 19)
+    expect(readElementRects(document)).toEqual([
+      { id: 'c', left: 38, top: 19, width: 100, height: 20, zone: 'content' },
+    ])
+  })
+
   it('没有第 pageIndex 页时返回空数组', () => {
     document.body.innerHTML = '<div></div>'
     expect(readElementRects(document, 3)).toEqual([])

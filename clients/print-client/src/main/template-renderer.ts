@@ -14,13 +14,13 @@ import type { TemplateRenderBridge } from '@worm-vue3-print/mcp'
 import type { Logger } from './logger.js'
 import { SerialGate } from './serial-gate.js'
 import { waitResourcesReady } from './html-printer.js'
-import { computeMmPerPx } from './preview-geometry.js'
+import { computeMmPerPx, isRenderTimeoutCode } from './preview-geometry.js'
 import { withTimeout } from './with-timeout.js'
 
 /** 预览 HTML 临时目录（与 driver 的 DOM_HOST_DIR、html-printer 的目录分开，互不清理） */
 const PREVIEW_HOST_DIR = join(tmpdir(), 'worm-print-client-preview')
 
-/** 单次预览总预算：管线（测量+分页+探针）+ 载入 + 测量 + 截图整段链路；超了按 RENDER_TIMEOUT 归类 */
+/** 单次预览总预算：管线（测量+分页+探针）+ 载入 + 测量 + 截图整段链路共用一个截止时间；超了按 RENDER_TIMEOUT 归类 */
 const PREVIEW_TIMEOUT_MS = 20_000
 
 /** bridge 进程内错误码：不进 WS 协议帧，只供 print_preview_template 层映射可行动文案 */
@@ -37,13 +37,15 @@ function mmToPx(mm: number): number {
   return Math.round((mm / 25.4) * 96)
 }
 
-/** core 管线超时/失败 → bridge 约定的错误码 */
-function classifyRenderError(err: unknown): never {
-  const code = err && typeof err === 'object' && typeof (err as { code?: unknown }).code === 'string'
-    ? (err as { code: string }).code
-    : undefined
+/**
+ * core 管线超时/失败 → bridge 约定的错误码。
+ * core 的测量/码值/连续纸探针超时抛 RENDER_TIMEOUT，客户端 WS 传输超时抛 CLIENT_TIMEOUT，
+ * 两者都必须归类为 RENDER_TIMEOUT，否则会被降级成 RENDER_FAILED。
+ */
+export function classifyRenderError(err: unknown): never {
+  const code = err && typeof err === 'object' ? (err as { code?: unknown }).code : undefined
   const message = err instanceof Error ? err.message : String(err)
-  if (code === 'CLIENT_TIMEOUT') {
+  if (isRenderTimeoutCode(code)) {
     throw bridgeError('RENDER_TIMEOUT', `渲染超过 ${PREVIEW_TIMEOUT_MS / 1000}s 未完成（模板可能过于复杂）`)
   }
   throw bridgeError('RENDER_FAILED', message)
@@ -60,10 +62,12 @@ export function createTemplateRenderer(deps: TemplateRendererDeps): TemplateRend
   return {
     renderTemplatePage: (input) => gate.run(async () => {
       const startedAt = Date.now()
+      // 整段共用一个 20s 截止时间：prepare 之后只给剩余预算，截图段不再额外给 20s
+      const deadline = startedAt + PREVIEW_TIMEOUT_MS
       const { templateJson, printData, page, scale } = input
 
       // 1. core 完整管线：两遍式测量 → 分页 → 连续纸探针 → 条码 SVG 回填的最终 HTML
-      // classifyRenderError 恒抛出（never），失败时不进入后续流程
+      // timeoutMs 传给 core 是它自身各阶段的预算；classifyRenderError 恒抛出（never），失败时不进入后续流程
       const prepared = await prepareDocument(
         {
           templateJson: templateJson as PrintTemplateData,
@@ -81,35 +85,41 @@ export function createTemplateRenderer(deps: TemplateRendererDeps): TemplateRend
       // 2. 隐藏窗口载入完整 HTML，窗口内容尺寸 = 纸张 × scale（DIP 口径）
       const widthPx = mmToPx(prepared.paperMm.width) * scale
       const heightPx = mmToPx(prepared.paperMm.height) * scale
-      mkdirSync(PREVIEW_HOST_DIR, { recursive: true })
-      const file = join(PREVIEW_HOST_DIR, `${randomUUID()}.html`)
-      writeFileSync(file, prepared.html, 'utf8')
-      const win = new BrowserWindow({
-        show: false,
-        useContentSize: true,
-        width: widthPx,
-        height: heightPx,
-        webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
-      })
+      let file: string | undefined
+      let win: BrowserWindow | undefined
       try {
-        return await withTimeout(() => captureIntoWindow(win, file, prepared, {
+        mkdirSync(PREVIEW_HOST_DIR, { recursive: true })
+        const html = join(PREVIEW_HOST_DIR, `${randomUUID()}.html`)
+        file = html
+        writeFileSync(html, prepared.html, 'utf8')
+        const created = new BrowserWindow({
+          show: false,
+          useContentSize: true,
+          width: widthPx,
+          height: heightPx,
+          webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
+        })
+        win = created
+        return await withTimeout(() => captureIntoWindow(created, html, prepared, {
           page,
           scale,
           pageCount,
           startedAt,
         }), {
-          timeoutMs: PREVIEW_TIMEOUT_MS,
+          // 剩余预算：prepare 已耗时接近 20s 时，截图段立即超时
+          timeoutMs: Math.max(1, deadline - Date.now()),
           code: 'RENDER_TIMEOUT',
           message: `渲染超过 ${PREVIEW_TIMEOUT_MS / 1000}s 未完成（模板可能过于复杂）`,
           // 超时必须回收资源：窗口销毁 + 临时 HTML 删除（SerialGate 由 gate.run 的 finally 释放）
           onTimeout: () => {
-            rmSync(file, { force: true })
-            if (!win.isDestroyed()) win.destroy()
+            rmSync(html, { force: true })
+            if (!created.isDestroyed()) created.destroy()
           },
         })
       } finally {
-        rmSync(file, { force: true })
-        if (!win.isDestroyed()) win.destroy()
+        // 目录创建 / 写文件 / 构造窗口 / 加载任一环节失败也要清理临时 HTML 与窗口
+        if (file !== undefined) rmSync(file, { force: true })
+        if (win !== undefined && !win.isDestroyed()) win.destroy()
       }
     }),
   }

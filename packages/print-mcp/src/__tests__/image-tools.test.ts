@@ -42,6 +42,14 @@ function frameBitmap(withInnerLine = true): GrayBitmap {
   return bmp
 }
 
+/** 内容区左上角在 (l,t)、尺寸 w×h 的边框图（内含居中竖线），用于构造「整版平移」 */
+function frameAt(l: number, t: number, w: number, h: number): GrayBitmap {
+  const bmp = makeBitmap()
+  drawFrame(bmp, l, t, l + w, t + h)
+  drawVLine(bmp, l + Math.round(w / 2), t + 2, t + h - 2)
+  return bmp
+}
+
 function stubReader(overrides: Partial<ImageReaderBridge> = {}): ImageReaderBridge & { readCalls: string[] } {
   const readCalls: string[] = []
   return {
@@ -89,11 +97,16 @@ describe('工具注册', () => {
     expect(names).toEqual(['print_analyze_reference_image', 'print_compare_with_reference'])
   })
 
-  it('都标注为只读、不联网', () => {
-    for (const t of tools()) {
-      expect(t.annotations?.readOnlyHint).toBe(true)
-      expect(t.annotations?.openWorldHint).toBe(false)
-    }
+  it('分析工具只读本地文件（openWorldHint=false）；比对工具会触发宿主渲染（openWorldHint=true）', () => {
+    const byName = new Map(tools().map(t => [t.name, t]))
+    const analyze = byName.get('print_analyze_reference_image')!
+    const compare = byName.get('print_compare_with_reference')!
+    expect(analyze.annotations?.readOnlyHint).toBe(true)
+    expect(analyze.annotations?.openWorldHint).toBe(false)
+    expect(compare.annotations?.readOnlyHint).toBe(true)
+    expect(compare.annotations?.destructiveHint).toBe(false)
+    expect(compare.annotations?.openWorldHint).toBe(true)
+    expect(compare.description).toContain('网络')
   })
 })
 
@@ -165,6 +178,46 @@ describe('print_compare_with_reference', () => {
     expect(data.extraInTemplate).toEqual([])
     expect(data.missingInTemplate).toEqual([])
     expect(data.matchedCount).toBeGreaterThan(0)
+    // 同版式、同内容区位置：整图层面的偏移应为 0
+    expect(data.contentAreaOffset).toEqual({ left: 0, top: 0, right: 0, bottom: 0, max: 0 })
+  })
+
+  it('内容区整体平移（16/20px）：不能 pass → status=inconclusive 并给出偏移与告警', async () => {
+    // 两图版式与内部线条完全一致，只有整版在图像中的位置差 (16, 20)px：
+    // 线条坐标相对各自内容区归一化后一模一样，必须靠 pageNorm 才看得出来
+    const reader = stubReader({
+      decodePngBase64: vi.fn(async () => frameAt(26, 30, 350, 230)),
+      readGrayImage: vi.fn(async () => frameAt(10, 10, 350, 230)),
+    })
+    const r = await compareTool(tools(reader)).handler({
+      templateJson: validTemplate,
+      referenceImagePath: '/tmp/ref.png',
+    })
+    const data = JSON.parse(firstText(r))
+    expect(data.pass).toBe(false)
+    expect(data.status).toBe('inconclusive')
+    expect(data.status).not.toBe('pass')
+    expect(data.contentAreaOffset.left).toBeCloseTo(16 / W, 3)
+    expect(data.contentAreaOffset.top).toBeCloseTo(20 / H, 3)
+    expect(data.contentAreaOffset.right).toBeCloseTo(16 / W, 3)
+    expect(data.contentAreaOffset.bottom).toBeCloseTo(20 / H, 3)
+    expect(data.contentAreaOffset.max).toBeGreaterThan(0.002)
+    expect(data.warnings.some((w: string) => w.includes('内容区') && w.includes('位置'))).toBe(true)
+  })
+
+  it('内容区位置一致（同版式同位置）：offset 全 0 且仍 status=pass', async () => {
+    const reader = stubReader({
+      decodePngBase64: vi.fn(async () => frameAt(10, 10, 350, 230)),
+      readGrayImage: vi.fn(async () => frameAt(10, 10, 350, 230)),
+    })
+    const r = await compareTool(tools(reader)).handler({
+      templateJson: validTemplate,
+      referenceImagePath: '/tmp/ref.png',
+    })
+    const data = JSON.parse(firstText(r))
+    expect(data.status).toBe('pass')
+    expect(data.pass).toBe(true)
+    expect(data.contentAreaOffset.max).toBe(0)
   })
 
   it('模板多一条线时进 extraInTemplate 并判不通过', async () => {
@@ -263,6 +316,13 @@ describe('print_compare_with_reference', () => {
     // 全长线与 1/6 长线不互相抵消：模板的进 extra，参考的进 missing
     expect(data.extraInTemplate.length).toBeGreaterThan(0)
     expect(data.missingInTemplate.length).toBeGreaterThan(0)
+    // 成对出现时给出解释性告警，避免被读成两条独立差异
+    expect(data.warnings.some((w: string) => w.includes('线长不匹配'))).toBe(true)
+    // extra / missing 带归一化起止范围，可按 norm 配对
+    expect(data.extraInTemplate[0]).toMatchObject({ kind: 'vline', start: 0, end: 1 })
+    expect(data.missingInTemplate[0].end).toBeLessThan(1)
+    // status=fail 时 maxDeviationRatio 不能是 0（线长差异也要计进偏差）
+    expect(data.maxDeviationRatio).toBeGreaterThan(0)
   })
 
   it('page 参数透传给渲染 bridge（缺省仍为 1）', async () => {

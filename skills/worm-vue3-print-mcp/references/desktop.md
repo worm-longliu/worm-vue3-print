@@ -25,6 +25,8 @@
 
 纯计算工具只接收内存中的参数和 `templateJson`，不读取本地模板文件、不访问渲染服务。会话工具读写的是仍打开且已签到的页面；页面关闭或客户端退出后会话失效，不落盘。
 
+视觉回读与比对（`print_preview_template`、`print_compare_with_reference`）在客户端本地渲染，结果不上传，但模板里引用的远程图片/字体 URL 与 `file://` 资源会由渲染内核真实取回，注解为 `openWorldHint: true`——宿主需要把这视为可能触网的只读操作。`print_analyze_reference_image` 只按绝对路径读本地图片，不访问网络。
+
 ## 浏览器接入要点
 
 - `template.get` 返回当前模板、字段、打印数据、模板名称和根据当前内容计算的 revision。

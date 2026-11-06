@@ -6,6 +6,12 @@
 > 下述 doc-a4 / doc-a5 / receipt-80mm / label-60x40 / label-40x30 / waybill-100x150 六类骨架，
 > 坐标与安全线由配方保证。本篇数值供长尾场景手排时参考。
 
+> **preset 的几何保证只针对该配方的默认纸张**：如果在 preset 之上覆盖 `paperSize`、`orientation`
+> 或 `margins`（例如把 80mm 小票配方改成 58mm，或把标签配方扩到别的规格），条码/二维码等
+> 固定坐标元素不会自动缩放，可能落到纸外或相互重叠。此时必须逐条检查 `print_draft_template`
+> 返回的 `issues`（`OUT_OF_PAPER` 为 error，出纸会被裁），必要时再跑 `print_inspect_layout`
+> 与 `print_preview_template` 确认，不要假定 preset 的坐标在新纸上仍然安全。
+
 ## 通用排版流程
 
 1. **定纸**：按场景选 `paperSize`（纸张表见 template-schema.md §3）

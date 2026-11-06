@@ -60,7 +60,7 @@ AI Agent
 | `print_apply_open_template` | 否 | 防冲突、校验后整份写回，应要求用户批准 |
 | `print_compare_with_reference` | 是 | 渲染结果与参考图逐线比对（位置与线长），输出偏差、多余与缺失的线 |
 
-纯计算工具不读写本地文件、不访问外部服务（预览渲染在桌面客户端本地出图，也不出网）。真实分页、自动行高、长文本换行与 PDF 效果由设计器或打印预览确认，不属于 MCP 的返回结论。
+纯计算工具与会话工具不读写本地文件、不访问外部服务。`print_analyze_reference_image` 只按绝对路径读本地图片。`print_preview_template` 与 `print_compare_with_reference` 在桌面客户端本地出图，本身不上传数据，但**模板内引用的远程图片/字体 URL 与 `file://` 资源会由渲染内核真实取回**，因此两者注解为 `openWorldHint: true`（仍是 `readOnlyHint: true`、`destructiveHint: false`）：宿主应把它们当作可能产生外部访问的只读操作，必要时征求用户批准。真实分页、自动行高、长文本换行与 PDF 效果由设计器或打印预览确认，不属于 MCP 的返回结论。
 
 ## 四、模板契约要点
 
