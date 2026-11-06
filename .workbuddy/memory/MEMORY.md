@@ -15,6 +15,7 @@
 - canvas 依赖 core 的 **dist**：改了 core 源码后必须先构建 core，否则 canvas 的测试与运行看到的还是旧的 core。
 - Electron 客户端（clients/print-client）同样依赖 core 的 dist，且走的是 `@worm-vue3-print/core/client` 子路径（不是主入口）。2026-09-21 就踩过：`src/client` 已写好、`package.json` 的 exports 也已声明，但 dist 停留在旧构建 → 启动报 `ERR_MODULE_NOT_FOUND: .../core/dist/client/index.js`。新增或改动任何 core 子入口后务必重建。
 - 修复该错的标准动作：`mv dist /tmp/...` 备份，然后 `CODEBUDDY_SAFE_DELETE_ENABLED=0 npm run build -w @worm-vue3-print/core`。验收货用 `node -e "import('@worm-vue3-print/core/client')"` 在 `clients/print-client` 目录下解析三个子路径。
+- `npm test` 一次跑全部 workspace 会被信号杀掉（exit 137 / SIGTERM），且经 `| tail` 后输出全丢、看不出进度。稳定做法：逐 workspace 单独跑并各自重定向日志（core≈2.6min、canvas≈8.7min、common≈4min，其余均 <30s），必要时 `run_in_background`。
 
 ## 表格「多级表头」重复语义（2026-09-20 定下的约定）
 
@@ -31,8 +32,11 @@
 - 静默打印浏览器端 SDK 在 core 子路径 **`@worm-vue3-print/core/client`**（源码 `packages/print-core/src/client/`），不存在独立 `@worm-vue3-print/client` 包（0.1.0 从未发布）。
 - demo 线上预览：GitHub Pages `https://worm-longliu.github.io/worm-vue3-print/`，工作流 `.github/workflows/pages.yml`；EdgeOne 读根 `edgeone.json`。
 
-## MCP 工具集（桌面端实际可用 6 个）
+## MCP 工具集（PR #12 合并后：基础 11 个 + 条件注入 1 个）
 
+- `print_preview_template` 走 `createRenderTools`（`render-tools.ts`），**不在基础 `TOOLS` 里**，需渲染服务配置（`PRINT_RENDER_BASE_URL` + key）才注册；`render-tools.test.ts` 有断言把这条隔离关系钉住。即旧记忆里「桌面端排除 `print_render_preview`」的意图仍在，只是机制从 blocklist 改成了「不进基础列表 + 条件注入」。
+- 新增视觉/测量两件：`print_analyze_reference_image`、`print_compare_with_reference`（`image-tools.ts` + `image-analysis.ts` 几何分析）。README 与连接提示词改称 12 个工具。
+- 旧的 `packages/print-mcp/src/desktop-tools.ts` 与 `DESKTOP_BLOCKED_TOOL_NAMES` 已不存在于仓库，别再按那个名字找桌面端屏蔽逻辑；要看桌面端实际可见集合，直接看基础 `TOOLS` 与 `createRenderTools` 的注入条件。
 - 会话三件：`print_list_open_templates` / `print_get_open_template` / `print_apply_open_template`（实现在 `packages/print-mcp/src/template-session-tools.ts`）。
 - 纯计算五件：`print_element_kinds` / `print_validate_template` / `print_check_expression` / `print_inspect_layout` / `print_draft_template`（`packages/print-mcp/src/tools.ts`）。
 - **`print_render_preview` 在桌面端被排除**（`desktop-tools.ts` 的 `DESKTOP_BLOCKED_TOOL_NAMES`），且需 `PRINT_RENDER_BASE_URL` + `RENDER_API_KEY`；查不到它是设计如此，真实分页只能让用户在设计器预览。
