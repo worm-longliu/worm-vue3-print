@@ -70,12 +70,14 @@ npm run build -w @worm-vue3-print/print-client # electron-vite 三环境构建�
 
 ## 打包
 
-### 安装包（macOS 上交叉打包 mac + win）
+### 安装包（按平台）
 
 macOS 上可同时产出 **Intel 与 Apple Silicon 两份 mac 安装包**与**交叉构建的 Windows 安装包**（`win.nsis` 目标）。要构建的架构由 `electron-builder.yml` 的 `mac.target.arch` 声明，命令行无需指定；Linux 三类安装包走 Docker 容器，见下一节：
 
 ```bash
 npm run pack:client          # 只产出安装包（先构建 core 与 client 的 dist）
+npm run pack:client:mac      # 只构建 macOS（Intel + Apple Silicon）
+npm run pack:client:win      # 只构建 Windows x64 NSIS（可在 macOS 交叉构建）
 npm run pack:client:release  # 额外生成 SHA256SUMS.txt 并打印发行版附件上传命令
 ```
 
@@ -113,6 +115,14 @@ deb / rpm / AppImage 三类 Linux 安装包统一在容器里出，命令一条�
 
 ```bash
 npm run pack:client:linux
+```
+
+如果直接在原生 Linux 主机上构建，需先安装 Node.js、`rpm`/`rpmbuild` 以及 electron-builder 所需的 Linux 打包工具，然后执行：
+
+```bash
+npm ci
+npm run build
+npm run pack:client:linux:native
 ```
 
 - 为什么要容器：`rpm` 目标要调用 `rpmbuild`，宿主 macOS 没有这个可执行文件。`deb` 与 `AppImage` 实测可在 macOS 直接交叉产出，但三类产物同源同环境，口径不分叉。
