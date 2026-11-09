@@ -2,6 +2,12 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## 未发布
+
+### 修复
+
+- **macOS/Safari 下表格单元格右键菜单难以唤醒**（GitHub issue #6）。macOS 的 `contextmenu` 先于同一次右键的 `mouseup` 派发，表格菜单又在 `contextmenu` 里同步挂 `mouseup` 关闭监听，WebKit/Safari 下菜单尚未进入命中测试就被当作外点移除；Chrome 仅因菜单先绘制到指针下方而未暴露。现改为与画布元素菜单一致的外点关闭口径：`mousedown` + 菜单渲染后绑定，菜单根 `@mousedown.stop` 保证菜单项点击不受影响。实测 WebKit 快速右键驻留 0/20 → 5/5，Chrome 5/5；菜单项点击、外点关闭与菜单内按下均正常。
+
 ## V1.4.7(2026-11-09)
 
 > **正式版**：本版以 dist-tag `latest` 发布到 npm（`@worm-vue3-print/core` / `canvas` / `common` / `skills` 的 `1.4.7`）。GitHub Release 标记为正式版（Prerelease=false），并重新提供全平台客户端安装包。`@worm-vue3-print/common` 仍为实验性质，不建议用于生产。
