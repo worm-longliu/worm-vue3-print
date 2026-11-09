@@ -108,8 +108,11 @@ describe('元素四向外边距真实 PDF 几何', () => {
     const yOverlap = a.transform[5] < b.transform[5] + b.height && b.transform[5] < a.transform[5] + a.height
     expect(xOverlap).toBe(true)
     expect(yOverlap).toBe(true)
-    expect(prepared.html).toContain('height:8mm;z-index:1;">OVERLAP')
-    expect(prepared.html).toContain('height:8mm;z-index:2;margin-top:-2mm;margin-left:-8mm;">OVERLAP')
+    // style 与内容之间可能插入 data-element-id 等属性，属性顺序不是契约
+    expect(prepared.html).toMatch(/height:8mm;z-index:1;"[^>]*>OVERLAP/)
+    expect(prepared.html).toMatch(/height:8mm;z-index:2;margin-top:-2mm;margin-left:-8mm;"[^>]*>OVERLAP/)
+    expect(prepared.html).toContain('data-element-id="a"')
+    expect(prepared.html).toContain('data-element-id="b"')
   }, 120000)
 
   it('表格末页跟随备注保留自身边距并位于最后商品之下', async () => {

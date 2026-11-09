@@ -2,6 +2,42 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## V1.4.7(2026-11-09)
+
+> **正式版**：本版以 dist-tag `latest` 发布到 npm（`@worm-vue3-print/core` / `canvas` / `common` / `skills` 的 `1.4.7`）。GitHub Release 标记为正式版（Prerelease=false），并重新提供全平台客户端安装包。`@worm-vue3-print/common` 仍为实验性质，不建议用于生产。
+
+### 新增
+
+- **MCP 视觉回验链路：工具由 9 个增至 12 个**。此前 AI 只能「盲写」模板——写回画布前看不到出纸效果，版式对齐、密度、留白、溢出与条码清晰度全靠推断。现在新增三个工具：`print_preview_template` 走客户端完整渲染管线（测量 → 分页 → 出纸）把模板渲染成单页 PNG 返回给模型自评，长文本换行、表格分页、页眉页脚重复都是真实效果，多页模板用 `page` 参数逐页看，只读不写、不落画布；`print_analyze_reference_image` 读取本地参考设计稿，输出内容区、竖横线、文本行与表格候选的像素与归一化坐标，给出 `dpi` 或 `paper` 时附毫米层；`print_compare_with_reference` 把渲染结果与参考图各自按内容区归一化后逐线比对位置与起止范围，返回 `pass` / `fail` / `inconclusive` 三态。三个工具在桌面客户端启用 MCP 后**无条件注册**，不需要额外配置渲染服务——预览走客户端本地管线与隐藏窗口。
+- **6 个版式 preset 供起草直接选用**：`doc-a4`、`doc-a5`、`receipt-80mm`、`label-60x40`、`label-40x30`、`waybill-100x150`。表格列宽跟随最终内容宽等比缩放、末列吸收舍入误差，固定纸底边留 2mm 安全线。**几何保证仅限 preset 默认纸张**：覆盖纸型或边距后，条码等按固定坐标摆放的元素不会跟着缩放，可能落到纸外，需自行复核。
+- **桌面客户端设置页「AI 助手」新增 Agent 接入提示词**：按场景（实时模板编辑 / Vue 3 项目接入 / Common 项目接入）生成可直接复制的提示词，内含真实 MCP URL 与 Bearer token 的 `mcpServers` JSON、`npx @worm-vue3-print/skills` 技能安装命令与 Gitee 镜像备用命令、以及执行要求。token 属敏感凭据，界面已提示勿外发。
+- **元素级表格默认边框 `tableDefaultBorders`**。整表统一网格此前必须逐格重复声明 `borders`。现在表格元素上写一次 `tableDefaultBorders` 即作为全部单元格的继承基线，**四边可分别缺省**：单元格自身声明优先，缺的那边继承元素级默认，两边都没有才为 `none`。未声明该字段的旧模板出纸逐字不变。
+- **core 浏览器端新增 `readElementRects`**（`@worm-vue3-print/core/browser`）：按页读取每个元素的实际渲染包围盒，返回 `zone`（`content` / `header` / `footer`）与相对所属区域左上角的 `topMm`。同 ID 嵌套只取最内层，既有测量与分页函数未改动。
+- **客户端打包脚本按平台拆分**：新增 `pack:client:prepare`（core → contract → mcp → print-client 的公共前置构建）、`pack:client:mac`（Intel + Apple Silicon）、`pack:client:win`（x64 NSIS，可在 macOS 交叉构建）、`pack:client:linux:native`（原生 Linux，需自备 `rpm` / `rpmbuild`）；`pack:client`、`pack:client:linux`、`pack:client:release` 改为复用同一前置。产物内容与目标平台不变，维护者可按平台单跑。
+
+### 修复
+
+- **逐页截取时页码表达式不再失真为 1**。`generateHtml` 新增 `totalPageCount` 入参：只生成单页 HTML 的场景（如客户端预览按页取图）此前 `totalPages` 取当前批次的页数，模板里的 `{totalPages}` 恒为 1；现在可传入真实总页数，并显式下传到最终趟渲染。未传该入参时行为不变。
+- **预览按元素 ID 收集包围盒不再重复计数**。最终趟输出的元素现在带 `data-element-id`（测量趟仍带 `data-measure-id`）；表格内部 `<table>` 自带该标识，外层 `div` 不再重复带，避免同一元素被收集两次。视觉呈现不变，输出 HTML 的属性有变化。
+- **零框架宿主滚动后标尺错位与视口跳顶**（GitHub PR #13）。`common` 的 paint 每次整树重建子树，必然丢掉 `.canvas-area` 的滚动位置；标尺测量又在 origin 上叠加了一次 `scrollPos`，导致滚动后标尺与内容错位。现在 paint 后按 `scrollPos` 恢复滚动、标尺测量去掉叠加（与 Vue3 画布同口径）、`applyZoom` 同步记账、`onScroll` 定点更新标尺浮层 transform。**Vue3 画布（`canvas`）实现零改动**——它由 Vue 响应式与常驻 DOM 天然满足这四处口径，本版只补齐滚动位置保持、浮层平移补偿与 origin 不叠加的回归用例。
+- **空 spec 起草不再静默出白纸**：`draft` 传入空规格时此前返回一份没有任何元素的模板，渲染出白纸且无提示；现在直接报 error。
+- **正确写法不再被误报未知键**：契约元数据补登记 `showBarcodeText` 与 `tableDefaultBorders`，此前这两个键的正确写法会触发「未知键」warning。同时补齐元素级 `showBarcodeText` 的 TypeScript 声明（单元格级早已存在、元素级运行时也已支持，仅类型未声明；与 `hideTitle` 等价且 `hideTitle` 优先）。
+
+### 变更
+
+- **MCP 工具数量口径统一为 12 个，其中 4 个读写画布**（`print_list_open_templates` / `print_get_open_template` / `print_patch_open_template` / `print_apply_open_template`）。客户端设置页提示词、客户端 README、MCP 集成指南、AI 接入指南与技能文档全部同步，旧的「9 个工具」口径不再出现。
+- **渲染类工具如实声明 `openWorldHint: true`**：预览与比对在宿主内真实渲染，模板引用的远程图片/字体可能触发网络请求或读取本地文件，宿主应就此征求用户批准。技能文档删除了「真实页数与换行不属于 MCP 工具结果」的旧口径，改为预览可见真实分页、但仍需在设计器或打印预览中最终确认。
+- **契约体检新增两个 warning 码**：`BACKGROUND_NOT_PAGEABLE`（占版面 ≥80% 的装饰元素未声明不可分页）与 `BARCODE_MISSING_BAR_HEIGHT`（条码未显式给 `barHeight`，实际条高可能与元素高不一致）。两者不影响 `ok` 判定。起草时新草稿里占版面 ≥80% 的装饰元素会自动补 `pagination.pageable=false`，作者显式配置的值仍被尊重。
+
+### 已知限制
+
+- 参考图比对**只覆盖线条**，不比对文字内容与字体；`inconclusive` 表示判据不足，**不代表通过**。任一方检不出线条、内容区置信度低、宽高比偏差 >2%、或整版平移超容差时都会判 `inconclusive`。
+- `diffMmApprox` 按纸张尺寸而非内容区换算，是近似值，仅供量级判断；线长匹配用贪心最近邻，密集双线场景可能低估偏差，但不会把 `fail` 误判成 `pass`。
+- 参考图无闭合外框时内容区退化为整图、置信度为 low，整版平移保护不生效；长边 <300px 的小图可能漏检。
+- 参考图硬上限：PNG / JPEG / BMP / WebP，≤20MiB、长边 ≤4000px、总像素 ≤2000 万；尺寸在解码前由容器头预检拦截。WebP 头解析只覆盖常见 VP8X / VP8L / VP8 子块。
+- 预览与比对渲染总预算 20s，采用单截止时间；串行门禁的排队时间不计入该预算（设计取舍）。
+- 零框架宿主的标尺厚度常量 `RULER_THICK=20` 与 core 的 `RULER_THICKNESS=22` 仍差 2px，本版未处理且被回归用例固化；属性台 pane 的同类滚动丢失另算。
+
 ## V1.4.6(2026-11-05)
 
 > **正式版**：本版以 dist-tag `latest` 发布到 npm（`@worm-vue3-print/core` / `canvas` / `common` / `skills` 的 `1.4.6`）。GitHub Release 标记为正式版（Prerelease=false），并重新提供全平台客户端安装包。`@worm-vue3-print/common` 仍为实验性质，不建议用于生产。
