@@ -116,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, inject, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import type { RuntimeElement, TableRow, TableCell, TableRowType } from '@worm-vue3-print/core/designer'
 import {
   normalizeSelection, canMergeReason, mergeCells, splitCells, findMainCell,
@@ -401,16 +401,25 @@ function onCellContextMenu(r: number, c: number, e: MouseEvent) {
   menu.x = e.clientX
   menu.y = e.clientY
   menu.visible = true
-  // 用 mouseup 而非 mousedown 关闭：mousedown 时 Teleport 菜单被移除，
-  // 菜单项的 click 派发不到（表格右键菜单全部失效）
-  window.removeEventListener('mouseup', closeMenuOnOutsideMouseup)
-  window.addEventListener('mouseup', closeMenuOnOutsideMouseup)
+  // 外点关闭用 mousedown（菜单根 @mousedown.stop，菜单内按下不会冒泡到 window，
+  // 菜单项 click 正常派发）。不能在 contextmenu 里同步挂 mouseup：macOS/WebKit
+  // 的 contextmenu 先于同一次右键的 mouseup，此时菜单尚未进入命中测试，松手会被
+  // 当作外点把菜单移除（Safari 下必现「右键很难唤醒」）。本次手势的 mousedown
+  // 已派发完毕，延后到菜单渲染后再绑不会误关。
+  window.removeEventListener('mousedown', closeMenuOnOutsideMousedown)
+  void nextTick(() => {
+    window.addEventListener('mousedown', closeMenuOnOutsideMousedown)
+  })
 }
 
-function closeMenuOnOutsideMouseup(e: MouseEvent) {
-  if ((e.target as HTMLElement | null)?.closest?.('.table-ctx-menu')) return // 菜单内抬起：由菜单项 click 负责关闭
+function closeMenuOnOutsideMousedown(e: MouseEvent) {
+  if ((e.target as HTMLElement | null)?.closest?.('.table-ctx-menu')) return
+  closeMenu()
+}
+
+function closeMenu() {
   menu.visible = false
-  window.removeEventListener('mouseup', closeMenuOnOutsideMouseup)
+  window.removeEventListener('mousedown', closeMenuOnOutsideMousedown)
 }
 
 const mergeReason = computed(() => {
@@ -474,7 +483,7 @@ function checkColWidthLimit(cw: number[], index: number): string | null {
 function onMenuAction(name: string, payload?: string) {
   const s = selection.value
   if (!s) return
-  menu.visible = false
+  closeMenu()
   const o = props.element.options
   const rs = o.tableRows!
   const cw = o.tableColWidths!
@@ -574,6 +583,7 @@ function onColResizeEnd() {
 onUnmounted(() => {
   document.removeEventListener('mousemove', onColResizeMove)
   document.removeEventListener('mouseup', onColResizeEnd)
+  window.removeEventListener('mousedown', closeMenuOnOutsideMousedown)
 })
 </script>
 

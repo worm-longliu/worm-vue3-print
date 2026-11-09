@@ -1,5 +1,5 @@
 // web/src/components/print/__tests__/TableElement.spec.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick, reactive, ref } from 'vue'
 
@@ -491,8 +491,17 @@ describe('TableElement 右键菜单', () => {
         },
       },
     })
+    activeWrapper = wrapper
     return { wrapper, element, tableSelection, selectedIds, recordHistory }
   }
+
+  // 菜单打开时挂有 window 级关闭监听，用例结束必须卸载，否则残留监听会在
+  // 后续用例的外点 mousedown 上触发已手工移除的 Teleport 节点重建而报错
+  let activeWrapper: ReturnType<typeof mount> | null = null
+  afterEach(() => {
+    activeWrapper?.unmount()
+    activeWrapper = null
+  })
 
   // 菜单经 Teleport 挂到 body：用 document 查询，并在每个用例前清理残留节点
   beforeEach(() => {
@@ -531,6 +540,30 @@ describe('TableElement 右键菜单', () => {
     expect(document.querySelector('.table-ctx-menu')).toBeTruthy()
     expect(tableSelection.value).toMatchObject({ r1: 1, c1: 1, r2: 1, c2: 1 })
     expect(selectedIds.value).toEqual(new Set(['el-table']))
+  })
+
+  // macOS/WebKit 的 contextmenu 先于同一次右键的 mouseup；若在 mouseup 关闭，
+  // 菜单尚未进入命中测试就被当作外点移除，Safari 下表现为「右键很难唤醒」
+  it('同一次右键的 mouseup 不关闭菜单', async () => {
+    const { wrapper } = mountMenuTable()
+    await openMenu(wrapper, 0, 0)
+    await nextTick()
+    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 2 }))
+    await nextTick()
+    expect(document.querySelector('.table-ctx-menu')).toBeTruthy()
+  })
+
+  it('外部 mousedown 关闭菜单，菜单内 mousedown 不关闭', async () => {
+    const { wrapper } = mountMenuTable()
+    await openMenu(wrapper, 0, 0)
+    await nextTick() // 等关闭监听绑定
+    const menuEl = document.querySelector('.table-ctx-menu')!
+    menuEl.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    await nextTick()
+    expect(document.querySelector('.table-ctx-menu')).toBeTruthy()
+    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    await nextTick()
+    expect(document.querySelector('.table-ctx-menu')).toBeFalsy()
   })
 
   it('在上方/下方插入行', async () => {
