@@ -2,7 +2,9 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
-## 未发布
+## V1.4.8(2026-11-11)
+
+> **修复版**：本版以 dist-tag `latest` 发布到 npm（`@worm-vue3-print/core` / `canvas` / `common` / `skills` 的 `1.4.8`）。仅修复 macOS/Safari 下表格单元格右键菜单，core 出纸层无改动，因此 `v1.4.7` 的全平台客户端安装包继续沿用、仍可下载。`@worm-vue3-print/common` 仍为实验性质，不建议用于生产。
 
 ### 修复
 

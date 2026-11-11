@@ -3,6 +3,13 @@ export default {
   id: 'changelog',
   title: '更新记录',
   content: `
+<h2>V1.4.8<small>(2026-11-11)</small></h2>
+
+<h3>修复</h3>
+<ul>
+  <li><strong>macOS / Safari 下表格单元格右键菜单难以唤醒</strong>：表格菜单此前在 <code>contextmenu</code> 里同步挂了 <code>mouseup</code> 关闭监听，而 macOS 的 <code>contextmenu</code> 先于同一次右键的 <code>mouseup</code> 派发，WebKit/Safari 下菜单还没进入命中测试就被当成外点移除（Chrome 因菜单先绘制到指针下方而没暴露）。现已改为与画布元素菜单一致的外点关闭口径（<code>mousedown</code> + 菜单渲染后绑定，菜单根 <code>@mousedown.stop</code> 保证菜单项点击不受影响）；菜单项点击、外点关闭与菜单内按下均已恢复正常。</li>
+</ul>
+
 <h2>V1.4.7<small>(2026-11-09)</small></h2>
 
 <h3>新增</h3>

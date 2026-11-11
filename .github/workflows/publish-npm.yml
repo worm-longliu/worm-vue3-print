@@ -2,7 +2,7 @@ name: Publish npm
 
 # 仅手动触发：推 tag 不会自动发布。
 # 触发：Actions → Publish npm → Run workflow，或
-#   gh workflow run publish-npm.yml -f tag=v1.4.7 -f dry_run=true -f publish_skills=true
+#   gh workflow run publish-npm.yml -f tag=v1.4.8 -f dry_run=true -f publish_skills=true
 # 首次验证用 dry_run=true；确认无误后再用 dry_run=false 真正上传。
 # 若之后建好 npm-publish 环境并加入同名环境密钥，给 job 加 environment: npm-publish 即可，
 # 环境密钥会覆盖仓库级 NPM_TOKEN，无需改发布步骤。
