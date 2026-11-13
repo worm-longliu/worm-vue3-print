@@ -25,6 +25,7 @@ import { COMPREHENSIVE_SHOWCASE_SAMPLE } from './comprehensive-showcase'
 import { PAGINATION_EDGE_SAMPLE } from './pagination-edge'
 import { TEXT_WRAP_FOLLOW_SAMPLE } from './text-wrap-follow'
 import { PAYMENT_REQUEST_SAMPLE } from './payment-request'
+import { SALES_CHART_SAMPLE } from './sales-chart'
 
 export type { SampleTemplate, SampleGroup }
 
@@ -38,6 +39,7 @@ export const SAMPLE_TEMPLATES: SampleTemplate[] = [
   COMPREHENSIVE_SHOWCASE_SAMPLE,
   PAGINATION_EDGE_SAMPLE,
   TEXT_WRAP_FOLLOW_SAMPLE,
+  SALES_CHART_SAMPLE,
   WEIGHT_LABEL_SAMPLE,
   PRICE_LABEL_SAMPLE,
   ASSET_TAG_SAMPLE,

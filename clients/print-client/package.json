@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@worm-vue3-print/core": "*",
+    "@worm-vue3-print/echarts": "^1.4.8",
     "@worm-vue3-print/mcp": "*",
     "ws": "^8.18.0"
   },

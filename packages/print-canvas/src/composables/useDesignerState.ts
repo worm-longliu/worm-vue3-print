@@ -6,6 +6,7 @@ import type {
   TableSelection, PrintElementData, MultiPageTemplateData,
 } from '@worm-vue3-print/core/designer'
 import { createRuntimeElement, generateId } from '@worm-vue3-print/core/designer'
+import { getElementExtension } from './useElementExtensionRegistry'
 import { createFieldElement, createFieldLabelElement } from '@worm-vue3-print/core/designer'
 import { normalizeTemplateUnits } from '@worm-vue3-print/core/designer'
 import { syncTableElementSize } from '@worm-vue3-print/core/designer'
@@ -417,7 +418,9 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
   }
 
   function addElement(type: string, dropPoint?: { x: number; y: number }) {
-    const el = createRuntimeElement(type as ElementType)
+    // 扩展元素可覆盖默认选项（内置类型无扩展注册时走 core 工厂默认值）
+    const extensionOptions = getElementExtension(type)?.defaultOptions?.()
+    const el = createRuntimeElement(type as ElementType, extensionOptions)
     if (dropPoint && !placeAtDropPoint(el, dropPoint)) return
     elements.value.push(el)
     select(el.id, false)

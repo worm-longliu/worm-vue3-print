@@ -226,6 +226,19 @@ export const PROPERTY_REGISTRY: PropertyGroupDef[] = [
       { key: 'ad-delete', keywords: ['删除'] },
     ],
   },
+  {
+    // 图表分组由可选包 @worm-vue3-print/echarts 的设计器扩展渲染；
+    // 未安装该包时分组不出现（扩展本身也未注册），此处仅为搜索关键词兜底
+    group: 'chart',
+    groupLabel: '图表',
+    items: [
+      { key: 'ch-chart-option', keywords: ['图表', 'echarts', 'option', '配置', 'json'] },
+      { key: 'ch-chart-data-source', keywords: ['数据源', 'datasource', '数组', '列表'] },
+      { key: 'ch-chart-category', keywords: ['类目', '分类', 'category', 'x 轴'] },
+      { key: 'ch-chart-values', keywords: ['数值', '字段', 'value', '系列'] },
+      { key: 'ch-chart-series', keywords: ['系列', '分组', 'series'] },
+    ],
+  },
 ]
 
 /** 正向包含匹配：任一关键词包含搜索词即命中；空搜索恒命中 */

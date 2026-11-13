@@ -11,7 +11,7 @@ files:
   - package.json
   # 运行时取窗口/托盘图标用（app-icon.ts 按 out/main → ../../build 解析），保证与安装包图形一致
   - build/icon.png
-# workspace 依赖（@worm-vue3-print/core）与 ws
+# workspace 依赖（@worm-vue3-print/core、@worm-vue3-print/echarts 及其 echarts 依赖）与 ws
 # 由 electron-builder 从各自 dist 收集进 asar；打包脚本会先构建它们。
 asar: true
 # 产物名固定带平台与架构，便于直接作为发行版附件下载（否则同名文件会互相覆盖）

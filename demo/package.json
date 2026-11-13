@@ -12,6 +12,7 @@
   "dependencies": {
     "@worm-vue3-print/canvas": "file:../packages/print-canvas",
     "@worm-vue3-print/core": "file:../packages/print-core",
+    "@worm-vue3-print/echarts": "file:../packages/print-echarts",
     "dompurify": "^3.4.12",
     "jsbarcode": "^3.12.3",
     "lucide-vue-next": "^0.577.0",

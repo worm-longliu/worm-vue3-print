@@ -37,7 +37,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import type { PrintTemplateData } from '@worm-vue3-print/core'
+import type { ChartRenderer, PrintTemplateData } from '@worm-vue3-print/core'
 import { collectLayoutWarnings } from '@worm-vue3-print/core'
 import { renderHtmlPages } from '@worm-vue3-print/core/browser'
 import { browserCodeRenderer } from '@worm-vue3-print/core/browser'
@@ -59,6 +59,11 @@ const props = defineProps<{
    * 字体与页面不同源时（如字体放 CDN）传绝对基址。
    */
   fontBaseUrl?: string
+  /**
+   * 图表渲染器（可选）：装了 ECharts 图表扩展包的宿主传 `chartRenderer`，
+   * 预览即可出图；未传时由渲染管线降级为占位，不阻断其余内容预览。
+   */
+  chartRenderer?: ChartRenderer
 }>()
 
 const emit = defineEmits<{
@@ -123,7 +128,7 @@ async function rerender() {
       props.printData,
       props.baseUrl,
       browserCodeRenderer,
-      { fontBaseUrl: props.fontBaseUrl },
+      { fontBaseUrl: props.fontBaseUrl, chartRenderer: props.chartRenderer },
     )
     if (seq !== renderSeq) return
     warnings.value = collectLayoutWarnings(pageLayouts ?? [])
@@ -156,7 +161,7 @@ function print() {
 }
 
 watch(
-  () => [props.templateJson, props.printData, props.baseUrl, props.fontBaseUrl],
+  () => [props.templateJson, props.printData, props.baseUrl, props.fontBaseUrl, props.chartRenderer],
   () => void rerender(),
   { immediate: true, deep: true },
 )

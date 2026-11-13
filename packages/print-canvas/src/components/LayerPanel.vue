@@ -76,10 +76,15 @@ const elementIconMap: Record<string, string> = {
   rect: '□',
   oval: '○',
   html: '<>',
+  // 图表：渲染实现由可选包提供，未装包时元素仍在画布/图层中（占位），图标不能落到兜底
+  chart: '▤',
 }
 
+/** 未登记类型的通用图标（如第三方注册了 canvas 主包未内置图标的元素），避免显示 '?' */
+const GENERIC_LAYER_ICON = '◆'
+
 function layerIcon(el: RuntimeElement): string {
-  return elementIconMap[el.printElementType.type] || '?'
+  return elementIconMap[el.printElementType.type] ?? GENERIC_LAYER_ICON
 }
 
 function layerName(el: RuntimeElement): string {

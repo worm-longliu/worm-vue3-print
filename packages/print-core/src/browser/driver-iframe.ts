@@ -31,7 +31,16 @@ export function createIframeDriverFactory(): DriverFactory {
           // 进程内直调 domExecutor，无需注入
         },
         async evaluate<T>(method: ExecutorMethod, args?: unknown[]): Promise<T> {
-          const fn = domExecutor[method] as (...fnArgs: unknown[]) => unknown
+          if (method === 'renderCharts') {
+            // 图表执行器为可选包产物（ECharts），iframe 预览不注入；
+            // 未传 job.chartRenderer 时由宿主显式降级，这里给出明确错误
+            const holder = ((iframe.contentWindow as unknown as Record<string, any> | null)?.__wormDom
+              ?? (globalThis as Record<string, any>).__wormDom) as Record<string, unknown> | undefined
+            const fn = holder?.renderCharts
+            if (typeof fn !== 'function') throw new Error('图表执行器未注入（浏览器预览请传入 chartRenderer）')
+            return (fn as (...fnArgs: unknown[]) => unknown)(...(args ?? [])) as T
+          }
+          const fn = domExecutor[method as Exclude<ExecutorMethod, 'renderCharts'>] as (...fnArgs: unknown[]) => unknown
           const payload = args ?? []
           const target = EXECUTOR_TARGETS[method]
           if (target === 'window') return fn(iframe.contentWindow as Window, ...payload) as T

@@ -9,6 +9,7 @@ import type {
   RenderRow,
   RenderCell,
   CodeRenderer,
+  ChartRenderer,
 } from './types.js'
 import { escapeInlineStyleValue, toFontFamilyStack } from '../print/fonts.js'
 import { getPaperDimensions, isContinuousPaper, getOutputRotationAngle } from './types.js'
@@ -50,10 +51,13 @@ import { splittableDesignBottom } from './pagination-engine.js'
 import { buildMergeOverlay } from './row-merge.js'
 import { barcodeAvailableBoxMm } from './barcode-dot.js'
 import { resolveElementRotation } from './rotation.js'
+import { chartSpecKey } from './chart-spec.js'
 
 /** 渲染上下文：贯穿两遍渲染的可选依赖 */
 export interface RenderCtx {
   codeRenderer?: CodeRenderer
+  /** 图表 SVG 渲染器；缺省或渲染抛错时降级为占位文本 */
+  chartRenderer?: ChartRenderer
   /** 连续纸探针推导出的最终纸高（mm）；水印网格与 @page 必须同源 */
   pageHeightMm?: number
   /** 本页页码上下文：绑定阶段页码未知，最终趟据此对引用页码的表达式求值 */
@@ -83,6 +87,8 @@ export interface GenerateOptions {
   isMeasurementPass?: boolean
   /** 条码/二维码 SVG 渲染器；缺省或渲染抛错时降级为文本占位 */
   codeRenderer?: CodeRenderer
+  /** 图表 SVG 渲染器；缺省或渲染抛错时降级为占位 */
+  chartRenderer?: ChartRenderer
   /** 连续纸探针推导出的最终纸高（mm）；仅最终生成时传入，使 @page/.print-page/footer 对齐 */
   pageHeightMm?: number
   /** 实际总页数：逐页截取场景只生成单页 HTML 时传真实值，避免页码表达式 {totalPages} 失真为 1 */
@@ -107,6 +113,7 @@ export function generateHtml(
   const totalPages = isMeasure ? 1 : (options?.totalPageCount ?? pageLayouts.length)
   const ctx: RenderCtx = {
     codeRenderer: options?.codeRenderer,
+    chartRenderer: options?.chartRenderer,
     pageHeightMm: options?.pageHeightMm,
   }
 
@@ -549,6 +556,28 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
     }
     case 'html':
       return `<div class="print-element" style="${style}"${measureAttr}>${opts.testData ?? opts.title ?? ''}</div>`
+    case 'chart': {
+      // 图表 option 来自绑定阶段的运行时产物（_chartOption）；无渲染器/无 option 时降级占位，
+      // 与码制「缺渲染器即文本占位」同口径，保证三端缺可选包时不出空白纸
+      const option = (opts._chartOption ?? opts.chartOption) as Record<string, unknown> | undefined
+      const chartHeightMm = fitHeight ?? height ?? 0
+      const placeholder = `<span>${esc(String(opts.title ?? '图表'))}</span>`
+      if (!option || !ctx?.chartRenderer) {
+        return `<div class="print-element" style="${style}"${measureAttr}>${placeholder}</div>`
+      }
+      try {
+        const spec = {
+          option,
+          widthMm: width,
+          heightMm: chartHeightMm,
+          fontFamily: opts.fontFamily,
+        }
+        const svg = ctx.chartRenderer.render({ ...spec, key: chartSpecKey(spec) })
+        return `<div class="print-element" style="${style}"${measureAttr}>${svg}</div>`
+      } catch {
+        return `<div class="print-element" style="${style}"${measureAttr}>${placeholder}</div>`
+      }
+    }
     default:
       // 普通文本（text）与未单列的类型都走这里：判据只在显式打开新档时出声明，缺省逐字不变
       return `<div class="print-element" style="${style}${textStyle(opts)}${whiteSpaceStyle(opts)}${elementFitStyle(fit, opts)}"${measureAttr}${fitAttr}>${esc(opts.formatter ?? opts.testData ?? '')}</div>`

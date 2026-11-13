@@ -8,13 +8,14 @@ import type {
   RawMeasurement,
   ViewportPx,
 } from './types.js'
+import type { ChartSpec } from '../render/types.js'
 import type { FitFontSize } from '../render/text-fit.js'
 
 /**
  * 共享 DOM 宿主 runtime：把「载入 → 注入 → 等就绪 → 执行 → 释放」的时序、
  * 超时预算与错误分类集中实现一次。三端只提供 driver。
  */
-export function createDomHostRuntime(factory: DriverFactory, bundle?: ExecutorBundle): PrintRuntime {
+export function createDomHostRuntime(factory: DriverFactory, bundle?: ExecutorBundle, chartBundle?: ExecutorBundle): PrintRuntime {
   return {
     async withSession<T>(options: SessionBudget, fn: (session: PrintSession) => Promise<T>): Promise<T> {
       const driver = await factory.createDriver()
@@ -29,6 +30,7 @@ export function createDomHostRuntime(factory: DriverFactory, bundle?: ExecutorBu
       ): PrintFailure => toPrintFailure(err, code, context)
 
       let injected = false
+      let chartInjected = false
       const ensureExecutor = async (): Promise<void> => {
         if (injected) return
         if (driver.requiresExecutor === false) {
@@ -39,10 +41,24 @@ export function createDomHostRuntime(factory: DriverFactory, bundle?: ExecutorBu
         await driver.injectExecutor(bundle)
         injected = true
       }
+      // 图表执行器为可选产物：浏览器进程内直调时由 job.chartRenderer 覆盖，不需要注入
+      const ensureChartExecutor = async (): Promise<void> => {
+        if (chartInjected) return
+        if (driver.requiresExecutor === false) {
+          chartInjected = true
+          return
+        }
+        if (!chartBundle) {
+          throw new PrintFailure('UNSUPPORTED_RUNTIME', '缺少图表执行器产物（请安装 @worm-vue3-print/echarts 并传入 chartBundle）')
+        }
+        await driver.injectExecutor(chartBundle)
+        chartInjected = true
+      }
       const load = async (html: string, viewport: ViewportPx): Promise<void> => {
         await driver.open(viewport)
         await driver.setContent(html)
         injected = false
+        chartInjected = false
         await ensureExecutor()
         await driver.evaluate<void>('waitReady', [readinessMs])
       }
@@ -62,6 +78,24 @@ export function createDomHostRuntime(factory: DriverFactory, bundle?: ExecutorBu
               }
             })(),
             ms, 'RENDER_TIMEOUT', `码值渲染超过 ${ms}ms`,
+          )
+        },
+
+        async renderCharts(specs: ChartSpec[]): Promise<Map<string, string>> {
+          if (specs.length === 0) return new Map()
+          const ms = budget()
+          return withTimeout(
+            (async () => {
+              try {
+                await ensureExecutor()
+                await ensureChartExecutor()
+                const map = await driver.evaluate<Record<string, string>>('renderCharts', [specs])
+                return new Map(Object.entries(map))
+              } catch (err) {
+                throw fail(err, 'INTERNAL', '图表渲染失败')
+              }
+            })(),
+            ms, 'RENDER_TIMEOUT', `图表渲染超过 ${ms}ms`,
           )
         },
 

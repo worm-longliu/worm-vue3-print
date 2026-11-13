@@ -3,10 +3,10 @@ import type { ElementType } from '@worm-vue3-print/core/designer'
 import { OPTION_META, OPTION_KEYS } from '../option-meta.js'
 import type { OptionMeta } from '../units.js'
 
-/** 13 种元素类型：与 core `ElementType` 逐字对齐（文件末尾有双向漂移闸门） */
+/** 14 种元素类型：与 core `ElementType` 逐字对齐（文件末尾有双向漂移闸门） */
 export const elementTypeSchema = z.enum([
   'text', 'image', 'longText', 'table', 'flowList', 'hline', 'vline', 'rect', 'oval',
-  'barcode', 'qrcode', 'html', 'pageNumber',
+  'barcode', 'qrcode', 'html', 'pageNumber', 'chart',
 ])
 
 // 方向一：本包不得出现 core 不认的类型；方向二：core 的类型不得漏项
@@ -83,6 +83,9 @@ const STRUCTURED_OVERRIDES: Record<string, z.ZodTypeAny> = {
   tablePagination: z.object({ enabled: z.boolean().optional() }).catchall(z.unknown()),
   tableColWidths: z.array(z.number().finite().nonnegative()),
   tableRows: z.array(tableRowSchema),
+  // 图表 option 是自由 JSON：只校验「必须是对象」，防数组/字符串混入；体积与嵌套由校验器另限
+  chartOption: z.record(z.string(), z.unknown()),
+  chartValueFields: z.array(z.string()),
 }
 
 const optionalShape = Object.fromEntries(

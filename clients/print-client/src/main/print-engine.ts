@@ -14,6 +14,7 @@ import {
   renderPdf,
 } from '@worm-vue3-print/core'
 import { loadExecutorBundle } from '@worm-vue3-print/core/node'
+import { loadChartExecutorBundle } from '@worm-vue3-print/echarts/node'
 import type { PrintJob, PrintRuntime, PrintTemplateData } from '@worm-vue3-print/core'
 import type { PrintOptions } from '@worm-vue3-print/core/client'
 import type { Logger } from './logger.js'
@@ -61,9 +62,9 @@ interface Produced {
   pageCount?: number
 }
 
-/** core 运行时：Electron driver + core 的 DOM 执行器产物 */
+/** core 运行时：Electron driver + core 的 DOM 执行器产物 + 图表执行器产物（可选包） */
 export function createPrintRuntime(): PrintRuntime {
-  return createDomHostRuntime(createElectronDriverFactory(), loadExecutorBundle())
+  return createDomHostRuntime(createElectronDriverFactory(), loadExecutorBundle(), loadChartExecutorBundle())
 }
 
 /** 协议里的 print.paperSize 单位是微米；core 的覆盖逃生门用毫米 */

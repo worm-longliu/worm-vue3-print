@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@worm-vue3-print/core": "^1.4.8",
+    "@worm-vue3-print/echarts": "^1.4.8",
     "express": "^4.21.0",
     "playwright": "^1.60.0"
   },

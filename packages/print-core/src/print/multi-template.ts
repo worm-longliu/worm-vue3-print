@@ -5,6 +5,7 @@
 import type {
   TemplateData,
   PageLayout,
+  ChartRenderer,
   CodeRenderer,
   MultiPageTemplateData,
 } from '../render/types.js'
@@ -97,6 +98,8 @@ export interface MultiPageCopyInput {
   data: Record<string, any>
   /** 各页面模板的码值渲染器（顺序与模板一致）；缺省降级文本占位 */
   codeRenderers?: Array<CodeRenderer | undefined>
+  /** 各页面模板的图表渲染器（顺序与模板一致）；缺省降级占位 */
+  chartRenderers?: Array<ChartRenderer | undefined>
 }
 
 export interface MultiPageDocument {
@@ -143,7 +146,7 @@ export function composeMultiPageDocument(
           copy.boundPages[i]!,
           layouts,
           copy.data,
-          { codeRenderer: copy.codeRenderers?.[i] },
+          { codeRenderer: copy.codeRenderers?.[i], chartRenderer: copy.chartRenderers?.[i] },
           {
             pageOffset: offset,
             totalPages,

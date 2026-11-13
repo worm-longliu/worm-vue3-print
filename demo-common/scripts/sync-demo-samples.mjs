@@ -98,8 +98,17 @@ function stringify(value, depth) {
 
 const { SAMPLE_TEMPLATES, deriveBatchData } = await loadSamples()
 
+/**
+ * demo-common 四个宿主不安装 @worm-vue3-print/echarts 可选包：图表示例在宿主里素材台
+ * 不显示、画布显示占位、预览会因缺图表执行器报错，因此同步时排除图表类示例。
+ * 示例的增删仍只在 demo 侧维护（demo 已安装可选包）。
+ */
+const HOST_EXCLUDED_SAMPLE_IDS = new Set(['sales-chart'])
+
 /** 标签类示例自带 batchData，其余按 demo 宿主的同款规则派生成字面量，产物保持自包含 */
-const SAMPLES = SAMPLE_TEMPLATES.map(sample => ({
+const SAMPLES = SAMPLE_TEMPLATES
+  .filter(sample => !HOST_EXCLUDED_SAMPLE_IDS.has(sample.id))
+  .map(sample => ({
   ...sample,
   batchData: sample.batchData?.length ? sample.batchData : deriveBatchData(sample.data),
 }))

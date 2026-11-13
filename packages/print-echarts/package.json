@@ -1,0 +1,63 @@
+{
+  "name": "@worm-vue3-print/echarts",
+  "version": "1.4.8",
+  "type": "module",
+  "description": "打印模板 ECharts 图表元素可选包：SSR/浏览器 SVG 渲染器、页面执行器与设计器图表扩展（主包不依赖图表库）",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js",
+      "require": "./dist/node.cjs"
+    },
+    "./browser/executor.iife": "./dist/executor.iife.global.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "author": "worm <liu_long_qqcom@qq.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitee.com/liulong_oschina/worm-vue3-print.git"
+  },
+  "readme": "README.md",
+  "keywords": [
+    "print",
+    "template",
+    "echarts",
+    "chart",
+    "designer",
+    "svg"
+  ],
+  "scripts": {
+    "build": "vite build && tsup && vue-tsc -p tsconfig.build.json && node ../../scripts/inject-license-banner.mjs dist",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "echarts": "^6.1.0"
+  },
+  "peerDependencies": {
+    "@worm-vue3-print/core": "^1.4.8",
+    "@worm-vue3-print/canvas": "^1.4.8",
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.2",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "tsup": "^8.0.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.9",
+    "vue": "^3.5.24",
+    "vue-tsc": "^3.3.11"
+  }
+}

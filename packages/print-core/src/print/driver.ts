@@ -7,6 +7,7 @@ export type ExecutorMethod =
   | 'readContentBottom'
   | 'readElementRects'
   | 'renderCodes'
+  | 'renderCharts'
   | 'applyTextFit'
 
 /** 执行器方法的宿主目标种类：window（waitReady）/ document（读 DOM）/ none（纯计算，无首参） */
@@ -22,6 +23,8 @@ export const EXECUTOR_TARGETS: Record<ExecutorMethod, ExecutorTargetKind> = {
   readContentBottom: 'document',
   readElementRects: 'document',
   renderCodes: 'none',
+  // 图表渲染由可选包的执行器提供（注入后的全局入口），同样无首参
+  renderCharts: 'none',
   applyTextFit: 'document',
 }
 

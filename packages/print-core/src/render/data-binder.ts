@@ -103,6 +103,10 @@ function bindElement(
   if (cloned.type === 'flowList' || cloned.printElementType?.type === 'flowList') {
     bindFlowListData(cloned, data)
   }
+  // 图表：option 模板求值 + 数据源字段映射（结果写入运行时 _chartOption）
+  if (cloned.type === 'chart' || cloned.printElementType?.type === 'chart') {
+    bindChartData(cloned, data)
+  }
   return cloned
 }
 
@@ -142,6 +146,127 @@ function bindFlowListData(el: TemplateElement, data: Record<string, any>): void 
       autoSpan: el.options.flowAutoSpan === true,
       maxSpan: resolveFlowMaxSpan(el.options.flowMaxSpan, el.options.flowColumns),
     })
+  }
+}
+
+/**
+ * 图表数据绑定：option 模板逐值求值（字符串里的 `{字段}`），再把数据源按字段映射
+ * 注入 series 的 `$data` 占位。模板 JSON 只存配置不存数据——图表数据量随业务变化，
+ * 落进设计文件会膨胀；绑定结果写运行时 options._chartOption（不持久化）。
+ *
+ * 占位约定：
+ * - `series[].data` 含 `'$data'` 时按 chartValueFields 生成数据；
+ * - `xAxis[].data` 含 `'$data'` 时按 chartCategoryField 生成类目；
+ * - 饼图生成 `{ name, value }`，散点生成 `[x, y]`，其余按类目轴数值数组；
+ * - 未用 `$data` 占位的手工 option 原样保留，不覆盖。
+ */
+function bindChartData(el: TemplateElement, data: Record<string, any>): void {
+  const opts = el.options
+  const rawOption = opts.chartOption
+  if (!rawOption || typeof rawOption !== 'object' || Array.isArray(rawOption)) return
+  const option = evaluateChartOption(rawOption, data) as Record<string, any>
+  const valueFields = Array.isArray(opts.chartValueFields)
+    ? opts.chartValueFields.filter((v: unknown): v is string => typeof v === 'string' && v.length > 0)
+    : []
+  const categoryField = typeof opts.chartCategoryField === 'string' ? opts.chartCategoryField : undefined
+  const seriesField = typeof opts.chartSeriesField === 'string' ? opts.chartSeriesField : undefined
+  // 数据源与表格同口径：chartDataSource 优先，其次通用 dataSource，再次顶层第一个数组
+  const { list } = resolveListSource({ ...opts, dataSource: opts.chartDataSource ?? opts.dataSource }, data)
+  if (list.length > 0 && valueFields.length > 0) {
+    applyChartData(option, list, categoryField, valueFields, seriesField)
+  }
+  opts._chartOption = option
+}
+
+/** option 模板递归求值：`$data` 占位保留，数据映射在 applyChartData 中完成 */
+function evaluateChartOption(node: unknown, data: Record<string, any>): unknown {
+  if (typeof node === 'string') {
+    // `$data` 是数据占位，不能被求值抹平（含 `$data.xxx` 形式）
+    if (node.startsWith('$data')) return node
+    return node.includes('{') ? evaluateTemplate(node, data) : node
+  }
+  if (Array.isArray(node)) return node.map(item => evaluateChartOption(item, data))
+  if (node && typeof node === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+      out[key] = evaluateChartOption(value, data)
+    }
+    return out
+  }
+  return node
+}
+
+function chartNumber(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(n) ? n : 0
+}
+
+function hasDataPlaceholder(series: Record<string, any>): boolean {
+  return Array.isArray(series.data) && series.data.includes('$data')
+}
+
+function applyChartData(
+  option: Record<string, any>,
+  rows: Record<string, any>[],
+  categoryField: string | undefined,
+  valueFields: string[],
+  seriesField: string | undefined,
+): void {
+  const rawSeries: Record<string, any>[] = Array.isArray(option.series) ? option.series : []
+  if (rawSeries.length === 0 || !rawSeries.some(hasDataPlaceholder)) return
+  const categories = rows.map((row, index) => (categoryField ? row[categoryField] : index + 1))
+  const fieldAt = (index: number): string => valueFields[Math.min(index, valueFields.length - 1)]!
+
+  // 多系列拆分：按 chartSeriesField 分组，每组一个 series，类目取全量并集
+  if (seriesField) {
+    const template = rawSeries[0]!
+    const groups = new Map<string, Map<string, number>>()
+    for (const row of rows) {
+      const name = String(row[seriesField] ?? '')
+      const bucket = groups.get(name) ?? new Map<string, number>()
+      const value = chartNumber(row[fieldAt(0)])
+      // 同一类目重复时按累加处理，避免静默丢点
+      bucket.set(String(row[categoryField ?? '']), (bucket.get(String(row[categoryField ?? ''])) ?? 0) + value)
+      groups.set(name, bucket)
+    }
+    // 分组的类目轴取全量并集（按首次出现顺序去重），组内缺失点填 null
+    const distinctCategories = [...new Set(categories)]
+    option.series = [...groups.entries()].map(([name, bucket]) => ({
+      ...template,
+      name,
+      data: distinctCategories.map(category => bucket.get(String(category)) ?? null),
+    }))
+    applyChartCategories(option, distinctCategories)
+    return
+  }
+
+  option.series = rawSeries.map((series, index) => {
+    if (!hasDataPlaceholder(series)) return series
+    const field = fieldAt(index)
+    if (series.type === 'pie') {
+      return {
+        ...series,
+        data: rows.map(row => ({ name: categoryField ? row[categoryField] : '', value: chartNumber(row[field]) })),
+      }
+    }
+    if (series.type === 'scatter') {
+      const xField = categoryField ?? valueFields[0]!
+      return {
+        ...series,
+        data: rows.map(row => [chartNumber(row[xField]), chartNumber(row[field])]),
+      }
+    }
+    return { ...series, data: rows.map(row => chartNumber(row[field])) }
+  })
+  applyChartCategories(option, categories)
+}
+
+/** 类目轴数据回填：xAxis 可为对象或数组，仅替换 `$data` 占位 */
+function applyChartCategories(option: Record<string, any>, categories: unknown[]): void {
+  const axes = Array.isArray(option.xAxis) ? option.xAxis : [option.xAxis]
+  for (const axis of axes) {
+    if (!axis || typeof axis !== 'object') continue
+    if (Array.isArray(axis.data) && axis.data.includes('$data')) axis.data = categories
   }
 }
 

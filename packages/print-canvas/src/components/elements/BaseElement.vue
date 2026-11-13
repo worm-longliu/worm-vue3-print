@@ -18,6 +18,7 @@
     @contextmenu.prevent.stop="$emit('contextmenu', element.id, $event)"
   >
     <component
+      v-if="contentComponent"
       :is="contentComponent"
       :element="element"
       :data="printData"
@@ -26,6 +27,10 @@
       v-bind="contentAttrs"
       @dblclick-cell="onDblClickCell"
     />
+    <!-- 未注册扩展（如未安装图表可选包）：占位提示，不因未知类型崩溃 -->
+    <div v-else class="extension-placeholder">
+      未安装扩展：{{ element.printElementType.type }}
+    </div>
 
     <div
       v-if="marginGuideStyle"
@@ -62,6 +67,7 @@ import { useResize, RESIZE_POINTS } from '@worm-vue3-print/core/designer'
 import { mmToPx, resolveElementBorder, ELEMENT_BORDER_SIDES, resolveElementRotation, resolveElementMargins, resolveElementBoxes } from '@worm-vue3-print/core/designer'
 
 import { SELECTED_IDS_KEY, PREVIEW_IDS_KEY } from '../../composables/useSelection'
+import { getElementExtension } from '../../composables/useElementExtensionRegistry'
 import TextElement from './TextElement.vue'
 import ImageElement from './ImageElement.vue'
 import LongTextElement from './LongTextElement.vue'
@@ -139,7 +145,12 @@ const componentMap: Record<string, any> = {
     pageNumber: markRaw(PageNumberElement),
 }
 
-const contentComponent = computed(() => componentMap[props.element.printElementType.type])
+const contentComponent = computed(
+  () =>
+    componentMap[props.element.printElementType.type] ??
+    // 可选包注册的扩展元素（如图表）：props 与内置元素组件一致
+    getElementExtension(props.element.printElementType.type)?.canvasComponent,
+)
 
 /** 仅表格元素需要虚拟虚线开关，避免其它元素根节点出现无关 attribute */
 const contentAttrs = computed(() =>
@@ -393,6 +404,22 @@ onUnmounted(() => {
   box-sizing: border-box;
   cursor: pointer;
   user-select: none;
+}
+/* 未知/未安装扩展类型的占位：只提示不阻断，装好可选包后由扩展组件接管 */
+.extension-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 2px;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--pd-text-muted, #8b909c);
+  background: repeating-linear-gradient(45deg, #f4f6fa, #f4f6fa 6px, #ffffff 6px, #ffffff 12px);
+  overflow: hidden;
 }
 .element-margin-guide {
   position: absolute;

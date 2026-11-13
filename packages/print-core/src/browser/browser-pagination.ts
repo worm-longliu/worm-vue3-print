@@ -1,7 +1,7 @@
 // 浏览器端入口：与 print-render / print-client 走同一份 core 管线，仅 driver 不同。
 import { createBrowserPrintRuntime } from './browser-runtime.js'
 import { prepareDocument } from '../print/pipeline.js'
-import type { CodeRenderer, MultiPageTemplateData, PageLayout, TemplateData } from '../render/types.js'
+import type { ChartRenderer, CodeRenderer, MultiPageTemplateData, PageLayout, TemplateData } from '../render/types.js'
 
 export interface BrowserRenderResult {
   /** 最终多页 HTML 字符串 */
@@ -29,6 +29,8 @@ export interface BrowserRenderOptions {
    * 传值则拼在该基址上，供字体与页面不同源的宿主使用。
    */
   fontBaseUrl?: string
+  /** 调用方提供的图表渲染器（浏览器端覆盖语义）；缺省走会话注入 */
+  chartRenderer?: ChartRenderer
 }
 
 /**
@@ -54,6 +56,7 @@ export async function renderHtmlPages(
       fontBaseUrl: options?.fontBaseUrl ?? '',
       paperHeightMm: options?.paperHeightMm,
       codeRenderer,
+      chartRenderer: options?.chartRenderer,
     },
     createBrowserPrintRuntime(),
   )

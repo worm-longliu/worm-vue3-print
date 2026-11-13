@@ -11,7 +11,11 @@ import type {
 import { BrowserPool } from './browser-pool.js'
 
 class PlaywrightDriver implements PageDriver {
-  private injected = false
+  /**
+   * 已注入执行器的版本集合：同一文档内幂等，且 core 执行器与图表执行器是两份独立 IIFE，
+   * 不能只用一个布尔标记（否则第二份会被跳过）。文档重建后清空。
+   */
+  private readonly injected = new Set<string>()
 
   constructor(private readonly page: Page, private readonly pool: BrowserPool) {}
 
@@ -22,13 +26,13 @@ class PlaywrightDriver implements PageDriver {
   async setContent(html: string): Promise<void> {
     // 就绪等待交给 core 执行器的 waitReady，这里只保证「可执行脚本」
     await this.page.setContent(html, { waitUntil: 'domcontentloaded' })
-    this.injected = false
+    this.injected.clear()
   }
 
   async injectExecutor(bundle: ExecutorBundle): Promise<void> {
-    if (this.injected) return
+    if (this.injected.has(bundle.version)) return
     await this.page.addScriptTag({ content: bundle.source })
-    this.injected = true
+    this.injected.add(bundle.version)
   }
 
   async evaluate<T>(method: ExecutorMethod, args: unknown[] = []): Promise<T> {

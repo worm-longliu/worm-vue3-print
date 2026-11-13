@@ -20,13 +20,20 @@ WORKDIR /app
 
 # 根清单与 lock（.npmrc 禁用 playwright 自动下载浏览器，镜像内使用基础镜像内置 Chromium）
 COPY package.json package-lock.json .npmrc ./
-# 全部 workspace（print-core / print-canvas / print-render）源码；node_modules 与 dist 由 .dockerignore 排除
+# 全部 workspace（print-core / print-canvas / print-echarts / print-render）源码；
+# node_modules 与 dist 由 .dockerignore 排除；scripts/ 是各包构建脚本（注入版权头）的依赖
 COPY packages ./packages
 COPY services ./services
+COPY scripts ./scripts
 
-# 安装 workspace 依赖，构建 core 与 render（render 不发布，无需构建 canvas）
-RUN npm ci \
+# 安装 workspace 依赖，构建 core → canvas → echarts → render：
+# - render 依赖 core 与 @worm-vue3-print/echarts（图表执行器 IIFE）；
+# - echarts 包的类型声明构建（vue-tsc）需要 canvas 的 dist 类型，故先构建 canvas；
+# - 镜像里 NODE_ENV=production，构建期必须显式装 devDependencies（tsup/vite/vue-tsc），构建完再 prune。
+RUN npm ci --include=dev \
   && npm run build -w @worm-vue3-print/core \
+  && npm run build -w @worm-vue3-print/canvas \
+  && npm run build -w @worm-vue3-print/echarts \
   && npm run build -w @worm-vue3-print/render \
   && npm prune --omit=dev
 

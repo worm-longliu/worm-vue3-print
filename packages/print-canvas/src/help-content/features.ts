@@ -18,6 +18,7 @@ export default {
     <tr><td>形状</td><td>矩形、椭圆，支持边框和背景色</td></tr>
     <tr><td>HTML</td><td>自定义 HTML 内容</td></tr>
     <tr><td>页码</td><td>自动页码显示</td></tr>
+    <tr><td>图表</td><td>ECharts 图表（柱状/条形/折线/面积/饼/散点）：需安装并注册可选包 <code>@worm-vue3-print/echarts</code> 后素材台才出现；数据在打印时按模板表达式绑定，出纸为矢量</td></tr>
   </tbody>
 </table>
 

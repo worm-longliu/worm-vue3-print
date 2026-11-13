@@ -50,6 +50,9 @@ export const OPTION_META: Record<OptionKey, Meta> = {
     'formatter', 'styler', 'rowStyler', 'tableDefaultFontFamily', 'tableDefaultColor'),
   ...color('color', 'backgroundColor', 'borderColor'),
   ...obj('borders', 'pagination', 'tablePagination', 'tableRows', 'tableColWidths', 'tableDefaultBorders'),
+  // 图表（chart）：option 由 canvas/可选包编辑器产出，core 只消费
+  ...obj('chartOption', 'chartValueFields'),
+  ...text('chartDataSource', 'chartCategoryField', 'chartSeriesField'),
   flowLayoutMode: { kind: 'enum', enum: ['fixed', 'dynamic'] },
   textAlign: { kind: 'enum', enum: ['left', 'center', 'right', 'justify'] },
   verticalAlign: { kind: 'enum', enum: ['top', 'middle', 'bottom'] },

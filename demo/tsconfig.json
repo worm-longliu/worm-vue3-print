@@ -17,7 +17,8 @@
     "paths": {
       "@worm-vue3-print/canvas": ["../packages/print-canvas/src/index.ts"],
       "@worm-vue3-print/canvas/*": ["../packages/print-canvas/src/*"],
-      "@worm-vue3-print/core": ["../packages/print-core/src/index.ts"]
+      "@worm-vue3-print/core": ["../packages/print-core/src/index.ts"],
+      "@worm-vue3-print/echarts": ["../packages/print-echarts/src/index.ts"]
     }
   },
   "include": [

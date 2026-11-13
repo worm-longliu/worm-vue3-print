@@ -52,7 +52,7 @@ describe('桌面纯计算工具集', () => {
 describe('print_element_kinds', () => {
   it('列出元素、配方 preset、函数、系统变量和单位约定', async () => {
     const data = JSON.parse((await call('print_element_kinds', {})).text)
-    expect(data.kinds).toHaveLength(13)
+    expect(data.kinds).toHaveLength(14)
     expect(data.kinds.find((k: { type: string }) => k.type === 'html').blocked).toBe(true)
     expect(data.presets.map((p: { id: string }) => p.id)).toContain('receipt-80mm')
     expect(data.presets.every((p: { scene: string; slots: string[] }) => p.scene && p.slots.length > 0)).toBe(true)

@@ -24,6 +24,7 @@ const TYPE_TITLES: Record<ElementType, string> = {
   qrcode: '二维码',
   html: 'HTML',
   pageNumber: '页码',
+  chart: '图表',
 }
 
 /** 单元格简写：字符串即表达式，对象则可补充对齐/字号等 */

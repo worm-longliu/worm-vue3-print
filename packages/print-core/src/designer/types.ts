@@ -97,6 +97,8 @@ export type ElementType =
   | 'hline' | 'vline' | 'rect' | 'oval'
   | 'barcode' | 'qrcode' | 'html'
   | 'pageNumber'
+  // 图表（ECharts）：渲染实现由独立可选包提供，core 只认类型与 ChartRenderer 端口
+  | 'chart'
 
 /** 对齐方式 */
 export type TextAlign = 'left' | 'center' | 'right' | 'justify'
@@ -433,6 +435,21 @@ export interface ElementOptions {
   flowPaddingRight?: number
   flowPaddingBottom?: number
   flowPaddingLeft?: number
+  // ─── 图表（chart）特有 ───
+  /**
+   * ECharts option 模板（纯 JSON，可含 `{字段}` 表达式）。
+   * series 的 data 可写 `$data` 占位：绑定阶段按 chartCategoryField/chartValueFields/
+   * chartSeriesField 从数据源生成真实数据（不落模板，避免设计文件膨胀）。
+   */
+  chartOption?: Record<string, unknown>
+  /** 数据源路径（与表格 dataSource 同口径：顶层数组键，缺省取数据里第一个数组） */
+  chartDataSource?: string
+  /** 类目字段名（bar/line/pie 的 name 维度） */
+  chartCategoryField?: string
+  /** 数值字段名列表：每项对应一个 series（多值多系列） */
+  chartValueFields?: string[]
+  /** 系列拆分字段（可选）：按该字段取值分组，每组一个 series */
+  chartSeriesField?: string
 }
 
 /** 元素类型元数据 */

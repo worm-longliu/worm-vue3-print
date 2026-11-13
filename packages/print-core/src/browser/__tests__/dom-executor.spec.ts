@@ -223,10 +223,14 @@ describe('renderCodes', () => {
 })
 
 describe('宿主目标约定', () => {
-  it('约定表覆盖全部执行器方法，renderCodes 不接收宿主目标', () => {
-    const methods = Object.keys(domExecutor).filter(key => key !== 'version').sort()
+  it('约定表覆盖全部执行器方法，renderCodes/renderCharts 不接收宿主目标', () => {
+    // renderCharts 由图表可选包（@worm-vue3-print/echarts）的执行器提供，
+    // core 的 domExecutor 只含码制/测量原语；约定表仍须登记它（宿主按表装配参数）
+    const optionalMethods = ['renderCharts']
+    const methods = [...Object.keys(domExecutor).filter(key => key !== 'version'), ...optionalMethods].sort()
     expect(Object.keys(EXECUTOR_TARGETS).sort()).toEqual(methods)
     expect(EXECUTOR_TARGETS.renderCodes).toBe('none')
+    expect(EXECUTOR_TARGETS.renderCharts).toBe('none')
     expect(EXECUTOR_TARGETS.applyTextFit).toBe('document')
   })
 })

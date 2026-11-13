@@ -24,6 +24,7 @@ const RAW: Array<Omit<ElementKindInfo, 'blocked'>> = [
   { type: 'oval', requiredOptionKeys: ['left', 'top', 'width', 'height'], notes: '椭圆' },
   { type: 'html', requiredOptionKeys: ['left', 'top', 'width', 'height'], notes: '可注入任意标记，AI 生成面封禁' },
   { type: 'pageNumber', requiredOptionKeys: ['left', 'top', 'width', 'height'], notes: '页码变量到分页最终趟才求值，写 {pageIndex}/{totalPages}（core data-binder.ts:344）' },
+  { type: 'chart', requiredOptionKeys: ['left', 'top', 'width', 'height', 'chartOption'], notes: 'ECharts 图表：series[].data 写 $data 占位，按 chartDataSource + chartCategoryField/chartValueFields/chartSeriesField 绑定数据；固定高，禁止 autoHeight' },
 ]
 
 export const ELEMENT_KINDS: readonly ElementKindInfo[] = RAW.map(info => ({

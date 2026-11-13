@@ -4,12 +4,13 @@ import { paginate } from '../render/pagination-engine.js'
 import { composeContinuousHeight } from '../render/continuous-paper.js'
 import { getPaperDimensions, getOutputPaperDimensions, isContinuousPaper } from '../render/types.js'
 import { createCollectingCodeRenderer, createMapCodeRenderer, mergeCodeMaps } from './codes.js'
+import { createCollectingChartRenderer, createMapChartRenderer, mergeChartMaps } from './charts.js'
 import { escapeHeightMm, paperViewportPx, resolvePaperMm } from './paper.js'
 import { buildPdfTargetSpec } from './pdf-spec.js'
 import { normalizeMeasurements } from './measure.js'
 import { applyTextFitSizes } from './apply-text-fit.js'
 import { pxToMm } from './units.js'
-import type { CodeRenderer, PageLayout, TemplateData } from '../render/types.js'
+import type { ChartRenderer, CodeRenderer, PageLayout, TemplateData } from '../render/types.js'
 import type { PrintRuntime, PrintSession } from './ports.js'
 import type { PreparedDocument, PrintJob, RenderPdfResult } from './types.js'
 import { normalizePrintData } from './normalize-print-data.js'
@@ -24,6 +25,7 @@ import type { MultiPageCopyInput } from './multi-template.js'
 interface SinglePrepared extends PreparedDocument {
   bound: TemplateData
   codeRenderer?: CodeRenderer
+  chartRenderer?: ChartRenderer
   derivedHeightMm?: number
 }
 
@@ -85,6 +87,7 @@ async function prepareWithSession(job: PrintJob, session: PrintSession): Promise
         pageLayouts: single.pageLayouts,
         data: normalized.data,
         codeRenderer: single.codeRenderer,
+        chartRenderer: single.chartRenderer,
         derivedHeightMm: single.derivedHeightMm,
         paperMm: single.paperMm,
         heightSource: single.heightSource,
@@ -103,6 +106,7 @@ async function prepareWithSession(job: PrintJob, session: PrintSession): Promise
         pageLayouts: single.pageLayouts,
         data: normalized.dataList[i],
         codeRenderer: single.codeRenderer,
+        chartRenderer: single.chartRenderer,
         derivedHeightMm: single.derivedHeightMm,
         paperMm: single.paperMm,
         heightSource: single.heightSource,
@@ -171,6 +175,7 @@ function composeTiledPrepared(job: PrintJob, copies: BatchCopyInput[]): Prepared
       pageLayouts: c.pageLayouts,
       data: c.data,
       codeRenderer: c.codeRenderer,
+      chartRenderer: c.chartRenderer,
     })),
     layout,
   })
@@ -199,8 +204,8 @@ async function prepareSingleWithSession(
   const viewport = paperViewportPx(designPaper)
   const heightEscape = escapeHeightMm({ paperHeightMm: job.paperHeightMm, override: job.paperOverride })
 
-  // 测量 HTML：先收集码值 → 渲染 → 用真实渲染器再生成
-  const measurement = await buildHtmlWithCodes({
+  // 测量 HTML：先收集码值/图表 → 渲染 → 用真实渲染器再生成
+  const measurement = await buildHtmlWithAssets({
     bound, job, session, data, pageLayouts: [], isMeasurementPass: true,
   })
   const measurements = await session.measure(measurement.html, viewport)
@@ -210,8 +215,9 @@ async function prepareSingleWithSession(
   const pageLayouts = paginate(bound, normalizeMeasurements(measurements.measurements, bound))
 
   // 最终 HTML：补齐测量趟看不到的码值（页眉/页脚中的真实页码）
-  const finalBuild = await buildHtmlWithCodes({
-    bound, job, session, data, pageLayouts, isMeasurementPass: false, baseMap: measurement.map,
+  const finalBuild = await buildHtmlWithAssets({
+    bound, job, session, data, pageLayouts, isMeasurementPass: false,
+    codeBaseMap: measurement.codeMap, chartBaseMap: measurement.chartMap,
   })
   let html = finalBuild.html
 
@@ -225,6 +231,7 @@ async function prepareSingleWithSession(
     }
     html = generateHtml(bound, pageLayouts, data, {
       codeRenderer: finalBuild.codeRenderer,
+      chartRenderer: finalBuild.chartRenderer,
       pageHeightMm: derivedHeightMm,
     })
   }
@@ -255,6 +262,7 @@ async function prepareSingleWithSession(
     copies: 1,
     bound,
     codeRenderer: finalBuild.codeRenderer,
+    chartRenderer: finalBuild.chartRenderer,
     derivedHeightMm,
   }
 }
@@ -270,18 +278,23 @@ async function prepareMultiCopy(
   const boundPages: TemplateData[] = []
   const layoutsPerPage: PageLayout[][] = []
   const codeRenderers: Array<CodeRenderer | undefined> = []
+  const chartRenderers: Array<ChartRenderer | undefined> = []
   for (const t of templates) {
     const bound = bindData(t, data, job.baseUrl, job.fontBaseUrl)
-    const measurement = await buildHtmlWithCodes({ bound, job, session, data, pageLayouts: [], isMeasurementPass: true })
+    const measurement = await buildHtmlWithAssets({ bound, job, session, data, pageLayouts: [], isMeasurementPass: true })
     const measurements = await session.measure(measurement.html, viewport)
     applyTextFitSizes(bound, measurements.fits)
     const layouts = paginate(bound, normalizeMeasurements(measurements.measurements, bound))
-    const final = await buildHtmlWithCodes({ bound, job, session, data, pageLayouts: layouts, isMeasurementPass: false, baseMap: measurement.map })
+    const final = await buildHtmlWithAssets({
+      bound, job, session, data, pageLayouts: layouts, isMeasurementPass: false,
+      codeBaseMap: measurement.codeMap, chartBaseMap: measurement.chartMap,
+    })
     boundPages.push(bound)
     layoutsPerPage.push(layouts)
     codeRenderers.push(final.codeRenderer)
+    chartRenderers.push(final.chartRenderer)
   }
-  return { boundPages, layoutsPerPage, data, codeRenderers }
+  return { boundPages, layoutsPerPage, data, codeRenderers, chartRenderers }
 }
 
 interface BuildHtmlInput {
@@ -292,38 +305,62 @@ interface BuildHtmlInput {
   data: Record<string, any>
   pageLayouts: PageLayout[]
   isMeasurementPass: boolean
-  baseMap?: Map<string, string>
+  /** 测量趟已渲染的码值映射（最终趟复用，避免重复渲染） */
+  codeBaseMap?: Map<string, string>
+  /** 测量趟已渲染的图表映射（最终趟复用，避免重复渲染） */
+  chartBaseMap?: Map<string, string>
 }
 
 /**
- * 生成 HTML：先跑一趟「收集型渲染器」拿到本趟真实码值规格，
- * 渲染后若有新规格则用完整映射再生成一次；无码模板只生成一次。
- * 调用方提供了 codeRenderer 时直接沿用（浏览器端既有覆盖语义）。
+ * 生成 HTML：先跑一趟「收集型渲染器」拿到本趟真实码值/图表规格，
+ * 渲染后若有新规格则用完整映射再生成一次；无码无图模板只生成一次。
+ * 调用方提供了 codeRenderer/chartRenderer 时直接沿用（浏览器端既有覆盖语义）。
  */
-async function buildHtmlWithCodes(
-  input: BuildHtmlInput,
-): Promise<{ html: string; codeRenderer?: CodeRenderer; map: Map<string, string> }> {
-  const baseMap = input.baseMap ?? new Map<string, string>()
-  if (input.job.codeRenderer) {
+async function buildHtmlWithAssets(input: BuildHtmlInput): Promise<{
+  html: string
+  codeRenderer?: CodeRenderer
+  chartRenderer?: ChartRenderer
+  codeMap: Map<string, string>
+  chartMap: Map<string, string>
+}> {
+  const codeBaseMap = input.codeBaseMap ?? new Map<string, string>()
+  const chartBaseMap = input.chartBaseMap ?? new Map<string, string>()
+  const { job } = input
+  // 两端都提供了渲染器：单趟直出
+  if (job.codeRenderer && job.chartRenderer) {
     const html = generateHtml(input.bound, input.pageLayouts, input.data, {
       isMeasurementPass: input.isMeasurementPass,
-      codeRenderer: input.job.codeRenderer,
+      codeRenderer: job.codeRenderer,
+      chartRenderer: job.chartRenderer,
     })
-    return { html, codeRenderer: input.job.codeRenderer, map: baseMap }
+    return { html, codeRenderer: job.codeRenderer, chartRenderer: job.chartRenderer, codeMap: codeBaseMap, chartMap: chartBaseMap }
   }
-  const collector = createCollectingCodeRenderer(baseMap)
+  const codeCollector = createCollectingCodeRenderer(codeBaseMap)
+  const chartCollector = createCollectingChartRenderer(chartBaseMap)
+  const codeRendererInput = job.codeRenderer ?? codeCollector.renderer
+  const chartRendererInput = job.chartRenderer ?? chartCollector.renderer
   const draft = generateHtml(input.bound, input.pageLayouts, input.data, {
     isMeasurementPass: input.isMeasurementPass,
-    codeRenderer: collector.renderer,
+    codeRenderer: codeRendererInput,
+    chartRenderer: chartRendererInput,
   })
-  const extra = collector.takeSpecs()
-  const rendered = extra.length > 0 ? await input.session.renderCodes(extra) : new Map<string, string>()
-  const map = mergeCodeMaps(baseMap, rendered)
-  const codeRenderer = map.size > 0 ? createMapCodeRenderer(map) : undefined
-  if (extra.length === 0) return { html: draft, codeRenderer, map }
+  const extraCodes = job.codeRenderer ? [] : codeCollector.takeSpecs()
+  const extraCharts = job.chartRenderer ? [] : chartCollector.takeSpecs()
+  const [renderedCodes, renderedCharts] = await Promise.all([
+    extraCodes.length > 0 ? input.session.renderCodes(extraCodes) : Promise.resolve(new Map<string, string>()),
+    extraCharts.length > 0 ? input.session.renderCharts(extraCharts) : Promise.resolve(new Map<string, string>()),
+  ])
+  const codeMap = mergeCodeMaps(codeBaseMap, renderedCodes)
+  const chartMap = mergeChartMaps(chartBaseMap, renderedCharts)
+  const codeRenderer = job.codeRenderer ?? (codeMap.size > 0 ? createMapCodeRenderer(codeMap) : undefined)
+  const chartRenderer = job.chartRenderer ?? (chartMap.size > 0 ? createMapChartRenderer(chartMap) : undefined)
+  if (extraCodes.length === 0 && extraCharts.length === 0) {
+    return { html: draft, codeRenderer, chartRenderer, codeMap, chartMap }
+  }
   const html = generateHtml(input.bound, input.pageLayouts, input.data, {
     isMeasurementPass: input.isMeasurementPass,
     codeRenderer,
+    chartRenderer,
   })
-  return { html, codeRenderer, map }
+  return { html, codeRenderer, chartRenderer, codeMap, chartMap }
 }

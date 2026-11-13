@@ -76,8 +76,8 @@ describe('draftTemplate', () => {
     expect(r.issues.some(i => i.message.includes('OUT_OF_PAPER'))).toBe(true)
   })
 
-  it('元素类型清单覆盖 13 类并标注封禁项', () => {
-    expect(ELEMENT_KINDS).toHaveLength(13)
+  it('元素类型清单覆盖 14 类并标注封禁项', () => {
+    expect(ELEMENT_KINDS).toHaveLength(14)
     expect(ELEMENT_KINDS.find(k => k.type === 'html')?.blocked).toBe(true)
     expect(ELEMENT_KINDS.find(k => k.type === 'flowList')?.requiredOptionKeys).toContain('flowColumns')
   })

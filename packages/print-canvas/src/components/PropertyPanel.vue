@@ -73,6 +73,17 @@
               :searching="searching"
             />
             <AdvancedGroup v-if="filteredGroups.includes('advanced')" :element="element" :matched-keys="matchedKeys" :searching="searching" @delete-element="$emit('delete-element')" @help="$emit('help')" />
+            <!--
+              扩展元素属性组（如 ECharts 图表）：由可选包注册，内置元素不渲染；
+              扩展组件直接改 element（同内置属性组），改动经 change 汇入既有历史记录通道。
+            -->
+            <component
+              v-if="extensionPropertyComponent"
+              :is="extensionPropertyComponent"
+              :element="element"
+              :data="EXTENSION_DESIGN_DATA"
+              @change="recordHistory?.()"
+            />
           </div>
         </template>
         <p class="pd-empty" v-else>请在画布中选择一个元素</p>
@@ -205,6 +216,8 @@ import TilingConfig from './property/TilingConfig.vue'
 import type { WatermarkOptions } from '@worm-vue3-print/core/designer'
 import { getElementBindings, getTableCellBindings } from '@worm-vue3-print/core/designer'
 import type { BindingDescriptor } from '@worm-vue3-print/core/designer'
+import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
+import { getElementExtension } from '../composables/useElementExtensionRegistry'
 
 const props = defineProps<{
   element: RuntimeElement | null
@@ -270,6 +283,18 @@ const isTableType = computed(() => {
   if (!props.element) return false
   return props.element.printElementType.type === 'table'
 })
+
+/** 扩展元素属性组：按当前元素类型取可选包注册的 propertyComponent；内置元素无扩展，不渲染 */
+const extensionPropertyComponent = computed(() => {
+  if (!props.element) return undefined
+  return getElementExtension(props.element.printElementType.type)?.propertyComponent
+})
+
+/**
+ * 扩展属性组的设计态示例数据：设计器没有宿主打印数据，
+ * 与内置控件口径一致统一用 core 的 DEFAULT_DEMO_DATA（数组信封：data[0] 即数据根对象）。
+ */
+const EXTENSION_DESIGN_DATA: Record<string, any>[] = [DEFAULT_DEMO_DATA]
 
 /** 多选单元格：只做批量设置，不回显单格配置——「内容」绑定组按 r1,c1 单格读写，整组让位给单元格台 */
 const isMultiCellSelection = computed(() => {

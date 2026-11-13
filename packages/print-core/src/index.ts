@@ -109,6 +109,8 @@ export type {
   MultiPageTemplateData,
   CodeRenderer,
   CodeRenderOptions,
+  ChartRenderer,
+  ChartSpec,
 } from './render/types.js'
 
 // 打印管线（纯 TS，Node 与浏览器都可加载；DOM 相关执行器在 ./browser 与 ./node 子路径）
@@ -119,3 +121,4 @@ export { normalizeTemplate, mergeFontDeclarations, composeMultiPageDocument, isM
 export type { MultiPageCopyInput, MultiPageDocument } from './print/multi-template.js'
 export { buildBasePageCss, buildPageGeometryCss, buildPageRuleCss } from './render/css-builder.js'
 export type { RenderFinalPagesOptions } from './render/html-generator.js'
+export { chartSpecKey } from './render/chart-spec.js'

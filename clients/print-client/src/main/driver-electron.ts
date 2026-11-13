@@ -28,7 +28,8 @@ export function createElectronDriverFactory(): DriverFactory {
         webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
       })
       let currentFile = ''
-      let injected = false
+      /** 已注入执行器的版本集合：core 与图表是两份独立 IIFE，按版本去重；文档重建后清空 */
+      const injected = new Set<string>()
       let booted = false
 
       const clearFile = (): void => {
@@ -58,13 +59,13 @@ export function createElectronDriverFactory(): DriverFactory {
           writeFileSync(currentFile, html, 'utf8')
           await win.loadFile(currentFile)
           booted = true
-          injected = false
+          injected.clear()
         },
         async injectExecutor(bundle: ExecutorBundle): Promise<void> {
-          if (injected) return
+          if (injected.has(bundle.version)) return
           await ensureDocument()
           await win.webContents.executeJavaScript(bundle.source, true)
-          injected = true
+          injected.add(bundle.version)
         },
         async evaluate<T>(method: ExecutorMethod, args: unknown[] = []): Promise<T> {
           const target = EXECUTOR_TARGETS[method]

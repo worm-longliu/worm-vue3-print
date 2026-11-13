@@ -23,6 +23,17 @@ export { DEFAULT_DEMO_DATA, getDemoData } from '@worm-vue3-print/core/designer'
 export { UPLOAD_IMAGE_KEY, UPLOAD_DESIGN_BACKGROUND_KEY, FONT_CATALOG_KEY } from './composables/useHostAdapter'
 export type { FontOption } from './composables/useFontCatalog'
 
+// 元素扩展注册表：内置 13 种之外的元素（如图表）由独立可选包注册，
+// 未安装可选包时素材卡不显示、画布渲染占位，canvas 主包不引入任何图表库。
+export {
+  registerElementExtension,
+  unregisterElementExtension,
+  getElementExtensions,
+  getElementExtension,
+  clearElementExtensions,
+} from './composables/useElementExtensionRegistry'
+export type { ElementExtension, ElementComponentProps } from './composables/useElementExtensionRegistry'
+
 // 顶部条自适应收纳机制（宿主自己的工具栏/操作条可复用同一链序与判定）：
 // 宿主用 provideToolbarOverflow 创建上下文、v-overflow-unit 注册单元、
 // 单元元素必须由宿主模板内联渲染并包 <Teleport>（包一层组件会丢 scoped 属性，退化成 block）。

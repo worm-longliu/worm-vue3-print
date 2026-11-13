@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-// 与 web 宿主一致：设计器/核心包按 monorepo 源码消费（Vite 直接编译包内 .vue/.ts）
+// 与 web 宿主一致：设计器/核心/图表包按 monorepo 源码消费（Vite 直接编译包内 .vue/.ts）
 export default defineConfig(({ mode }) => {
   // render 服务地址与鉴权密钥仅用于 dev 代理，不注入前端 bundle（避免密钥暴露到浏览器）
   // 可用环境变量覆盖：VITE_RENDER_TARGET / VITE_RENDER_API_KEY，或 .env.local
@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => {
         { find: /^@worm-vue3-print\/core\/browser$/, replacement: fileURLToPath(new URL('../packages/print-core/src/browser/index.ts', import.meta.url)) },
         { find: /^@worm-vue3-print\/core\/designer$/, replacement: fileURLToPath(new URL('../packages/print-core/src/designer/index.ts', import.meta.url)) },
         { find: /^@worm-vue3-print\/core$/, replacement: fileURLToPath(new URL('../packages/print-core/src/index.ts', import.meta.url)) },
+        { find: /^@worm-vue3-print\/echarts$/, replacement: fileURLToPath(new URL('../packages/print-echarts/src/index.ts', import.meta.url)) },
         { find: /^@worm-vue3-print\/canvas$/, replacement: fileURLToPath(new URL('../packages/print-canvas/src/index.ts', import.meta.url)) },
       ],
     },

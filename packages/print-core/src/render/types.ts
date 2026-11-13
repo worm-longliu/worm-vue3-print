@@ -250,6 +250,27 @@ export interface CodeRenderer {
   render(value: string, cellType: 'barcode' | 'qrcode', opts?: CodeRenderOptions): string
 }
 
+/** 图表渲染规格：option 已完成数据绑定；尺寸为落纸 mm（渲染端按 96dpi 换算逻辑像素） */
+export interface ChartSpec {
+  /** 稳定键：绑定后 option + 尺寸 + 字体，跨趟比对与跨进程映射用 */
+  key: string
+  option: Record<string, unknown>
+  widthMm: number
+  heightMm: number
+  /** 图表字体族（与模板字体声明同口径；缺省由渲染实现取系统字体） */
+  fontFamily?: string
+}
+
+/**
+ * option → SVG 字符串渲染器（同步）。
+ * 与码制同构：实现由独立可选包提供（ECharts），三端通过会话原语在页面上下文批量出图，
+ * 再用映射渲染器回填；core 本身不依赖任何图表库。
+ * 渲染失败时抛出异常，由 html-generator 降级为占位。
+ */
+export interface ChartRenderer {
+  render(spec: ChartSpec): string
+}
+
 // ─── 渲染请求 / 响应 ───
 
 export interface RenderRequest {

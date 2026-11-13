@@ -1,4 +1,4 @@
-// 架构守卫：各端不得各自实现测量、纸高推导、出图参数与码制渲染；这些必须来自 core。
+// 架构守卫：各端不得各自实现测量、纸高推导、出图参数、码制渲染与图表渲染；这些必须来自 core 或独立可选包。
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -16,6 +16,9 @@ const FORBIDDEN = [
   { pattern: /\boffsetHeight\b|\bgetBoundingClientRect\b/, why: 'DOM 测量必须走 core 的 DOM 执行器' },
   { pattern: /\bcomposeContinuousHeight\b|\bMIN_CONTINUOUS_HEIGHT_MM\b/, why: '连续纸纸高推导必须在 core' },
   { pattern: /from ['"](jsbarcode|qrcode|bwip-js)['"]/, why: '码制渲染必须走 core 执行器' },
+  // 三端只允许经 @worm-vue3-print/echarts/node 加载注入用的 IIFE，不得直接依赖图表库
+  // 覆盖 from / 副作用 import / require 三种写法；`@worm-vue3-print/echarts` 不被裸名匹配
+  { pattern: /(?:from|import)\s*['"]echarts(\/|['"])|\brequire\(\s*['"]echarts(\/|['"])/, why: '图表渲染必须走 @worm-vue3-print/echarts 执行器' },
   { pattern: /\bprintBackground\s*:|\bpreferCSSPageSize\s*:/, why: '出图参数必须来自 core 的 pdf 规格（driver 只透传）' },
   { pattern: /\bprintToPDF\s*\(|\bpage\.pdf\s*\(/, why: '出图调用只允许出现在 driver 内' },
 ]
@@ -45,4 +48,4 @@ if (violations.length > 0) {
   console.error('打印架构守卫未通过：\n' + violations.join('\n'))
   process.exit(1)
 }
-console.log('打印架构守卫通过：各端未出现重复的测量/纸高/出图/码制实现')
+console.log('打印架构守卫通过：各端未出现重复的测量/纸高/出图/码制/图表实现')

@@ -4,6 +4,7 @@ import type {
   RawMeasurement,
   ViewportPx,
 } from './types.js'
+import type { ChartSpec } from '../render/types.js'
 import type { FitFontSize } from '../render/text-fit.js'
 
 /** 会话预算：PrintJob 天然满足本结构；print.submitHtml 这类无模板直出图场景也可直接传入 */
@@ -22,6 +23,8 @@ export interface MeasureResult {
 export interface PrintSession {
   /** 码值 → SVG 映射；specs 为空时直接返回空 Map，不触碰宿主 */
   renderCodes(specs: CodeSpec[]): Promise<Map<string, string>>
+  /** 图表规格 → SVG 映射（key 为 ChartSpec.key）；specs 为空时直接返回空 Map，不触碰宿主 */
+  renderCharts(specs: ChartSpec[]): Promise<Map<string, string>>
   /**
    * 测量：载入测量趟 HTML → 自动缩小（data-fit="shrink"）→ 读取元素/行高。
    * 自动缩小结果随测量一并返回，供调用方回写模板使最终趟与测量同口径。

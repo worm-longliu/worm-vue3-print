@@ -47,7 +47,7 @@ AI Agent
 
 | 工具 | 只读 | 用途 |
 | --- | :---: | --- |
-| `print_element_kinds` | 是 | 13 种元素、表达式函数、系统变量和单位速查 |
+| `print_element_kinds` | 是 | 14 种元素、表达式函数、系统变量和单位速查 |
 | `print_draft_template` | 是 | 通过 core 元素工厂生成草稿，并回灌校验与体检 |
 | `print_validate_template` | 是 | 模板契约校验，区分 error 与兼容 warning |
 | `print_check_expression` | 是 | 表达式语法、函数白名单、字段检查 |
@@ -67,7 +67,10 @@ AI Agent
 - 坐标与尺寸使用 mm；`fontSize`、`lineHeight`、`borderWidth` 使用 pt；条码 `barWidth` 等是模块数，不能按长度换算。
 - 表达式写 `{field}` 或 `{MONEY(amount)}`，不写 `${field}` 或 JavaScript 控制流。
 - 系统变量为 `printDate`、`printTime`、`pageIndex`、`totalPages`。
-- 元素类型必须属于 core 的 13 种 `ElementType`；`html` 虽属于历史类型，但在 AI 草稿和实时写回中被封禁。
+- 元素类型必须属于 core 的 14 种 `ElementType`；`html` 虽属于历史类型，但在 AI 草稿和实时写回中被封禁。
+- `chart`（图表）可被 AI 生成：`options.chartOption` 只接受纯 JSON（禁止 `image://` 等外链数据与函数），
+  `series[].data` 写 `"$data"` 占位，由 `chartDataSource` + `chartCategoryField`/`chartValueFields`/`chartSeriesField`
+  在绑定阶段填真实数据；图表为固定高，不要写 `textFit: 'autoHeight'`。
 - 新模板必须写 `unit: 'mm'`；缺 `unit` 的历史模板按迁移规则处理。
 - `borders`、`pagination`、`tablePagination`、`tableColWidths`、`tableRows[].cells[]`、`fonts[].files[]` 等复合结构按 core 类型逐字段校验。
 - warning 多用于存量兼容，不必机械清零；所有 error 必须在写回前修复。

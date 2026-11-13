@@ -5,6 +5,7 @@ import {
   renderPdf as coreRenderPdf,
 } from '@worm-vue3-print/core'
 import { loadExecutorBundle } from '@worm-vue3-print/core/node'
+import { loadChartExecutorBundle } from '@worm-vue3-print/echarts/node'
 import type { PrintJob, PrintRuntime, RenderRequest } from '@worm-vue3-print/core'
 import { BrowserPool } from './browser-pool.js'
 import { createPlaywrightDriverFactory } from './driver-playwright.js'
@@ -20,6 +21,8 @@ function runtime(): PrintRuntime {
     cachedRuntime = createDomHostRuntime(
       createPlaywrightDriverFactory(BrowserPool.getInstance()),
       loadExecutorBundle(),
+      // 图表执行器由可选包提供，与 core 执行器分成两份 IIFE 依次注入页面
+      loadChartExecutorBundle(),
     )
   }
   return cachedRuntime

@@ -9,6 +9,8 @@ export interface FakeDriverOptions {
   contentBottomPx?: number
   /** 指定键的 SVG；未指定的规格返回通用假 SVG */
   codeMap?: Record<string, string>
+  /** 图表：指定键的 SVG；未指定返回通用假 SVG */
+  chartMap?: Record<string, string>
   pdfBytes?: Uint8Array
   /** 该原语调用前抛错，用于验证错误归一化（如 'evaluate:readMeasurements'） */
   failAt?: string
@@ -38,6 +40,12 @@ export function createFakeDriverFactory(options: FakeDriverOptions = {}) {
         const specs = (args?.[0] ?? []) as Array<{ key: string }>
         const map: Record<string, string> = {}
         for (const spec of specs) map[spec.key] = options.codeMap?.[spec.key] ?? '<svg id="fake"/>'
+        return map as T
+      }
+      if (method === 'renderCharts') {
+        const specs = (args?.[0] ?? []) as Array<{ key: string }>
+        const map: Record<string, string> = {}
+        for (const spec of specs) map[spec.key] = options.chartMap?.[spec.key] ?? '<svg data-chart="fake" viewBox="0 0 100 60"></svg>'
         return map as T
       }
       return undefined as T

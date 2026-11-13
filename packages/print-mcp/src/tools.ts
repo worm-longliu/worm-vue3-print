@@ -33,7 +33,7 @@ const PURE_ANNOTATIONS = { readOnlyHint: true, destructiveHint: false, openWorld
 export const TOOLS: ToolDef[] = [
   {
     name: 'print_element_kinds',
-    description: 'worm-vue3-print 模板能力速查：13 种元素类型（含每种必填 option 键与打印注意事项）、'
+    description: 'worm-vue3-print 模板能力速查：14 种元素类型（含每种必填 option 键与打印注意事项）、'
       + '布局配方 preset 清单（id / 场景 / 槽位）、表达式函数白名单、系统变量、单位口径、表达式语法。'
       + '生成或修改模板前先调用它，不要凭印象猜字段名；常见单据/标签/小票/面单优先选 preset。',
     annotations: { title: '打印模板能力速查', ...PURE_ANNOTATIONS },
@@ -161,7 +161,7 @@ export const TOOLS: ToolDef[] = [
           pageBackground: z.string().optional().describe('页面背景色，CSS 值，如 "#ffffff"'),
         }).optional(),
         elements: z.array(z.object({
-          type: elementTypeSchema.describe('元素类型，必须是 13 种之一；先调 print_element_kinds 看必填键'),
+          type: elementTypeSchema.describe('元素类型，必须是 14 种之一；先调 print_element_kinds 看必填键'),
           options: z.record(z.string(), z.unknown()).optional().describe(
             '元素属性。left/top/width/height 为 mm（不给则用 core 工厂默认值）；'
             + 'fontSize/borderWidth 为 pt；barWidth/qrQuietZone 是模块数',

@@ -1,5 +1,5 @@
 // 在 Docker 的 Linux 容器里交叉构建桌面客户端安装包（deb / rpm / AppImage）。
-// 用法：npm run pack:client:linux（会先构建 core 与客户端的 out/）
+// 用法：npm run pack:client:linux（会先构建 core/echarts 与客户端的 out/）
 // 为什么走容器：rpm 目标要调用 rpmbuild，宿主 macOS 没有该可执行文件；容器里 apt 装 rpm 即可。
 // deb 与 AppImage 其实可在宿主交叉构建，但三类产物同源同环境，避免两种产物口径。
 import { spawnSync } from 'node:child_process'
@@ -35,6 +35,13 @@ if (!existsSync(join(root, 'clients/print-client/out'))) {
   process.exit(1)
 }
 
+// 图表执行器产物的 dist 必须随源码一起进容器：electron-builder 按 workspace 软链打包 asar，
+// 只拷了 out/ 而漏掉 print-echarts/dist 时，主进程 require('@worm-vue3-print/echarts/node') 会在运行期报错。
+if (!existsSync(join(root, 'packages/print-echarts/dist'))) {
+  console.error('未找到 packages/print-echarts/dist，请先执行 npm run build -w @worm-vue3-print/echarts（npm run pack:client:linux 已包含该步骤）')
+  process.exit(1)
+}
+
 // 容器内步骤：装 rpmbuild → 拷源码（跳过 node_modules/dist/out）→ npm ci → 出包到 /out
 // 受限网络下可换 Debian 源（如 https://mirrors.aliyun.com）；不设则保持官方源
 const aptMirror = process.env.APT_MIRROR
@@ -51,6 +58,9 @@ tar -C /src --exclude=.git --exclude=node_modules --exclude=dist --exclude=out -
 rm -rf /work/packages/print-core/dist /work/clients/print-client/out
 cp -a /src/packages/print-core/dist /work/packages/print-core/dist
 cp -a /src/clients/print-client/out /work/clients/print-client/out
+# 图表执行器 dist（含注入用 IIFE 与 node 入口）不是纯 JS 源码产物的一部分，必须单独带进容器
+rm -rf /work/packages/print-echarts/dist
+cp -a /src/packages/print-echarts/dist /work/packages/print-echarts/dist
 
 cd /work
 LOCK_HASH=$(sha256sum package-lock.json | cut -c1-16)

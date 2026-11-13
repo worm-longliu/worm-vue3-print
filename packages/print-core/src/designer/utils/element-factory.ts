@@ -106,6 +106,23 @@ export function createDefaultOptions(type: ElementType): ElementOptions {
       return { ...base, width: 28.2, height: 28.2, title: '二维码', testData: 'qrcode' }
     case 'html':
       return { ...base, width: 28.2, height: 28.2 }
+    case 'chart': {
+      // 图表固定高（禁止 autoHeight）：测量趟按设计盒高结算，不依赖 SVG 内文本布局
+      return {
+        ...base, width: 100, height: 60, title: '图表',
+        chartOption: {
+          title: { text: '销售趋势', left: 'center' },
+          grid: { left: '8%', right: '8%', bottom: '12%', top: '18%' },
+          xAxis: { type: 'category', data: ['$data'] },
+          yAxis: { type: 'value' },
+          series: [{ type: 'bar', data: ['$data'], name: '数量' }],
+        },
+        chartDataSource: '',
+        chartCategoryField: 'name',
+        chartValueFields: ['value'],
+        chartSeriesField: '',
+      }
+    }
     default:
       return base
   }
@@ -126,6 +143,7 @@ export function createRuntimeElement(type: ElementType, options?: Partial<Elemen
     qrcode: { title: '二维码' },
     html: { title: 'HTML' },
     pageNumber: { title: '页码' },
+    chart: { title: '图表' },
   }
 
   return {

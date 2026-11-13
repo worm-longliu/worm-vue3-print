@@ -55,10 +55,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { ElementType, PrintBusinessField, RuntimeElement } from '@worm-vue3-print/core/designer'
 import LayerPanel from './LayerPanel.vue'
 import FieldTreePanel from './FieldTreePanel.vue'
+import { getElementExtensions } from '../composables/useElementExtensionRegistry'
 
 defineProps<{
   fields: PrintBusinessField[]
@@ -80,7 +81,14 @@ const emit = defineEmits<{
 
 const activeTab = ref('elements')
 
-const elementTypes: { type: ElementType; label: string; icon: string }[] = [
+interface MaterialItem {
+  type: string
+  label: string
+  icon: string
+}
+
+/** 内置 12 项：canvas 主包自带、不依赖任何可选包 */
+const builtinElementTypes: (MaterialItem & { type: ElementType })[] = [
   { type: 'text', label: '文本', icon: 'Ｔ' },
   { type: 'barcode', label: '条形码', icon: '▍▍' },
   { type: 'qrcode', label: '二维码', icon: '▦' },
@@ -94,6 +102,20 @@ const elementTypes: { type: ElementType; label: string; icon: string }[] = [
   { type: 'oval', label: '椭圆', icon: '◯' },
   { type: 'html', label: 'HTML', icon: '<>' },
 ]
+
+/**
+ * 素材卡 = 内置 12 项 + 可选包注册的扩展项（如 ECharts 图表）。
+ * getElementExtensions 读响应式注册表，安装/卸载扩展包后卡片列表即时刷新；
+ * 未安装任何可选包时列表与主包内置项完全一致。
+ */
+const elementTypes = computed<MaterialItem[]>(() => [
+  ...builtinElementTypes,
+  ...getElementExtensions().map(ext => ({
+    type: ext.type,
+    label: ext.label,
+    icon: ext.icon || '◆',
+  })),
+])
 
 function onDragStart(event: DragEvent, type: string) {
   event.dataTransfer?.setData('elementType', type)
