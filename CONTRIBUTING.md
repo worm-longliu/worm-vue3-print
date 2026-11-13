@@ -21,6 +21,11 @@ npm test
 
 ## 发布流程
 
+> **判据与坑以开发技能 `.agents/skills/worm-release/` 为准**（`SKILL.md` + `references/{carriers,gitee,client-pack,pitfalls}.md`）。
+> 本节只保留命令入口；升版文件集、tag 落点、客户端重打判据、Gitee API 契约、假绿假红清单一律看技能，不在此处另存一份。
+> 分阶段编排脚本：`node .agents/skills/worm-release/scripts/release.mjs <preflight|tag|release|npm|client|verify> --version=X --base=v<上版>`，
+> 缺省 dry-run，`--apply` 才落地（**`--apply` 不等于用户授权，四个渠道逐个要明示**）。
+
 ### 方式一：GitHub Actions 自动发布（推荐）
 
 先推送 `v` 开头的标签，再手动触发 `.github/workflows/release.yml` 与 `.github/workflows/publish-npm.yml`：
@@ -55,13 +60,13 @@ npm version 1.2.3 -w @worm-vue3-print/skills
 #    .github/release/notes.md   ← 工作流会将其作为 Release 正文，
 #    不更新则发行版会沿用上一个版本的说明
 
-# 4. 提交并推送
-git add -A
-git commit -m "chore: 版本号升级至 x.y.z"
+# 4. 提交并推送（显式列路径，别 git add -A：发版期间可能有别的会话在改同一工作区）
+git commit --only <本次升版涉及的文件> -m "chore: 版本号升级至 x.y.z"
 git push github master
 git push origin master
 
-# 5. 打标签并推送（推 tag 即触发自动发布；标签必须推送到 GitHub）
+# 5. 打标签并推送（两个远端都要推；推 tag 不会自动发布，release.yml 只有 workflow_dispatch）
+#    落点不是 HEAD，而是最后一个把自身改动登记进本版 CHANGELOG 段的提交，见技能 references/carriers.md
 git tag -a vx.y.z -m "vx.y.z"
 git push github vx.y.z
 git push origin vx.y.z
@@ -71,7 +76,7 @@ git push origin vx.y.z
 
 - 标签号必须与 core、canvas 的 `version` 完全一致，工作流会强制校验并在不一致时失败（`common` 不参与 release.yml 的标签校验，它由 `publish-common.yml` 单独发布，但版本应与主线同号）；
 - canvas 依赖 core，工作流固定按 **core → canvas** 顺序发布；
-- 只有推送到 **GitHub** 的标签会触发发布（Gitee 无 Actions），Gitee 发行版需手工创建；
+- 工作流只在 **GitHub** 侧跑（Gitee 无 Actions），且**不会因推 tag 自动触发**，必须到 Actions 页面 Run workflow；Gitee 发行版走技能的 `release --platform=gitee`，契约见 `references/gitee.md`；
 - 在仓库 Actions 页面可查看发布进度与日志；npm registry 有缓存延迟，发布成功后版本号可能需 1～2 分钟才可查询。
 
 ### 方式二：本地手工发布
@@ -121,23 +126,21 @@ npm run publish:common:check
 
 - **构建顺序不能调**：`scripts/gen-styles.mjs` 从 `packages/print-canvas/dist/canvas.css` 派生样式，canvas 没构建时 common 直接报错退出；
 - **`publish:common` 带 `--tag latest`**：正式版直接覆盖 `latest`；只有预发布（版本含 `-`）才用 `publish:common:beta`（`--tag next`）；
-- **本机默认 registry 是 `registry.npmmirror.com`**（2026-10-26 实测：不带 `--registry` 的 `npm publish --dry-run` 显示 `Publishing to https://registry.npmmirror.com`）——手敲发布必须显式带 `--registry=https://registry.npmjs.org`，`publish:npm` 与 `publish:common` 里已经写死；
-- **`publishConfig.tag` 不是兜底**（实测 npm 11.19：不带 `--tag` 的 dry-run 仍报 `with tag latest`，而 `publishConfig.access/registry` 确实生效）——预发布不要手敲 `npm publish`，走 `publish:common:beta`；
-- **GitHub Actions 只能 publish，改 dist-tag 需本机 OTP**：正式版直接写 `latest`，不需要改 tag；只有预发布需要摘除 `latest` 时，本机登录后执行 `npm dist-tag rm @worm-vue3-print/common latest --registry=https://registry.npmjs.org --otp=<OTP>`（仓库令牌对 `dist-tag rm` 返回 403）；
+- **手敲 `npm publish` 必须显式带 `--registry=https://registry.npmjs.org`**（本机默认是 npmmirror）；`publish:npm` 与 `publish:common` 里已写死。registry 缓存会骗人、`publishConfig.tag` 不被 npm 11 采纳等判据见技能 `references/pitfalls.md`；
+- **摘 dist-tag 需本机 OTP**（仓库令牌对 `dist-tag rm` 返回 403）：`npm dist-tag rm @worm-vue3-print/common latest --registry=https://registry.npmjs.org --otp=<OTP>`。正式版直接写 `latest`，不需要这一步；
 - **common 与主线同号**：方式一/二升版时一起在 `packages/print-common/package.json` 与六份 lock 里改版本；`npm run check:release-carriers` 已把 common 纳入六包同号校验；
 - npm 账号若开启 2FA，最后一步会交互式索取验证码，照着 Authenticator 填即可。
 
 ### 发版载体自检（发版前后各跑一次）
 
 ```bash
-npm run check:release-carriers            # 自动判态：未发布段非空＝发版前预检
-npm run check:release-carriers -- --post   # 发版后核对：未发布段应已清空、两份内置更新记录应含本版
-npm run check:release-carriers -- --base=v1.3.10   # 指定基线，判断改动是否命中 core 渲染管线（命中→七件安装包必须重打）
+npm run check:release-carriers -- --pre  --base=v<上版>   # 发版前预检
+npm run check:release-carriers -- --post --base=v<上版>   # 发版后核对：未发布段应已清空、两份内置更新记录应含本版
 ```
 
-查七项：主线六包版本号是否同号（含 `common`、`skills`）、「未发布」段是否已折叠、两份 `help-content/changelog.ts` 是否含本版、`.github/release/notes.md` 指向、README 安装包直链表版本、`clients/print-client/dist` 是否混入旧包、变更是否命中 `render/*` 或 `functions/format.ts`。
-退出码：0 通过（允许 WARN）/ 1 有 FAIL / 2 读不到载体文件。**已知局限**：「未发布段条数」按 bullet 粗算，只用于判断该段是否已清空；README 直链匹配依赖 `WormPrintClient-<版本>-` 命名，改名要同步 `scripts/check-release-carriers.mjs`。
-历史事故对应：1.3.8 功能在包里但内置更新记录缺那条（被迫补发 1.3.9）、README 直链表忘改会指向上一版资产、`dist` 混入旧包会被 `pack-client-release.mjs` 一起收进 SHA256SUMS。
+**`--base` 必须带**：缺省是 `HEAD`，`git diff HEAD..` 为空会让「沿用上版安装包」形态假红。
+退出码：0 通过（允许 WARN）/ 1 有 FAIL / 2 读不到载体文件。
+查哪几项、脚本覆盖不到哪两个包、客户端重打判据与历史事故，见技能 `references/carriers.md` 与 `references/pitfalls.md`。
 
 ## 代码规范
 
