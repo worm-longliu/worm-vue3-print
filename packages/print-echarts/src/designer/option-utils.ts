@@ -1,7 +1,8 @@
 import type { ChartType } from '../constants.js'
+import { getSampleCategories } from '../config.js'
 
-/** 设计器预览用的示例类目/数值：模板态的 `$data` 占位在无真实数据时替换成示例值 */
-const SAMPLE_CATEGORIES = ['示例一', '示例二', '示例三']
+/** 设计器预览用的示例数值：模板态的 `$data` 占位在无真实数据时替换成示例值；
+ *  类目可由 configureChartPlugin({ sampleCategories }) 覆盖，缺省与 P0 逐字一致 */
 const SAMPLE_VALUES = [12, 20, 15]
 
 /** 纯 JSON 深拷贝（chartOption 契约为纯 JSON；异常时退化为浅拷贝，避免设计器崩溃） */
@@ -25,8 +26,10 @@ export function previewChartOption(option: Record<string, unknown> | undefined):
 
 function fillPlaceholders(node: unknown, inSeries: boolean): unknown {
   if (Array.isArray(node)) {
-    return node.flatMap((item) =>
-      item === '$data' ? (inSeries ? SAMPLE_VALUES : SAMPLE_CATEGORIES) : [fillPlaceholders(item, inSeries)],
+    return node.flatMap((item): unknown[] =>
+      item === '$data'
+        ? (inSeries ? [...SAMPLE_VALUES] : [...getSampleCategories()])
+        : [fillPlaceholders(item, inSeries)],
     )
   }
   if (node && typeof node === 'object') {

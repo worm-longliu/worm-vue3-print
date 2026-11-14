@@ -3,8 +3,14 @@
     <!-- 折叠态：竖排图标，点击即展开对应页签 -->
     <div v-if="collapsed" class="prop-collapsed">
       <button class="pc-btn" title="展开属性台" @click="expandTab(currentTab)">«</button>
-      <button class="pc-btn" :class="{ on: currentTab === 'element' }" title="元素属性" @click="expandTab('element')">▦</button>
-      <button class="pc-btn" :class="{ on: currentTab === 'page' }" title="页面属性" @click="expandTab('page')">▤</button>
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        class="pc-btn"
+        :class="{ on: currentTab === tab.key }"
+        :title="tab.label"
+        @click="expandTab(tab.key)"
+      >{{ tab.icon }}</button>
     </div>
     <template v-else>
       <div class="prop-head">
@@ -13,12 +19,35 @@
       </div>
       <div class="pd-tabs prop-tabs">
         <div class="pd-tab-bar" role="tablist">
-          <button type="button" class="pd-tab" :class="{ active: (activeTab || 'page') === 'element' }" @click="$emit('update:activeTab', 'element')">元素属性</button>
-          <button type="button" class="pd-tab" :class="{ active: (activeTab || 'page') === 'page' }" @click="$emit('update:activeTab', 'page')">页面属性</button>
+          <button
+            v-for="tab in tabs"
+            :key="tab.key"
+            type="button"
+            class="pd-tab"
+            :class="{ active: currentTab === tab.key }"
+            @click="$emit('update:activeTab', tab.key)"
+          >{{ tab.label }}</button>
         </div>
-      <div v-show="(activeTab || 'page') === 'element'" class="pd-tab-pane" role="tabpanel">
+        <!-- 单一搜索框：元素属性与自定义属性共用同一份搜索状态；页面属性隐藏但保留实例，
+             避免切页签后出现「输入框已清空、过滤却仍生效」的不一致 -->
+        <PropertySearch v-show="!!element && currentTab !== 'page'" @search="onSearch" />
+        <!-- 自定义属性 pane（P3）：与 tab 同为 DOM 第一位，扩展属性组件整体迁入此处 -->
+        <div v-show="currentTab === 'custom'" class="pd-tab-pane" role="tabpanel">
+          <template v-if="element && customTab">
+            <div class="property-content">
+              <component
+                v-if="customTabVisibleInSearch"
+                :is="customTab.component"
+                :element="element"
+                :data="EXTENSION_DESIGN_DATA"
+                @change="recordHistory?.()"
+              />
+            </div>
+          </template>
+          <p v-else class="pd-empty">请在画布中选择一个元素</p>
+        </div>
+      <div v-show="currentTab === 'element'" class="pd-tab-pane" role="tabpanel">
         <template v-if="element">
-          <PropertySearch @search="onSearch" />
           <div class="property-content">
             <!-- 内容绑定组置顶：作者最常改的一栏，先于位置/外观 -->
             <PropertyGroup v-if="filteredGroups.includes('binding') && !isMultiCellSelection" title="内容" icon="Document" default-expanded group-key="binding">
@@ -73,23 +102,12 @@
               :searching="searching"
             />
             <AdvancedGroup v-if="filteredGroups.includes('advanced')" :element="element" :matched-keys="matchedKeys" :searching="searching" @delete-element="$emit('delete-element')" @help="$emit('help')" />
-            <!--
-              扩展元素属性组（如 ECharts 图表）：由可选包注册，内置元素不渲染；
-              扩展组件直接改 element（同内置属性组），改动经 change 汇入既有历史记录通道。
-            -->
-            <component
-              v-if="extensionPropertyComponent"
-              :is="extensionPropertyComponent"
-              :element="element"
-              :data="EXTENSION_DESIGN_DATA"
-              @change="recordHistory?.()"
-            />
           </div>
         </template>
         <p class="pd-empty" v-else>请在画布中选择一个元素</p>
       </div>
 
-      <div v-show="(activeTab || 'page') === 'page'" class="pd-tab-pane" role="tabpanel">
+      <div v-show="currentTab === 'page'" class="pd-tab-pane" role="tabpanel">
         <form class="pd-form" @submit.prevent>
           <h3 class="pd-divider">纸张设置</h3>
 
@@ -192,7 +210,7 @@ import { computed, ref } from 'vue'
 import type { RuntimeElement, PrintBusinessField, TemplateData, TableSelection } from '@worm-vue3-print/core/designer'
 import { PAPER_PRESETS, isContinuousPaperSize, isLabelPaperSize, labelPaperDefaults, resolveCellGroupMode, collectFollowMemberIds } from '@worm-vue3-print/core/designer'
 import { computeMaxColumns } from '@worm-vue3-print/core'
-import { searchProperties } from '@worm-vue3-print/core/designer'
+import { searchProperties, matchKeywords } from '@worm-vue3-print/core/designer'
 import PropertySearch from './property/PropertySearch.vue'
 import ResetButton from './property/ResetButton.vue'
 import PositionSizeGroup from './property/PositionSizeGroup.vue'
@@ -217,13 +235,17 @@ import type { WatermarkOptions } from '@worm-vue3-print/core/designer'
 import { getElementBindings, getTableCellBindings } from '@worm-vue3-print/core/designer'
 import type { BindingDescriptor } from '@worm-vue3-print/core/designer'
 import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
-import { getElementExtension } from '../composables/useElementExtensionRegistry'
+import {
+  resolveElementPropertyTab,
+  CUSTOM_PROPERTY_TAB_LABEL,
+} from '../composables/useElementExtensionRegistry'
+import type { PropertyTabKey } from '../composables/useElementExtensionRegistry'
 
 const props = defineProps<{
   element: RuntimeElement | null
   templateData?: TemplateData
   fields: PrintBusinessField[]
-  activeTab?: 'element' | 'page'
+  activeTab?: PropertyTabKey
   tableSelection?: TableSelection | null
   recordHistory?: () => void
   collapsed: boolean
@@ -234,7 +256,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'delete-element': []
   'update:templateData': [data: TemplateData]
-  'update:activeTab': [tab: 'element' | 'page']
+  'update:activeTab': [tab: PropertyTabKey]
   'toggle-collapse': []
   help: []
 }>()
@@ -284,11 +306,21 @@ const isTableType = computed(() => {
   return props.element.printElementType.type === 'table'
 })
 
-/** 扩展元素属性组：按当前元素类型取可选包注册的 propertyComponent；内置元素无扩展，不渲染 */
-const extensionPropertyComponent = computed(() => {
-  if (!props.element) return undefined
-  return getElementExtension(props.element.printElementType.type)?.propertyComponent
-})
+/**
+ * 「自定义属性」tab（P3）：单一 tab + 实例级判据。
+ * 内置元素 / 未注册扩展 / 该实例 hasProperties 为 false 时均返回 undefined，tab 不渲染。
+ * 读响应式注册表，插件注册或注销后页签即时刷新。
+ */
+const customTab = computed(() => resolveElementPropertyTab(props.element))
+
+/** 数据驱动的页签表：自定义 tab 恒排第一；无资格时与 P0 基线（2 个内置 tab）逐字一致 */
+const tabs = computed<Array<{ key: PropertyTabKey; label: string; icon: string }>>(() => [
+  ...(customTab.value
+    ? [{ key: 'custom' as const, label: customTab.value.label, icon: customTab.value.icon }]
+    : []),
+  { key: 'element' as const, label: '元素属性', icon: '▦' },
+  { key: 'page' as const, label: '页面属性', icon: '▤' },
+])
 
 /**
  * 扩展属性组的设计态示例数据：设计器没有宿主打印数据，
@@ -308,6 +340,18 @@ const searchResult = computed(() => searchProperties(searchText.value))
 const filteredGroups = computed(() => searchResult.value.groups)
 const matchedKeys = computed(() => searchResult.value.itemKeys)
 const searching = computed(() => !!searchText.value.trim())
+
+/**
+ * 自定义属性纳入统一的属性搜索（§3.8）：未搜索时恒显示；搜索时按插件声明的关键词命中，
+ * 与内置分组「命中才显示」同口径，且默认关键词含扩展名与「自定义属性」。
+ */
+const customTabVisibleInSearch = computed(() => {
+  if (!searching.value) return true
+  return matchKeywords(searchText.value, [
+    ...(customTab.value?.searchKeywords ?? []),
+    CUSTOM_PROPERTY_TAB_LABEL,
+  ])
+})
 
 const bindingDescriptors = computed<BindingDescriptor[]>(() => {
   if (!props.element) return []
@@ -533,9 +577,9 @@ function onFooterHeightChange(v: number | undefined) {
   emitUpdate({ footer: { ...props.templateData!.footer, height: v } })
 }
 
-const currentTab = computed(() => props.activeTab || 'page')
+const currentTab = computed<PropertyTabKey>(() => props.activeTab || 'page')
 
-function expandTab(tab: 'element' | 'page') {
+function expandTab(tab: PropertyTabKey) {
   emit('update:activeTab', tab)
   emit('toggle-collapse')
 }

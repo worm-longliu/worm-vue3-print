@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>/* ── 打印纸张：浏览器原生打印按此尺寸分页（Playwright page.pdf 以显式宽高为准，无副作用） ── */
+@page { size: 210mm 297mm; margin: 0; }
+
+/* ── 全局重置 ── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* 打印必须保留元素背景色（Chromium 默认剔除背景，需显式声明） */
+* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+body { font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif; }
+
+/* ── 屏幕预览：灰底 + 纸张阴影/页间距；打印时去除 ── */
+@media screen {
+  body { background: #e9ebee; }
+  .print-page { margin: 12px auto; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18); }
+}
+@media print {
+  body { background: #fff; }
+  .print-page { margin: 0; box-shadow: none; }
+}
+
+/* ── 纸张页面 ── */
+.print-page {
+  width: 210mm;
+  min-height: 297mm;
+  background: #fff;
+  padding: 10mm 10mm 10mm 10mm;
+  position: relative;
+  page-break-after: always;
+  overflow: hidden;
+}
+.print-page:last-child {
+  page-break-after: auto;
+}
+
+/* ── 水印层：覆盖整页、位于所有内容之下（显式矢量瓦片，禁止用 CSS 平铺背景：
+       Chromium 会把它编译成 PDF 平铺图案，出纸链路的 RIP 会忽略图案矩阵导致水印放大/错位） ── */
+.watermark-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+/* 单块水印瓦片：位置/尺寸由 core 的瓦片网格给出（mm） */
+.watermark-tile {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* ── 页眉 ── */
+.page-header {
+  width: 190mm;
+  height: 0mm;
+  position: relative;
+}
+
+/* ── 页脚：绝对定位固定在页面底部（内容不足时不随文档流上浮） ──
+   用显式 top 定位到「纸高 - 下边距 - 页脚高」，保证下边距生效、
+   与设计器 CanvasPaper 的三区几何一致。
+   绝对定位的包含块是 padding box 外缘（= 纸面），left 须显式补左边距。 */
+.page-footer {
+  width: 190mm;
+  height: 0mm;
+  position: absolute;
+  top: 287mm;
+  left: 10mm;
+}
+
+/* ── 内容区 ── */
+.content-area {
+  width: 190mm;
+  position: relative;
+  overflow: visible;
+}
+
+/* ── 元素通用定位 ── */
+.print-element {
+  position: absolute;
+  overflow: hidden;
+}
+
+/* ── 表格样式 ── */
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.print-table th,
+.print-table td {
+  border: 1px solid #ccc;
+  padding: 2mm 3mm;
+  word-break: normal;
+  overflow-wrap: break-word;
+  overflow: hidden;
+}
+.print-table thead th {
+  background-color: #f5f5f5;
+  font-weight: bold;
+}
+
+/* ── 测量模式 ── */
+.measure-mode .print-page {
+  height: auto;
+  min-height: auto;
+  overflow: visible;
+}
+.measure-mode .content-area {
+  height: auto;
+  overflow: visible;
+}</style>
+</head>
+<body class="measure-mode">
+<section class="print-page" data-measure-page="0">
+  
+  <div class="page-header"></div>
+  <div class="content-area" style="height:auto;overflow:visible;">
+    <div class="print-element" style="position:absolute;left:45mm;top:10mm;width:100mm;height:8mm;font-size:14pt;font-weight:bold;text-align:center;" data-measure-id="chart-1">2026 年一季度销售趋势</div>
+<div class="print-element" style="position:absolute;left:45mm;top:22mm;width:100mm;height:60mm;" data-measure-id="chart-2"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" baseProfile="full" width="100%" height="100%" viewBox="0 0 378 227" style="display:block;width:100%;height:100%">
+<rect width="378" height="227" x="0" y="0" fill="none"></rect>
+<path d="M31.2 200.5L347.8 200.5" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr0-cls-0"></path>
+<path d="M31.2 173.5L347.8 173.5" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr0-cls-0"></path>
+<path d="M31.2 147.5L347.8 147.5" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr0-cls-0"></path>
+<path d="M31.2 120.5L347.8 120.5" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr0-cls-0"></path>
+<path d="M31.2 94.5L347.8 94.5" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr0-cls-0"></path>
+<path d="M31.2 67.5L347.8 67.5" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr0-cls-0"></path>
+<path d="M31.2 41.5L347.8 41.5" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr0-cls-0"></path>
+<path d="M31.2 200.5L347.8 200.5" fill="none" pointer-events="visible" stroke="#54555a" stroke-linecap="round" class="zr0-cls-0"></path>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:sans-serif;" transform="translate(23.16 199.76)" fill="#54555a">0</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:sans-serif;" transform="translate(23.16 173.2767)" fill="#54555a">30</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:sans-serif;" transform="translate(23.16 146.7933)" fill="#54555a">60</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:sans-serif;" transform="translate(23.16 120.31)" fill="#54555a">90</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:sans-serif;" transform="translate(23.16 93.8267)" fill="#54555a">120</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:sans-serif;" transform="translate(23.16 67.3433)" fill="#54555a">150</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:sans-serif;" transform="translate(23.16 40.86)" fill="#54555a">180</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:sans-serif;" xml:space="preserve" y="6" transform="translate(83.9267 207.76)" fill="#54555a">1 月</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:sans-serif;" xml:space="preserve" y="6" transform="translate(189.46 207.76)" fill="#54555a">2 月</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:sans-serif;" xml:space="preserve" y="6" transform="translate(294.9933 207.76)" fill="#54555a">3 月</text>
+<path d="M47.5 199.8l72.8 0l0 -105.9l-72.8 0Z" fill="#5070dd" ecmeta_series_index="0" ecmeta_data_index="0" ecmeta_ssr_type="chart" class="zr0-cls-1"></path>
+<path d="M153.1 199.8l72.8 0l0 -148.3l-72.8 0Z" fill="#5070dd" ecmeta_series_index="0" ecmeta_data_index="1" ecmeta_ssr_type="chart" class="zr0-cls-1"></path>
+<path d="M258.6 199.8l72.8 0l0 -128l-72.8 0Z" fill="#5070dd" ecmeta_series_index="0" ecmeta_data_index="2" ecmeta_ssr_type="chart" class="zr0-cls-1"></path>
+<style ><![CDATA[
+.zr0-cls-0:hover {
+pointer-events:none;
+}
+.zr0-cls-1:hover {
+cursor:pointer;
+fill:rgba(88,123,243,1);
+}
+
+]]>
+
+</style>
+</svg></div>
+<div class="print-element" style="position:absolute;left:45mm;top:92mm;width:100mm;height:60mm;" data-measure-id="chart-3"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" baseProfile="full" width="100%" height="100%" viewBox="0 0 378 227" style="display:block;width:100%;height:100%">
+<rect width="378" height="227" x="0" y="0" fill="none"></rect>
+<polyline points="242.8 68.2 254.3 58.5 284.3 58.5" fill="none" pointer-events="visible" stroke="#5070dd" class="zr1-cls-2"></polyline>
+<polyline points="201.7 182.7 204.4 197.5 234.4 197.5" fill="none" pointer-events="visible" stroke="#b6d634" class="zr1-cls-2"></polyline>
+<polyline points="127.9 78.6 114.9 71.2 84.9 71.2" fill="none" pointer-events="visible" stroke="#505372" class="zr1-cls-2"></polyline>
+<path d="M189 43.1A70.4 70.4 0 0 1 258.3 125.4L189 113.5Z" fill="#5070dd" ecmeta_series_index="0" ecmeta_data_index="0" ecmeta_ssr_type="chart" class="zr1-cls-3"></path>
+<path d="M258.3 125.4A70.4 70.4 0 0 1 128.4 149.3L189 113.5Z" fill="#b6d634" ecmeta_series_index="0" ecmeta_data_index="1" ecmeta_ssr_type="chart" class="zr1-cls-4"></path>
+<path d="M128.4 149.3A70.4 70.4 0 0 1 189 43.1L189 113.5Z" fill="#505372" ecmeta_series_index="0" ecmeta_data_index="2" ecmeta_ssr_type="chart" class="zr1-cls-5"></path>
+<text dominant-baseline="central" text-anchor="start" style="font-size:12px;font-family:sans-serif;" xml:space="preserve" transform="translate(289.2865 58.4935)" fill="#333" stroke="rgb(255,255,255)" stroke-width="2" paint-order="stroke" stroke-miterlimit="2">1 月</text>
+<text dominant-baseline="central" text-anchor="start" style="font-size:12px;font-family:sans-serif;" xml:space="preserve" transform="translate(239.4001 197.4695)" fill="#333" stroke="rgb(255,255,255)" stroke-width="2" paint-order="stroke" stroke-miterlimit="2">2 月</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:sans-serif;" xml:space="preserve" transform="translate(79.8618 71.1731)" fill="#333" stroke="rgb(255,255,255)" stroke-width="2" paint-order="stroke" stroke-miterlimit="2">3 月</text>
+<style ><![CDATA[
+.zr1-cls-2:hover {
+cursor:pointer;
+}
+.zr1-cls-3:hover {
+cursor:pointer;
+fill:rgba(88,123,243,1);
+}
+.zr1-cls-4:hover {
+cursor:pointer;
+fill:rgba(200,235,57,1);
+}
+.zr1-cls-5:hover {
+cursor:pointer;
+fill:rgba(88,91,125,1);
+}
+
+]]>
+
+</style>
+</svg></div>
+  </div>
+</section>
+</body>
+</html>

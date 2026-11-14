@@ -3,7 +3,13 @@ import { renderFinalPages, wrapHtmlDocument } from '../render/html-generator.js'
 import { buildBatchPageCss, buildPageCss } from '../render/css-builder.js'
 import { buildFontFaceCss } from './fonts.js'
 import { isContinuousPaper } from '../render/types.js'
-import type { ChartRenderer, CodeRenderer, PageLayout, TemplateData } from '../render/types.js'
+import type {
+  ChartRenderer,
+  CodeRenderer,
+  ElementRenderers,
+  PageLayout,
+  TemplateData,
+} from '../render/types.js'
 import type { HeightSource, PaperMm } from './types.js'
 
 export interface BatchCopyInput {
@@ -14,6 +20,8 @@ export interface BatchCopyInput {
   data: Record<string, any>
   codeRenderer?: CodeRenderer
   chartRenderer?: ChartRenderer
+  /** 通用扩展元素渲染器（P2） */
+  renderers?: ElementRenderers
   /** 连续纸探针推导出的纸高（mm）；固定纸为 undefined */
   derivedHeightMm?: number
   paperMm: PaperMm
@@ -39,6 +47,7 @@ export function composeBatchHtml(copies: BatchCopyInput[]): {
       const pages = renderFinalPages(copy.bound, copy.pageLayouts, copy.data, {
         codeRenderer: copy.codeRenderer,
         chartRenderer: copy.chartRenderer,
+        renderers: copy.renderers,
         pageHeightMm: copy.derivedHeightMm,
       })
       return `<section class="${cls}">\n${pages}\n</section>`

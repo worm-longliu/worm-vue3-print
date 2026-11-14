@@ -2,6 +2,7 @@ import type { CodeRenderOptions } from '../render/types.js'
 import type {
   ChartRenderer,
   CodeRenderer,
+  ElementRenderers,
   MultiPageTemplateData,
   PageLayout,
   TemplateData,
@@ -79,6 +80,11 @@ export interface PrintJob {
   codeRenderer?: CodeRenderer
   /** 调用方提供的图表渲染器（浏览器端覆盖语义）；提供时跳过多趟收集 */
   chartRenderer?: ChartRenderer
+  /**
+   * 调用方提供的通用扩展元素渲染器（按元素类型索引，P2）。
+   * 提供时跳过多趟收集，与 chartRenderer 的覆盖语义一致；缺省由注册表自动收集。
+   */
+  renderers?: ElementRenderers
 }
 
 export interface PreparedDocument {

@@ -17,7 +17,10 @@
       "import": "./dist/node.js",
       "require": "./dist/node.cjs"
     },
-    "./browser/executor.iife": "./dist/executor.iife.global.js"
+    "./browser/executor.iife": {
+      "types": "./dist/executor.iife.global.d.ts",
+      "default": "./dist/executor.iife.global.js"
+    }
   },
   "files": [
     "dist"
@@ -46,8 +49,8 @@
     "echarts": "^6.1.0"
   },
   "peerDependencies": {
-    "@worm-vue3-print/core": "^1.4.8",
     "@worm-vue3-print/canvas": "^1.4.8",
+    "@worm-vue3-print/core": "^1.4.8",
     "vue": "^3.5.0"
   },
   "devDependencies": {

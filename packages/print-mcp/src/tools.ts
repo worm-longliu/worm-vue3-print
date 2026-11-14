@@ -1,11 +1,11 @@
 import { z } from 'zod'
 import {
-  ELEMENT_KINDS,
   EXPRESSION_FUNCTIONS,
   SYSTEM_VARIABLES,
   checkExpression,
   draftTemplate,
-  elementTypeSchema,
+  getElementKinds,
+  getElementKindTypes,
   inspectTemplate,
   listPresetSummaries,
   paperSizeSchema,
@@ -30,16 +30,60 @@ const templateJsonField = z.record(z.string(), z.unknown()).describe(
 /** 纯计算工具：不落文件、不出网，宿主可放心免审批 */
 const PURE_ANNOTATIONS = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const
 
+/**
+ * 草稿工具的 JSON Schema：元素类型 enum 由 contract 的 getElementKindTypes() 生成，
+ * 与 print_element_kinds 共用同一份注册态（设计文档 §0.4 / P1）。
+ * 同时挂到 getInputSchema，让 tools/list 在插件注册后实时刷新 enum。
+ */
+function draftInputSchema(): Record<string, unknown> {
+  const types = getElementKindTypes()
+  return schemaOf(z.object({
+    spec: z.object({
+      preset: z.enum(listPresetSummaries().map(p => p.id) as [string, ...string[]]).optional().describe(
+        '布局配方 id（先调 print_element_kinds 看 presets 清单选场景）。'
+        + '传入后生成整份版式骨架（元素坐标/尺寸由配方保证，绑定是占位表达式），'
+        + '与 elements 互斥——不要同时传；基于返回的 template 修改绑定后用 print_validate_template 复验。'
+        + 'spec.paper 仍可覆盖配方默认纸张。',
+      ),
+      paper: z.object({
+        paperSize: paperSizeSchema.optional().describe(
+          '预设纸型或 CUSTOM/CONTINUOUS；缺省 A4。标签 LABEL_*、小票 THERMAL_*、针式 DOT_* 也是预设。',
+        ),
+        orientation: z.enum(['portrait', 'landscape']).optional().describe('缺省 portrait'),
+        margins: z.object({
+          top: z.number(), right: z.number(), bottom: z.number(), left: z.number(),
+        }).optional().describe('页边距（mm），四边都必填；缺省 10/10/10/10'),
+        customWidth: z.number().positive().optional().describe('mm，仅 paperSize=CUSTOM 与连续纸生效'),
+        customHeight: z.number().positive().optional().describe('mm，仅 CUSTOM 生效；连续纸时只作设计画布高'),
+        pageBackground: z.string().optional().describe('页面背景色，CSS 值，如 "#ffffff"'),
+      }).optional(),
+      elements: z.array(z.object({
+        type: z.enum(types as [string, ...string[]]).describe(
+          `元素类型（当前可用：${types.join('、')}）；以 print_element_kinds 动态返回为准，先调它看必填键`,
+        ),
+        options: z.record(z.string(), z.unknown()).optional().describe(
+          '元素属性。left/top/width/height 为 mm（不给则用 core 工厂默认值）；'
+          + 'fontSize/borderWidth 为 pt；barWidth/qrQuietZone 是模块数',
+        ),
+        formatter: z.string().optional().describe(
+          '元素级绑定表达式，形如 {orderNo}；表格/列表的绑定写在 tableRows[].cells[].formatter',
+        ),
+      })).optional().describe('与 preset 互斥；传了 preset 就不要再传。坐标相对内容区左上角'),
+    }).describe('草稿内容：preset（优先）或 paper+elements 手排。元素属性缺省时由 core 元素工厂补默认值。'),
+  }))
+}
+
 export const TOOLS: ToolDef[] = [
   {
     name: 'print_element_kinds',
-    description: 'worm-vue3-print 模板能力速查：14 种元素类型（含每种必填 option 键与打印注意事项）、'
-      + '布局配方 preset 清单（id / 场景 / 槽位）、表达式函数白名单、系统变量、单位口径、表达式语法。'
+    description: 'worm-vue3-print 模板能力速查：内置元素 + 当前进程已注册插件的元素类型'
+      + '（含每种必填 option 键与打印注意事项）、布局配方 preset 清单（id / 场景 / 槽位）、'
+      + '表达式函数白名单、系统变量、单位口径、表达式语法。'
       + '生成或修改模板前先调用它，不要凭印象猜字段名；常见单据/标签/小票/面单优先选 preset。',
     annotations: { title: '打印模板能力速查', ...PURE_ANNOTATIONS },
     inputSchema: schemaOf(z.object({})),
     handler: async (): Promise<ToolResult> => asText({
-      kinds: ELEMENT_KINDS,
+      kinds: getElementKinds(),
       presets: listPresetSummaries(),
       functions: EXPRESSION_FUNCTIONS,
       systemVariables: SYSTEM_VARIABLES,
@@ -140,38 +184,8 @@ export const TOOLS: ToolDef[] = [
       + '只产出 JSON，不触碰画布状态；html 类型被封禁（防标记注入）。'
       + '手排表格必须给 tableRows 且 tableColWidths 合计等于元素宽；flowList 必须给 flowColumns。',
     annotations: { title: '生成模板草稿', ...PURE_ANNOTATIONS },
-    inputSchema: schemaOf(z.object({
-      spec: z.object({
-        preset: z.enum(listPresetSummaries().map(p => p.id) as [string, ...string[]]).optional().describe(
-          '布局配方 id（先调 print_element_kinds 看 presets 清单选场景）。'
-          + '传入后生成整份版式骨架（元素坐标/尺寸由配方保证，绑定是占位表达式），'
-          + '与 elements 互斥——不要同时传；基于返回的 template 修改绑定后用 print_validate_template 复验。'
-          + 'spec.paper 仍可覆盖配方默认纸张。',
-        ),
-        paper: z.object({
-          paperSize: paperSizeSchema.optional().describe(
-            '预设纸型或 CUSTOM/CONTINUOUS；缺省 A4。标签 LABEL_*、小票 THERMAL_*、针式 DOT_* 也是预设。',
-          ),
-          orientation: z.enum(['portrait', 'landscape']).optional().describe('缺省 portrait'),
-          margins: z.object({
-            top: z.number(), right: z.number(), bottom: z.number(), left: z.number(),
-          }).optional().describe('页边距（mm），四边都必填；缺省 10/10/10/10'),
-          customWidth: z.number().positive().optional().describe('mm，仅 paperSize=CUSTOM 与连续纸生效'),
-          customHeight: z.number().positive().optional().describe('mm，仅 CUSTOM 生效；连续纸时只作设计画布高'),
-          pageBackground: z.string().optional().describe('页面背景色，CSS 值，如 "#ffffff"'),
-        }).optional(),
-        elements: z.array(z.object({
-          type: elementTypeSchema.describe('元素类型，必须是 14 种之一；先调 print_element_kinds 看必填键'),
-          options: z.record(z.string(), z.unknown()).optional().describe(
-            '元素属性。left/top/width/height 为 mm（不给则用 core 工厂默认值）；'
-            + 'fontSize/borderWidth 为 pt；barWidth/qrQuietZone 是模块数',
-          ),
-          formatter: z.string().optional().describe(
-            '元素级绑定表达式，形如 {orderNo}；表格/列表的绑定写在 tableRows[].cells[].formatter',
-          ),
-        })).optional().describe('与 preset 互斥；传了 preset 就不要再传。坐标相对内容区左上角'),
-      }).describe('草稿内容：preset（优先）或 paper+elements 手排。元素属性缺省时由 core 元素工厂补默认值。'),
-    })),
+    inputSchema: draftInputSchema(),
+    getInputSchema: draftInputSchema,
     handler: async (args): Promise<ToolResult> => {
       const spec = (args as { spec: DraftSpec }).spec
       const r = draftTemplate(spec)

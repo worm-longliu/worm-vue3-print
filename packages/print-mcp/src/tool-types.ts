@@ -17,6 +17,12 @@ export interface ToolDef {
   annotations?: ToolAnnotations
   /** JSON Schema（由 zod 的 z.toJSONSchema 生成），MCP 的 inputSchema 要 JSON Schema 而非 zod 实例 */
   inputSchema: Record<string, unknown>
+  /**
+   * 可选的动态 schema 生成器：tools/list 时实时生成。
+   * 用于「元素类型 enum 随插件注册态变化」这类场景（设计文档 §0.4 / P1）；
+   * 不提供时沿用 inputSchema 静态快照。
+   */
+  getInputSchema?: () => Record<string, unknown>
   handler: (args: Record<string, unknown>) => Promise<ToolResult>
 }
 

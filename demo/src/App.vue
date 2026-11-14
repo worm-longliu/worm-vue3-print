@@ -107,7 +107,6 @@
             :template-json="previewTemplateJson"
             :print-data="activePrintData"
             :base-url="RENDER_BASE_URL"
-            :chart-renderer="chartRenderer"
             @rendered="(n: number) => (previewPages = n)"
           />
         </div>
@@ -160,7 +159,8 @@ import {
   createOverflowUnitDirective,
 } from '@worm-vue3-print/canvas'
 import type { PrintBusinessField, TemplateData, MultiPageTemplateData } from '@worm-vue3-print/canvas'
-import { createChartRenderer, installEchartsDesignerExtension } from '@worm-vue3-print/echarts'
+// 可选扩展包：import 即自注册（素材卡 / 画布组件 / 属性台 / 出图渲染器），宿主零配置
+import '@worm-vue3-print/echarts'
 import { isMultiPageTemplate, mergeFontDeclarations } from '@worm-vue3-print/core'
 import type {
   PrintFontDeclaration,
@@ -182,12 +182,10 @@ import { deriveBatchData } from './batch-data'
 import { createTemplateSession, type TemplateSessionStatus } from './template-session'
 
 /**
- * 注册 ECharts 图表扩展：canvas 主包不含图表库，素材卡/画布组件/属性面板分组
- * 都由本可选包在宿主侧注册；图表预览与打印共用同一份 ChartRenderer 实例（无状态）。
+ * ECharts 图表扩展由上方 `@worm-vue3-print/echarts` 的副作用 import 自注册：
+ * 素材卡 / 画布组件 / 属性台 / 出图渲染器全部来自插件描述符，预览与打印共用注册表，
+ * 宿主不再手写 installEchartsDesignerExtension() 或 createChartRenderer()。
  */
-installEchartsDesignerExtension()
-const chartRenderer = createChartRenderer()
-
 /** 相对路径图片（/docfiles/...）拼接基址：浏览器预览与打印保持一致，默认取当前站点 origin */
 const RENDER_BASE_URL = (import.meta.env.VITE_RENDER_BASE_URL as string | undefined) || window.location.origin
 

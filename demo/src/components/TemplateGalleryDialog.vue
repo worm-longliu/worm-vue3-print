@@ -73,7 +73,7 @@ const emit = defineEmits<{
 }>()
 
 type Tab = SampleGroup | '全部'
-const groups: Tab[] = ['全部', '单据', '标签', '小票']
+const groups: Tab[] = ['全部', '单据', '标签', '小票', '测试']
 
 const activeGroup = ref<Tab>('全部')
 const selectedId = ref<string>('')

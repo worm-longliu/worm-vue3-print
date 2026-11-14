@@ -1,6 +1,7 @@
 // web/src/components/print/utils/element-factory.ts
 import type { RuntimeElement, ElementType, ElementOptions } from '../types.js'
 import { createDefaultTable } from './table-matrix.js'
+import { getElementPlugin } from '../element-plugin-registry.js'
 
 /**
  * 已屏蔽的元素类型：占位实现（设计态能画、出纸永远空盒），不允许从素材台新建，
@@ -106,25 +107,12 @@ export function createDefaultOptions(type: ElementType): ElementOptions {
       return { ...base, width: 28.2, height: 28.2, title: '二维码', testData: 'qrcode' }
     case 'html':
       return { ...base, width: 28.2, height: 28.2 }
-    case 'chart': {
-      // 图表固定高（禁止 autoHeight）：测量趟按设计盒高结算，不依赖 SVG 内文本布局
-      return {
-        ...base, width: 100, height: 60, title: '图表',
-        chartOption: {
-          title: { text: '销售趋势', left: 'center' },
-          grid: { left: '8%', right: '8%', bottom: '12%', top: '18%' },
-          xAxis: { type: 'category', data: ['$data'] },
-          yAxis: { type: 'value' },
-          series: [{ type: 'bar', data: ['$data'], name: '数量' }],
-        },
-        chartDataSource: '',
-        chartCategoryField: 'name',
-        chartValueFields: ['value'],
-        chartSeriesField: '',
-      }
+    default: {
+      // 通用机制：扩展元素的出厂默认选项由插件描述符提供，主体不认识任何具体类型。
+      // createRuntimeElement / draftTemplate 因此与插件注册态自动保持一致。
+      const pluginDefaults = getElementPlugin(type)?.kind.defaultOptions?.()
+      return pluginDefaults ? { ...base, ...pluginDefaults } : base
     }
-    default:
-      return base
   }
 }
 
@@ -143,12 +131,15 @@ export function createRuntimeElement(type: ElementType, options?: Partial<Elemen
     qrcode: { title: '二维码' },
     html: { title: 'HTML' },
     pageNumber: { title: '页码' },
-    chart: { title: '图表' },
   }
 
   return {
     id: generateId(),
     options: { ...createDefaultOptions(type), ...options },
-    printElementType: { type, title: typeMetaMap[type]?.title || type },
+    printElementType: {
+      type,
+      // 扩展类型不在内置表内；标题取插件声明，保证 AI 草稿与素材卡一致
+      title: typeMetaMap[type]?.title || getElementPlugin(type)?.kind.label || String(type),
+    },
   }
 }

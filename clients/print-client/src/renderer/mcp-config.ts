@@ -94,7 +94,7 @@ ${giteeInstallCommands}
 1. 优先使用当前 Agent 原生的 MCP 配置方式；不要猜测配置文件路径。保留现有 mcpServers 和其他配置，只新增或更新 ${MCP_SERVICE_NAME} 条目，不整段覆盖原配置。
 2. 如果没有权限修改配置、当前环境不支持自动配置或命令执行失败，请如实说明，并给出我需要执行的准确步骤；不要声称已经安装成功。
 3. 配置完成后按当前 Agent 的要求重载 MCP 连接；必须由我重启或重新打开会话时，明确告诉我。只有实际连接成功后，才能声称 MCP 已可用。
-4. 重载后核对是否提供 print_element_kinds、print_draft_template、print_validate_template、print_check_expression、print_inspect_layout、print_preview_template、print_analyze_reference_image、print_compare_with_reference、print_list_open_templates、print_get_open_template、print_patch_open_template、print_apply_open_template 共 12 个工具。
+4. 重载后核对是否提供 print_element_kinds、print_draft_template、print_validate_template、print_check_expression、print_inspect_layout、print_preview_template、print_analyze_reference_image、print_compare_with_reference、print_list_open_templates、print_get_open_template、print_patch_open_template、print_apply_open_template 共 12 个工具。可用元素种类以 print_element_kinds 的实时返回为准（含可选扩展包注册的类型），不要按固定数量假设。
 5. 调用 print_list_open_templates 检查模板会话并报告数量。没有会话时，提示我打开已注册模板会话的浏览器设计器页面，不要把这种情况误判为 MCP 安装失败。
 6. 最后列出实际修改的 MCP 配置位置、已安装的技能目录和真实验证结果；不要修改任何打印模板。`
 }

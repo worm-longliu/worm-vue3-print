@@ -59,7 +59,7 @@
       <div class="pd-field">
         <span class="pd-label">配色</span>
         <select class="pd-select" :value="paletteKey" @change="onPaletteChange">
-          <option v-for="palette in CHART_PALETTES" :key="palette.key" :value="palette.key">{{ palette.label }}</option>
+          <option v-for="palette in chartPalettes" :key="palette.key" :value="palette.key">{{ palette.label }}</option>
         </select>
       </div>
       <div class="pd-field echarts-switch-row" :style="{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }">
@@ -96,12 +96,12 @@
 import type { ElementOptions, RuntimeElement } from '@worm-vue3-print/core/designer'
 import { computed, ref, watch } from 'vue'
 import {
-  CHART_PALETTES,
   CHART_TYPE_LABELS,
   CHART_TYPES,
   createDefaultChartOption,
   type ChartType,
 } from '../constants.js'
+import { getChartPalettes } from '../config.js'
 import {
   asObject,
   cloneChartOption,
@@ -124,6 +124,8 @@ const emit = defineEmits<{
   (e: 'change'): void
 }>()
 
+/** P5：预设 ∪ configureChartPlugin({ palettes }) 自定义配色（组件创建时读取一次） */
+const chartPalettes = getChartPalettes()
 const mode = ref<'graphic' | 'json'>('graphic')
 const chartType = ref<ChartType>('bar')
 const title = ref('')
@@ -162,7 +164,7 @@ function syncFromElement(): void {
     ? options.chartValueFields.map((field) => String(field))
     : []
   seriesField.value = String(options.chartSeriesField ?? '')
-  paletteKey.value = readPaletteKey(option, CHART_PALETTES)
+  paletteKey.value = readPaletteKey(option, chartPalettes)
   legendShow.value = asObject(option.legend).show !== false
   const series = (Array.isArray(option.series) ? option.series : []) as Record<string, unknown>[]
   stacked.value = series.some((item) => item.stack !== undefined && item.stack !== null && item.stack !== '')
@@ -247,7 +249,7 @@ function onSeriesFieldInput(event: Event): void {
 
 function onPaletteChange(event: Event): void {
   paletteKey.value = (event.target as HTMLSelectElement).value
-  const palette = CHART_PALETTES.find((item) => item.key === paletteKey.value) ?? CHART_PALETTES[0]
+  const palette = chartPalettes.find((item) => item.key === paletteKey.value) ?? chartPalettes[0]
   const option = currentOption()
   option.color = [...palette.colors]
   commit(option)

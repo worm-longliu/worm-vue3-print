@@ -58,10 +58,16 @@
 }
 ```
 
-元素类型：`text`（文本）、`longText`（长文）、`image`（图片）、`table`（表格）、`flowList`（流式列表）、
+**元素类型以 `print_element_kinds` 的实时返回为准**，不要写死数量。内置 13 种为：
+`text`（文本）、`longText`（长文）、`image`（图片）、`table`（表格）、`flowList`（流式列表）、
 `hline`（横线）、`vline`（竖线）、`rect`（矩形）、`oval`（椭圆）、
 `barcode`（条形码）、`qrcode`（二维码）、`html`、`pageNumber`（页码）。
 对应 title：文本 / 长文 / 图片 / 表格 / 流式列表 / 横线 / 竖线 / 矩形 / 椭圆 / 条形码 / 二维码 / HTML / 页码。
+
+宿主安装可选扩展包（如 `@worm-vue3-print/echarts` 提供 `chart`）后，`print_element_kinds`
+会额外返回插件声明的类型、`requiredOptionKeys`、`optionMeta` 与 `notes`；`print_draft_template`
+的元素类型 enum 与它同源。**生成模板前先调用 `print_element_kinds`**，按当前返回决定可用类型
+与必填属性，不要对未注册类型硬写，也不要按固定数量假设。
 
 ### 常用 options（通用）
 

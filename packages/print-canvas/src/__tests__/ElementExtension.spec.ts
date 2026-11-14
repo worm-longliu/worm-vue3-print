@@ -6,7 +6,7 @@ import { mount } from '@vue/test-utils'
 import { defineComponent, h, nextTick, reactive, ref } from 'vue'
 import type { PropType } from 'vue'
 import type { RuntimeElement, TemplateData } from '@worm-vue3-print/core/designer'
-import { createRuntimeElement } from '@worm-vue3-print/core/designer'
+import { createRuntimeElement, registerElementPlugin, clearElementPlugins } from '@worm-vue3-print/core/designer'
 import LeftPanel from '../components/LeftPanel.vue'
 import LayerPanel from '../components/LayerPanel.vue'
 import BaseElement from '../components/elements/BaseElement.vue'
@@ -40,13 +40,20 @@ const ChartPropertyStub = defineComponent({
   emits: ['change'],
   setup(props, { emit }) {
     return () => h('div', { class: 'chart-property-stub' }, [
-      h('span', { class: 'chart-property-value' }, `${String(props.element.options.chartCategoryField ?? '')}|${props.data.length}`),
+      h('span', { class: 'chart-property-value' }, `${String((props.element.options as any).chartCategoryField ?? '')}|${props.data.length}`),
       h('button', { type: 'button', class: 'chart-property-change', onClick: () => emit('change') }, 'change'),
     ])
   },
 })
 
 function registerChartExtension() {
+  // P4：主体不再内置 chart 出厂默认值，由插件描述符提供（模拟已装包宿主）
+  registerElementPlugin({
+    kind: {
+      id: 'test.canvas-chart', version: '1', type: 'chart', label: '图表',
+      defaultOptions: () => ({ chartCategoryField: 'name' } as any),
+    },
+  })
   registerElementExtension({
     type: 'chart',
     label: '图表',
@@ -56,7 +63,10 @@ function registerChartExtension() {
   })
 }
 
-afterEach(() => clearElementExtensions())
+afterEach(() => {
+  clearElementExtensions()
+  clearElementPlugins()
+})
 
 function mkElement(type: string): RuntimeElement {
   return reactive({
@@ -149,15 +159,39 @@ describe('BaseElement 扩展组件解析', () => {
 })
 
 describe('LayerPanel 扩展类型图标', () => {
-  it('图表有专属图标，未登记类型落到通用图标而不是 "?"', () => {
-    const w = mount(LayerPanel, {
-      props: {
-        elements: [mkElement('chart'), mkElement('signature')],
-        selectedIds: new Set<string>(),
-      },
-    })
-    const icons = w.findAll('.layer-icon').map(node => node.text())
+  const iconsOf = () => mount(LayerPanel, {
+    props: {
+      elements: [mkElement('chart'), mkElement('signature')],
+      selectedIds: new Set<string>(),
+    },
+  }).findAll('.layer-icon').map(node => node.text())
+
+  it('P4：主体零图表知识，未装包时扩展类型与未登记类型都落到通用图标而不是 "?"', () => {
+    // P4 删除了 LayerPanel 内置硬编码的 chart:'▤'；图标只能由插件注册态提供。
+    // 历史模板在未装包的设计器里显示通用占位图标，与任意第三方扩展同构。
+    const icons = iconsOf()
+    expect(icons).toEqual(['◆', '◆'])
+    expect(icons).not.toContain('?')
+  })
+
+  it('注册扩展后由插件注册表提供专属图标，未登记类型仍落到通用图标', () => {
+    registerChartExtension()
+    const icons = iconsOf()
     expect(icons).toEqual(['▤', '◆'])
+    expect(icons).not.toContain('?')
+  })
+
+  it('P4 统一注册表：只注册 core 插件描述符时，kind.icon 同样驱动图层图标', () => {
+    // 包入口 import 即注册的路径：不调用旧 registerElementExtension，
+    // 由 useElementExtensionRegistry.coreExtensions() 把描述符映射成扩展视图。
+    registerElementPlugin({
+      kind: {
+        id: 'test.core-only-chart', version: '1', type: 'chart', label: '图表', icon: '◈',
+      },
+      designer: { canvasComponent: ChartCanvasStub },
+    })
+    const icons = iconsOf()
+    expect(icons).toEqual(['◈', '◆'])
     expect(icons).not.toContain('?')
   })
 })
@@ -189,7 +223,7 @@ function mountPropertyPanel(element: RuntimeElement, recordHistory?: () => void)
 describe('PropertyPanel 扩展属性组', () => {
   it('注册后为扩展元素渲染 propertyComponent，并透传 element 与设计态示例数据', () => {
     registerChartExtension()
-    const w = mountPropertyPanel(createRuntimeElement('chart'))
+    const w = mountPropertyPanel(createRuntimeElement('chart' as any))
     const group = w.find('.chart-property-stub')
     expect(group.exists()).toBe(true)
     // createDefaultOptions('chart') 默认类目字段为 name；data 为 DEFAULT_DEMO_DATA 的数组信封
@@ -205,7 +239,7 @@ describe('PropertyPanel 扩展属性组', () => {
   it('扩展组件的 change 事件汇入既有历史记录通道（recordHistory）', async () => {
     registerChartExtension()
     const recordHistory = vi.fn()
-    const w = mountPropertyPanel(createRuntimeElement('chart'), recordHistory)
+    const w = mountPropertyPanel(createRuntimeElement('chart' as any), recordHistory)
     await w.find('.chart-property-change').trigger('click')
     expect(recordHistory).toHaveBeenCalledTimes(1)
   })

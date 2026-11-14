@@ -3,7 +3,7 @@
 import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
 
 /** 示例分组（按打印场景归类，示例库弹窗据此筛选） */
-export type SampleGroup = '单据' | '标签' | '小票'
+export type SampleGroup = '单据' | '标签' | '小票' | '测试'
 
 /** 示例模板：全部数据静态内置，不依赖任何后端接口 */
 export interface SampleTemplate {

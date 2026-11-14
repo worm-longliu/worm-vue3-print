@@ -1,5 +1,5 @@
 import type { ChartRenderer, ChartSpec } from '@worm-vue3-print/core'
-import { echarts } from './echarts.js'
+import { applyExtraComponents, echarts } from './echarts.js'
 
 /** 打印落纸 96dpi 换算：1in = 25.4mm = 96px */
 const PX_PER_MM = 96 / 25.4
@@ -42,6 +42,8 @@ export function fitSvgRoot(svg: string, widthPx: number, heightPx: number): stri
  * 渲染失败向上抛错，由 core 的 html-generator 降级为文本占位。
  */
 export function renderChartToSvg(spec: ChartSpec): string {
+  // P5：宿主经 configureChartPlugin({ components }) 追加的图表/组件在此生效（幂等）
+  applyExtraComponents()
   const option = spec?.option
   if (!option || typeof option !== 'object' || Array.isArray(option)) {
     throw new Error('图表 option 非法：需要对象')

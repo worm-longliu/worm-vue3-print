@@ -1,17 +1,21 @@
 import { z } from 'zod'
-import type { ElementType } from '@worm-vue3-print/core/designer'
+import type { BuiltinElementType } from '@worm-vue3-print/core/designer'
 import { OPTION_META, OPTION_KEYS } from '../option-meta.js'
 import type { OptionMeta } from '../units.js'
 
-/** 14 种元素类型：与 core `ElementType` 逐字对齐（文件末尾有双向漂移闸门） */
+/** 主体内置元素类型：与 core `BuiltinElementType` 逐字对齐（文件末尾有双向漂移闸门） */
 export const elementTypeSchema = z.enum([
   'text', 'image', 'longText', 'table', 'flowList', 'hline', 'vline', 'rect', 'oval',
-  'barcode', 'qrcode', 'html', 'pageNumber', 'chart',
+  'barcode', 'qrcode', 'html', 'pageNumber',
 ])
 
-// 方向一：本包不得出现 core 不认的类型；方向二：core 的类型不得漏项
-const _elementTypeValues: readonly ElementType[] = elementTypeSchema.options
-type _ElementTypeMissing = Exclude<ElementType, (typeof elementTypeSchema.options)[number]>
+/**
+ * 双向漂移闸门改盯 BuiltinElementType 而非 ElementType：
+ * 后者已含 `keyof PluginElementTypeMap`（插件声明合并注入的类型），
+ * 由运行时注册表动态校验，静态 enum 不该也不可能覆盖它们（设计文档 §3.5）。
+ */
+const _elementTypeValues: readonly BuiltinElementType[] = elementTypeSchema.options
+type _ElementTypeMissing = Exclude<BuiltinElementType, (typeof elementTypeSchema.options)[number]>
 const _elementTypeFull: _ElementTypeMissing extends never ? true : never = true
 void _elementTypeValues
 void _elementTypeFull
@@ -83,9 +87,7 @@ const STRUCTURED_OVERRIDES: Record<string, z.ZodTypeAny> = {
   tablePagination: z.object({ enabled: z.boolean().optional() }).catchall(z.unknown()),
   tableColWidths: z.array(z.number().finite().nonnegative()),
   tableRows: z.array(tableRowSchema),
-  // 图表 option 是自由 JSON：只校验「必须是对象」，防数组/字符串混入；体积与嵌套由校验器另限
-  chartOption: z.record(z.string(), z.unknown()),
-  chartValueFields: z.array(z.string()),
+  // 扩展元素专属属性的结构校验由插件 optionMeta 与 strict 模式注册态负责
 }
 
 const optionalShape = Object.fromEntries(
@@ -104,19 +106,30 @@ export const elementOptionsSchema = z.object({
   height: z.number().finite().nonnegative(),
 }).catchall(z.unknown())
 
-export const printElementDataSchema = z.object({
-  id: z.string().optional(),
-  // 类型必须落在 core 的 ElementType 上：拼错（Text / tabel）过去整块放行，
-  // 草稿会静默产出一个渲染端不认识的元素（element-factory 走 default 分支）
-  type: elementTypeSchema.optional(),
-  options: elementOptionsSchema,
-  printElementType: z.object({
-    type: elementTypeSchema,
-    title: z.string().optional(),
-    editable: z.boolean().optional(),
-    formatter: z.string().optional(),
-    styler: z.string().optional(),
-  }).catchall(z.unknown()),
-}).catchall(z.unknown())
+/**
+ * 按「元素类型 schema」构造元素 schema：默认仍是内置类型的严格 enum，
+ * 校验器可按 legacy 宽松 / strict 注册态传入不同的 type schema（设计文档 §3.4）。
+ */
+export function createPrintElementDataSchema(typeSchema: z.ZodTypeAny = elementTypeSchema) {
+  return z.object({
+    id: z.string().optional(),
+    // 类型必须落在 core 的 BuiltinElementType（或注册态）上：拼错（Text / tabel）过去整块放行，
+    // 草稿会静默产出一个渲染端不认识的元素（element-factory 走 default 分支）
+    type: typeSchema.optional(),
+    options: elementOptionsSchema,
+    printElementType: z.object({
+      type: typeSchema,
+      title: z.string().optional(),
+      editable: z.boolean().optional(),
+      formatter: z.string().optional(),
+      styler: z.string().optional(),
+    }).catchall(z.unknown()),
+  }).catchall(z.unknown())
+}
+
+export const printElementDataSchema = createPrintElementDataSchema()
+
+/** legacy 宽松通道：未知 type 交给校验器按注册态与拼写距离判定，不再由 zod 直接判死 */
+export const legacyPrintElementDataSchema = createPrintElementDataSchema(z.string())
 
 export const KNOWN_OPTION_KEYS = new Set<string>(OPTION_KEYS)

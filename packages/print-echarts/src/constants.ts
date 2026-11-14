@@ -1,3 +1,6 @@
+/** 插件 id：写入模板顶层 plugins 清单，也是 configurePlugin / 注册表查询的键 */
+export const CHART_PLUGIN_ID = '@worm-vue3-print/echarts'
+
 /** 本包支持的图表类型（图形化面板与常量导出共用；area 是 line 的填充形态） */
 export const CHART_TYPES = ['bar', 'line', 'area', 'pie', 'scatter'] as const
 

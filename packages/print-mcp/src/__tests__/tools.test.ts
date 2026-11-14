@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { getElementKinds } from '@worm-vue3-print/contract'
 import { TOOLS } from '../tools.js'
 
 const call = async (name: string, args: Record<string, unknown>) => {
@@ -52,7 +53,9 @@ describe('桌面纯计算工具集', () => {
 describe('print_element_kinds', () => {
   it('列出元素、配方 preset、函数、系统变量和单位约定', async () => {
     const data = JSON.parse((await call('print_element_kinds', {})).text)
-    expect(data.kinds).toHaveLength(14)
+    // P5 定稿：kinds 唯一来源是 getElementKinds()（内置 ∪ 插件注册态），不写死数量；
+    // 注册插件后 draft enum 同步增长的回归见 __tests__/dynamic-kinds.test.ts
+    expect(data.kinds.map((k: { type: string }) => k.type)).toEqual(getElementKinds().map(k => k.type))
     expect(data.kinds.find((k: { type: string }) => k.type === 'html').blocked).toBe(true)
     expect(data.presets.map((p: { id: string }) => p.id)).toContain('receipt-80mm')
     expect(data.presets.every((p: { scene: string; slots: string[] }) => p.scene && p.slots.length > 0)).toBe(true)

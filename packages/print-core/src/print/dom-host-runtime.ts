@@ -1,6 +1,7 @@
 import { PrintFailure, toPrintFailure, withTimeout } from './errors.js'
 import { DEFAULT_READINESS_MS, DEFAULT_TIMEOUT_MS } from './ports.js'
-import type { DriverFactory, ExecutorBundle } from './driver.js'
+import type { DriverFactory, ExecutorBundle, ExecutorMethod } from './driver.js'
+import { resolveExecutorMethod } from './assets.js'
 import type { PrintRuntime, PrintSession, SessionBudget, MeasureResult } from './ports.js'
 import type {
   CodeSpec,
@@ -8,14 +9,24 @@ import type {
   RawMeasurement,
   ViewportPx,
 } from './types.js'
-import type { ChartSpec } from '../render/types.js'
+import type { ChartSpec, ElementRenderSpec } from '../render/types.js'
 import type { FitFontSize } from '../render/text-fit.js'
 
 /**
  * 共享 DOM 宿主 runtime：把「载入 → 注入 → 等就绪 → 执行 → 释放」的时序、
  * 超时预算与错误分类集中实现一次。三端只提供 driver。
+ *
+ * @param bundle       core 自带 DOM 执行器（必需，driver.requiresExecutor=false 时可省）
+ * @param chartBundle  图表执行器（旧 API，P4 起由通用 bundles 取代，行为保持不变）
+ * @param bundles      通用扩展元素执行器列表，由 collectExecutorBundles() 从注册表收集；
+ *                     按 version 幂等注入，文档重建后重新注入
  */
-export function createDomHostRuntime(factory: DriverFactory, bundle?: ExecutorBundle, chartBundle?: ExecutorBundle): PrintRuntime {
+export function createDomHostRuntime(
+  factory: DriverFactory,
+  bundle?: ExecutorBundle,
+  chartBundle?: ExecutorBundle,
+  bundles: readonly ExecutorBundle[] = [],
+): PrintRuntime {
   return {
     async withSession<T>(options: SessionBudget, fn: (session: PrintSession) => Promise<T>): Promise<T> {
       const driver = await factory.createDriver()
@@ -31,6 +42,7 @@ export function createDomHostRuntime(factory: DriverFactory, bundle?: ExecutorBu
 
       let injected = false
       let chartInjected = false
+      let pluginInjected = false
       const ensureExecutor = async (): Promise<void> => {
         if (injected) return
         if (driver.requiresExecutor === false) {
@@ -54,11 +66,27 @@ export function createDomHostRuntime(factory: DriverFactory, bundle?: ExecutorBu
         await driver.injectExecutor(chartBundle)
         chartInjected = true
       }
+      // 通用扩展元素执行器：按 version 幂等，文档重建后重新注入（三端零改动自动装配，P4 启用）
+      const ensurePluginBundles = async (): Promise<void> => {
+        if (pluginInjected) return
+        if (driver.requiresExecutor === false) {
+          pluginInjected = true
+          return
+        }
+        const seen = new Set<string>()
+        for (const extra of bundles) {
+          if (seen.has(extra.version)) continue
+          seen.add(extra.version)
+          await driver.injectExecutor(extra)
+        }
+        pluginInjected = true
+      }
       const load = async (html: string, viewport: ViewportPx): Promise<void> => {
         await driver.open(viewport)
         await driver.setContent(html)
         injected = false
         chartInjected = false
+        pluginInjected = false
         await ensureExecutor()
         await driver.evaluate<void>('waitReady', [readinessMs])
       }
@@ -96,6 +124,30 @@ export function createDomHostRuntime(factory: DriverFactory, bundle?: ExecutorBu
               }
             })(),
             ms, 'RENDER_TIMEOUT', `图表渲染超过 ${ms}ms`,
+          )
+        },
+
+        async renderAssets(specs: ElementRenderSpec[]): Promise<Map<string, string>> {
+          if (specs.length === 0) return new Map()
+          const ms = budget()
+          return withTimeout(
+            (async () => {
+              try {
+                await ensureExecutor()
+                await ensurePluginBundles()
+                // 兼容桥（P4）：宿主仍按旧三参数装配、未传通用 bundles 时，第三参数的
+                // 执行器产物继续承担扩展元素出图，保证已装包宿主零改动。P5 收尾后本分支自然空转。
+                if (bundles.length === 0) await ensureChartExecutor()
+                // 别名桥反查：插件登记旧名 → 通用名后，主体调用通用名会落到执行器真实提供的旧名，
+                // 主体源码因此不含任何具体元素类型名（§3.9）
+                const method = resolveExecutorMethod('renderAssets') as ExecutorMethod
+                const map = await driver.evaluate<Record<string, string>>(method, [specs])
+                return new Map(Object.entries(map ?? {}))
+              } catch (err) {
+                throw fail(err, 'INTERNAL', '扩展元素渲染失败')
+              }
+            })(),
+            ms, 'RENDER_TIMEOUT', `扩展元素渲染超过 ${ms}ms`,
           )
         },
 

@@ -113,7 +113,7 @@ The canonical integration is [`demo/src/App.vue`](../../demo/src/App.vue) — th
 | Server PDF | `services/print-render` HTTP API → Playwright Chromium → vector PDF/PNG | Batch jobs, archiving, email attachments, no client-side dependency |
 | Desktop silent print | `core/client` WebSocket → `print-client` → `webContents.print({ silent: true })` | Warehouse / storefront stations: no dialog, no browser extension, paper-length auto-derivation for continuous paper |
 
-All three consume the same rendering pipeline from `core`, which is why a template designed once prints consistently everywhere. Repository guard `npm run lint:print-architecture` fails the build if measurement, paper-height, output, or barcode logic ever gets duplicated across those three ends.
+All three consume the same rendering pipeline from `core`, which is why a template designed once prints consistently everywhere. Optional element plugins (for example `@worm-vue3-print/echarts`) register a single descriptor on import; the runtime collects their renderers and executor bundles from the registry, so adding a plugin needs no host wiring changes. Repository guard `npm run lint:print-architecture` fails the build if measurement, paper-height, output, barcode, or plugin rendering-library logic ever gets duplicated across those three ends.
 
 ## Documentation map
 

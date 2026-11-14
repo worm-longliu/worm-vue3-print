@@ -42,6 +42,7 @@
 import { computed } from 'vue'
 import { ArrowUpToLine, ArrowUp, ArrowDown, ArrowDownToLine, Group as GroupIcon, Ungroup as UngroupIcon } from 'lucide-vue-next'
 import type { RuntimeElement } from '@worm-vue3-print/core/designer'
+import { getElementExtension } from '../composables/useElementExtensionRegistry'
 
 const props = defineProps<{
   elements: RuntimeElement[]
@@ -76,15 +77,17 @@ const elementIconMap: Record<string, string> = {
   rect: '□',
   oval: '○',
   html: '<>',
-  // 图表：渲染实现由可选包提供，未装包时元素仍在画布/图层中（占位），图标不能落到兜底
-  chart: '▤',
+  // 扩展元素图标由插件注册态提供，主体不内置任何具体扩展类型
 }
 
 /** 未登记类型的通用图标（如第三方注册了 canvas 主包未内置图标的元素），避免显示 '?' */
 const GENERIC_LAYER_ICON = '◆'
 
 function layerIcon(el: RuntimeElement): string {
-  return elementIconMap[el.printElementType.type] ?? GENERIC_LAYER_ICON
+  const type = el.printElementType.type
+  // 插件注册态优先：扩展包可提供自己的图层图标；未注册时回落内置表，
+  // 保证历史模板里未装包的扩展元素仍显示既有占位图标而非 '?'。
+  return getElementExtension(type)?.icon ?? elementIconMap[type] ?? GENERIC_LAYER_ICON
 }
 
 function layerName(el: RuntimeElement): string {

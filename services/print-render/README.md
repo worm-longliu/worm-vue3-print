@@ -5,11 +5,11 @@
 通过 npm workspace 本地软链依赖同仓库的 `@worm-vue3-print/core`（表达式引擎与渲染管线），
 修改 core 无需发版即可在本服务生效。
 宿主（如管理后台 `web`）的后端 `PrintRenderClient` 调用本服务的 `POST /render/pdf`，传入 `templateJson`（模板 JSON）与 `printData`（打印数据），
-模板绑定、分页与 HTML 生成在 Node 侧完成；测量、连续纸探针、码制渲染与出图由 `@worm-vue3-print/core` 的 DOM 执行器在页面上下文执行（与浏览器预览、桌面客户端共用同一份管线）。
+模板绑定、分页与 HTML 生成在 Node 侧完成；测量、连续纸探针、码制渲染与出图由 `@worm-vue3-print/core` 的 DOM 执行器在页面上下文执行（与浏览器预览、桌面客户端共用同一份管线）。扩展元素（如图表）由 `src/pdf-render.ts` 的部署白名单 `import` 完成注册，其页面执行器产物由 `collectExecutorBundles()` 按注册表自动收集，新增插件无需改宿主装配。
 
 ## 渲染流程
 
-两遍渲染由 `@worm-vue3-print/core` 的打印管线统一实现（`src/pdf-render.ts` 只做宿主装配，`src/driver-playwright.ts` 提供页面能力）：
+两遍渲染由 `@worm-vue3-print/core` 的打印管线统一实现（`src/pdf-render.ts` 只做宿主装配：部署白名单 `import` 插件 + `collectExecutorBundles()` 自动收集扩展元素执行器，`src/driver-playwright.ts` 提供页面能力）：
 
 1. 数据绑定：`@worm-vue3-print/core` 的 `bindData` 将 `printData` 变量/表达式替换进模板；
 2. 第一遍测量：`generateHtml` 生成测量 HTML，`page.setContent()` 加载后测量各元素实际高度（mm）；

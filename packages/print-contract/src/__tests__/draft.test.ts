@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { draftTemplate, ELEMENT_KINDS } from '../draft.js'
 import { validateTemplateJson } from '../validate.js'
+import { elementTypeSchema } from '../schema/element.js'
 
 describe('draftTemplate', () => {
   it('空 spec（无 preset 且无 elements）报 elements error', () => {
@@ -76,8 +77,8 @@ describe('draftTemplate', () => {
     expect(r.issues.some(i => i.message.includes('OUT_OF_PAPER'))).toBe(true)
   })
 
-  it('元素类型清单覆盖 14 类并标注封禁项', () => {
-    expect(ELEMENT_KINDS).toHaveLength(14)
+  it('内置元素类型清单与静态 enum 一致并标注封禁项（内置基线；插件注册态由 kinds-dynamic.test.ts 覆盖）', () => {
+    expect(new Set(ELEMENT_KINDS.map(k => k.type))).toEqual(new Set(elementTypeSchema.options))
     expect(ELEMENT_KINDS.find(k => k.type === 'html')?.blocked).toBe(true)
     expect(ELEMENT_KINDS.find(k => k.type === 'flowList')?.requiredOptionKeys).toContain('flowColumns')
   })

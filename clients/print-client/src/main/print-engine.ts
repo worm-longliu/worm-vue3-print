@@ -6,6 +6,7 @@ import { dirname } from 'node:path'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import {
   buildPdfTargetSpec,
+  collectExecutorBundles,
   createDomHostRuntime,
   micrometersToMillimeters,
   millimetersToMicrometers,
@@ -14,7 +15,8 @@ import {
   renderPdf,
 } from '@worm-vue3-print/core'
 import { loadExecutorBundle } from '@worm-vue3-print/core/node'
-import { loadChartExecutorBundle } from '@worm-vue3-print/echarts/node'
+// 部署白名单（设计文档 D3）：只做副作用注册，插件产物由 core 按注册表收集
+import '@worm-vue3-print/echarts/node'
 import type { PrintJob, PrintRuntime, PrintTemplateData } from '@worm-vue3-print/core'
 import type { PrintOptions } from '@worm-vue3-print/core/client'
 import type { Logger } from './logger.js'
@@ -62,9 +64,17 @@ interface Produced {
   pageCount?: number
 }
 
-/** core 运行时：Electron driver + core 的 DOM 执行器产物 + 图表执行器产物（可选包） */
+/**
+ * core 运行时：Electron driver + core 的 DOM 执行器 + 注册表自动收集的扩展元素执行器。
+ * 第三参保留 §4.3 旧 chartBundle 兼容位；新增插件只需在部署白名单里 import 一次。
+ */
 export function createPrintRuntime(): PrintRuntime {
-  return createDomHostRuntime(createElectronDriverFactory(), loadExecutorBundle(), loadChartExecutorBundle())
+  return createDomHostRuntime(
+    createElectronDriverFactory(),
+    loadExecutorBundle(),
+    undefined,
+    collectExecutorBundles(),
+  )
 }
 
 /** 协议里的 print.paperSize 单位是微米；core 的覆盖逃生门用毫米 */

@@ -28,7 +28,8 @@ export function createDesktopPrintMcpServer(options: DesktopPrintMcpServerOption
     tools: toolList.map(t => ({
       name: t.name,
       description: t.description,
-      inputSchema: t.inputSchema,
+      // 动态 schema 优先：插件注册后元素类型 enum 需随 tools/list 实时刷新
+      inputSchema: t.getInputSchema?.() ?? t.inputSchema,
       // 注解随 tools/list 下发：宿主据此决定只读工具是否免审批
       ...(t.annotations ? { annotations: t.annotations } : {}),
     })),

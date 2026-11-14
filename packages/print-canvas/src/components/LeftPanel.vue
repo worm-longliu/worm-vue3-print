@@ -20,16 +20,17 @@
         </div>
         <div v-show="activeTab === 'elements'" class="pd-tab-pane" role="tabpanel">
           <div class="panel-title">拖拽元素到画布</div>
-          <div
-            v-for="item in elementTypes"
-            :key="item.type"
-            class="material-card"
-            draggable="true"
-            @dragstart="onDragStart($event, item.type)"
-          >
-            <span class="material-icon">{{ item.icon }}</span>
-            <span class="material-label">{{ item.label }}</span>
-          </div>
+          <template v-for="item in elementTypes" :key="item.type">
+            <div v-if="item.groupStart" class="material-group-title">{{ item.group }}</div>
+            <div
+              class="material-card"
+              draggable="true"
+              @dragstart="onDragStart($event, item.type)"
+            >
+              <span class="material-icon">{{ item.icon }}</span>
+              <span class="material-label">{{ item.label }}</span>
+            </div>
+          </template>
         </div>
         <div v-show="activeTab === 'fields'" class="pd-tab-pane" role="tabpanel">
           <FieldTreePanel
@@ -85,6 +86,9 @@ interface MaterialItem {
   type: string
   label: string
   icon: string
+  /** 扩展包可声明分组名；仅首项渲染分组标题，未注册/未声明时 DOM 与内置态一致 */
+  group?: string
+  groupStart?: boolean
 }
 
 /** 内置 12 项：canvas 主包自带、不依赖任何可选包 */
@@ -108,14 +112,23 @@ const builtinElementTypes: (MaterialItem & { type: ElementType })[] = [
  * getElementExtensions 读响应式注册表，安装/卸载扩展包后卡片列表即时刷新；
  * 未安装任何可选包时列表与主包内置项完全一致。
  */
-const elementTypes = computed<MaterialItem[]>(() => [
-  ...builtinElementTypes,
-  ...getElementExtensions().map(ext => ({
-    type: ext.type,
-    label: ext.label,
-    icon: ext.icon || '◆',
-  })),
-])
+const elementTypes = computed<MaterialItem[]>(() => {
+  const all: MaterialItem[] = [
+    ...builtinElementTypes.map(item => ({ ...item })),
+    ...getElementExtensions().map(ext => ({
+      type: ext.type,
+      label: ext.label,
+      icon: ext.icon || '◆',
+      group: ext.group,
+    })),
+  ]
+  let prevGroup: string | undefined
+  return all.map(item => {
+    const groupStart = !!item.group && item.group !== prevGroup
+    if (item.group) prevGroup = item.group
+    return { ...item, groupStart }
+  })
+})
 
 function onDragStart(event: DragEvent, type: string) {
   event.dataTransfer?.setData('elementType', type)
@@ -237,6 +250,14 @@ function expandTab(tab: string) {
   letter-spacing: .6px;
   padding: 2px 2px 8px;
   margin-bottom: 10px;
+  border-bottom: 1px solid var(--pd-border-soft, #e9ecf2);
+}
+.material-group-title {
+  font-size: 11px;
+  color: var(--pd-text-muted, #8b909c);
+  letter-spacing: .6px;
+  padding: 4px 2px 6px;
+  margin: 2px 0 8px;
   border-bottom: 1px solid var(--pd-border-soft, #e9ecf2);
 }
 .material-card {

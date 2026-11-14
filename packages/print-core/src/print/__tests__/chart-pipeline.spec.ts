@@ -1,9 +1,11 @@
 // print-core/src/print/__tests__/chart-pipeline.spec.ts
 // 图表元素走与码制同构的「收集 → 页面渲染 → 回填」两趟流程
-import { describe, it, expect } from 'vitest'
+import { afterAll, beforeAll, describe, it, expect } from 'vitest'
 import { prepareDocument } from '../pipeline.js'
 import { createDomHostRuntime } from '../dom-host-runtime.js'
+import { clearElementPlugins } from '../../designer/element-plugin-registry.js'
 import { EXECUTOR, createFakeDriverFactory } from './fake-driver.js'
+import { registerChartPluginStub } from './chart-plugin-stub.js'
 import type { FakeDriverOptions } from './fake-driver.js'
 import type { PrintJob } from '../types.js'
 import type { ChartRenderer, TemplateData } from '../../render/types.js'
@@ -44,6 +46,10 @@ const jobOf = (overrides: Partial<PrintJob> = {}): PrintJob => ({
 })
 
 describe('图表出纸管线', () => {
+  // P4：图表实现已归插件包；core 用替身插件验证通用管线（真实等价性见包内 P0 基线）
+  beforeAll(() => { registerChartPluginStub() })
+  afterAll(() => { clearElementPlugins() })
+
   it('含图表模板：测量趟与最终趟各收集一次，最终 HTML 内联图表 SVG', async () => {
     const { fake, runtime } = runtimeOf({ measurements: [{ id: 'chart-1', heightPx: 227 }] })
     const result = await prepareDocument(jobOf(), runtime)
@@ -65,13 +71,13 @@ describe('图表出纸管线', () => {
     await expect(prepareDocument(jobOf(), runtime)).rejects.toThrow(/图表执行器/)
   })
 
-  it('调用方提供 chartRenderer（浏览器覆盖语义）：跳过页面收集', async () => {
+  it('P4 兼容边界：旧 chartRenderer 入参保留，出图由插件描述符统一负责', async () => {
     const { fake, runtime } = runtimeOf({ measurements: [{ id: 'chart-1', heightPx: 227 }] })
     const chartRenderer: ChartRenderer = {
       render: () => '<svg data-chart="host"></svg>',
     }
     const result = await prepareDocument(jobOf({ chartRenderer }), runtime)
-    expect(fake.calls.filter(call => call === 'evaluate:renderCharts')).toHaveLength(0)
-    expect(result.html).toContain('<svg data-chart="host"')
+    expect(result.html).toContain('<svg data-chart="fake"')
+    expect(fake.calls.filter(call => call === 'evaluate:renderCharts')).toHaveLength(1)
   })
 })

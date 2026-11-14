@@ -31,8 +31,17 @@ export {
   getElementExtensions,
   getElementExtension,
   clearElementExtensions,
+  resolveElementPropertyTab,
+  CUSTOM_PROPERTY_TAB_LABEL,
+  CUSTOM_PROPERTY_GROUP,
 } from './composables/useElementExtensionRegistry'
-export type { ElementExtension, ElementComponentProps } from './composables/useElementExtensionRegistry'
+export type {
+  ElementExtension,
+  ElementComponentProps,
+  ElementPropertyTab,
+  ResolvedElementPropertyTab,
+  PropertyTabKey,
+} from './composables/useElementExtensionRegistry'
 
 // 顶部条自适应收纳机制（宿主自己的工具栏/操作条可复用同一链序与判定）：
 // 宿主用 provideToolbarOverflow 创建上下文、v-overflow-unit 注册单元、

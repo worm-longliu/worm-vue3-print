@@ -26,6 +26,7 @@ import { PAGINATION_EDGE_SAMPLE } from './pagination-edge'
 import { TEXT_WRAP_FOLLOW_SAMPLE } from './text-wrap-follow'
 import { PAYMENT_REQUEST_SAMPLE } from './payment-request'
 import { SALES_CHART_SAMPLE } from './sales-chart'
+import { ECHARTS_TEST_CASE_SAMPLE } from './echarts-test-case'
 
 export type { SampleTemplate, SampleGroup }
 
@@ -40,6 +41,7 @@ export const SAMPLE_TEMPLATES: SampleTemplate[] = [
   PAGINATION_EDGE_SAMPLE,
   TEXT_WRAP_FOLLOW_SAMPLE,
   SALES_CHART_SAMPLE,
+  ECHARTS_TEST_CASE_SAMPLE,
   WEIGHT_LABEL_SAMPLE,
   PRICE_LABEL_SAMPLE,
   ASSET_TAG_SAMPLE,
@@ -50,7 +52,7 @@ export const SAMPLE_TEMPLATES: SampleTemplate[] = [
 ]
 
 /** 分组顺序（弹窗筛选项） */
-export const SAMPLE_GROUPS: SampleGroup[] = ['单据', '标签', '小票']
+export const SAMPLE_GROUPS: SampleGroup[] = ['单据', '标签', '小票', '测试']
 
 /** 按分组过滤 */
 export function listSamples(group?: SampleGroup | '全部'): SampleTemplate[] {

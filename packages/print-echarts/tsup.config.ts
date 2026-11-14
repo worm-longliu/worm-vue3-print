@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { copyFileSync, readFileSync } from 'node:fs'
 import { defineConfig } from 'tsup'
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'))
@@ -35,5 +35,12 @@ export default defineConfig([
     minify: true,
     noExternal: ['echarts'],
     banner: { js: banner },
+    // 副作用入口也要有 types 条件：IIFE 本身无导出，声明文件由源码复制到 dist
+    onSuccess: async () => {
+      copyFileSync(
+        new URL('./src/browser/executor.iife.d.ts', import.meta.url),
+        new URL('./dist/executor.iife.global.d.ts', import.meta.url),
+      )
+    },
   },
 ])

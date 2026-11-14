@@ -250,6 +250,27 @@ export interface CodeRenderer {
   render(value: string, cellType: 'barcode' | 'qrcode', opts?: CodeRenderOptions): string
 }
 
+/**
+ * 通用扩展元素渲染规格（P2）：插件自定义元素与 ChartSpec / CodeSpec 同构，
+ * 走「收集 → 批量渲染 → 回填」两趟流程。type 标明归属插件，key 为跨趟/跨进程稳定键，
+ * 其余字段由插件自行解释（通常是绑定后的 options 快照）。
+ */
+export interface ElementRenderSpec {
+  /** 元素类型（对应 PrintElementPlugin.kind.type） */
+  type: string
+  /** 稳定键：缺省时由主体按 spec 内容生成 */
+  key?: string
+  [field: string]: unknown
+}
+
+/** 通用扩展元素渲染器：同步产出内联 HTML/SVG；抛错由主体降级为文本占位 */
+export interface ElementRenderer {
+  render(spec: ElementRenderSpec): string
+}
+
+/** 按元素类型索引的渲染器集合（旧 chartRenderer 单入参的泛化形态） */
+export type ElementRenderers = Readonly<Record<string, ElementRenderer>>
+
 /** 图表渲染规格：option 已完成数据绑定；尺寸为落纸 mm（渲染端按 96dpi 换算逻辑像素） */
 export interface ChartSpec {
   /** 稳定键：绑定后 option + 尺寸 + 字体，跨趟比对与跨进程映射用 */

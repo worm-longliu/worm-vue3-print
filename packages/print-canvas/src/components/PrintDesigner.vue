@@ -151,6 +151,8 @@ import type { RuntimeElement, PrintBusinessField, TemplateData, TableCell, Uploa
 import type { PrintFontDeclaration, PrintTemplateData, MultiPageTemplateData as PrintMultiPageTemplateData } from '@worm-vue3-print/core'
 import { buildFontFaceCss, validateTiling, normalizeTemplate, collectPrintWarnings } from '@worm-vue3-print/core'
 import { useDesignerState } from '../composables/useDesignerState'
+import { resolveElementPropertyTab } from '../composables/useElementExtensionRegistry'
+import type { PropertyTabKey } from '../composables/useElementExtensionRegistry'
 import { useFormatToolbar } from '../composables/useFormatToolbar'
 import { useFormatPainter } from '../composables/useFormatPainter'
 import { useGuides } from '../composables/useGuides'
@@ -405,9 +407,10 @@ function onToggleLocked(id: string) {
   if (el) el.options.locked = !el.options.locked
 }
 
-const activePropertyTab = ref<'element' | 'page'>('page')
+const activePropertyTab = ref<PropertyTabKey>('page')
 watch(selectedElement, (el) => {
-  activePropertyTab.value = el ? 'element' : 'page'
+  // 自定义元素带「自定义属性」时默认激活第一个 tab；内置元素与空选中态维持既有回落
+  activePropertyTab.value = resolveElementPropertyTab(el) ? 'custom' : (el ? 'element' : 'page')
 })
 
 /** 双击可打开表达式编辑器的元素类型 → 对应表达式字段（无内容表达式的类型不在此列） */
@@ -430,7 +433,7 @@ function onDblClickElement(id: string) {
   const el = elements.value.find(e => e.id === id)
   if (!el) return
   select(id, false)
-  activePropertyTab.value = 'element'
+  activePropertyTab.value = resolveElementPropertyTab(el) ? 'custom' : 'element'
   // 锁定元素不弹编辑器（保持选中，避免绕过锁定护栏）
   if (el.options.locked) return
   const field = DBL_EDITABLE_FIELD[el.printElementType.type]
