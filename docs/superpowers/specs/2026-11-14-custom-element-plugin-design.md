@@ -534,7 +534,7 @@ v1 把「14→13 断言改写」归因于迁移，v2 澄清：**由于 D1 仍删
 ### P5 三端自动装配、包能力、文档与 MCP/AI 定稿（已完成 / 全绿，2026-11-14）
 
 > 最后一个开发阶段：**宿主不再写任何图表专属装配代码**；新增插件只需在部署白名单里 import 一次。
-> 发版（CHANGELOG 四处 / 1.5.0 / 打标签 / 双推）**未执行**，须经用户确认后单独进行。
+> 发版（CHANGELOG 四处 / 1.5.0 / 打标签 / 发版提交双推 / release workflow）**未执行**，须经用户确认后单独进行；P5 代码提交 `2d21b51` 已双推两个远端。
 
 **三端自动装配（D3 / D7 收尾）**
 
@@ -642,4 +642,4 @@ P3 完成设计器侧闭环（§5 P3）：`ElementPropertyTab` 描述符 + 实�
 
 **P5 已完成本地改造（§5 P5）**：三端 `loadChartExecutorBundle()` / 手写 `createChartRenderer()` 全部清掉，改为部署白名单副作用 import + `collectExecutorBundles()` 四参数自动装配；`print-echarts` 补齐配置面、`./browser/executor.iife` 的 `types` 条件、完整卸载与生命周期回归；架构守卫泛化为插件渲染库清单并带规则自检；MCP/AI 技能文档与断言改为动态 kinds 口径；新增插件开发指南与 `signature` 最小脚手架。**全量验收全绿**：五包 dist 重建、10 组 workspace 测试（core 91/1382、canvas 83/820、echarts 7/37、common 36/386、print-client 26/212、render 13/48 等）、render baseline 1/4、skills、架构守卫、demo 构建与 `vue-tsc`、`git diff --check`。两份历史 `chart` 模板 HTML 逐字基线仍一致，R5 未被 P5 破坏。
 
-**下一步（唯一剩余阶段）：1.5.0 发版**：当前仓库版本为 **1.4.8**（9 个 `package.json` 一致），需按 §4.7 同步 1.5.0 版本号与 6 处内部引用 / 2 个 lock、CHANGELOG 四处、`.github/release/notes.md`（**必须先写正文再打标签**）、`git config user.name` 身份核对、`origin` + `github` 双推、release workflow 手动触发。**以上均涉及远端写入，须先经用户确认，本轮一律未执行。**
+**下一步（唯一剩余阶段）：1.5.0 发版**：当前仓库版本为 **1.4.8**（9 个 `package.json` 一致），需按 §4.7 同步 1.5.0 版本号与 6 处内部引用 / 2 个 lock、CHANGELOG 四处、`.github/release/notes.md`（**必须先写正文再打标签**）、`git config user.name` 身份核对、`origin` + `github` 双推、release workflow 手动触发。**以上均涉及远端写入，须先经用户确认，本轮一律未执行**（P5 代码提交 `2d21b51` 的提交与双推已获授权完成，此处仅指发版动作）。
