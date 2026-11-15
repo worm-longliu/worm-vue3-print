@@ -8,7 +8,7 @@
       :class="{ active: selectedIds.has(layer.id) }"
       @click="$emit('select', layer.id, $event.ctrlKey || $event.metaKey)"
     >
-      <span class="layer-icon">{{ layerIcon(layer) }}</span>
+      <span class="layer-icon"><ElementIcon :name="layerIcon(layer)" :size="13" /></span>
       <span class="layer-name">{{ layerName(layer) }}</span>
       <span v-if="zoneTag(layer)" class="layer-zone">{{ zoneTag(layer) }}</span>
       <span class="layer-zindex">z:{{ layer.options.zIndex ?? 0 }}</span>
@@ -41,6 +41,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { ArrowUpToLine, ArrowUp, ArrowDown, ArrowDownToLine, Group as GroupIcon, Ungroup as UngroupIcon } from 'lucide-vue-next'
+import ElementIcon from './ElementIcon.vue'
 import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 import { getElementExtension } from '../composables/useElementExtensionRegistry'
 
@@ -65,23 +66,23 @@ const sortedLayers = computed(() =>
 )
 
 const elementIconMap: Record<string, string> = {
-  text: 'T',
-  longText: '¶',
-  table: '⊞',
-  flowList: '⊟',
-  image: '🖼',
-  barcode: '≡',
-  qrcode: '▣',
-  hline: '—',
-  vline: '|',
-  rect: '□',
-  oval: '○',
-  html: '<>',
+  text: 'Type',
+  longText: 'TextAlignStart',
+  table: 'Table',
+  flowList: 'List',
+  image: 'Image',
+  barcode: 'Barcode',
+  qrcode: 'QrCode',
+  hline: 'Minus',
+  vline: 'SeparatorVertical',
+  rect: 'Square',
+  oval: 'Circle',
+  html: 'Code',
   // 扩展元素图标由插件注册态提供，主体不内置任何具体扩展类型
 }
 
 /** 未登记类型的通用图标（如第三方注册了 canvas 主包未内置图标的元素），避免显示 '?' */
-const GENERIC_LAYER_ICON = '◆'
+const GENERIC_LAYER_ICON = 'Shapes'
 
 function layerIcon(el: RuntimeElement): string {
   const type = el.printElementType.type

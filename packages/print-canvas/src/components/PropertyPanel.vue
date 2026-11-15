@@ -2,7 +2,7 @@
   <div class="property-panel" :class="{ collapsed }">
     <!-- 折叠态：竖排图标，点击即展开对应页签 -->
     <div v-if="collapsed" class="prop-collapsed">
-      <button class="pc-btn" title="展开属性台" @click="expandTab(currentTab)">«</button>
+      <button class="pc-btn" title="展开属性台" @click="expandTab(currentTab)"><ElementIcon name="ChevronsLeft" :size="14" /></button>
       <button
         v-for="tab in tabs"
         :key="tab.key"
@@ -10,12 +10,12 @@
         :class="{ on: currentTab === tab.key }"
         :title="tab.label"
         @click="expandTab(tab.key)"
-      >{{ tab.icon }}</button>
+      ><ElementIcon :name="tab.icon" :size="14" /></button>
     </div>
     <template v-else>
       <div class="prop-head">
         <span class="prop-title">属性台</span>
-        <button class="collapse-btn" title="收起属性台" @click="$emit('toggle-collapse')">»</button>
+        <button class="collapse-btn" title="收起属性台" @click="$emit('toggle-collapse')"><ElementIcon name="ChevronsRight" :size="14" /></button>
       </div>
       <div class="pd-tabs prop-tabs">
         <div class="pd-tab-bar" role="tablist">
@@ -211,6 +211,7 @@ import type { RuntimeElement, PrintBusinessField, TemplateData, TableSelection }
 import { PAPER_PRESETS, isContinuousPaperSize, isLabelPaperSize, labelPaperDefaults, resolveCellGroupMode, collectFollowMemberIds } from '@worm-vue3-print/core/designer'
 import { computeMaxColumns } from '@worm-vue3-print/core'
 import { searchProperties, matchKeywords } from '@worm-vue3-print/core/designer'
+import ElementIcon from './ElementIcon.vue'
 import PropertySearch from './property/PropertySearch.vue'
 import ResetButton from './property/ResetButton.vue'
 import PositionSizeGroup from './property/PositionSizeGroup.vue'
@@ -318,8 +319,8 @@ const tabs = computed<Array<{ key: PropertyTabKey; label: string; icon: string }
   ...(customTab.value
     ? [{ key: 'custom' as const, label: customTab.value.label, icon: customTab.value.icon }]
     : []),
-  { key: 'element' as const, label: '元素属性', icon: '▦' },
-  { key: 'page' as const, label: '页面属性', icon: '▤' },
+  { key: 'element' as const, label: '元素属性', icon: 'Table2' },
+  { key: 'page' as const, label: '页面属性', icon: 'FileText' },
 ])
 
 /**

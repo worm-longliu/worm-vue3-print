@@ -1,7 +1,7 @@
 import { shallowReactive } from 'vue'
 import type { Component } from 'vue'
 import type { ElementOptions, RuntimeElement } from '@worm-vue3-print/core/designer'
-import { getElementPlugins } from '@worm-vue3-print/core/designer'
+import { getElementPluginKinds } from '@worm-vue3-print/core/designer'
 
 /**
  * 属性台「自定义属性」tab 描述符（P3）：所有扩展元素共用同一个 tab，按选中元素类型
@@ -86,29 +86,33 @@ export function unregisterElementExtension(type: string): void {
  * 旧 `registerElementExtension` 仍作为兼容别名保留，同 type 时优先它的值。
  */
 function coreExtensions(): ElementExtension[] {
-  return getElementPlugins()
-    .filter(plugin => !!plugin.designer?.canvasComponent)
-    .map((plugin): ElementExtension => {
-      const card = plugin.designer?.materialCard as { label?: string; icon?: string; group?: string } | undefined
-      const tab = plugin.designer?.propertyTab
-      return {
-        type: plugin.kind.type,
-        label: card?.label ?? plugin.kind.label,
-        icon: card?.icon ?? plugin.kind.icon,
-        group: card?.group,
-        canvasComponent: plugin.designer!.canvasComponent as Component,
-        propertyComponent: tab?.component as Component | undefined,
-        propertyTab: tab
-          ? {
-              label: tab.label,
-              icon: tab.icon,
-              component: tab.component as Component,
-              hasProperties: tab.hasProperties as ((element: RuntimeElement) => boolean) | undefined,
-            }
-          : undefined,
-        defaultOptions: plugin.kind.defaultOptions,
-      }
+  const out: ElementExtension[] = []
+  for (const { plugin, kind } of getElementPluginKinds()) {
+    const designer = kind.designer ?? plugin.designer
+    if (!designer?.canvasComponent) continue
+    const card = designer.materialCard as { label?: string; icon?: string; group?: string } | undefined
+    const tab = designer.propertyTab
+    out.push({
+      type: kind.type,
+      // kind.label 是素材卡标签的唯一真源；materialCard 只承载分组（icon 作为兜底）
+      label: kind.label,
+      icon: kind.icon ?? card?.icon ?? 'Shapes',
+      group: card?.group,
+      canvasComponent: designer.canvasComponent as Component,
+      propertyComponent: tab?.component as Component | undefined,
+      propertyTab: tab
+        ? {
+            label: tab.label,
+            icon: tab.icon ?? kind.icon ?? 'Shapes',
+            component: tab.component as Component,
+            hasProperties: tab.hasProperties as ((element: RuntimeElement) => boolean) | undefined,
+            searchKeywords: tab.searchKeywords ? [...tab.searchKeywords] : undefined,
+          }
+        : undefined,
+      defaultOptions: kind.defaultOptions,
     })
+  }
+  return out
 }
 
 /** 当前已注册的扩展元素（响应式依赖注册表版本；同 type 以旧注册 API 为准） */
@@ -119,10 +123,12 @@ export function getElementExtensions(): ElementExtension[] {
   return [...byType.values()]
 }
 
-/** 按类型取扩展元素；未注册返回 undefined */
+/** 按类型取扩展元素；未注册返回 undefined。旧注册 API 优先，其余与 core 一致取后注册者。 */
 export function getElementExtension(type?: string | null): ElementExtension | undefined {
   if (!type) return undefined
-  return registry.get(type) ?? coreExtensions().find(ext => ext.type === type)
+  const legacy = registry.get(type)
+  if (legacy) return legacy
+  return getElementExtensions().find(ext => ext.type === type)
 }
 
 /** 仅用于测试：清空注册表 */

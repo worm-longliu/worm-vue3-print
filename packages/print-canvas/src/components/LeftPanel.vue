@@ -2,15 +2,15 @@
   <div class="left-panel" :class="{ collapsed }">
     <!-- 折叠态：竖排图标，点击即展开对应页签 -->
     <div v-if="collapsed" class="left-collapsed">
-      <button class="lc-btn" title="展开素材台" @click="expandTab(activeTab)">»</button>
-      <button class="lc-btn" :class="{ on: activeTab === 'elements' }" title="元素" @click="expandTab('elements')">▦</button>
-      <button class="lc-btn" :class="{ on: activeTab === 'fields' }" title="字段" @click="expandTab('fields')">⊛</button>
-      <button class="lc-btn" :class="{ on: activeTab === 'layers' }" title="图层" @click="expandTab('layers')">≡</button>
+      <button class="lc-btn" title="展开素材台" @click="expandTab(activeTab)"><ElementIcon name="ChevronsRight" :size="14" /></button>
+      <button class="lc-btn" :class="{ on: activeTab === 'elements' }" title="元素" @click="expandTab('elements')"><ElementIcon name="Table2" :size="14" /></button>
+      <button class="lc-btn" :class="{ on: activeTab === 'fields' }" title="字段" @click="expandTab('fields')"><ElementIcon name="ListTree" :size="14" /></button>
+      <button class="lc-btn" :class="{ on: activeTab === 'layers' }" title="图层" @click="expandTab('layers')"><ElementIcon name="Layers" :size="14" /></button>
     </div>
     <template v-else>
       <div class="left-head">
         <span class="left-title">素材台</span>
-        <button class="collapse-btn" title="收起素材台" @click="$emit('toggle-collapse')">«</button>
+        <button class="collapse-btn" title="收起素材台" @click="$emit('toggle-collapse')"><ElementIcon name="ChevronsLeft" :size="14" /></button>
       </div>
       <div class="pd-tabs left-tabs">
         <div class="pd-tab-bar" role="tablist">
@@ -28,7 +28,7 @@
               draggable="true"
               @dragstart="onDragStart($event, item.type)"
             >
-              <span class="material-icon">{{ item.icon }}</span>
+              <span class="material-icon"><ElementIcon :name="item.icon" :size="14" /></span>
               <span class="material-label">{{ item.label }}</span>
             </div>
           </template>
@@ -58,6 +58,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import ElementIcon from './ElementIcon.vue'
 import type { ElementType, PrintBusinessField, RuntimeElement } from '@worm-vue3-print/core/designer'
 import { isWideMaterialLabel } from '@worm-vue3-print/core/designer'
 import LayerPanel from './LayerPanel.vue'
@@ -97,17 +98,17 @@ interface MaterialItem {
 
 /** 内置 11 项：canvas 主包自带、不依赖任何可选包（HTML 不提供素材入口，HTML 元素能力与出纸口径不变） */
 const builtinElementTypes: (MaterialItem & { type: ElementType })[] = [
-  { type: 'text', label: '文本', icon: 'Ｔ' },
-  { type: 'barcode', label: '条形码', icon: '▍▍' },
-  { type: 'qrcode', label: '二维码', icon: '▦' },
-  { type: 'image', label: '图片', icon: '▧' },
-  { type: 'table', label: '表格', icon: '⊞' },
-  { type: 'longText', label: '长文', icon: '¶' },
-  { type: 'flowList', label: '流式列表', icon: '⊟' },
-  { type: 'hline', label: '横线', icon: '―' },
-  { type: 'vline', label: '竖线', icon: '│' },
-  { type: 'rect', label: '矩形', icon: '▭' },
-  { type: 'oval', label: '椭圆', icon: '◯' },
+  { type: 'text', label: '文本', icon: 'Type' },
+  { type: 'barcode', label: '条形码', icon: 'Barcode' },
+  { type: 'qrcode', label: '二维码', icon: 'QrCode' },
+  { type: 'image', label: '图片', icon: 'Image' },
+  { type: 'table', label: '表格', icon: 'Table' },
+  { type: 'longText', label: '长文', icon: 'TextAlignStart' },
+  { type: 'flowList', label: '流式列表', icon: 'List' },
+  { type: 'hline', label: '横线', icon: 'Minus' },
+  { type: 'vline', label: '竖线', icon: 'SeparatorVertical' },
+  { type: 'rect', label: '矩形', icon: 'Square' },
+  { type: 'oval', label: '椭圆', icon: 'Circle' },
 ]
 
 /**
@@ -121,7 +122,7 @@ const elementTypes = computed<MaterialItem[]>(() => {
     ...getElementExtensions().map(ext => ({
       type: ext.type,
       label: ext.label,
-      icon: ext.icon || '◆',
+      icon: ext.icon || 'Shapes',
       group: ext.group,
     })),
   ]
@@ -314,7 +315,6 @@ function expandTab(tab: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
   color: var(--pd-accent, #165DFF);
   background: var(--pd-surface, #ffffff);
   flex-shrink: 0;

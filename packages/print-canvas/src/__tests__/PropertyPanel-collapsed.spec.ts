@@ -42,7 +42,8 @@ describe('PropertyPanel 折叠态 / tab 现状（P0 基线冻结）', () => {
     const w = mountPanel(true, 'page')
     const btns = w.findAll('.pc-btn')
     expect(btns).toHaveLength(3)
-    expect(btns.map(b => b.text())).toEqual(['«', '▦', '▤'])
+    expect(btns.map(b => b.find('[data-icon]').attributes('data-icon')))
+      .toEqual(['ChevronsLeft', 'Table2', 'FileText'])
     expect(btns.map(b => b.attributes('title')))
       .toEqual(['展开属性台', '元素属性', '页面属性'])
     // 按 title 排除纯展开按钮后，锁住「改造前只有 2 个 tab 按钮」；P3 会变成 3 个
@@ -59,7 +60,7 @@ describe('PropertyPanel 折叠态 / tab 现状（P0 基线冻结）', () => {
 
   it('点击折叠态 tab 按钮同时 emit update:activeTab 与 toggle-collapse', async () => {
     const w = mountPanel(true, 'page')
-    await w.findAll('.pc-btn')[1]!.trigger('click') // ▦ 元素属性
+    await w.findAll('.pc-btn')[1]!.trigger('click') // Table2 元素属性
     expect(w.emitted('update:activeTab')?.[0]).toEqual(['element'])
     expect(w.emitted('toggle-collapse')).toHaveLength(1)
   })

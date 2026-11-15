@@ -143,7 +143,8 @@ describe('属性台单一「自定义属性」tab', () => {
     expect(w.findAll('.pd-tab').map(t => t.text())).toEqual(['元素属性', '页面属性'])
     expect(w.text()).not.toContain(CUSTOM_PROPERTY_TAB_LABEL)
     const c = mountPanel(mkElement('text'), 'element', true)
-    expect(c.findAll('.pc-btn').map(b => b.text())).toEqual(['«', '▦', '▤'])
+    expect(c.findAll('.pc-btn').map(b => b.find('[data-icon]').attributes('data-icon')))
+      .toEqual(['ChevronsLeft', 'Table2', 'FileText'])
   })
 
   it('自定义元素有属性：tab 排 DOM 第一位且可激活，扩展组件迁入新 pane', () => {
@@ -162,7 +163,8 @@ describe('属性台单一「自定义属性」tab', () => {
     const btns = w.findAll('.pc-btn')
     expect(btns.map(b => b.attributes('title')))
       .toEqual(['展开属性台', CUSTOM_PROPERTY_TAB_LABEL, '元素属性', '页面属性'])
-    expect(btns.map(b => b.text())).toEqual(['«', '◈', '▦', '▤'])
+    expect(btns.map(b => b.find('[data-icon]').attributes('data-icon')))
+      .toEqual(['ChevronsLeft', '◈', 'Table2', 'FileText'])
     expect(btns[1]?.classes()).toContain('on')
   })
 
@@ -261,8 +263,8 @@ describe('设计器联动：默认激活 / 分组 / 图层图标', () => {
 
   it('LayerPanel：扩展 icon 优先于内置表，未注册时回落通用图标', () => {
     const props = { elements: [mkElement('customBadge')], selectedIds: new Set<string>() }
-    expect(mount(LayerPanel, { props }).find('.layer-icon').text()).toBe('◆')
+    expect(mount(LayerPanel, { props }).find('.layer-icon [data-icon]').attributes('data-icon')).toBe('Shapes')
     register()
-    expect(mount(LayerPanel, { props }).find('.layer-icon').text()).toBe('◈')
+    expect(mount(LayerPanel, { props }).find('.layer-icon [data-icon]').attributes('data-icon')).toBe('◈')
   })
 })

@@ -49,15 +49,13 @@ const ChartPropertyStub = defineComponent({
 function registerChartExtension() {
   // P4：主体不再内置 chart 出厂默认值，由插件描述符提供（模拟已装包宿主）
   registerElementPlugin({
-    kind: {
-      id: 'test.canvas-chart', version: '1', type: 'chart', label: '图表',
-      defaultOptions: () => ({ chartCategoryField: 'name' } as any),
-    },
+    id: 'test.canvas-chart', version: '1',
+    kinds: [{ type: 'chart', label: '图表', defaultOptions: () => ({ chartCategoryField: 'name' } as any) }],
   })
   registerElementExtension({
     type: 'chart',
     label: '图表',
-    icon: '▤',
+    icon: 'ChartColumn',
     canvasComponent: ChartCanvasStub,
     propertyComponent: ChartPropertyStub,
   })
@@ -164,35 +162,34 @@ describe('LayerPanel 扩展类型图标', () => {
       elements: [mkElement('chart'), mkElement('signature')],
       selectedIds: new Set<string>(),
     },
-  }).findAll('.layer-icon').map(node => node.text())
+  }).findAll('.layer-icon').map(node => node.find('[data-icon]').attributes('data-icon'))
 
   it('P4：主体零图表知识，未装包时扩展类型与未登记类型都落到通用图标而不是 "?"', () => {
     // P4 删除了 LayerPanel 内置硬编码的 chart:'▤'；图标只能由插件注册态提供。
     // 历史模板在未装包的设计器里显示通用占位图标，与任意第三方扩展同构。
     const icons = iconsOf()
-    expect(icons).toEqual(['◆', '◆'])
-    expect(icons).not.toContain('?')
+    expect(icons).toEqual(['Shapes', 'Shapes'])
+    expect(icons).not.toContain(undefined)
   })
 
   it('注册扩展后由插件注册表提供专属图标，未登记类型仍落到通用图标', () => {
     registerChartExtension()
     const icons = iconsOf()
-    expect(icons).toEqual(['▤', '◆'])
-    expect(icons).not.toContain('?')
+    expect(icons).toEqual(['ChartColumn', 'Shapes'])
+    expect(icons).not.toContain(undefined)
   })
 
   it('P4 统一注册表：只注册 core 插件描述符时，kind.icon 同样驱动图层图标', () => {
     // 包入口 import 即注册的路径：不调用旧 registerElementExtension，
     // 由 useElementExtensionRegistry.coreExtensions() 把描述符映射成扩展视图。
     registerElementPlugin({
-      kind: {
-        id: 'test.core-only-chart', version: '1', type: 'chart', label: '图表', icon: '◈',
-      },
+      id: 'test.core-only-chart', version: '1',
+      kinds: [{ type: 'chart', label: '图表', icon: 'ChartPie' }],
       designer: { canvasComponent: ChartCanvasStub },
     })
     const icons = iconsOf()
-    expect(icons).toEqual(['◈', '◆'])
-    expect(icons).not.toContain('?')
+    expect(icons).toEqual(['ChartPie', 'Shapes'])
+    expect(icons).not.toContain(undefined)
   })
 })
 

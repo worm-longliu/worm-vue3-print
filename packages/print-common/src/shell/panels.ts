@@ -6,24 +6,30 @@ import { h } from '../core/h'
 import { iconSvg } from '../core/icons'
 import type { ShellCtx } from './controls'
 
-/** 元素库：与 canvas LeftPanel.elementTypes 同序、同图标字符（HTML 不提供素材入口） */
+/** 元素库：与 canvas LeftPanel.elementTypes 同序、同 lucide 图标名（HTML 不提供素材入口） */
 export const ELEMENT_TYPES: { type: ElementType; label: string; icon: string }[] = [
-  { type: 'text', label: '文本', icon: 'Ｔ' },
-  { type: 'barcode', label: '条形码', icon: '▍▍' },
-  { type: 'qrcode', label: '二维码', icon: '▦' },
-  { type: 'image', label: '图片', icon: '▧' },
-  { type: 'table', label: '表格', icon: '⊞' },
-  { type: 'longText', label: '长文', icon: '¶' },
-  { type: 'flowList', label: '流式列表', icon: '⊟' },
-  { type: 'hline', label: '横线', icon: '―' },
-  { type: 'vline', label: '竖线', icon: '│' },
-  { type: 'rect', label: '矩形', icon: '▭' },
-  { type: 'oval', label: '椭圆', icon: '◯' },
+  { type: 'text', label: '文本', icon: 'Type' },
+  { type: 'barcode', label: '条形码', icon: 'Barcode' },
+  { type: 'qrcode', label: '二维码', icon: 'QrCode' },
+  { type: 'image', label: '图片', icon: 'Image' },
+  { type: 'table', label: '表格', icon: 'Table' },
+  { type: 'longText', label: '长文', icon: 'TextAlignStart' },
+  { type: 'flowList', label: '流式列表', icon: 'List' },
+  { type: 'hline', label: '横线', icon: 'Minus' },
+  { type: 'vline', label: '竖线', icon: 'SeparatorVertical' },
+  { type: 'rect', label: '矩形', icon: 'Square' },
+  { type: 'oval', label: '椭圆', icon: 'Circle' },
 ]
 
+/** 图层图标：素材表 ∪ 无素材入口但可加载的内置类型（html），与 canvas LayerPanel 同表 */
 const LAYER_ICON: Record<string, string> = {
-  text: 'T', longText: '¶', table: '⊞', flowList: '⊟', image: '🖼', barcode: '≡', qrcode: '▣',
-  hline: '—', vline: '|', rect: '□', oval: '○', html: '<>',
+  ...Object.fromEntries(ELEMENT_TYPES.map(item => [item.type, item.icon])),
+  html: 'Code',
+}
+
+/** 图标名 → 内联 SVG；canvas/common 两侧对未知名统一回落 Shapes */
+function iconMarkup(name: string | undefined, size: number): string {
+  return iconSvg(name ?? 'Shapes', size) || iconSvg('Shapes', size)
 }
 
 export function renderLeftPanel(ctx: ShellCtx) {
@@ -31,11 +37,11 @@ export function renderLeftPanel(ctx: ShellCtx) {
   if (st.leftCollapsed) {
     return h('div', { class: 'left-panel collapsed' }, [
       h('div', { class: 'left-collapsed' }, [
-        collapseBtn('»', '展开素材台', () => { st.leftCollapsed = false; ctx.repaint() }),
-        ...([['elements', '元素', '▦'], ['fields', '字段', '⊛'], ['layers', '图层', '≡']] as const).map(([tab, title, glyph]) =>
+        collapseBtn('ChevronsRight', '展开素材台', () => { st.leftCollapsed = false; ctx.repaint() }),
+        ...([['elements', '元素', 'Table2'], ['fields', '字段', 'ListTree'], ['layers', '图层', 'Layers']] as const).map(([tab, title, icon]) =>
           h('button', {
             type: 'button', class: `lc-btn${st.leftTab === tab ? ' on' : ''}`, title,
-            text: glyph,
+            html: iconMarkup(icon, 14),
             onClick: () => { st.leftTab = tab; st.leftCollapsed = false; ctx.repaint() },
           })),
       ]),
@@ -52,7 +58,7 @@ export function renderLeftPanel(ctx: ShellCtx) {
   return h('div', { class: 'left-panel' }, [
     h('div', { class: 'left-head' }, [
       h('span', { class: 'left-title', text: '素材台' }),
-      collapseBtn('«', '收起素材台', () => { st.leftCollapsed = true; ctx.repaint() }),
+      collapseBtn('ChevronsLeft', '收起素材台', () => { st.leftCollapsed = true; ctx.repaint() }),
     ]),
     h('div', { class: 'pd-tabs left-tabs' }, [
       h('div', { class: 'pd-tab-bar', role: 'tablist' }, [
@@ -70,8 +76,8 @@ export function renderLeftPanel(ctx: ShellCtx) {
   ])
 }
 
-function collapseBtn(text: string, title: string, onClick: () => void) {
-  return h('button', { type: 'button', class: 'collapse-btn', title, text, onClick })
+function collapseBtn(icon: string, title: string, onClick: () => void) {
+  return h('button', { type: 'button', class: 'collapse-btn', title, html: iconMarkup(icon, 14), onClick })
 }
 
 function elementsPane(): unknown[] {
@@ -89,7 +95,7 @@ function elementsPane(): unknown[] {
         if (dt) dt.effectAllowed = 'all'
       },
     }, [
-      h('span', { class: 'material-icon', text: item.icon }),
+      h('span', { class: 'material-icon', 'data-icon': item.icon, html: iconMarkup(item.icon, 14) }),
       h('span', { class: 'material-label', text: item.label }),
     ])),
   ]
@@ -176,7 +182,7 @@ function layersPane(ctx: ShellCtx) {
       class: `layer-item${s.selectedIds.has(layer.id) ? ' active' : ''}`,
       onClick: (ev: Event) => s.selectElement(layer.id, (ev as MouseEvent).ctrlKey || (ev as MouseEvent).metaKey),
     }, [
-      h('span', { class: 'layer-icon', text: LAYER_ICON[layer.printElementType.type] || '?' }),
+      h('span', { class: 'layer-icon', 'data-icon': LAYER_ICON[layer.printElementType.type] ?? 'Shapes', html: iconMarkup(LAYER_ICON[layer.printElementType.type], 12) }),
       h('span', { class: 'layer-name', text: layer.options.title || layer.printElementType.title || layer.printElementType.type }),
       zoneTag(layer) ? h('span', { class: 'layer-zone', text: zoneTag(layer) }) : '',
       h('span', { class: 'layer-zindex', text: `z:${layer.options.zIndex ?? 0}` }),

@@ -186,14 +186,18 @@ function assertPlugin(plugin: PrintElementPlugin): void {
   }
 }
 
-/** 把插件解析成「带命中 kind 与合并覆盖」的视图，消费方写法保持不变 */
+/** 把插件解析成「带命中 kind 与合并覆盖」的视图，消费方写法保持不变。
+ *  binding 是单函数整体覆盖；render/designer 逐字段合并（kind 只补自己那几项时
+ *  仍保留插件级的 executorBundle / propertyTab 等能力）。 */
 function resolve(plugin: PrintElementPlugin, kind: ElementPluginKind): ResolvedElementPlugin {
+  const render = plugin.render || kind.render ? { ...plugin.render, ...kind.render } : undefined
+  const designer = plugin.designer || kind.designer ? { ...plugin.designer, ...kind.designer } : undefined
   return {
     ...plugin,
     kind,
     binding: kind.binding ?? plugin.binding,
-    render: kind.render ?? plugin.render,
-    designer: kind.designer ?? plugin.designer,
+    render,
+    designer,
   }
 }
 
@@ -245,9 +249,10 @@ export function getElementPlugins(): readonly PrintElementPlugin[] {
   return [...state().plugins.values()]
 }
 
-/** 按注册顺序展开全部插件的全部 kind（contract / canvas / 打印管线统一入口） */
+/** 当前生效的 kind 清单（contract / canvas / 打印管线统一入口）：
+ *  以 typeIndex 为唯一真源，同一 type 只保留后注册者，与 getElementPlugin 的分派口径一致。 */
 export function getElementPluginKinds(): readonly ElementPluginKindEntry[] {
-  return getElementPlugins().flatMap(plugin => plugin.kinds.map(kind => ({ plugin, kind })))
+  return [...state().typeIndex.values()]
 }
 
 /** 已注册的元素类型列表（去重、按注册顺序） */
