@@ -45,21 +45,22 @@ export const ELEMENT_KINDS: readonly ElementKindInfo[] = RAW.map(info => ({
  * 插件若注册了与内置同名的类型，以内置说明为准，避免插件覆盖主体语义。
  */
 export function getElementKinds(): ElementKindInfo[] {
-  const kinds = [...ELEMENT_KINDS]
-  const known = new Set(kinds.map(k => k.type))
+  // 内置优先，插件不得覆盖内置语义；插件之间同 type 后注册者覆盖（与注册表分派一致）
+  const builtinTypes = new Set(ELEMENT_KINDS.map(k => k.type))
+  const pluginKinds = new Map<string, ElementKindInfo>()
   for (const plugin of getElementPlugins()) {
-    const { type, id, version, label, notes, requiredOptionKeys, blocked: pluginBlocked } = plugin.kind
-    if (!type || known.has(type)) continue
-    known.add(type)
-    kinds.push({
-      type,
-      blocked: pluginBlocked ?? blocked(type),
-      requiredOptionKeys: [...(requiredOptionKeys ?? ['left', 'top', 'width', 'height'])],
-      notes: notes ?? `${label}（插件 ${id}@${version} 提供的自定义元素；专属属性见插件 optionMeta）`,
-      pluginId: id,
-    })
+    for (const kind of plugin.kinds) {
+      if (!kind.type || builtinTypes.has(kind.type)) continue
+      pluginKinds.set(kind.type, {
+        type: kind.type,
+        blocked: kind.blocked ?? blocked(kind.type),
+        requiredOptionKeys: [...(kind.requiredOptionKeys ?? ['left', 'top', 'width', 'height'])],
+        notes: kind.notes ?? `${kind.label}（插件 ${plugin.id}@${plugin.version} 提供的自定义元素；专属属性见插件 optionMeta）`,
+        pluginId: plugin.id,
+      })
+    }
   }
-  return kinds
+  return [...ELEMENT_KINDS, ...pluginKinds.values()]
 }
 
 /** 供 MCP 生成 JSON Schema enum：所有可用类型（含 blocked 项，拦截在 draftTemplate 内做） */

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { TemplateData, MultiPageTemplateData } from '@worm-vue3-print/core/designer'
-import { getElementPlugins, getElementPluginById } from '@worm-vue3-print/core/designer'
+import { getElementPluginKinds, getElementPluginById } from '@worm-vue3-print/core/designer'
 import type { OptionIssue } from './units.js'
 import { DEPRECATED_OPTION_KEYS } from './option-meta.js'
 import {
@@ -67,15 +67,15 @@ function collectPluginDeclarations(input: unknown): { declared: boolean; list: P
 function allowedElementTypes(): string[] {
   return [...new Set<string>([
     ...(elementTypeSchema.options as readonly string[]),
-    ...getElementPlugins().map(p => p.kind.type),
+    ...getElementPluginKinds().map(({ kind }) => kind.type),
   ])]
 }
 
 /** 插件以 optionMeta 声明的专属属性键：legacy 通道不得把它们误报成「契约未知键」 */
 function pluginOptionKeys(): Set<string> {
   const keys = new Set<string>()
-  for (const plugin of getElementPlugins()) {
-    for (const key of Object.keys(plugin.kind.optionMeta ?? {})) keys.add(key)
+  for (const { kind } of getElementPluginKinds()) {
+    for (const key of Object.keys(kind.optionMeta ?? {})) keys.add(key)
   }
   return keys
 }
@@ -215,11 +215,11 @@ function scanPluginDeclarations(list: readonly PluginDeclaration[], issues: Opti
       })
       continue
     }
-    if (decl.version && plugin.kind.version !== decl.version) {
+    if (decl.version && plugin.version !== decl.version) {
       issues.push({
         path: 'plugins',
         level: 'error',
-        message: `PLUGIN_VERSION_MISMATCH：插件「${decl.id}」模板声明 ${decl.version}，当前进程注册的是 ${plugin.kind.version}；请升级宿主依赖或重新导出模板`,
+        message: `PLUGIN_VERSION_MISMATCH：插件「${decl.id}」模板声明 ${decl.version}，当前进程注册的是 ${plugin.version}；请升级宿主依赖或重新导出模板`,
       })
     }
   }

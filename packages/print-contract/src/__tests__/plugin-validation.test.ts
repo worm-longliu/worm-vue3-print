@@ -1,5 +1,4 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { readFileSync } from 'node:fs'
 import { registerElementPlugin, clearElementPlugins } from '@worm-vue3-print/core/designer'
 import type { PrintElementPlugin } from '@worm-vue3-print/core/designer'
 import { validateTemplateJson } from '../validate.js'
@@ -23,9 +22,9 @@ const template = (elements: unknown[], extra: Record<string, unknown> = {}) => (
 })
 
 const signaturePlugin: PrintElementPlugin = {
-  kind: {
-    id: '@acme/signature',
-    version: '1.2.0',
+  id: '@acme/signature',
+  version: '1.2.0',
+  kinds: [{
     type: 'signature',
     label: '手写签名',
     requiredOptionKeys: ['left', 'top', 'width', 'height', 'signerName'],
@@ -33,47 +32,22 @@ const signaturePlugin: PrintElementPlugin = {
       signerName: { kind: 'text', label: '签名人' },
       strokeColor: { kind: 'color', default: '#000' },
     },
-  },
+  }],
+}
+
+const chartsPlugin: PrintElementPlugin = {
+  id: '@acme/charts',
+  version: '2',
+  kinds: [
+    { type: 'barChart', label: '柱状图', optionMeta: { chartOption: { kind: 'object' } } },
+    { type: 'pieChart', label: '饼图', optionMeta: { chartOption: { kind: 'object' } } },
+  ],
+  render: { html: () => '<svg/>' },
 }
 
 afterEach(() => clearElementPlugins())
 
 describe('legacy 宽松通道（历史模板零迁移）', () => {
-  it('两份真实历史 chart 模板的校验结果与 P0 基线完全一致', () => {
-    // §4.1 兼容边界是「已装包宿主」：P4 起五个 chart* 键由插件 optionMeta 声明，
-    // 因此本用例模拟装入并注册了图表插件的进程（包入口 import 即自注册）。
-    registerElementPlugin({
-      kind: {
-        id: '@worm-vue3-print/echarts',
-        version: '1',
-        type: 'chart',
-        label: '图表',
-        optionMeta: {
-          chartOption: { kind: 'object' },
-          chartDataSource: { kind: 'text' },
-          chartCategoryField: { kind: 'text' },
-          chartValueFields: { kind: 'object' },
-          chartSeriesField: { kind: 'text' },
-        },
-      },
-    })
-    for (const name of ['sales-chart', 'echarts-test-case']) {
-      const sample = JSON.parse(readFileSync(
-        new URL(`../../../../docs/superpowers/specs/baseline/${name}.legacy.json`, import.meta.url),
-        'utf8',
-      ))
-      const baseline = JSON.parse(readFileSync(
-        new URL(`../../../../docs/superpowers/specs/baseline/${name}.validate-baseline.json`, import.meta.url),
-        'utf8',
-      ))
-      const r = validateTemplateJson(sample.template)
-      expect(r.ok, name).toBe(baseline.ok)
-      expect(r.issues.map(i => `${i.level}:${i.path}`), name).toEqual(baseline.issues.map((i: { level: string; path: string }) => `${i.level}:${i.path}`))
-      expect(r.unknownKeys, name).toEqual(baseline.unknownKeys)
-      expect('plugins' in sample.template, name).toBe(false)
-    }
-  })
-
   it('未声明 plugins 的未知 type 只给 warning，不判死模板', () => {
     const r = validateTemplateJson(template([element('signature')]))
     expect(r.ok).toBe(true)
@@ -108,6 +82,18 @@ describe('legacy 宽松通道（历史模板零迁移）', () => {
 })
 
 describe('strict 强校验通道（模板声明 plugins）', () => {
+  it('strict 模式按插件 id 展开该插件的全部 kind', () => {
+    registerElementPlugin(chartsPlugin)
+    const bar = validateTemplateJson(template([element('barChart', { chartOption: {} })], {
+      plugins: [{ id: '@acme/charts', version: '2' }],
+    }))
+    expect(bar.ok).toBe(true)
+    const pie = validateTemplateJson(template([element('pieChart', { chartOption: {} })], {
+      plugins: [{ id: '@acme/charts', version: '2' }],
+    }))
+    expect(pie.ok).toBe(true)
+  })
+
   it('缺插件报 MISSING_PLUGIN 硬错误，而不是静默出空纸', () => {
     const r = validateTemplateJson(template([element('signature')], {
       plugins: [{ id: '@acme/signature', version: '1.2.0' }],

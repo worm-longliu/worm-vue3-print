@@ -5,15 +5,25 @@ import { ELEMENT_KINDS, getElementKinds, getElementKindTypes } from '../kinds.js
 import { elementTypeSchema } from '../schema/element.js'
 
 const sealPlugin: PrintElementPlugin = {
-  kind: {
-    id: '@acme/seal',
-    version: '0.4.0',
+  id: '@acme/seal',
+  version: '0.4.0',
+  kinds: [{
     type: 'seal',
     label: '电子印章',
     blocked: true,
     requiredOptionKeys: ['left', 'top', 'width', 'height', 'sealId'],
     notes: '印章图片来自宿主服务',
-  },
+  }],
+}
+
+const chartsPlugin: PrintElementPlugin = {
+  id: '@acme/charts',
+  version: '2',
+  kinds: [
+    { type: 'barChart', label: '柱状图' },
+    { type: 'pieChart', label: '饼图' },
+  ],
+  render: { html: () => '<svg/>' },
 }
 
 afterEach(() => clearElementPlugins())
@@ -44,21 +54,30 @@ describe('注册态动态 kinds（P1 D4 前置）', () => {
     expect(getElementKindTypes()).toContain('seal')
   })
 
-  it('P4：扩展类型不再是内置项，由插件注册态进入动态 kinds', () => {
-    // 主体已删除内置 chart 说明，未注册时 AI/契约侧看不到该类型
-    expect(getElementKinds().some(k => k.type === 'chart')).toBe(false)
-    registerElementPlugin({
-      kind: { id: '@acme/chart-pro', version: '1.0.0', type: 'chart', label: '增强图表' },
-    })
-    const chartKinds = getElementKinds().filter(k => k.type === 'chart')
-    expect(chartKinds).toHaveLength(1)
-    expect(chartKinds[0].pluginId).toBe('@acme/chart-pro')
-    expect(chartKinds[0].requiredOptionKeys).toEqual(['left', 'top', 'width', 'height'])
+  it('一个插件注册多个 kind 时，kinds 与类型清单按 kind 数量展开', () => {
+    registerElementPlugin(chartsPlugin)
+    const kinds = getElementKinds()
+    expect(kinds).toHaveLength(ELEMENT_KINDS.length + 2)
+    expect(kinds.filter(k => k.pluginId === '@acme/charts').map(k => k.type)).toEqual(['barChart', 'pieChart'])
+    expect(getElementKindTypes()).toEqual(expect.arrayContaining(['barChart', 'pieChart']))
+  })
+
+  it('同 type 的插件后注册者覆盖，内置类型不被覆盖', () => {
+    registerElementPlugin(chartsPlugin)
+    registerElementPlugin({ id: '@acme/charts-pro', version: '1', kinds: [{ type: 'barChart', label: '柱状图 Pro' }] })
+    const bar = getElementKinds().find(k => k.type === 'barChart')
+    expect(bar?.pluginId).toBe('@acme/charts-pro')
+    expect(bar?.notes).toContain('@acme/charts-pro')
+    // 内置类型语义不被插件覆盖
+    registerElementPlugin({ id: '@acme/text', version: '1', kinds: [{ type: 'text', label: '文本 Pro' }] })
+    expect(getElementKinds().find(k => k.type === 'text')?.pluginId).toBeUndefined()
   })
 
   it('未声明 blocked / notes 的插件回落为通用说明与 blocked=false', () => {
     registerElementPlugin({
-      kind: { id: '@acme/signature', version: '1.0.0', type: 'signature', label: '手写签名' },
+      id: '@acme/signature',
+      version: '1.0.0',
+      kinds: [{ type: 'signature', label: '手写签名' }],
     })
     const kind = getElementKinds().find(k => k.type === 'signature')
     expect(kind?.blocked).toBe(false)
