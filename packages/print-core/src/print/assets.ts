@@ -1,18 +1,17 @@
 // 通用扩展元素资产协议（P2）
 //
-// 与 charts.ts / codes.ts 同构的「收集 → 批量渲染 → 回填」两趟流程，但不认识任何具体元素
-// 类型：资产规格只要求一个稳定键，其余字段由插件自行解释。P2 阶段 chart 旧链路保持独立
-// 且 100% 不变，P4 原子切换后 chart 插件改用本层，主体即可删除所有图表专属分支。
+// 与 codes.ts 同构的「收集 → 批量渲染 → 回填」两趟流程，但不认识任何具体元素
+// 类型：资产规格只要求一个稳定键，其余字段由插件自行解释。
 import type { ElementRenderer, ElementRenderers, ElementRenderSpec } from '../render/types.js'
 import type { ExecutorBundle } from './driver.js'
 import type { PrintSession } from './ports.js'
 import {
   getElementPlugin,
-  getElementPlugins,
+  getElementPluginKinds,
   getLegacyAliases,
 } from '../designer/element-plugin-registry.js'
 
-/** 资产规格：稳定键必填，type 选填（兼容 ChartSpec / CodeSpec 这类无 type 的旧规格） */
+/** 资产规格：稳定键必填，type 选填 */
 export interface AssetSpec {
   key: string
   type?: string
@@ -93,16 +92,22 @@ export function createAssetRenderers(renderer: ElementRenderer, types: readonly 
 
 /** 注册表里具备渲染能力（进程内 renderer / 页面 bundle / 静态 html）的元素类型 */
 export function renderablePluginTypes(): string[] {
-  return getElementPlugins()
-    .filter(p => p.render && (p.render.html || p.render.createRenderer || p.render.executorBundle))
-    .map(p => p.kind.type)
+  return getElementPluginKinds()
+    .filter(({ plugin, kind }) => {
+      const render = kind.render ?? plugin.render
+      return !!(render?.html || render?.createRenderer || render?.executorBundle)
+    })
+    .map(({ kind }) => kind.type)
 }
 
 /** 需要「收集 → 批量出图 → 回填」两趟的类型；只提供 html 的插件单趟直出即可 */
 export function assetPluginTypes(): string[] {
-  return getElementPlugins()
-    .filter(p => p.render && (p.render.createRenderer || p.render.executorBundle))
-    .map(p => p.kind.type)
+  return getElementPluginKinds()
+    .filter(({ plugin, kind }) => {
+      const render = kind.render ?? plugin.render
+      return !!(render?.createRenderer || render?.executorBundle)
+    })
+    .map(({ kind }) => kind.type)
 }
 
 /**
@@ -154,8 +159,9 @@ export async function renderAssetSpecs(
 export function collectExecutorBundles(): ExecutorBundle[] {
   const seen = new Set<string>()
   const out: ExecutorBundle[] = []
-  for (const plugin of getElementPlugins()) {
-    const bundle = plugin.render?.executorBundle?.()
+  for (const { plugin, kind } of getElementPluginKinds()) {
+    const render = kind.render ?? plugin.render
+    const bundle = render?.executorBundle?.()
     if (!bundle || seen.has(bundle.version)) continue
     seen.add(bundle.version)
     out.push({ source: bundle.code, version: bundle.version })

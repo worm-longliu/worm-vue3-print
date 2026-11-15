@@ -2,7 +2,6 @@
 import { createBrowserPrintRuntime } from './browser-runtime.js'
 import { prepareDocument } from '../print/pipeline.js'
 import type {
-  ChartRenderer,
   CodeRenderer,
   ElementRenderers,
   MultiPageTemplateData,
@@ -37,10 +36,8 @@ export interface BrowserRenderOptions {
    */
   fontBaseUrl?: string
   /** 调用方提供的图表渲染器（浏览器端覆盖语义）；缺省走会话注入 */
-  chartRenderer?: ChartRenderer
   /**
-   * 通用扩展元素渲染器（按元素类型索引，P2）：chartRenderer 的泛化形态。
-   * 缺省时由打印管线按插件注册表自动收集；旧入参 chartRenderer 保持兼容不变。
+   * 通用扩展元素渲染器（按元素类型索引）：缺省由打印管线按插件注册表自动收集。
    */
   renderers?: ElementRenderers
 }
@@ -68,7 +65,6 @@ export async function renderHtmlPages(
       fontBaseUrl: options?.fontBaseUrl ?? '',
       paperHeightMm: options?.paperHeightMm,
       codeRenderer,
-      chartRenderer: options?.chartRenderer,
       renderers: options?.renderers,
     },
     createBrowserPrintRuntime(),

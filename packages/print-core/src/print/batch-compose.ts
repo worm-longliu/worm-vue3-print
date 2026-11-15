@@ -4,7 +4,6 @@ import { buildBatchPageCss, buildPageCss } from '../render/css-builder.js'
 import { buildFontFaceCss } from './fonts.js'
 import { isContinuousPaper } from '../render/types.js'
 import type {
-  ChartRenderer,
   CodeRenderer,
   ElementRenderers,
   PageLayout,
@@ -19,7 +18,6 @@ export interface BatchCopyInput {
   /** 该份原始数据（水印层使用） */
   data: Record<string, any>
   codeRenderer?: CodeRenderer
-  chartRenderer?: ChartRenderer
   /** 通用扩展元素渲染器（P2） */
   renderers?: ElementRenderers
   /** 连续纸探针推导出的纸高（mm）；固定纸为 undefined */
@@ -46,7 +44,6 @@ export function composeBatchHtml(copies: BatchCopyInput[]): {
       const cls = continuous ? `print-copy print-copy-${i}` : 'print-copy'
       const pages = renderFinalPages(copy.bound, copy.pageLayouts, copy.data, {
         codeRenderer: copy.codeRenderer,
-        chartRenderer: copy.chartRenderer,
         renderers: copy.renderers,
         pageHeightMm: copy.derivedHeightMm,
       })

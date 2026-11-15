@@ -9,7 +9,6 @@ import type {
   RenderRow,
   RenderCell,
   CodeRenderer,
-  ChartRenderer,
   ElementRenderers,
 } from './types.js'
 import { escapeInlineStyleValue, toFontFamilyStack } from '../print/fonts.js'
@@ -59,7 +58,6 @@ import { getElementPlugin } from '../designer/element-plugin-registry.js'
 export interface RenderCtx {
   codeRenderer?: CodeRenderer
   /** §4.3 兼容别名入参：P4 起扩展元素出图由插件描述符负责，此端口保留不参与分派 */
-  chartRenderer?: ChartRenderer
   /** 通用扩展元素渲染器（按元素类型索引）：由打印管线按注册表收集后注入 */
   renderers?: ElementRenderers
   /** 连续纸探针推导出的最终纸高（mm）；水印网格与 @page 必须同源 */
@@ -91,8 +89,6 @@ export interface GenerateOptions {
   isMeasurementPass?: boolean
   /** 条码/二维码 SVG 渲染器；缺省或渲染抛错时降级为文本占位 */
   codeRenderer?: CodeRenderer
-  /** §4.3 兼容别名入参：保留类型与透传，P4 起不再驱动出图 */
-  chartRenderer?: ChartRenderer
   /** 通用扩展元素渲染器（按元素类型索引）；由插件注册表收集后注入 */
   renderers?: ElementRenderers
   /** 连续纸探针推导出的最终纸高（mm）；仅最终生成时传入，使 @page/.print-page/footer 对齐 */
@@ -119,7 +115,6 @@ export function generateHtml(
   const totalPages = isMeasure ? 1 : (options?.totalPageCount ?? pageLayouts.length)
   const ctx: RenderCtx = {
     codeRenderer: options?.codeRenderer,
-    chartRenderer: options?.chartRenderer,
     renderers: options?.renderers,
     pageHeightMm: options?.pageHeightMm,
   }
@@ -568,7 +563,7 @@ function renderElement(el: TemplateElement, isMeasure: boolean, containerStyle?:
       // 主体不认识任何具体扩展类型，只把「类型 + 绑定后选项 + 落纸尺寸」交给插件解释。
       const plugin = getElementPlugin(type)
       if (plugin?.render) {
-        // widthMm / heightMm 是通用落纸尺寸（与旧 ChartSpec 同口径）：插件据此做 mm→px 换算。
+        // widthMm / heightMm 是通用落纸尺寸：插件据此做 mm→px 换算。
         // key 只用绑定后选项计算，保证测量趟与最终趟稳定且跨进程可比对。
         const spec = {
           type,

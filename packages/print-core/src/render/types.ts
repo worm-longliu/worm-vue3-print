@@ -251,7 +251,7 @@ export interface CodeRenderer {
 }
 
 /**
- * 通用扩展元素渲染规格（P2）：插件自定义元素与 ChartSpec / CodeSpec 同构，
+ * 通用扩展元素渲染规格（P2）：插件自定义元素的唯一渲染入口，
  * 走「收集 → 批量渲染 → 回填」两趟流程。type 标明归属插件，key 为跨趟/跨进程稳定键，
  * 其余字段由插件自行解释（通常是绑定后的 options 快照）。
  */
@@ -268,19 +268,8 @@ export interface ElementRenderer {
   render(spec: ElementRenderSpec): string
 }
 
-/** 按元素类型索引的渲染器集合（旧 chartRenderer 单入参的泛化形态） */
+/** 按元素类型索引的渲染器集合 */
 export type ElementRenderers = Readonly<Record<string, ElementRenderer>>
-
-/** 图表渲染规格：option 已完成数据绑定；尺寸为落纸 mm（渲染端按 96dpi 换算逻辑像素） */
-export interface ChartSpec {
-  /** 稳定键：绑定后 option + 尺寸 + 字体，跨趟比对与跨进程映射用 */
-  key: string
-  option: Record<string, unknown>
-  widthMm: number
-  heightMm: number
-  /** 图表字体族（与模板字体声明同口径；缺省由渲染实现取系统字体） */
-  fontFamily?: string
-}
 
 /**
  * option → SVG 字符串渲染器（同步）。
@@ -288,10 +277,6 @@ export interface ChartSpec {
  * 再用映射渲染器回填；core 本身不依赖任何图表库。
  * 渲染失败时抛出异常，由 html-generator 降级为占位。
  */
-export interface ChartRenderer {
-  render(spec: ChartSpec): string
-}
-
 // ─── 渲染请求 / 响应 ───
 
 export interface RenderRequest {

@@ -109,8 +109,6 @@ export type {
   MultiPageTemplateData,
   CodeRenderer,
   CodeRenderOptions,
-  ChartRenderer,
-  ChartSpec,
   ElementRenderer,
   ElementRenderers,
   ElementRenderSpec,
@@ -124,7 +122,6 @@ export { normalizeTemplate, mergeFontDeclarations, composeMultiPageDocument, isM
 export type { MultiPageCopyInput, MultiPageDocument } from './print/multi-template.js'
 export { buildBasePageCss, buildPageGeometryCss, buildPageRuleCss } from './render/css-builder.js'
 export type { RenderFinalPagesOptions } from './render/html-generator.js'
-export { chartSpecKey } from './render/chart-spec.js'
 
 // 通用元素插件注册表（主入口与 /designer 子路径同源；状态挂在 globalThis 上，双实例不漂移）
 export {
@@ -133,6 +130,7 @@ export {
   getElementPlugin,
   getElementPluginById,
   getElementPlugins,
+  getElementPluginKinds,
   getElementPluginTypes,
   configurePlugin,
   getPluginConfig,
@@ -143,7 +141,9 @@ export {
 } from './designer/element-plugin-registry.js'
 export type {
   PrintElementPlugin,
+  ResolvedElementPlugin,
   ElementPluginKind,
+  ElementPluginKindEntry,
   ElementPluginDesigner,
   ElementPluginPropertyTab,
   ElementPluginBinding,
