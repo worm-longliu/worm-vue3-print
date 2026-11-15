@@ -1951,3 +1951,31 @@ git status --short
 2. **Inline Execution**：在本会话内按任务批量执行，在任务边界设检查点。
 
 选择哪种？
+
+---
+
+## 验收记录（2026-11-15 执行）
+
+执行方式：Inline（`executing-plans`），按任务提交；中途折入三份评审的阻塞项（PrintHtmlPreview 清理前移、缺执行器明确报错、bundle provider 去重、strict 语义钉住、lucide 可派生图标替换、normalize 补轴/数组轴、demo typecheck 等）。
+
+| 门禁 | 命令 | 结果 |
+| --- | --- | --- |
+| 全量构建 | `CODEBUDDY_SAFE_DELETE_ENABLED=0 npm run build` | exit 0（core → contract → mcp → canvas → echarts → render → common → print-client → skills） |
+| core | `npx vitest run`（print-core） | 91 文件 / 1383 用例全绿 |
+| contract | `npx vitest run`（print-contract） | 10 文件 / 105 用例全绿 |
+| mcp | `npx vitest run`（print-mcp） | 8 文件 / 97 用例全绿 |
+| canvas | `npm run test -w @worm-vue3-print/canvas`（含 pretest vue-tsc） | 84 文件 / 824 用例全绿 |
+| echarts | `npm run test -w @worm-vue3-print/echarts` | 10 文件 / 49 用例全绿（含真实 echarts 端到端 `plugin-e2e.test.ts`：十 kind 走 prepareDocument/renderPdf 全部出 SVG） |
+| common | `npm run test -w @worm-vue3-print/common` | 37 文件 / 389 用例全绿 |
+| print-client | `npx vitest run`（print-client） | 25 文件 / 209 用例全绿 |
+| render（真实 Chromium） | `npm run test -w @worm-vue3-print/render` | 13 文件 / 48 用例全绿 |
+| 架构守卫 | `npm run lint:print-architecture` | 通过 |
+| 技能校验 | `npm run test:skills` | 三个技能全部通过 |
+| demo | `cd demo && npm run build` + `npm run typecheck` | 均 exit 0 |
+| 包边界扫描 | core/canvas/common 源码 import `echarts` | 无命中 |
+| 旧 API 扫描 | `renderCharts`/`chartRenderer`/`ChartSpec`/`CHART_TYPES`/`defaultChartType`/`legacy` 旧段 | 产品源码无命中（仅测试夹具与注释历史说明） |
+| 版本 | 10 个 `package.json` + 10 处内部 `^1.5.0` + `print-mcp/src/version.ts` + 两个 lock | `npm install --package-lock-only` up to date；manifests 无 1.4.8 残留 |
+
+已确认的边界：`@worm-vue3-print/common` 零框架外壳不消费插件注册表，十个图表元素只在 `canvas` 设计器一侧出现；
+`@worm-vue3-print/echarts` 仍未发布到 npm；客户端安装包与 README 下载直链未按 1.5.0 重打（发版步骤另行执行）。
+
