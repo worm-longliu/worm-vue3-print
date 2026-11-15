@@ -186,8 +186,8 @@ export function collectExecutorBundles(): ExecutorBundle[] {
 
 /**
  * 通用执行器方法名 → 实际执行器方法名（§3.9 别名桥的反向查表）。
- * 插件注册 `legacyAliases: { renderCharts: 'renderAssets' }` 后，主体调用通用名
- * `renderAssets` 会自动落到执行器真实提供的旧名，主体源码因此零具体类型字面量。
+ * 插件以数据形式登记「旧方法名 → 通用名」映射后，主体调用通用名会自动落到
+ * 执行器真实提供的旧名，主体源码因此零具体类型字面量。
  * 未注册别名时原样返回，供新插件自带 renderAssets 执行器使用。
  */
 /** 该元素类型是否声明了页面执行器能力（宿主未装配 bundles 时用于明确报错） */

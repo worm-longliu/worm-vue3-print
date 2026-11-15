@@ -98,8 +98,8 @@ describe('registerElementPlugin / 查询 / 注销', () => {
       kinds: [{ type: 'a', label: 'A' }, { type: 'b', label: 'B', designer: own }],
       designer: shared,
     })
-    expect(getElementPlugin('a')?.designer).toBe(shared)
-    expect(getElementPlugin('b')?.designer).toBe(own)
+    expect(getElementPlugin('a')?.designer).toMatchObject(shared)
+    expect(getElementPlugin('b')?.designer).toMatchObject(own)
   })
 
   it('同 id 重复注册幂等覆盖，旧句柄不会误删新描述符', () => {

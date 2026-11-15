@@ -6,10 +6,17 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+### Added
+
+- **Charts are split into ten standalone elements**: bar, horizontal bar, line, area, pie, doughnut, scatter, radar, funnel and gauge. The material panel exposes them under the "Charts" group, and the property panel only shows the fields relevant to each type (graphical configuration; advanced styles can still be written into `chartOption` in template JSON).
+- **Custom-element plugins can register multiple element kinds** (`kinds` array); element kinds, AI drafting enums and validation follow the registered plugins dynamically.
+
 ### Changed
 
 - **Wider side panels and two-column material cards**: the left elements panel now spans 248px (was 224px) and the right property panel 304px (was 280px); element cards on the Elements tab use a two-column grid, cards with long labels (e.g. 流式列表) take a full row, and the Fields and Layers tabs are unchanged. Applied to both `@worm-vue3-print/canvas` and the experimental `@worm-vue3-print/common`.
 - **Material list reordered, HTML card removed**: the Long Text card now follows Table (Table, Long Text, Flow List adjacent), and HTML is no longer offered as a material card; the HTML element type and its print behavior are unchanged, and existing HTML elements still load. `canvas` and `common` stay in the same order with the same icons.
+- **Element and layer icons now use vector icons** (lucide) consistently across `@worm-vue3-print/canvas` and the experimental `@worm-vue3-print/common`.
+- **Chart configuration is narrowed**: `configureChartPlugin` no longer accepts `defaultChartType` / `defaultChartOption`; legacy chart APIs and the `chartRenderer` / `renderCharts` ports are removed in favour of the generic `renderAssets` channel.
 
 ## V1.4.8(2026-11-11)
 

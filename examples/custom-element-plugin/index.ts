@@ -3,7 +3,7 @@
 import { defineComponent, h } from 'vue'
 import { registerElementPlugin } from '@worm-vue3-print/core/designer'
 import './type-augmentation.js'
-import { SIGNATURE_PLUGIN, SIGNATURE_TYPE } from './plugin.js'
+import { SIGNATURE_PLUGIN, SIGNATURE_STAMP_TYPE, SIGNATURE_TYPE } from './plugin.js'
 
 /** 画布组件可用 Vue SFC；这里用 defineComponent 让脚手架保持纯 TS */
 const SignatureElement = defineComponent({
@@ -38,18 +38,21 @@ const hasSignatureProperties = (element: unknown): boolean => {
   return !!opts && opts.signatureText !== undefined
 }
 
+// 插件级 designer 被两个 kind 共用：素材卡标签/图标来自每个 kind，materialCard 只承载分组
 registerElementPlugin({
   ...SIGNATURE_PLUGIN,
   designer: {
     canvasComponent: SignatureElement,
-    materialCard: { label: '手写签名', icon: '✍', group: '自定义元素' },
+    materialCard: { group: '自定义元素' },
     propertyTab: {
       id: 'signature-properties',
       label: '自定义属性',
+      icon: 'PenTool',
       component: SignaturePropertyGroup,
       hasProperties: hasSignatureProperties,
+      searchKeywords: ['签名', '签章', 'signature'],
     },
   },
 })
 
-export { SIGNATURE_PLUGIN, SIGNATURE_TYPE }
+export { SIGNATURE_PLUGIN, SIGNATURE_TYPE, SIGNATURE_STAMP_TYPE }

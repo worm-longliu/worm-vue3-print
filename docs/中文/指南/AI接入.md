@@ -68,9 +68,12 @@ AI Agent
 - 表达式写 `{field}` 或 `{MONEY(amount)}`，不写 `${field}` 或 JavaScript 控制流。
 - 系统变量为 `printDate`、`printTime`、`pageIndex`、`totalPages`。
 - 元素类型以 `print_element_kinds` 的实时返回为准：内置 13 种 + 当前宿主已注册插件声明的类型；`html` 虽属于内置类型，但在 AI 草稿和实时写回中被封禁。`print_draft_template` 的元素类型 enum 与其同源。
-- 已安装 `@worm-vue3-print/echarts` 时 `chart`（图表）才会出现在 kinds 中并可被 AI 生成：`options.chartOption` 只接受纯 JSON（禁止 `image://` 等外链数据与函数），
-  `series[].data` 写 `"$data"` 占位，由 `chartDataSource` + `chartCategoryField`/`chartValueFields`/`chartSeriesField`
-  在绑定阶段填真实数据；图表为固定高，不要写 `textFit: 'autoHeight'`。
+- 已安装 `@worm-vue3-print/echarts` 时十个图表元素才会出现在 kinds 中并可被 AI 生成：`barChart`、`barHChart`、
+  `lineChart`、`areaChart`、`pieChart`、`doughnutChart`、`scatterChart`、`radarChart`、`funnelChart`、`gaugeChart`。
+  `options.chartOption` 只接受纯 JSON（禁止 `image://` 等外链数据与函数），`series[].data` 写 `"$data"` 占位，
+  由 `chartDataSource` + `chartCategoryField`/`chartValueFields`/`chartSeriesField` 在绑定阶段填真实数据；
+  雷达图的数值字段是维度、每行一个系列；仪表盘取首行首值；散点图 `chartBubble` 开启时第二个数值字段作点大小。
+  图表为固定高，不要写 `textFit: 'autoHeight'`。
 - 新模板必须写 `unit: 'mm'`；缺 `unit` 的历史模板按迁移规则处理。
 - `borders`、`pagination`、`tablePagination`、`tableColWidths`、`tableRows[].cells[]`、`fonts[].files[]` 等复合结构按 core 类型逐字段校验。
 - warning 多用于存量兼容，不必机械清零；所有 error 必须在写回前修复。

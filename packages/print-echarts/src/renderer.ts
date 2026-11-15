@@ -35,7 +35,7 @@ export function fitSvgRoot(svg: string, widthPx: number, heightPx: number): stri
   return svg.slice(0, match.index) + nextTag + svg.slice(match.index + rootTag.length)
 }
 
-/** 渲染规格（插件自有，不依赖 core 的旧 ChartSpec 端口） */
+/** 渲染规格（插件自有，仅依赖 core 的通用渲染规格字段） */
 export interface ChartRenderSpec {
   key: string
   type: string

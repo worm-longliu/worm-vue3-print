@@ -3,7 +3,7 @@
 //
 // 服务端装配：
 //   import '@acme/print-signature/node'          // 部署白名单：注册插件
-//   createDomHostRuntime(factory, loadExecutorBundle(), undefined, collectExecutorBundles())
+//   createDomHostRuntime(factory, loadExecutorBundle(), collectExecutorBundles())
 //
 // core 的 collectExecutorBundles() 会按注册态收集本描述符的 executorBundle()；
 // 只有 createRenderer 的插件（如本示例）走进程内 SSR，连页面注入都不需要。
@@ -12,4 +12,4 @@ import { SIGNATURE_PLUGIN, SIGNATURE_TYPE } from './plugin.js'
 
 registerElementPlugin(SIGNATURE_PLUGIN)
 
-export { SIGNATURE_PLUGIN, SIGNATURE_TYPE }
+export { SIGNATURE_PLUGIN, SIGNATURE_STAMP_TYPE, SIGNATURE_TYPE }
