@@ -219,6 +219,30 @@ describe('通用两趟出图管线（prepareDocument）', () => {
     const map = await renderAssetSpecs([{ key: 'k', type: 'unknown' }])
     expect(map.size).toBe(0)
   })
+
+  it('声明了执行器的类型拿不到产物时抛 UNSUPPORTED_RUNTIME，而不是静默降级', async () => {
+    registerGenericPluginStub()
+    await expect(renderAssetSpecs([{ key: 'k', type: 'testSvg' }], {
+      renderAssets: async () => new Map<string, string>(),
+    })).rejects.toThrow(/扩展元素执行器/)
+  })
+
+  it('同一插件多 kind 共享 executorBundle 时 provider 只调用一次', () => {
+    let calls = 0
+    const provider = () => {
+      calls += 1
+      return { name: 'multi', version: 'm1', code: '/* multi */' }
+    }
+    registerElementPlugin(defineElementPlugin({
+      id: 'multi', version: '1',
+      kinds: [
+        { type: 'multiA', label: 'A', render: { executorBundle: provider } },
+        { type: 'multiB', label: 'B', render: { executorBundle: provider } },
+      ],
+    }))
+    expect(collectExecutorBundles()).toEqual([{ source: '/* multi */', version: 'm1' }])
+    expect(calls).toBe(1)
+  })
 })
 
 describe('通用渲染器在拼版/批量/多页路径的透传', () => {

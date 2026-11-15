@@ -94,6 +94,30 @@ describe('strict 强校验通道（模板声明 plugins）', () => {
     expect(pie.ok).toBe(true)
   })
 
+  it('strict 放行集合为「内置 ∪ 已注册插件全部 kind」：已注册但未声明仍放行', () => {
+    // 语义记录：plugins 清单只做存在性与版本校验；类型闸门只要求宿主已注册该插件。
+    registerElementPlugin(chartsPlugin)
+    const undeclared = validateTemplateJson(template([element('barChart', { chartOption: {} })], { plugins: [] }))
+    expect(undeclared.ok).toBe(true)
+  })
+
+  it('同一插件多 kind 的 optionMeta 按键合并：任一 kind 声明的键对所有 kind 放行', () => {
+    // 记录已知边界：插件内共享数据契约（chart* 键）时按插件级合并即可；
+    // 若将来出现 kind 间完全不同的属性面，需要按元素 type 收紧（届时在此处补负向用例）。
+    registerElementPlugin({
+      id: '@acme/mixed', version: '1',
+      kinds: [
+        { type: 'mixedA', label: 'A', optionMeta: { keyA: { kind: 'text' } } },
+        { type: 'mixedB', label: 'B', optionMeta: { keyB: { kind: 'text' } } },
+      ],
+    })
+    const r = validateTemplateJson(template([element('mixedA', { keyB: 'x' })], {
+      plugins: [{ id: '@acme/mixed', version: '1' }],
+    }))
+    expect(r.ok).toBe(true)
+    expect(r.unknownKeys).toEqual([])
+  })
+
   it('缺插件报 MISSING_PLUGIN 硬错误，而不是静默出空纸', () => {
     const r = validateTemplateJson(template([element('signature')], {
       plugins: [{ id: '@acme/signature', version: '1.2.0' }],

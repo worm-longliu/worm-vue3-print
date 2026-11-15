@@ -5,6 +5,7 @@
 import type { ElementRenderer, ElementRenderers, ElementRenderSpec } from '../render/types.js'
 import type { ExecutorBundle } from './driver.js'
 import type { PrintSession } from './ports.js'
+import { PrintFailure } from './errors.js'
 import {
   getElementPlugin,
   getElementPluginKinds,
@@ -149,7 +150,16 @@ export async function renderAssetSpecs(
   const rest = specs.filter(s => !inProcess.has(s.key))
   if (rest.length === 0 || !session?.renderAssets) return inProcess
   const fromSession = await session.renderAssets(rest as ElementRenderSpec[])
-  return mergeAssetMaps(inProcess, fromSession)
+  const merged = mergeAssetMaps(inProcess, fromSession)
+  // 声明了执行器能力却拿不到产物：明确报错而不是静默出文本占位（部署白名单装配错了要能看见）
+  const missing = rest.find(spec => !merged.has(spec.key) && typeNeedsExecutorBundle(String(spec.type ?? '')))
+  if (missing) {
+    throw new PrintFailure(
+      'UNSUPPORTED_RUNTIME',
+      `缺少扩展元素执行器产物（${String(missing.type)}）：请确认宿主已装配 collectExecutorBundles() 收集的插件执行器`,
+    )
+  }
+  return merged
 }
 
 /**
@@ -159,9 +169,14 @@ export async function renderAssetSpecs(
 export function collectExecutorBundles(): ExecutorBundle[] {
   const seen = new Set<string>()
   const out: ExecutorBundle[] = []
+  // 同一插件多 kind 共享同一份 provider 时只调一次（10 kind 不重复读 IIFE 产物）
+  const calledProviders = new Set<() => unknown>()
   for (const { plugin, kind } of getElementPluginKinds()) {
     const render = kind.render ?? plugin.render
-    const bundle = render?.executorBundle?.()
+    const provider = render?.executorBundle
+    if (!provider || calledProviders.has(provider)) continue
+    calledProviders.add(provider)
+    const bundle = provider()
     if (!bundle || seen.has(bundle.version)) continue
     seen.add(bundle.version)
     out.push({ source: bundle.code, version: bundle.version })
@@ -175,6 +190,11 @@ export function collectExecutorBundles(): ExecutorBundle[] {
  * `renderAssets` 会自动落到执行器真实提供的旧名，主体源码因此零具体类型字面量。
  * 未注册别名时原样返回，供新插件自带 renderAssets 执行器使用。
  */
+/** 该元素类型是否声明了页面执行器能力（宿主未装配 bundles 时用于明确报错） */
+export function typeNeedsExecutorBundle(type: string): boolean {
+  return !!getElementPlugin(type)?.render?.executorBundle
+}
+
 export function resolveExecutorMethod(method: string): string {
   const aliases = Object.entries(getLegacyAliases())
     .filter(([, to]) => to === method)

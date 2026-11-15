@@ -37,7 +37,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import type { ChartRenderer, ElementRenderers, PrintTemplateData } from '@worm-vue3-print/core'
+import type { ElementRenderers, PrintTemplateData } from '@worm-vue3-print/core'
 import { collectLayoutWarnings } from '@worm-vue3-print/core'
 import { renderHtmlPages } from '@worm-vue3-print/core/browser'
 import { browserCodeRenderer } from '@worm-vue3-print/core/browser'
@@ -63,10 +63,8 @@ const props = defineProps<{
    * 图表渲染器（§4.3 兼容别名，可选）：P5 起宿主无需传参，
    * 预览由打印管线按插件注册表自动收集 renderers 出图；未装插件时才降级为占位，不阻断其余内容预览。
    */
-  chartRenderer?: ChartRenderer
   /**
-   * 通用扩展元素渲染器（按元素类型索引，P2）：chartRenderer 的泛化形态。
-   * 缺省由打印管线按插件注册表自动收集；旧 chartRenderer 入参保留兼容。
+   * 通用扩展元素渲染器（按元素类型索引）：缺省由打印管线按插件注册表自动收集。
    */
   renderers?: ElementRenderers
 }>()
@@ -133,7 +131,7 @@ async function rerender() {
       props.printData,
       props.baseUrl,
       browserCodeRenderer,
-      { fontBaseUrl: props.fontBaseUrl, chartRenderer: props.chartRenderer, renderers: props.renderers },
+      { fontBaseUrl: props.fontBaseUrl, renderers: props.renderers },
     )
     if (seq !== renderSeq) return
     warnings.value = collectLayoutWarnings(pageLayouts ?? [])
@@ -166,7 +164,7 @@ function print() {
 }
 
 watch(
-  () => [props.templateJson, props.printData, props.baseUrl, props.fontBaseUrl, props.chartRenderer, props.renderers],
+  () => [props.templateJson, props.printData, props.baseUrl, props.fontBaseUrl, props.renderers],
   () => void rerender(),
   { immediate: true, deep: true },
 )

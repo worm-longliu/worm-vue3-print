@@ -16,13 +16,23 @@ const call = async (name: string, args: Record<string, unknown> = {}) => {
 }
 
 const sealPlugin: PrintElementPlugin = {
-  kind: {
-    id: '@acme/seal',
-    version: '0.4.0',
+  id: '@acme/seal',
+  version: '0.4.0',
+  kinds: [{
     type: 'seal',
     label: '电子印章',
     requiredOptionKeys: ['left', 'top', 'width', 'height', 'sealId'],
-  },
+  }],
+}
+
+const chartsPlugin: PrintElementPlugin = {
+  id: '@worm-vue3-print/echarts',
+  version: '2',
+  kinds: [
+    { type: 'barChart', label: '柱状图', requiredOptionKeys: ['left', 'top', 'width', 'height', 'chartOption'] },
+    { type: 'pieChart', label: '饼图', requiredOptionKeys: ['left', 'top', 'width', 'height', 'chartOption'] },
+  ],
+  render: { html: () => '<svg/>' },
 }
 
 /** 从 tools/list 下发的 JSON Schema 里取出 elements[].type 的 enum */
@@ -50,6 +60,15 @@ describe('print_element_kinds 动态返回注册态', () => {
 })
 
 describe('print_draft_template 的 enum 与 kinds 同源', () => {
+  it('多 kind 插件注册后 kinds 与 draft enum 同时按 kind 数量增长', () => {
+    const before = draftTypeEnum(draftTool.getInputSchema!())
+    registerElementPlugin(chartsPlugin)
+    const after = draftTypeEnum(draftTool.getInputSchema!())
+    expect(after).toHaveLength(before.length + chartsPlugin.kinds.length)
+    expect(after).toEqual(expect.arrayContaining(['barChart', 'pieChart']))
+    expect(after).toEqual(getElementKinds().map(k => k.type))
+  })
+
   it('工具提供 getInputSchema，且静态 inputSchema 与动态生成形状一致', () => {
     expect(kindsTool).toBeDefined()
     expect(typeof draftTool.getInputSchema).toBe('function')
