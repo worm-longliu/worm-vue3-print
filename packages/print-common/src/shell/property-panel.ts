@@ -11,14 +11,18 @@ import {
   resolveElementBorderDisplay, setElementBorderEdgeVisible, setElementBorderField, BORDER_LINE_STYLES,
   ELEMENT_BORDER_APPLY_HINT,
   resolveFlowColumns, resolveFlowGapX, resolveFlowLayoutMode, resolveFlowMaxSpan, resolveFlowPadding, resolveFlowRowHeight, suggestFlowColumns,
-  resolveCellGroupMode,
+  resolveCellGroupMode, matchKeywords,
 } from '@worm-vue3-print/core/designer'
 import { computeMaxColumns } from '@worm-vue3-print/core'
 import type { BorderPreset, ElementBorderFieldKey, ElementBorderSide, ElementOptions, RuntimeElement } from '@worm-vue3-print/core/designer'
 import { h } from '../core/h'
 import type { El } from '../core/h'
+import { iconSvg } from '../core/icons'
+import { getPluginPropertyTab } from '../core/plugin'
+import type { PluginPropertyTab } from '../core/plugin'
+import { mountElementUIResult } from './plugin-ui'
 import { colorTrigger, divider, field, fieldHelp, radioGroup, resetButton, stepper } from './controls'
-import { createDefaultOptions, propertyDefault } from '@worm-vue3-print/core/designer'
+import { createDefaultOptions, propertyDefault, DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
 import { isRotationExcludedType, isFreeAngleEditable, CODE_OBLIQUE_NOTE, collectFollowMemberIds } from '@worm-vue3-print/core/designer'
 import { designBackgroundSection, tilingSection } from './page-extras'
 import { bindingGroup } from './binding'
@@ -543,10 +547,39 @@ function pagePane(ctx: ShellCtx) {
   ].filter(Boolean))
 }
 
+/** 「自定义属性」pane：plugin-kit UI 渲染进 .property-content；未搜索恒显示，搜索时按关键词命中 */
+function customPane(ctx: ShellCtx, el: RuntimeElement, custom: PluginPropertyTab) {
+  const keyword = (ctx.state.propSearch ?? '').trim()
+  const visible = !keyword || matchKeywords(keyword, [...custom.searchKeywords, custom.label])
+  const content = document.createElement('div')
+  content.className = 'property-content'
+  if (visible) {
+    try {
+      mountElementUIResult(`property:${el.id}`, custom.ui.renderProperty!({
+        element: el,
+        // 与画布同口径：宿主注入真实业务数据时优先用之，未注入回落内置 demo 数据
+        data: ctx.host.designData?.length ? ctx.host.designData : [DEFAULT_DEMO_DATA],
+        // 业务字段清单交给插件：图表类插件据此生成数据源 / 类目 / 数值字段下拉
+        fields: ctx.host.fields ?? [],
+        update: partial => ctx.store.updateElement(el.id, partial),
+        repaint: () => ctx.repaint(),
+      }), content)
+    } catch {
+      // 插件渲染失败时保持空内容，不打断属性台其余页签
+    }
+  }
+  return h('div', {
+    class: 'pd-tab-pane', role: 'tabpanel',
+    style: ctx.state.propTab === 'custom' ? '' : { display: 'none' },
+  }, [content])
+}
+
 export function renderPropertyPanel(ctx: ShellCtx) {
   const s = ctx.store
   const st = ctx.state
   const el = s.selectedElement
+  // 有插件 UI 且 hasProperties 通过时，页签表第一项为「自定义属性」（canvas 同口径）
+  const customTab = el ? getPluginPropertyTab(el) : undefined
   if (st.propCollapsed) {
     return h('div', { class: 'property-panel collapsed' }, [
       h('div', { class: 'prop-collapsed' }, [
@@ -554,6 +587,13 @@ export function renderPropertyPanel(ctx: ShellCtx) {
           type: 'button', class: 'pc-btn', title: '展开属性台', text: '«',
           onClick: () => { st.propCollapsed = false; ctx.repaint() },
         }),
+        ...(customTab
+          ? [h('button', {
+              type: 'button', class: `pc-btn${st.propTab === 'custom' ? ' on' : ''}`, title: customTab.label,
+              html: iconSvg(customTab.icon, 14) || iconSvg('Shapes', 14),
+              onClick: () => { st.propTab = 'custom'; st.propCollapsed = false; ctx.repaint() },
+            })]
+          : []),
         ...([['element', '元素属性', '▦'], ['page', '页面属性', '▤']] as const).map(([tab, title, glyph]) =>
           h('button', {
             type: 'button', class: `pc-btn${st.propTab === tab ? ' on' : ''}`, title, text: glyph,
@@ -562,7 +602,8 @@ export function renderPropertyPanel(ctx: ShellCtx) {
       ]),
     ])
   }
-  const tab = el ? st.propTab : 'page'
+  // 无选中恒回「页面属性」；插件 UI 消失（如 hasProperties 变 false）时回退「元素属性」
+  const tab = !el ? 'page' : st.propTab === 'custom' && !customTab ? 'element' : st.propTab
   return h('div', { class: 'property-panel' }, [
     h('div', { class: 'prop-head' }, [
       h('span', { class: 'prop-title', text: '属性台' }),
@@ -573,6 +614,12 @@ export function renderPropertyPanel(ctx: ShellCtx) {
     ]),
     h('div', { class: 'pd-tabs prop-tabs' }, [
       h('div', { class: 'pd-tab-bar', role: 'tablist' }, [
+        ...(customTab
+          ? [h('button', {
+              type: 'button', class: `pd-tab${tab === 'custom' ? ' active' : ''}`,
+              text: customTab.label, onClick: () => { st.propTab = 'custom'; ctx.repaint() },
+            })]
+          : []),
         h('button', {
           type: 'button', class: `pd-tab${tab === 'element' ? ' active' : ''}`,
           text: '元素属性', onClick: () => { st.propTab = 'element'; ctx.repaint() },
@@ -582,7 +629,8 @@ export function renderPropertyPanel(ctx: ShellCtx) {
           text: '页面属性', onClick: () => { st.propTab = 'page'; ctx.repaint() },
         }),
       ]),
-      // 两个页签同 canvas 的 v-show：节点常驻，切换只切 display
+      // 页签同 canvas 的 v-show：节点常驻，切换只切 display
+      customTab && el ? customPane(ctx, el, customTab) : '',
       h('div', {
         class: 'pd-tab-pane', role: 'tabpanel',
         style: tab === 'element' ? '' : { display: 'none' },
@@ -594,6 +642,6 @@ export function renderPropertyPanel(ctx: ShellCtx) {
         class: 'pd-tab-pane', role: 'tabpanel',
         style: tab === 'page' ? '' : { display: 'none' },
       }, [pagePane(ctx)]),
-    ]),
+    ].filter(Boolean)),
   ])
 }

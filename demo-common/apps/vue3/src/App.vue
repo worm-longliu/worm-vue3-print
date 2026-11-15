@@ -150,7 +150,7 @@
       <div class="gallery-panel">
         <div class="gallery-head">
           <span class="gallery-title">选择示例模板</span>
-          <span class="gallery-subtitle">{{ SAMPLES.length }} 个示例 · 全部使用静态数据</span>
+          <span class="gallery-subtitle">{{ SAMPLE_LIBRARY.length }} 个示例 · 全部使用静态数据</span>
           <button type="button" class="gallery-close" @click="galleryVisible = false">×</button>
         </div>
 
@@ -247,6 +247,10 @@ import { initTopbarOverflow } from './topbar-overflow.js'
 import { createDefaultTemplate } from '@worm-vue3-print/common'
 import { PrintClient, WormPrintError } from '@worm-vue3-print/core/client'
 import { SAMPLES } from './templates'
+import { CHART_SAMPLES } from './templates-chart'
+
+/** 全部示例 = 与 demo 同源的宿主安全示例 + 仅本宿主安装的图表适配包带来的图表样例 */
+const SAMPLE_LIBRARY = [...SAMPLES, ...CHART_SAMPLES]
 import SampleThumb from './SampleThumb.vue'
 import { checkRenderHealth, openPdfBlob, requestServerPdf } from './render-client'
 import { createPreviewZoom, renderInBrowser, writeHtmlToFrame } from './browser-render'
@@ -327,6 +331,9 @@ function syncDesigner() {
   const el = designerRef.value
   if (!el) return
   el.fields = fields.value
+  // 插件 UI 的设计态示例数据：图表插件（echarts-common）按当前示例的真实业务数据画预览，
+  // 属性台的数据源下拉也据此列字段；不注入时插件回落 core 的 DEFAULT_DEMO_DATA。
+  el.designData = activeData.value
   el.template = templateData.value
   el.fonts = fontsOf(templateData.value)
   console.log(`[demo] 注入 fields(${fields.value.length} 个字段) 与 template(${templateData.value.paperSize})`)
@@ -537,24 +544,24 @@ watch(previewVisible, visible => {
 
 // ────────────────── 示例模板库弹窗 ──────────────────
 const galleryVisible = ref(false)
-const GROUPS = ['全部', '单据', '标签', '小票']
+const GROUPS = ['全部', '单据', '标签', '小票', '图表']
 const activeGroup = ref('全部')
 const selectedId = ref('')
 
 const visibleSamples = computed(() =>
-  activeGroup.value === '全部' ? SAMPLES : SAMPLES.filter(s => s.group === activeGroup.value),
+  activeGroup.value === '全部' ? SAMPLE_LIBRARY : SAMPLE_LIBRARY.filter(s => s.group === activeGroup.value),
 )
-const countOf = group => (group === '全部' ? SAMPLES.length : SAMPLES.filter(s => s.group === group).length)
+const countOf = group => (group === '全部' ? SAMPLE_LIBRARY.length : SAMPLE_LIBRARY.filter(s => s.group === group).length)
 
 // 每次打开：默认选中当前示例（或第一个），避免「确定」按钮空态
 watch(galleryVisible, open => {
   if (!open) return
   activeGroup.value = '全部'
-  selectedId.value = currentSample.value?.id || SAMPLES[0].id
+  selectedId.value = currentSample.value?.id || SAMPLE_LIBRARY[0].id
 })
 
 function confirmGallery() {
-  const sample = SAMPLES.find(s => s.id === selectedId.value)
+  const sample = SAMPLE_LIBRARY.find(s => s.id === selectedId.value)
   if (sample) applySample(sample)
 }
 
@@ -790,7 +797,7 @@ onMounted(() => {
   el.uploadImage = uploadImage
   el.uploadDesignBackground = uploadImage
   // 进入页面自动载入第一个示例（与 demo 自动载入综合示例同口径）
-  applySample(SAMPLES[0])
+  applySample(SAMPLE_LIBRARY[0])
   console.log('[demo] 设计器已挂载：registerAll() 在 main.js 调用一次，元素由 isCustomElement 放行')
 })
 

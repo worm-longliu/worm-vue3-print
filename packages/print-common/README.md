@@ -1,7 +1,7 @@
 # @worm-vue3-print/common
 
 > ⚠️ **实验性质（按正式版本号发布）**：本包已发布到 npm 的 `latest`（当前 `1.4.8`），但接口与产物形态仍可能调整，
-> **不建议应用到生产环境**；Vue 3 项目请使用成熟方案 `@worm-vue3-print/canvas`，本包面向 Vue 3 / Vue 2 / React / jQuery 等非 Vue3 或跨框架宿主。
+> **不建议应用到生产环境**；Vue 3 项目默认用成熟方案 `@worm-vue3-print/canvas`。已按 canvas 口径接入、需要切换到零框架实现的宿主可用本包 `/vue3` 兼容门面；主入口面向 Vue 3 / Vue 2 / React / jQuery 等跨框架宿主。
 
 打印模板可视化设计器的 **通用宿主适配形态**：任意框架、或完全没有框架的宿主都能直接接入，
 实现为零框架原生 Custom Element + Shadow DOM，**不依赖 Vue / React 等任何框架运行时**，
@@ -95,6 +95,85 @@ d.save()
 
 出纸链路不需要设计器，直接走 `@worm-vue3-print/core`（浏览器渲染 / print-render 服务端 /
 桌面静默打印），与 canvas（Vue 3）宿主完全一致。
+
+## 自定义元素插件（图表等）
+
+设计器只保留通用机制，具体元素由独立插件包提供。宿主 `import` 一次插件入口即可让素材卡、
+画布、属性台「自定义属性」页签与出纸同时生效；元素语义来自 `@worm-vue3-print/core/designer`
+的插件描述符，设计器 UI 来自 `@worm-vue3-print/plugin-kit` 的框架无关 `ElementUI` 契约，
+一份 UI 同时服务 common 与 Vue 3 的 canvas。
+
+```js
+import { registerAll } from '@worm-vue3-print/common'
+import '@worm-vue3-print/echarts-common'   // 官方图表插件；换成自己的插件包同理
+registerAll()
+
+const d = document.querySelector('print-designer')
+d.fields = [{ fieldKey: 'trend', fieldLabel: '趋势数据', fieldType: 'list', sortOrder: 1 }]
+// 设计态示例数据：单个业务对象、对象数组或 design-data attribute 的 JSON 串都可以；
+// 单对象自动归一成数组信封。未注入时插件回落到 core 的 DEFAULT_DEMO_DATA。
+d.designData = { trend: [{ name: '一月', value: 12 }, { name: '二月', value: 28 }] }
+```
+
+`data`（数组信封）会传给插件的画布与属性台渲染函数，`fields` 传给属性台渲染函数，
+图表类插件据此按真实业务数据画预览、按业务字段生成数据源下拉。未注册 UI 的插件不会出现在素材台。
+写自己的插件见 `docs/中文/指南/自定义元素插件开发.md` 与 `packages/print-plugin-kit/README.md`。
+
+## Vue 3 兼容门面（`/vue3`）
+
+原本消费 `@worm-vue3-print/canvas` 的 Vue 3 宿主，可以只改依赖与 import 就把设计器实现换成
+零框架的 common，模板、事件回调、`ref` 方法调用与业务逻辑一行不动：
+
+```diff
+- "@worm-vue3-print/canvas": "..."
++ "@worm-vue3-print/common": "..."
+```
+```diff
+- import { PrintDesigner, PrintHtmlPreview, ... } from '@worm-vue3-print/canvas'
+- import type { TemplateData } from '@worm-vue3-print/canvas'
++ import { PrintDesigner, PrintHtmlPreview, ... } from '@worm-vue3-print/common/vue3'
++ import type { TemplateData } from '@worm-vue3-print/common/vue3'
+```
+
+可选扩展包同步换：`@worm-vue3-print/echarts` → `@worm-vue3-print/echarts-common`。
+monorepo 源码消费的宿主（如本仓 `demo`）还需把 Vite `resolve.alias` 与 `tsconfig.paths`
+里的 canvas 条目指向 `packages/print-common/src/vue3/index.ts`，并补 `common` / `plugin-kit` 两条。
+
+`vue` 是本子路径的 **optional peer**：不用 `/vue3` 时主入口仍是零框架、零 Vue 依赖。
+设计器样式由元素自己注入 Shadow DOM，预览组件样式由门面幂等注入，宿主都不需要额外引 CSS。
+
+### 门面负责的契约转换
+
+| Vue 组件侧（canvas 口径） | Custom Element 侧 | 门面动作 |
+|---|---|---|
+| `:initial-template` `:fields` `:fonts` 与函数型 `:upload-image` | `el.template` `el.fields` `el.fonts` `el.uploadImage` | 显式赋 property，绕开 `setAttribute` 把对象 / 函数字符串化 |
+| `@save="onSave"` 首参是 JSON 字符串 | `CustomEvent('save')`，json 在 `detail` | 解 `detail` 再 emit |
+| `@preview` | `CustomEvent('preview')` | 转无参 emit |
+| `ref.getTemplateJson()` 返回对象 | `getTemplateJson()` 返回 JSON 字符串 | `JSON.parse` |
+| `ref.validateTemplate()` / `getGeometryWarnings()` | 同名同语义 | 直接代理 |
+
+props 变化会重新注入（与 canvas 的 `watch` 口径一致）；卸载时摘除事件监听。
+
+### 已提供的导出
+
+`PrintDesigner`、`PrintHtmlPreview`、`renderHtmlPages`、`browserCodeRenderer`、
+`createDefaultTemplate`、`toRuntimePool`、`DEFAULT_DEMO_DATA`、`getDemoData`、
+`provideToolbarOverflow` / `useToolbarOverflow` / `emptyToolbarOverflow` /
+`createOverflowUnitDirective` / `TOOLBAR_OVERFLOW` / `moreSlotId`，
+以及 `@worm-vue3-print/core/designer` 的全量类型与 `PrintFontDeclaration`。
+`InstanceType<typeof PrintDesigner>` / `InstanceType<typeof PrintHtmlPreview>` 含 expose 方法，
+TS 宿主沿用原写法即可通过 `vue-tsc`。
+
+### 能力边界（换包前请确认）
+
+- **Vue 专属元素扩展注册表不提供**：`registerElementExtension` / `resolveElementPropertyTab`
+  等属于 canvas 的 Vue 组件契约。自定义元素改走 `@worm-vue3-print/plugin-kit`
+  （`defineElementUI` / `registerElementUI`），官方图表用 `echarts-common`，见上一节。
+- `initialElements`：common 没有独立元素池，门面在未提供 `initialTemplate` 时把它并入
+  当前模板第一页的 `elements`；与 canvas 的「单独覆盖元素层」略有差别。
+- **样式单一来源仍在 canvas**：`scripts/gen-styles.mjs` 从 `print-canvas/dist/canvas.css`
+  派生本包样式。替代设计器运行时不等于可以停掉 canvas 的构建。
+- **本包仍是实验性质**，不建议直接用于生产；`/vue3` 是兼容通道，不是新的正式方案。
 
 ## 在 Vue 3 / Vue 2 / React 中使用
 
@@ -275,4 +354,4 @@ export default function App() {
 | 样式 | `@worm-vue3-print/canvas/style.css` | 内置 Shadow DOM（`?inline`），无需引样式文件；light DOM 形态引 `@worm-vue3-print/common/style.css` |
 | 适用 | Vue 3 项目 | React / Vue 2 / jQuery / 原生 |
 
-Vue 3 项目应继续用 `@worm-vue3-print/canvas`，功能面更全；本包面向非 Vue3 宿主。
+Vue 3 项目默认继续用 `@worm-vue3-print/canvas`（功能面更全）；若要切换到 common 运行时且不想改宿主代码，用 `/vue3` 兼容门面，见上文对应章节。

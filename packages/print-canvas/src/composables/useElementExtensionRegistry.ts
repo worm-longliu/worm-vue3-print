@@ -2,6 +2,13 @@ import { shallowReactive } from 'vue'
 import type { Component } from 'vue'
 import type { ElementOptions, RuntimeElement } from '@worm-vue3-print/core/designer'
 import { getElementPluginKinds } from '@worm-vue3-print/core/designer'
+import { getElementUI } from '@worm-vue3-print/plugin-kit'
+import {
+  getPluginKitCanvasComponent,
+  getPluginKitPropertyComponent,
+  pluginKitVersion,
+  removePluginKitStyles,
+} from './pluginKitBridge'
 
 /**
  * 属性台「自定义属性」tab 描述符（P3）：所有扩展元素共用同一个 tab，按选中元素类型
@@ -86,20 +93,39 @@ export function unregisterElementExtension(type: string): void {
  * 旧 `registerElementExtension` 仍作为兼容别名保留，同 type 时优先它的值。
  */
 function coreExtensions(): ElementExtension[] {
+  // 读 plugin-kit 注册态版本号：注册/注销 UI 后，素材台与属性台的 computed 立即刷新。
+  // （core 的元素插件注册表本身非响应式，Vue 侧只需感知 UI 注册表变化。）
+  void pluginKitVersion.value
   const out: ElementExtension[] = []
   for (const { plugin, kind } of getElementPluginKinds()) {
     const designer = kind.designer ?? plugin.designer
-    if (!designer?.canvasComponent) continue
-    const card = designer.materialCard as { label?: string; icon?: string; group?: string } | undefined
-    const tab = designer.propertyTab
+    const nativeCanvas = designer?.canvasComponent as Component | undefined
+    const ui = getElementUI(kind.type)
+    // 原生 Vue 组件优先（向后兼容）；仅当它缺省且 plugin-kit 有 UI 时生成桥接组件
+    const canvasComponent = nativeCanvas ?? (ui ? getPluginKitCanvasComponent(kind.type) : undefined)
+    if (!canvasComponent) continue
+    const card = designer?.materialCard as { label?: string; icon?: string; group?: string } | undefined
+    const tab = designer?.propertyTab
+    const bridgeProperty = !nativeCanvas && ui ? getPluginKitPropertyComponent(kind.type) : undefined
+    const bridgeTab: ElementPropertyTab | undefined = bridgeProperty
+      ? {
+          // 插件 UI 不另设标题：统一使用宿主唯一的「自定义属性」tab
+          label: CUSTOM_PROPERTY_TAB_LABEL,
+          icon: kind.icon ?? card?.icon,
+          component: bridgeProperty,
+          hasProperties: ui?.hasProperties,
+          searchKeywords: ui?.searchKeywords ? [...ui.searchKeywords] : undefined,
+        }
+      : undefined
     out.push({
       type: kind.type,
       // kind.label 是素材卡标签的唯一真源；materialCard 只承载分组（icon 作为兜底）
       label: kind.label,
       icon: kind.icon ?? card?.icon ?? 'Shapes',
-      group: card?.group,
-      canvasComponent: designer.canvasComponent as Component,
-      propertyComponent: tab?.component as Component | undefined,
+      // 原生 Vue 组件自带 materialCard.group；纯 plugin-kit UI 用 UI 声明的 group 兜底
+      group: card?.group ?? ui?.group,
+      canvasComponent,
+      propertyComponent: (tab?.component as Component | undefined) ?? bridgeProperty,
       propertyTab: tab
         ? {
             label: tab.label,
@@ -108,7 +134,7 @@ function coreExtensions(): ElementExtension[] {
             hasProperties: tab.hasProperties as ((element: RuntimeElement) => boolean) | undefined,
             searchKeywords: tab.searchKeywords ? [...tab.searchKeywords] : undefined,
           }
-        : undefined,
+        : bridgeTab,
       defaultOptions: kind.defaultOptions,
     })
   }
@@ -131,9 +157,10 @@ export function getElementExtension(type?: string | null): ElementExtension | un
   return getElementExtensions().find(ext => ext.type === type)
 }
 
-/** 仅用于测试：清空注册表 */
+/** 仅用于测试：清空注册表（含 plugin-kit 注入的样式，避免用例间残留） */
 export function clearElementExtensions(): void {
   registry.clear()
+  removePluginKitStyles()
 }
 
 /** 单一「自定义属性」tab 的默认标题与搜索分组 id（属性台与 core 搜索共用） */

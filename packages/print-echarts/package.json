@@ -17,6 +17,11 @@
       "import": "./dist/node.js",
       "require": "./dist/node.cjs"
     },
+    "./kit": {
+      "types": "./dist/kit.d.ts",
+      "import": "./dist/kit.js",
+      "require": "./dist/kit.cjs"
+    },
     "./browser/executor.iife": {
       "types": "./dist/executor.iife.global.d.ts",
       "default": "./dist/executor.iife.global.js"

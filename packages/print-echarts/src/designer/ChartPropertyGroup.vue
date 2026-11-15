@@ -57,6 +57,19 @@
         <span class="pd-label">内径（%）</span>
         <input class="pd-input" type="number" min="0" max="90" :value="innerRadius" @input="onInnerRadiusInput($event)">
       </div>
+      <div v-if="has('padding')" class="pd-field">
+        <span class="pd-label">内边距 上/右/下/左 (%)</span>
+        <div class="echarts-field-row">
+          <input class="pd-input" type="number" min="0" max="60" title="上边距" :value="funnelPadding.top" @input="onPaddingInput('top', $event)">
+          <input class="pd-input" type="number" min="0" max="60" title="右边距（留外置标签）" :value="funnelPadding.right" @input="onPaddingInput('right', $event)">
+          <input class="pd-input" type="number" min="0" max="60" title="下边距" :value="funnelPadding.bottom" @input="onPaddingInput('bottom', $event)">
+          <input class="pd-input" type="number" min="0" max="60" title="左边距" :value="funnelPadding.left" @input="onPaddingInput('left', $event)">
+        </div>
+      </div>
+      <div v-if="has('radius')" class="pd-field">
+        <span class="pd-label">半径（%）</span>
+        <input class="pd-input" type="number" min="20" max="100" :value="radarRadius" @input="onRadiusInput($event)">
+      </div>
       <div v-if="has('gaugeRange')" class="pd-field">
         <span class="pd-label">最小 / 最大值</span>
         <div class="echarts-field-row">
@@ -74,12 +87,17 @@
 <script setup lang="ts">
 import type { ElementOptions, RuntimeElement } from '@worm-vue3-print/core/designer'
 import { computed } from 'vue'
+import { FUNNEL_PADDING_DEFAULTS, RADAR_RADIUS_DEFAULT } from '../constants.js'
+import type { FunnelPadding } from '../constants.js'
 import { getChartPalettes } from '../config.js'
 import { createDefaultChartOption } from '../defaults.js'
 import { getChartKindDefinition } from '../kinds.js'
 import type { ChartFieldKey } from '../kinds.js'
 import { normalizeChartOption } from '../normalize.js'
-import { asObject, cloneChartOption, readPaletteKey, resolveChartPanelFields, syncSeriesCount } from './option-utils.js'
+import {
+  asObject, cloneChartOption, readFunnelPadding, readPaletteKey, readRadarRadius,
+  resolveChartPanelFields, syncSeriesCount, writeFunnelPadding, writeRadarRadius,
+} from './option-utils.js'
 
 // 与 canvas ElementComponentProps 同形（内联类型字面量，便于 SFC 编译期提取运行时 props）
 const props = defineProps<{
@@ -133,6 +151,11 @@ const gaugeMax = computed(() => {
   const series = (Array.isArray(option.value.series) ? option.value.series : []) as Record<string, any>[]
   return Number(series[0]?.max ?? 100)
 })
+/** 读「留白」配置需要元素框尺寸：手写 chartOption 的 px 值会按当前框折算成百分比 */
+const elementWidthMm = computed(() => Number(options.value.width) || 0)
+const elementHeightMm = computed(() => Number(options.value.height) || 0)
+const funnelPadding = computed(() => readFunnelPadding(option.value, elementWidthMm.value, elementHeightMm.value))
+const radarRadius = computed(() => readRadarRadius(option.value, elementWidthMm.value, elementHeightMm.value))
 
 /** 单值类型（饼/环/漏斗/仪表盘）只保留一个数值字段；散点最多两个（第二个留给气泡） */
 const maxValueFields = computed(() => {
@@ -231,6 +254,16 @@ function onInnerRadiusInput(event: Event): void {
   const series = (Array.isArray(next.series) ? next.series : []) as Record<string, any>[]
   if (series[0]) series[0].radius = [`${inner}%`, '70%']
   commit(next)
+}
+function onPaddingInput(side: keyof FunnelPadding, event: Event): void {
+  const raw = Number((event.target as HTMLInputElement).value)
+  const next = Number.isFinite(raw) ? Math.min(60, Math.max(0, raw)) : FUNNEL_PADDING_DEFAULTS[side]
+  commit(writeFunnelPadding(option.value, { ...funnelPadding.value, [side]: next }))
+}
+function onRadiusInput(event: Event): void {
+  const raw = Number((event.target as HTMLInputElement).value)
+  const next = Number.isFinite(raw) ? Math.min(100, Math.max(20, raw)) : RADAR_RADIUS_DEFAULT
+  commit(writeRadarRadius(option.value, next))
 }
 function onGaugeMinInput(event: Event): void {
   const next = option.value

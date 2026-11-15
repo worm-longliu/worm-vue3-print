@@ -59,7 +59,7 @@ const template: TemplateData = {
 export const SALES_CHART_SAMPLE: SampleTemplate = {
   id: 'sales-chart',
   name: '销售趋势图表',
-  group: '单据',
+  group: '图表',
   desc: 'ECharts 图表元素：柱状图 / 环形图 / 折线图共用数据源，模板只存 chartOption 与字段映射',
   paper: 'A4 纵向 · 190mm 版心',
   fields: SALES_CHART_FIELDS,

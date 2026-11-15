@@ -12,7 +12,7 @@ export default defineConfig({
       fileName: (format) => (format === 'es' ? 'index.js' : 'index.cjs'),
     },
     rollupOptions: {
-      external: [/^@worm-vue3-print\/core(\/.*)?$/, 'jsbarcode', 'qrcode'],
+      external: [/^@worm-vue3-print\/core(\/.*)?$/, /^@worm-vue3-print\/plugin-kit$/, 'jsbarcode', 'qrcode'],
       output: { assetFileNames: 'style.css' },
     },
     sourcemap: false,

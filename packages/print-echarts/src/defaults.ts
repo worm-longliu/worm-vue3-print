@@ -1,8 +1,19 @@
 // 十类图表的出厂 option（模板态）：数据维度一律写 `$data` 占位，由插件绑定阶段按
 // chartDataSource + chartCategoryField/chartValueFields/chartSeriesField 注入真实数据。
+import { FUNNEL_PADDING_DEFAULTS, RADAR_RADIUS_DEFAULT } from './constants.js'
 import { getChartKindDefinition } from './kinds.js'
 
 const GRID = { left: '8%', right: '8%', bottom: '12%', top: '18%', containLabel: true }
+
+/** 四边内边距（%）→ ECharts funnel series 的 top/right/bottom/left 百分比写法 */
+function percentInsets(padding: typeof FUNNEL_PADDING_DEFAULTS): Record<string, string> {
+  return {
+    top: `${padding.top}%`,
+    right: `${padding.right}%`,
+    bottom: `${padding.bottom}%`,
+    left: `${padding.left}%`,
+  }
+}
 
 /** 按 kind 生成出厂 option；series.type 与 kind 语义一致（折线图不会落成柱状图） */
 export function createDefaultChartOption(type: string): Record<string, unknown> {
@@ -28,13 +39,14 @@ export function createDefaultChartOption(type: string): Record<string, unknown> 
       return {
         title, tooltip: { trigger: 'item' },
         // indicator 由绑定阶段按 chartValueFields 生成；设计态预览见 previewChartOption
-        radar: { indicator: [] },
+        radar: { indicator: [], radius: `${RADAR_RADIUS_DEFAULT}%` },
         series: [{ type: 'radar', name: '数量', data: ['$data'] }],
       }
     case 'funnel':
       return {
         title, tooltip: { trigger: 'item' }, legend: { show: false },
-        series: [{ type: 'funnel', name: '数量', data: ['$data'], sort: 'descending' }],
+        // 不写内边距会吃 ECharts 的 px 默认（左右 80/上下 60~65），小框里图形只占一半不到
+        series: [{ type: 'funnel', name: '数量', data: ['$data'], sort: 'descending', ...percentInsets(FUNNEL_PADDING_DEFAULTS) }],
       }
     case 'gauge':
       return {

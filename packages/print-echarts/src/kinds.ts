@@ -3,6 +3,7 @@
 export type ChartFieldKey =
   | 'dataSource' | 'categoryField' | 'valueFields' | 'seriesField'
   | 'title' | 'legend' | 'palette' | 'stack' | 'bubble' | 'innerRadius' | 'gaugeRange'
+  | 'padding' | 'radius'
 
 export type ChartSeriesType = 'bar' | 'line' | 'pie' | 'scatter' | 'radar' | 'funnel' | 'gauge'
 
@@ -69,15 +70,15 @@ export const CHART_KIND_DEFINITIONS: readonly ChartKindDefinition[] = [
   },
   {
     type: 'radarChart', label: '雷达图', icon: 'Radar', seriesType: 'radar',
-    fields: ['dataSource', 'categoryField', 'valueFields', ...STYLE_FIELDS], requiredOptionKeys: BASE_REQUIRED,
+    fields: ['dataSource', 'categoryField', 'valueFields', ...STYLE_FIELDS, 'radius'], requiredOptionKeys: BASE_REQUIRED,
     defaultWidth: 70, defaultHeight: 60,
-    notes: '雷达图：每个数值字段是一个维度（radar.indicator），每行数据是一个系列（类目字段作系列名）',
+    notes: '雷达图：每个数值字段是一个维度（radar.indicator），每行数据是一个系列（类目字段作系列名）；半径由面板写 radar.radius（%，默认 75）',
   },
   {
     type: 'funnelChart', label: '漏斗图', icon: 'Funnel', seriesType: 'funnel',
-    fields: ['dataSource', 'categoryField', 'valueFields', ...STYLE_FIELDS], requiredOptionKeys: BASE_REQUIRED,
+    fields: ['dataSource', 'categoryField', 'valueFields', ...STYLE_FIELDS, 'padding'], requiredOptionKeys: BASE_REQUIRED,
     defaultWidth: 60, defaultHeight: 60,
-    notes: '漏斗图：类目 + 首个数值字段，按数值降序；只需一个数值字段',
+    notes: '漏斗图：类目 + 首个数值字段，按数值降序；四边内边距由面板写 series.left/right/top/bottom（%，右侧需留外置标签空间）',
   },
   {
     type: 'gaugeChart', label: '仪表盘', icon: 'Gauge', seriesType: 'gauge',

@@ -3,9 +3,10 @@ import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-// demo-common 示例库单一来源：把 Vue3 demo 的 src/samples 打包求值后，展开成一份自包含的
-// templates.js 落到四个宿主工程。宿主必须与 ./demo 用同一批示例，因此这里只做「求值 + 展开」，
-// 不手写第二份模板数据；demo 的示例改了之后重跑本脚本即可（禁止手改产物 templates.js，会被下次同步覆盖）。
+// demo-common 示例库单一来源：把 Vue3 demo 的宿主安全示例（src/samples/host-samples.ts）打包求值后，
+// 展开成一份自包含的 templates.js 落到四个宿主工程。宿主必须与 ./demo 用同一批示例，因此这里只做
+// 「求值 + 展开」，不手写第二份模板数据；demo 的示例改了之后重跑本脚本即可（禁止手改产物
+// templates.js，会被下次同步覆盖）。图表类示例依赖可选包 @worm-vue3-print/echarts，只在 demo 注册。
 // 用法：node demo-common/scripts/sync-demo-samples.mjs
 const require = createRequire(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json'))
 // esbuild 由 workspace 里的 vite 提供（根 node_modules 提升）；没装依赖时给出可执行提示而不是裸报错
@@ -22,7 +23,8 @@ const REPO = join(HERE, '..', '..')
 const APPS = ['vue3', 'vue2', 'react', 'jquery']
 
 /** demo 的示例入口：虚拟文件，避免往 demo 里落临时入口 */
-const ENTRY = `export { SAMPLE_TEMPLATES } from './samples/index'
+const ENTRY = `export { HOST_SAMPLE_TEMPLATES } from './samples/host-samples'
+export { COMMON_CHART_SAMPLE } from './samples/common-chart-sample'
 export { deriveBatchData } from './batch-data'
 `
 
@@ -96,22 +98,16 @@ function stringify(value, depth) {
   return `{\n${entries.map(([k, v]) => `${inner}${keyOf(k)}: ${stringify(v, depth + 1)},`).join('\n')}\n${pad}}`
 }
 
-const { SAMPLE_TEMPLATES, deriveBatchData } = await loadSamples()
-
-/**
- * demo-common 四个宿主不安装 @worm-vue3-print/echarts 可选包：图表示例在宿主里素材台
- * 不显示、画布显示占位、预览会因缺图表执行器报错，因此同步时排除图表类示例。
- * 示例的增删仍只在 demo 侧维护（demo 已安装可选包）。
- */
-const HOST_EXCLUDED_SAMPLE_IDS = new Set(['sales-chart'])
+const { HOST_SAMPLE_TEMPLATES, COMMON_CHART_SAMPLE, deriveBatchData } = await loadSamples()
 
 /** 标签类示例自带 batchData，其余按 demo 宿主的同款规则派生成字面量，产物保持自包含 */
-const SAMPLES = SAMPLE_TEMPLATES
-  .filter(sample => !HOST_EXCLUDED_SAMPLE_IDS.has(sample.id))
-  .map(sample => ({
+const synced = sample => ({
   ...sample,
   batchData: sample.batchData?.length ? sample.batchData : deriveBatchData(sample.data),
-}))
+})
+const SAMPLES = HOST_SAMPLE_TEMPLATES.map(synced)
+/** 图表样例只同步给 vue3 宿主：其余三个宿主未安装 @worm-vue3-print/echarts-common */
+const CHART_SAMPLES = [synced(COMMON_CHART_SAMPLE)]
 
 const body = SAMPLES.map((sample, i) => {
   const title = `  // ───────────────────────── 示例${i + 1}：${sample.name}（${sample.paper}） ─────────────────────────`
@@ -127,11 +123,27 @@ const banner = `// 宿主示例库：与 ./demo（Vue 3 打印设计器示例）
 /** 全部示例：单据 / 标签 / 小票（group/paper/desc 供示例库卡片展示，口径同 demo） */
 export const SAMPLES = [`
 
+const chartBody = CHART_SAMPLES.map((sample, i) => {
+  const title = `  // ───────────────────────── 图表示例${i + 1}：${sample.name}（${sample.paper}） ─────────────────────────`
+  return `${title}\n  ${stringify(sample, 1)},`
+}).join('\n')
+
+const chartBanner = `// 图表宿主示例库：与 ./demo 的图表样例同口径，只在安装了 @worm-vue3-print/echarts-common 的
+// 宿主（当前为 vue3）生成；plugins 清单按 strict 校验声明图表插件 id。
+// 由 demo-common/scripts/sync-demo-samples.mjs 从 demo/src/samples/common-chart-sample.ts 自动生成，请勿手改。
+
+/** 图表类示例：需要宿主 import '@worm-vue3-print/echarts-common' 才有素材卡与画布渲染 */
+export const CHART_SAMPLES = [`
+
 const output = `${banner}\n${body}\n]\n`
+const chartOutput = `${chartBanner}\n${chartBody}\n]\n`
 
 for (const app of APPS) {
   const file = join(REPO, 'demo-common', 'apps', app, 'src', 'templates.js')
   writeFileSync(file, output, 'utf8')
+  if (app === 'vue3') {
+    writeFileSync(join(REPO, 'demo-common', 'apps', app, 'src', 'templates-chart.js'), chartOutput, 'utf8')
+  }
 }
 
 // 示例引用的静态资源：demo 用 public 下的占位图与字体，宿主各自带一份才能整包照抄。
@@ -157,6 +169,7 @@ for (const ref of assetRefs) {
 const bytes = Buffer.byteLength(output, 'utf8')
 console.log(
   `已同步 ${APPS.length} 份 templates.js：${SAMPLES.length} 个示例、${output.split('\n').length} 行、${(bytes / 1024).toFixed(0)} KB/份；` +
+    `图表样例 templates-chart.js 仅 vue3 宿主（${CHART_SAMPLES.length} 个）；` +
     `附带静态资源 ${copied.length ? copied.join(', ') : '无'}`,
 )
 if (missing.length) console.warn(`[warn] 示例引用但 demo/public 下不存在：${missing.join(', ')}`)

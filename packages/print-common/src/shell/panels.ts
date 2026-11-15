@@ -4,6 +4,7 @@ import { PAPER_PRESETS, copyTextToClipboard, getPaperDimensions, groupFields, is
 import type { ElementType, PrintBusinessField, RuntimeElement } from '@worm-vue3-print/core/designer'
 import { h } from '../core/h'
 import { iconSvg } from '../core/icons'
+import { getPluginElement, getPluginElements } from '../core/plugin'
 import type { ShellCtx } from './controls'
 
 /** 元素库：与 canvas LeftPanel.elementTypes 同序、同 lucide 图标名（HTML 不提供素材入口） */
@@ -80,25 +81,36 @@ function collapseBtn(icon: string, title: string, onClick: () => void) {
   return h('button', { type: 'button', class: 'collapse-btn', title, html: iconMarkup(icon, 14), onClick })
 }
 
+function materialCard(type: string, label: string, icon: string) {
+  return h('div', {
+    // 与 canvas LeftPanel 同构：标签文本较长的素材在两列栅格下独占整行
+    class: `material-card${isWideMaterialLabel(label) ? ' material-card--wide' : ''}`,
+    draggable: true,
+    dataset: { test: `material-${type}` },
+    onDragstart: (ev: Event) => {
+      const dt = (ev as DragEvent).dataTransfer
+      dt?.setData('elementType', type)
+      // 宽效果集，理由同 canvas LeftPanel：收窄会让 macOS 的 ⌘ 重算落到允许集外被会话拒绝
+      if (dt) dt.effectAllowed = 'all'
+    },
+  }, [
+    h('span', { class: 'material-icon', 'data-icon': icon, html: iconMarkup(icon, 14) }),
+    h('span', { class: 'material-label', text: label }),
+  ])
+}
+
+/** 素材台：内置 11 项后追加 plugin-kit 注册的插件卡（按 materialCard.group 出分组标题） */
 function elementsPane(): unknown[] {
-  return [
-    h('div', { class: 'panel-title', text: '拖拽元素到画布' }),
-    ...ELEMENT_TYPES.map(item => h('div', {
-      // 与 canvas LeftPanel 同构：标签文本较长的素材在两列栅格下独占整行
-      class: `material-card${isWideMaterialLabel(item.label) ? ' material-card--wide' : ''}`,
-      draggable: true,
-      dataset: { test: `material-${item.type}` },
-      onDragstart: (ev: Event) => {
-        const dt = (ev as DragEvent).dataTransfer
-        dt?.setData('elementType', item.type)
-        // 宽效果集，理由同 canvas LeftPanel：收窄会让 macOS 的 ⌘ 重算落到允许集外被会话拒绝
-        if (dt) dt.effectAllowed = 'all'
-      },
-    }, [
-      h('span', { class: 'material-icon', 'data-icon': item.icon, html: iconMarkup(item.icon, 14) }),
-      h('span', { class: 'material-label', text: item.label }),
-    ])),
-  ]
+  const cards: unknown[] = []
+  let prevGroup: string | undefined
+  for (const item of [...ELEMENT_TYPES, ...getPluginElements()]) {
+    const group = (item as { group?: string }).group
+    // 与 canvas LeftPanel 的 groupStart 同判据：首个同组项前渲染分组标题
+    if (group && group !== prevGroup) cards.push(h('div', { class: 'material-group-title', text: group }))
+    if (group) prevGroup = group
+    cards.push(materialCard(item.type, item.label, item.icon))
+  }
+  return [h('div', { class: 'panel-title', text: '拖拽元素到画布' }), ...cards]
 }
 
 function fieldsPane(ctx: ShellCtx) {
@@ -178,15 +190,19 @@ function layersPane(ctx: ShellCtx) {
   const zoneTag = (el: RuntimeElement) => el.zone === 'header' ? '页眉' : el.zone === 'footer' ? '页脚' : ''
   return h('div', { class: 'layer-panel' }, [
     h('div', { class: 'panel-title', text: '图层' }),
-    ...layers.map(layer => h('div', {
-      class: `layer-item${s.selectedIds.has(layer.id) ? ' active' : ''}`,
-      onClick: (ev: Event) => s.selectElement(layer.id, (ev as MouseEvent).ctrlKey || (ev as MouseEvent).metaKey),
-    }, [
-      h('span', { class: 'layer-icon', 'data-icon': LAYER_ICON[layer.printElementType.type] ?? 'Shapes', html: iconMarkup(LAYER_ICON[layer.printElementType.type], 12) }),
-      h('span', { class: 'layer-name', text: layer.options.title || layer.printElementType.title || layer.printElementType.type }),
-      zoneTag(layer) ? h('span', { class: 'layer-zone', text: zoneTag(layer) }) : '',
-      h('span', { class: 'layer-zindex', text: `z:${layer.options.zIndex ?? 0}` }),
-    ].filter(Boolean))),
+    ...layers.map(layer => {
+      // 内置类型查静态表；插件元素回落 plugin-kit 扩展项的 kind.icon（再回落 Shapes）
+      const icon = LAYER_ICON[layer.printElementType.type] ?? getPluginElement(layer.printElementType.type)?.icon
+      return h('div', {
+        class: `layer-item${s.selectedIds.has(layer.id) ? ' active' : ''}`,
+        onClick: (ev: Event) => s.selectElement(layer.id, (ev as MouseEvent).ctrlKey || (ev as MouseEvent).metaKey),
+      }, [
+        h('span', { class: 'layer-icon', 'data-icon': icon ?? 'Shapes', html: iconMarkup(icon, 12) }),
+        h('span', { class: 'layer-name', text: layer.options.title || layer.printElementType.title || layer.printElementType.type }),
+        zoneTag(layer) ? h('span', { class: 'layer-zone', text: zoneTag(layer) }) : '',
+        h('span', { class: 'layer-zindex', text: `z:${layer.options.zIndex ?? 0}` }),
+      ].filter(Boolean))
+    }),
     layers.length ? h('div', { class: 'layer-actions' }, [
       ...([['top', '置顶', 'ArrowUpToLine'], ['up', '上移', 'ArrowUp'], ['down', '下移', 'ArrowDown'], ['bottom', '置底', 'ArrowDownToLine']] as const).map(([dir, title, icon]) =>
         h('button', {

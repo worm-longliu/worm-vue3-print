@@ -6,7 +6,7 @@
     "registry": "https://registry.npmjs.org"
   },
   "type": "module",
-  "description": "【实验性，不建议用于生产】打印模板设计器的通用宿主适配包：任意框架或无框架宿主均可直接接入（实现为零框架原生 Custom Elements + Shadow DOM），零 Vue/React 依赖，直接消费 @worm-vue3-print/core；Vue 3 项目请使用 @worm-vue3-print/canvas",
+  "description": "【实验性，不建议用于生产】打印模板设计器的通用宿主适配包：主入口为零框架原生 Custom Elements + Shadow DOM，零 Vue/React 依赖，直接消费 @worm-vue3-print/core；/vue3 子路径为已按 canvas 口径接入的 Vue 3 宿主提供兼容门面（vue 为可选 peer）",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -19,6 +19,11 @@
     "./browser": {
       "types": "./dist/browser-bundle.d.ts",
       "default": "./dist/common.js"
+    },
+    "./vue3": {
+      "types": "./dist/vue3/index.d.ts",
+      "import": "./dist/vue3/index.js",
+      "require": "./dist/vue3/index.cjs"
     },
     "./style.css": "./dist/common.css"
   },
@@ -42,19 +47,29 @@
   ],
   "scripts": {
     "styles": "node scripts/gen-styles.mjs && node scripts/gen-icons.mjs",
-    "build": "npm run styles && vite build && vite build -c vite.bundle.config.ts && tsc -p tsconfig.build.json && node ../../scripts/inject-license-banner.mjs dist",
+    "build": "npm run styles && vite build && vite build -c vite.bundle.config.ts && vite build -c vite.vue3.config.ts && tsc -p tsconfig.build.json && node ../../scripts/inject-license-banner.mjs dist",
     "dev": "npm run styles && vite build --watch",
     "typecheck": "npm run styles && tsc -p tsconfig.json --noEmit",
     "test": "npm run styles && vitest run"
   },
   "dependencies": {
     "@worm-vue3-print/core": "^1.5.0",
+    "@worm-vue3-print/plugin-kit": "^1.5.0",
     "dompurify": "^3.4.12",
     "jsbarcode": "^3.12.3",
     "qrcode": "^1.5.4"
   },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "peerDependenciesMeta": {
+    "vue": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@types/qrcode": "^1.5.6",
+    "vue": "^3.5.24",
     "happy-dom": "^20.10.6",
     "typescript": "~5.9.3",
     "vite": "^7.3.6",

@@ -32,6 +32,12 @@ describe('出厂 option', () => {
     expect((createDefaultChartOption('funnelChart') as Record<string, any>).series[0].sort).toBe('descending')
   })
 
+  it('漏斗/雷达出厂即按打印框收紧留白', () => {
+    const funnel = (createDefaultChartOption('funnelChart') as Record<string, any>).series[0]
+    expect(funnel).toMatchObject({ left: '5%', right: '25%', top: '6%', bottom: '6%' })
+    expect((createDefaultChartOption('radarChart') as Record<string, any>).radar.radius).toBe('75%')
+  })
+
   it('未知 kind 回落柱状图而不是抛错', () => {
     expect((createDefaultChartOption('unknown') as Record<string, any>).series[0].type).toBe('bar')
   })

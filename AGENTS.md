@@ -51,6 +51,10 @@
 - 工作区包：
   - `packages/print-core`（`@worm-vue3-print/core`）：模板表达式引擎、同构渲染管线与框架无关的设计器内核（纯 TypeScript，无 Vue/React 依赖）。根入口导出引擎与渲染能力，`/designer`、`/browser`、`/client`（静默打印浏览器端 SDK）为子路径导出。
   - `packages/print-canvas`（`@worm-vue3-print/canvas`）：Vue 3 可视化设计器画布（原生控件，不依赖 Element Plus 等 UI 组件库，无宿主业务依赖）。
+  - `packages/print-plugin-kit`（`@worm-vue3-print/plugin-kit`，尚未发布）：框架无关的插件设计器 UI 契约与注册表（纯 TS/DOM）。插件写一份 UI，common 原生消费、canvas 自动 Vue 桥接；元素语义仍由 core 插件描述符承载。
+  - `packages/print-common`（`@worm-vue3-print/common`）：零框架（原生 Custom Elements + Shadow DOM）宿主适配设计器，与 canvas 功能对齐，实验性、不建议生产。
+  - `packages/print-echarts`（`@worm-vue3-print/echarts`，尚未发布）：ECharts 图表元素可选包（十类 kind、SVG 渲染器、页面执行器、Vue 设计器组件）；`/kit` 子路径为框架无关纯 TS 出口。
+  - `packages/print-echarts-common`（`@worm-vue3-print/echarts-common`，尚未发布）：图表元素的 common 适配包，用 plugin-kit 契约提供静态 SVG 画布与图形化属性面板。
   - `packages/print-skills`（`@worm-vue3-print/skills`）：三个使用技能的 npx/Git 安装器；只读取远程仓库 `skills/`，不分发 `.agents/` 开发技能。
   - `services/print-render`（`@worm-vue3-print/render`）：基于 Playwright（Headless Chromium）的 PDF/截图打印渲染微服务，Docker 部署。
   - `clients/print-client`（`@worm-vue3-print/print-client`）：跨平台静默打印桌面客户端（Electron，本地 WebSocket + core 同构渲染）。

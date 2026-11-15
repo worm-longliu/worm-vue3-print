@@ -6,11 +6,17 @@
 
 ### 新增
 
+- **Vue 3 宿主可零改动切换到 common 运行时**：`@worm-vue3-print/common` 新增 `/vue3` 兼容门面（纯 TS 渲染函数，`vue` 为 optional peer，主入口仍零框架）。把依赖与 import 从 `@worm-vue3-print/canvas` 换成 `@worm-vue3-print/common/vue3` 即可，宿主的模板、事件回调、`ref` 方法调用与业务逻辑一行不动：门面把对象 / 函数 props 赋成 element property、`save` 的 `CustomEvent.detail` 解成 emit 的 JSON 字符串首参、`getTemplateJson()` 由字符串还原成对象，并代理 `validateTemplate()` / `getGeometryWarnings()`。同时补齐 `PrintHtmlPreview`、`DEFAULT_DEMO_DATA`、`provideToolbarOverflow` / `createOverflowUnitDirective` 等 canvas 侧导出，类型上 `InstanceType<typeof PrintDesigner>` 含 expose 方法，`vue-tsc` 可直接通过。已在 `demo` 上实证：只改 import 与源码 alias，`vue-tsc` 0 错、`vite build` 成功（验证后还原）。能力边界见包 README「Vue 3 兼容门面」：Vue 专属元素扩展注册表不提供，自定义元素请走 plugin-kit / echarts-common。
+- **自定义插件可拿到宿主真实数据与业务字段**：`@worm-vue3-print/common` 新增 `el.designData`（单对象 / 对象数组 / `design-data` attribute 均可，单对象自动归一成数组信封），插件的画布与属性台据此用真实业务数据画预览；属性台上下文新增 `fields`（宿主业务字段清单），图表类插件可据此生成数据源 / 字段映射下拉。未注入时仍回落 `DEFAULT_DEMO_DATA`，历史宿主零改动。`@worm-vue3-print/canvas` 属性台同步透传 `fields`；demo-common Vue 3 宿主已注入当前示例数据。
+- **零框架设计器支持自定义元素插件**：新增 `@worm-vue3-print/plugin-kit`，插件用 `defineElementUI` 写一份框架无关的画布/属性台 DOM 渲染能力，`@worm-vue3-print/common` 直接消费（素材卡分组、画布、属性台首位「自定义属性」页签），Vue 3 的 `@worm-vue3-print/canvas` 自动生成桥接组件；元素语义仍由 core 的插件描述符承载，只注册 core kind、未注册 UI 的插件保持原样（素材台不出现卡片，模板内按类型名占位）。
+- **ECharts 十类图表可在零框架 common 设计器中使用**：新增 `@worm-vue3-print/echarts-common`（基于 plugin-kit：静态 SVG 画布与出纸同源，属性台按原生 DOM 重写图形化面板，`import` 即注册），并为 `@worm-vue3-print/echarts` 增加 `/kit` 框架无关纯 TS 子路径；demo-common 的 Vue 3 宿主示例库新增「图表」分组。
+- **图表属性台可调「留白」**：漏斗图新增「内边距 上/右/下/左 (%)」（写 `series[].top/right/bottom/left`，右侧需给外置标签留空间），雷达图新增「半径 (%)」（写 `radar.radius`）；手写 `chartOption` 里的 px 数值进入面板时按当前元素框折算成百分比显示。
 - **图表元素拆分为十个独立元素**：柱状图、条形图、折线图、面积图、饼图、环形图、散点图、雷达图、漏斗图、仪表盘；素材台「图表」分组内置这些卡片，属性台按类型只显示相关字段（图形化配置，复杂样式仍可在模板 JSON 中手写 `chartOption`）。
 - **自定义元素插件支持一个插件注册多个元素类型**（`kinds` 数组），模板可按插件声明启用强校验；元素种类清单、AI 草稿枚举与校验放行随注册态动态展开。
 
 ### 变更
 
+- **漏斗图 / 雷达图出厂留白收紧**：漏斗不写内边距时会吃 ECharts 的 px 默认（左右 80、上 60、下 65），60×60mm 框里图形只剩一半不到，现默认 `6% / 25% / 6% / 5%`（右侧留给外置标签）；雷达图 ECharts 6 把 `radar.radius` 默认从 5.x 的 75% 调到 50%，70×60mm 框里图形直径只剩短边一半，现默认恢复 `75%`。出厂值只影响新建元素，存量模板的 `chartOption` 已落盘、出图逐字不变。
 - **素材台与属性台加宽、素材卡改两列**：左侧素材台 224px → 248px，右侧属性台 280px → 304px；元素页签的素材卡改为两列栅格，标签文本较长的素材（如「流式列表」）独占整行，字段与图层页签不受影响。`@worm-vue3-print/canvas` 与实验性的 `@worm-vue3-print/common` 同步改动。
 - **素材台顺序调整并移除 HTML 入口**：长文移到表格之后（表格、长文、流式列表相邻），HTML 不再提供素材卡；HTML 元素类型与出纸口径不变，已存在的 HTML 元素在模板里照旧加载。`canvas` 与 `common` 同序同图标。
 - **素材台与图层图标统一为矢量图标**（lucide），`@worm-vue3-print/canvas` 与实验性的 `@worm-vue3-print/common` 两侧同构。

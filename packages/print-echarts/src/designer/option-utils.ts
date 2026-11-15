@@ -1,8 +1,11 @@
-// 设计态 option 工具：预览占位替换、配色回读与 series 数量对齐。
+// 设计态 option 工具：预览占位替换、配色回读、series 数量对齐与「留白」读写。
 // 跨类型切换（readChartType/withChartType）已随「拆分元素类型」整体删除。
+import { ECHARTS_FUNNEL_PADDING_PX, ECHARTS_RADAR_RADIUS_DEFAULT } from '../constants.js'
+import type { FunnelPadding } from '../constants.js'
 import { getSampleCategories } from '../config.js'
 import { getChartKindDefinition, resolveChartPanelFields } from '../kinds.js'
 import type { ChartFieldKey } from '../kinds.js'
+import { mmToChartPx } from '../units.js'
 
 export type { ChartFieldKey }
 export { resolveChartPanelFields }
@@ -100,5 +103,95 @@ export function syncSeriesCount(option: Record<string, unknown>, count: number, 
     ...(rawSeries[index] ?? {}),
     data: ['$data'],
   }))
+  return next
+}
+
+const round1 = (value: number): number => Math.round(value * 10) / 10
+
+/** px → 当前元素框的百分比（面板显示口径统一为 %） */
+function pxToPercent(px: number, totalPx: number): number {
+  return totalPx > 0 ? round1((px / totalPx) * 100) : 0
+}
+
+/** 百分比字符串或 ECharts 的 px 数字 → 百分比；都没写时按 ECharts 内置 px 默认折算 */
+function readInsetPercent(value: unknown, totalPx: number, echartsPx: number): number {
+  if (typeof value === 'string' && value.trim().endsWith('%')) {
+    const parsed = Number.parseFloat(value)
+    if (Number.isFinite(parsed)) return round1(parsed)
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) return pxToPercent(value, totalPx)
+  return pxToPercent(echartsPx, totalPx)
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
+function percentString(value: number): string {
+  return `${clamp(round1(value), 0, 100)}%`
+}
+
+function firstSeries(option: Record<string, unknown>): Record<string, unknown> {
+  const series = Array.isArray(option.series) ? option.series : []
+  const first = series[0]
+  return first && typeof first === 'object' ? (first as Record<string, unknown>) : {}
+}
+
+/** 面板读「漏斗内边距 (%)」：option 可能是面板写的百分比，也可能是手写 option 的 px 数字 */
+export function readFunnelPadding(
+  option: Record<string, unknown> | undefined,
+  widthMm: number,
+  heightMm: number,
+): FunnelPadding {
+  const source = option && typeof option === 'object' ? option : {}
+  const series = firstSeries(source)
+  const widthPx = mmToChartPx(widthMm)
+  const heightPx = mmToChartPx(heightMm)
+  return {
+    top: readInsetPercent(series.top, heightPx, ECHARTS_FUNNEL_PADDING_PX.top),
+    right: readInsetPercent(series.right, widthPx, ECHARTS_FUNNEL_PADDING_PX.right),
+    bottom: readInsetPercent(series.bottom, heightPx, ECHARTS_FUNNEL_PADDING_PX.bottom),
+    left: readInsetPercent(series.left, widthPx, ECHARTS_FUNNEL_PADDING_PX.left),
+  }
+}
+
+/** 面板写「漏斗内边距 (%)」：落到 funnel series 的 top/right/bottom/left 百分比 */
+export function writeFunnelPadding(option: Record<string, unknown>, padding: FunnelPadding): Record<string, unknown> {
+  const next = cloneChartOption(option) as Record<string, any>
+  const series = Array.isArray(next.series) ? (next.series as Record<string, any>[]) : []
+  if (series.length === 0) series.push({ type: 'funnel', data: ['$data'] })
+  const first = series[0]
+  first.top = percentString(padding.top)
+  first.right = percentString(padding.right)
+  first.bottom = percentString(padding.bottom)
+  first.left = percentString(padding.left)
+  next.series = series
+  return next
+}
+
+/** 面板读「雷达半径 (%)」：支持百分比、px 数字与 [内径, 外径] 数组写法，缺省按 ECharts 内置 50% */
+export function readRadarRadius(
+  option: Record<string, unknown> | undefined,
+  widthMm: number,
+  heightMm: number,
+): number {
+  const source = option && typeof option === 'object' ? option : {}
+  const raw = asObject(source.radar).radius
+  const value = Array.isArray(raw) ? raw[raw.length - 1] : raw
+  const widthPx = mmToChartPx(widthMm)
+  const heightPx = mmToChartPx(heightMm)
+  const viewSize = Math.min(widthPx, heightPx) / 2
+  if (typeof value === 'string' && value.trim().endsWith('%')) {
+    const parsed = Number.parseFloat(value)
+    if (Number.isFinite(parsed)) return round1(parsed)
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) return pxToPercent(value, viewSize)
+  return ECHARTS_RADAR_RADIUS_DEFAULT
+}
+
+/** 面板写「雷达半径 (%)」：只改 radar.radius，雷达其余自定义字段（indicator/axisName 等）原样保留 */
+export function writeRadarRadius(option: Record<string, unknown>, percent: number): Record<string, unknown> {
+  const next = cloneChartOption(option) as Record<string, any>
+  next.radar = { ...asObject(next.radar), radius: percentString(clamp(percent, 20, 100)) }
   return next
 }

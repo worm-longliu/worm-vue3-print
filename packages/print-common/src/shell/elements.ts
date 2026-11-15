@@ -20,9 +20,11 @@ import {
 import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 import { resolveCanvasFontFamily } from '@worm-vue3-print/core'
 import { h } from '../core/h'
+import { getPluginElement } from '../core/plugin'
 import type { DesignerStore } from '../core/store'
 import { renderBarcode, renderQrcode } from './code'
 import type { ShellCtx } from './controls'
+import { mountElementUIResult } from './plugin-ui'
 import { renderTable } from './table'
 import type { TableFire } from './table'
 import { renderFlowListElement } from './flow-list'
@@ -173,8 +175,15 @@ function fitDataset(el: RuntimeElement): Record<string, string> {
   return ds
 }
 
+type ContentHost = {
+  store: DesignerStore
+  fire: TableFire
+  /** 宿主注入的设计态示例数据；缺省回落内置 demo 数据 */
+  designData?: readonly Record<string, unknown>[]
+}
+
 /** 元素内容层（对应 BaseElement 里的 contentComponent 分发） */
-function content(el: RuntimeElement, designMode: boolean, host?: { store: DesignerStore; fire: TableFire }) {
+function content(el: RuntimeElement, designMode: boolean, host?: ContentHost) {
   const type = el.printElementType.type
   const o = el.options
   switch (type) {
@@ -238,8 +247,26 @@ function content(el: RuntimeElement, designMode: boolean, host?: { store: Design
       return host ? renderTable(el, host.store, host.fire) : h('div', { class: 'print-table' })
     case 'flowList':
       return renderFlowListElement(el, undefined, host?.store)
-    default:
-      return h('div', { text: type })
+    default: {
+      // 插件元素：优先消费 plugin-kit 的框架无关画布渲染；未注册 UI 仍按类型名占位
+      const pluginEl = getPluginElement(type)
+      if (!pluginEl) return h('div', { text: type })
+      const box = document.createElement('div')
+      box.className = 'plugin-kit-canvas'
+      box.style.width = '100%'
+      box.style.height = '100%'
+      try {
+        mountElementUIResult(`canvas:${el.id}`, pluginEl.ui.renderCanvas({
+          element: el,
+          // 宿主注入真实业务数据时优先用之，未注入维持历史口径（内置 demo 数据）
+          data: host?.designData?.length ? host.designData : [DEFAULT_DEMO_DATA],
+          designMode: true,
+        }), box)
+      } catch {
+        box.textContent = String(type)
+      }
+      return box
+    }
   }
 }
 
@@ -254,7 +281,11 @@ export function renderDesignElement(ctx: ShellCtx, el: RuntimeElement, followMem
   const previewed = s.previewIds.has(el.id)
   const o = el.options
   const zone = el.zone || 'content'
-  const children: unknown[] = [content(el, true, { store: s, fire: ctx.fire })]
+  const children: unknown[] = [content(el, true, {
+    store: s,
+    fire: ctx.fire,
+    designData: ctx.host.designData,
+  })]
   // canvas BaseElement：拖拽中元素变淡（.drag-ghost）并叠加虚线副本框（.drag-preview）
   if (s.draggingIds.has(el.id)) children.push(h('div', { class: 'drag-preview' }))
   if (selected) {

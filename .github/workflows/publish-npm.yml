@@ -50,9 +50,10 @@ jobs:
       - name: 安装依赖
         run: npm ci
 
-      - name: 构建 core 与 canvas
+      - name: 构建 core、plugin-kit 与 canvas
         run: |
           npm run build -w @worm-vue3-print/core
+          npm run build -w @worm-vue3-print/plugin-kit
           npm run build -w @worm-vue3-print/canvas
 
       - name: 构建 skills

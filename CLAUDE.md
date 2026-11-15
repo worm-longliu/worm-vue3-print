@@ -42,7 +42,13 @@ npm run publish:common:dry-run  # common 正式版发版演练；预发布用 pu
 
 ## 架构（需跨多文件才能理解的全局）
 
-npm workspaces monorepo，依赖方向单向：**`core`（纯逻辑）→ `canvas`（Vue UI）→ 宿主应用**；SDK、render 服务、Electron 客户端只依赖 `core`，不得反向依赖。
+npm workspaces monorepo，依赖方向单向：**`core`（纯逻辑）→ `canvas`（Vue UI）→ 宿主应用**；SDK、render 服务、Electron 客户端只依赖 `core`，不得反向依赖。插件体系里 `plugin-kit`（纯 TS/DOM 契约）被 `canvas` / `common` 依赖，插件包（如 `echarts` / `echarts-common`）依赖 `core` + `plugin-kit`，不得反向依赖宿主。
+
+### 插件化（core 注册表 + plugin-kit UI）
+
+- **元素语义**在 `core/designer/element-plugin-registry.ts`：`defineElementPlugin` 声明 id/version/kinds、默认值、专属属性元数据、绑定、出图与执行器；`getElementPlugin*` 供 contract / canvas / 打印管线查表。主体只留机制、不含具体元素知识。
+- **设计器 UI** 在 `plugin-kit`：`defineElementUI` / `registerElementUI` 声明画布渲染与属性台渲染（返回 HTML 字符串或 DOM 节点），元素 type 与 core kind 对齐。`common` 原生消费；`canvas` 的 `useElementExtensionRegistry` 自动生成 Vue 桥接组件（原生 Vue 组件仍优先，向后兼容）。未注册 UI 的 kind 不出现素材卡。
+- **官方插件**：`print-echarts`（十类图表 + Vue 设计器组件；`./kit` 为框架无关纯 TS 出口）与 `print-echarts-common`（图表 common 适配：静态 SVG 画布 + 图形化属性面板）。宿主 `import` 即注册。
 
 ### core（`packages/print-core`，纯 TS，无 Vue/DOM 硬依赖）
 

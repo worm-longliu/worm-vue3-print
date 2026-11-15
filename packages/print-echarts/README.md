@@ -61,6 +61,21 @@ createDomHostRuntime(factory, loadExecutorBundle(), collectExecutorBundles())
 正常路径走**进程内 SSR 出图**，页面执行器只在宿主没有进程内能力时才需要。
 执行器注入后挂在 `globalThis.__wormDom.renderAssets(specs)`（与 core 的 `renderAssets` 协议同名）。
 
+### 零框架宿主 / 自建设计器 UI（`/kit`）
+
+`/kit` 是**框架无关的纯 TS 出口**：不包含任何 `.vue` 组件、不读磁盘，import 即把十个 kind 注册到
+core 插件注册表，但**不**注册设计器组件与执行器产物。零框架宿主用它自建画布与属性台：
+
+```ts
+import {
+  CHART_KIND_DEFINITIONS, createDefaultChartOption, normalizeChartOption,
+  previewChartOption, renderChartToSvg,
+} from '@worm-vue3-print/echarts/kit'
+```
+
+`@worm-vue3-print/echarts-common` 就是基于 `/kit` + `@worm-vue3-print/plugin-kit` 的 common 适配包
+（静态 SVG 画布 + 原生 DOM 属性面板）；框架无关宿主不必重复实现面板读取/写回逻辑。
+
 ## 配置（`configureChartPlugin`）
 
 配置是**惰性**的：可在注册前调用、按键合并，不需要注销重注册。
@@ -92,6 +107,7 @@ configureChartPlugin({
 | 子路径 | 内容 |
 | --- | --- |
 | `.` | `CHART_PLUGIN` / `CHART_PLUGIN_ID` / `CHART_KINDS` / `CHART_KIND_DEFINITIONS` / `getChartKindDefinition` / `resolveChartPanelFields` / `createDefaultChartOption` / `normalizeChartOption` / `bindChartData` / `renderChartToSvg` / `renderChartElement` / `fitSvgRoot` / `mmToChartPx` / `configureChartPlugin` / `getChartPluginConfig` / `getChartPalettes` / `getSampleCategories` / `chartFactoryDefaults` / `registerChartPlugin` / `uninstallChartPlugin` / `installChartDesigner` / `uninstallChartDesigner` |
+| `./kit` | 框架无关纯 TS 出口（无 Vue、无 `node:fs`）：注册副作用 + 上表纯逻辑能力 + 常量（`CHART_PALETTES` / `FUNNEL_PADDING_DEFAULTS` / `RADAR_RADIUS_DEFAULT` 等）与面板读写工具（`previewChartOption` / `readPaletteKey` / `syncSeriesCount` / `readFunnelPadding` / `writeFunnelPadding` / `readRadarRadius` / `writeRadarRadius`） |
 | `./node` | 注册副作用 + `render.executorBundle()`（惰性读取 IIFE 产物，纯 TS、不含 Vue） |
 | `./browser/executor.iife` | 页面注入用 IIFE（echarts 已打入，自包含）；带 `types` 条件 |
 
@@ -101,9 +117,26 @@ configureChartPlugin({
 ## 设计器属性面板
 
 - **只提供图形化配置**：数据源 / 类目字段 / 数值字段 / 系列拆分 / 标题 / 图例 / 配色 /
-  堆叠 / 气泡 / 内径 / 仪表盘范围，按元素类型裁剪；不提供 JSON 编辑器。
+  堆叠 / 气泡 / 内径 / 仪表盘范围 / 漏斗内边距 / 雷达半径，按元素类型裁剪；不提供 JSON 编辑器。
 - 模板 JSON 仍允许手写 `chartOption`（开发者与 AI 的出口），面板只改自己掌管的字段。
 - 提交通道：`emit('change')`（记历史）、`emit('update:options', partial)`（受控合并）。
+
+## 留白（内边距 / 半径）
+
+ECharts 的图表内边距是 option 自身的布局参数，插件负责给出适合打印小框的出厂值，并把这几个值放进属性台。
+
+| 元素 | 面板控件 | 落到 chartOption | 出厂默认 |
+| --- | --- | --- | --- |
+| `funnelChart` | 内边距 上/右/下/左 (%) | `series[].top/right/bottom/left` | `6% / 25% / 6% / 5%` |
+| `radarChart` | 半径 (%) | `radar.radius` | `75%` |
+
+- **漏斗图**不写内边距时会吃 ECharts 的 px 默认（左右 80、上 60、下 65），60×60mm 的元素框里图形只剩一半不到；
+  现阶段默认把四边压到 5~6%，右侧保留 25% 给**外置标签与引导线**（标签超出元素框会被 `overflow:hidden` 裁掉，
+  不要为了铺满把右边距调到 10% 以下；标签想更靠边可以手写 `series.label.position: 'inside'`）。
+- **雷达图**的 ECharts 6 默认 `radar.radius` 是 `50%`（5.x 是 `75%`），70×60mm 框里图形直径只有短边一半，
+  默认值已恢复为 `75%`；想更大可调到 `80%` 左右，再大轴名会顶到框边。
+- 面板显示统一为百分比：手写 `chartOption` 里的 px 数字会按当前元素框折算成百分比回读。
+- 出厂默认只作用于**新建元素**；存量模板的 `chartOption` 已落盘，出图不变，需要时在属性台或模板 JSON 里改。
 
 ## SVG 根节点处理
 

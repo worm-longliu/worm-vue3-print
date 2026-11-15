@@ -40,6 +40,7 @@
                 :is="customTab.component"
                 :element="element"
                 :data="EXTENSION_DESIGN_DATA"
+                :fields="fields"
                 @change="recordHistory?.()"
               />
             </div>

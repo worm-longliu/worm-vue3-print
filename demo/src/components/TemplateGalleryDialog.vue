@@ -58,7 +58,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import SampleThumb from './SampleThumb.vue'
-import { listSamples } from '../samples'
+import { listSamples, SAMPLE_GROUPS } from '../samples'
 import type { SampleGroup, SampleTemplate } from '../samples'
 
 const props = defineProps<{
@@ -73,7 +73,7 @@ const emit = defineEmits<{
 }>()
 
 type Tab = SampleGroup | '全部'
-const groups: Tab[] = ['全部', '单据', '标签', '小票', '测试']
+const groups: Tab[] = ['全部', ...SAMPLE_GROUPS]
 
 const activeGroup = ref<Tab>('全部')
 const selectedId = ref<string>('')

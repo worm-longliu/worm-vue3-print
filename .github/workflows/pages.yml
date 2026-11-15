@@ -30,15 +30,19 @@ jobs:
         with:
           node-version: 22
 
-      # ── 1. 根工作区：构建 core → canvas → common ──
-      # common 的 gen-styles.mjs 依赖 canvas/dist/canvas.css，须先构建 canvas。
+      # ── 1. 根工作区：构建 core → plugin-kit → canvas → common → echarts → echarts-common ──
+      # common 的 gen-styles.mjs 依赖 canvas/dist/canvas.css，须先构建 canvas；canvas / common 依赖 plugin-kit。
+      # demo-common/vue3 宿主还 import @worm-vue3-print/echarts-common，须先构建图表适配包。
       # workspaces 只包含 packages/* services/* clients/*，demo / demo-common 独立安装。
-      - name: 根工作区 npm ci + 构建依赖链（core → canvas → common）
+      - name: 根工作区 npm ci + 构建依赖链（core → plugin-kit → canvas → common → echarts → echarts-common）
         run: |
           npm ci
           npm run build -w @worm-vue3-print/core
+          npm run build -w @worm-vue3-print/plugin-kit
           npm run build -w @worm-vue3-print/canvas
           npm run build -w @worm-vue3-print/common
+          npm run build -w @worm-vue3-print/echarts
+          npm run build -w @worm-vue3-print/echarts-common
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
 

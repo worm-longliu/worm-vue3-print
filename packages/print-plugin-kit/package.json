@@ -1,0 +1,46 @@
+{
+  "name": "@worm-vue3-print/plugin-kit",
+  "version": "1.5.0",
+  "type": "module",
+  "description": "【尚未发布】打印模板自定义元素的框架无关设计器 UI 契约与注册表：插件写一份 DOM 渲染能力，common（原生）与 canvas（Vue 桥接）同时消费",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "author": "worm <liu_long_qqcom@qq.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitee.com/liulong_oschina/worm-vue3-print.git"
+  },
+  "keywords": [
+    "print",
+    "template",
+    "designer",
+    "plugin",
+    "framework-agnostic"
+  ],
+  "scripts": {
+    "build": "tsup && node ../../scripts/inject-license-banner.mjs dist",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@worm-vue3-print/core": "^1.5.0"
+  },
+  "devDependencies": {
+    "happy-dom": "^20.10.6",
+    "tsup": "^8.0.0",
+    "typescript": "~5.9.3",
+    "vitest": "^1.6.0"
+  }
+}

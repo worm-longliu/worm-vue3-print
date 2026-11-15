@@ -24,7 +24,8 @@ function licenseBannerPlugin() {
   }
 }
 
-// 主入口（含设计器 Vue 组件）走 vite lib 构建；node 入口与 IIFE 执行器由 tsup 产出。
+// 主入口（含设计器 Vue 组件）与框架无关的 /kit 子路径走 vite lib 多入口构建；
+// node 入口与 IIFE 执行器由 tsup 产出。
 // 图表库 echarts 与框架依赖全部外置：本包是唯一允许依赖 echarts 的包，宿主自行安装。
 export default defineConfig({
   plugins: [vue(), licenseBannerPlugin()],
@@ -35,9 +36,12 @@ export default defineConfig({
   },
   build: {
     lib: {
-      entry: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
+      entry: {
+        index: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
+        kit: fileURLToPath(new URL('./src/kit.ts', import.meta.url)),
+      },
       formats: ['es', 'cjs'],
-      fileName: (format) => (format === 'es' ? 'index.js' : 'index.cjs'),
+      fileName: (format, entryName) => (format === 'es' ? `${entryName}.js` : `${entryName}.cjs`),
     },
     rollupOptions: {
       external: [

@@ -2,15 +2,10 @@
 import type { ElementRenderSpec } from '@worm-vue3-print/core/designer'
 import { applyExtraComponents, echarts } from './echarts.js'
 import { normalizeChartOption } from './normalize.js'
+import { mmToChartPx } from './units.js'
 
-/** 打印落纸 96dpi 换算：1in = 25.4mm = 96px */
-const PX_PER_MM = 96 / 25.4
-
-/** mm → 逻辑像素（至少 1px，避免空尺寸 option 让 echarts 抛错） */
-export function mmToChartPx(mm: number): number {
-  const value = Number.isFinite(mm) ? mm : 0
-  return Math.max(1, Math.round(value * PX_PER_MM))
-}
+// 换算实现下沉到 units.ts（设计器面板也要用），此处保留同名导出维持既有导出面
+export { mmToChartPx } from './units.js'
 
 /**
  * SVG 根节点归一：echarts SSR 产出「固定 px 宽高 + viewBox」的独立图片，

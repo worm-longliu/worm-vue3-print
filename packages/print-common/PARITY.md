@@ -12,7 +12,7 @@
 
 | 手段 | 命令 | 覆盖 |
 |---|---|---|
-| 逻辑单测 | `npm run test -w @worm-vue3-print/common` | 361 项 / 32 个 spec（2026-10-30 实测，按文件计）：`store` 24（三区摊平与序列化往返、默认页名与重排、拼版闸门、对齐、层级、撤销重做、参考线、粘贴偏移与组 id 重映射、Ctrl+D 复制、方向键微移会话、落点归区与类型拒绝、拖拽结束归区、Alt 拖拽克隆、格式刷、混选 MIXED、字体只落文本元素、加粗回落）、`format-border` 13（格式栏边框预设/单边按上下文分流；「内部」那一格仅单元格上下文可点）、`flow-list` 13（含与 canvas 对齐的四条：步进框显解析值、提示行逐字同串、关开关不写 `flowMaxSpan`、折叠偏好落 `property-group-flowList`，另含图层 12 类图标表）、`code` 26（含静区两行改「留空靠占位 + 显式敲值才写键」与裸字符串字体不进候选）、`element-border` 17、`cell-border` 22、`crop-anchor` 23、`table` 13、`table-font` 4、`table-cell-reset` 10、`property-panel-reset` 16、`page-extras-reset` 4、`watermark-reset` 5、`reset-button` 11、`property-search` 17、`font-select` 18、`color-picker` 15、`help-modal` 14、`context-menu` 10、`drag-visuals` 9、`adsorb-drag` 3、`expression-dblclick` 9、`field-tree` 4（长字段两行显示 + 单击字段行复制中文名、拖拽起手不复制；整行 `data-tip` 与 canvas 同串，含「拖动中按住 Ctrl（Mac 为 ⌘）切换为插入字段名」）、`expression-copy` 4（表达式弹窗字段复制按钮：挂点/复制中文名/不误触双击插入/`data-tip` 两态）、`ctrl-field-label` 7（表达式弹窗 Ctrl/⌘+双击插字段中文名、参数内加引号、普通双击回归；画布 Ctrl/⌘ 拖放生成静态文本元素、普通拖放回归）、`toolbar-overflow` 8、`typography-issue4` 10（issue #4 排版契约：缩进 em、justify 纵向主轴 + `text-align-last:justify`、单元格两端对齐四档、image fit/锚点/放大比例）、`geometry-warnings` 4、`keep-line-breaks` 8、`element-rotate-gate` 10、`property-panel-cell-binding` 3、`tiling-rotation` 7（后五项随 V1.4.0 已提交改动入库，2026-10-30 一并实测计入）。原记「`store.spec` 三条因 happy-dom 无 `window.alert` 常红」已不复现，24 项全绿；`npm run typecheck -w @worm-vue3-print/common` 由 HEAD 的 8 条错误降到 **0**（本轮一并清掉测试文件的类型洞，vitest 不查类型，提交前须单独跑） |
+| 逻辑单测 | `npm run test -w @worm-vue3-print/common` | 416 项 / 40 个 spec（2026-11-15 实测，按文件计）：`store` 24（三区摊平与序列化往返、默认页名与重排、拼版闸门、对齐、层级、撤销重做、参考线、粘贴偏移与组 id 重映射、Ctrl+D 复制、方向键微移会话、落点归区与类型拒绝、拖拽结束归区、Alt 拖拽克隆、格式刷、混选 MIXED、字体只落文本元素、加粗回落）、`format-border` 13（格式栏边框预设/单边按上下文分流；「内部」那一格仅单元格上下文可点）、`flow-list` 13（含与 canvas 对齐的四条：步进框显解析值、提示行逐字同串、关开关不写 `flowMaxSpan`、折叠偏好落 `property-group-flowList`，另含图层 12 类图标表）、`code` 26（含静区两行改「留空靠占位 + 显式敲值才写键」与裸字符串字体不进候选）、`element-border` 17、`cell-border` 22、`crop-anchor` 23、`table` 13、`table-font` 4、`table-cell-reset` 10、`property-panel-reset` 16、`page-extras-reset` 4、`watermark-reset` 5、`reset-button` 11、`property-search` 17、`font-select` 18、`color-picker` 15、`help-modal` 14、`context-menu` 10、`drag-visuals` 9、`adsorb-drag` 3、`expression-dblclick` 9、`field-tree` 4（长字段两行显示 + 单击字段行复制中文名、拖拽起手不复制；整行 `data-tip` 与 canvas 同串，含「拖动中按住 Ctrl（Mac 为 ⌘）切换为插入字段名」）、`expression-copy` 4（表达式弹窗字段复制按钮：挂点/复制中文名/不误触双击插入/`data-tip` 两态）、`ctrl-field-label` 7（表达式弹窗 Ctrl/⌘+双击插字段中文名、参数内加引号、普通双击回归；画布 Ctrl/⌘ 拖放生成静态文本元素、普通拖放回归）、`toolbar-overflow` 8、`typography-issue4` 10（issue #4 排版契约：缩进 em、justify 纵向主轴 + `text-align-last:justify`、单元格两端对齐四档、image fit/锚点/放大比例）、`geometry-warnings` 4、`keep-line-breaks` 8、`element-rotate-gate` 10、`property-panel-cell-binding` 3、`tiling-rotation` 7（后五项随 V1.4.0 已提交改动入库，2026-10-30 一并实测计入）、`plugin-elements` 9（插件卡与分组标题、无 UI 的 kind 不出现、拖拽载荷、注册后自动重绘、画布内容/样式注入/dispose、渲染异常占位、默认「自定义属性」页签、update 可撤销、hasProperties 与搜索门控）、`plugin-chart-like` 8（第三方图表式插件端到端：core 描述符 + plugin-kit UI → 素材卡/动态 kinds/画布用宿主 designData/未注入回落 demo/attribute 归一/属性台业务字段与 update 可撤销/注销后 dispose 与样式回收/`renderHtmlPages` 出纸 SVG 含绑定后数据）、`vue3-compat` 9（Vue 3 兼容门面：对象/函数 props 走 property 不被字符串化、可选布尔缺省不改写、props 响应式重注入、save/preview 事件转译、卸载摘监听、expose 返回对象、PrintHtmlPreview 结构与样式注入、导出覆盖 canvas 宿主 import 清单）。原记「`store.spec` 三条因 happy-dom 无 `window.alert` 常红」已不复现，24 项全绿；`npm run typecheck -w @worm-vue3-print/common` 由 HEAD 的 8 条错误降到 **0**（本轮一并清掉测试文件的类型洞，vitest 不查类型，提交前须单独跑） |
 | 类名覆盖率审计 | `node demo-common/scripts/class-audit.mjs` | 把 canvas 50 个组件模板里出现的类名逐个回查本包源码：「派生 CSS 有该规则 + 本包源码无挂点」= 掉样式或缺功能。当前 canvas 348 个类名、未命中 13 个（2026-10-24 实测），逐个核过：`print-html-preview*`（7，含 1.3.10 预览缩放新增的 `-zoom`/`-zoom-btn`/`-zoom-note`）属 §六「不移植」——本包源码不挂它们属预期，四个宿主 demo 自复刻的预览层已在 2026-10-24 补齐这三件（见 §六 该行与 `TODO.md` T-19）；`zone-header/content/footer`、`handle-top/bottom`（5）本包用模板串动态拼挂点（`shell/canvas.ts:106` 的 `zone-${zone}`、`shell/canvas.ts:95` 与 `shell/elements.ts:241` 的 `handle-${p}`/`handle-${dir}`，另有 `shell/elements.ts:253` 的 `zone-${zone}`），静态扫描读不到，属假阳性；`placement`（1）是扫描器把 `FontSelect.vue` 模板表达式 `placement === 'up'` 里的标识符当类名提取，真实类名是 `is-up` |
 | 派生 CSS 泄漏审计 | `node demo-common/scripts/style-scope-audit.mjs` | 列两类嫌疑（纯泄漏：类只在一个组件 scoped 定义却被别处用；多组件同名声明不同），裁决须两侧实测 computed style |
 | 宿主样式同源 | `npm run styles:demo-common` | `demo-common/scripts/sync-demo-styles.mjs` 从 `demo/src/App.vue` + `DemoTopbarMore.vue`（顶栏「更多」面板，10-24 补进抽取清单）+ 三个弹窗 + `SampleThumb` + 本仓 `PrintHtmlPreview` 逐字抽取 style，合成四个宿主工程同 MD5 的 `src/styles/demo-ui.css`（现 977 行）；四个子 demo 的宿主版式因此与 Vue3 版 demo **完全一致**（工程内不再写私有布局样式）。**改了 demo 任何一处 `<style>` 必须重跑本脚本**——产物此前漏收 `.demo-ou`/`.demo-spacer`/`.is-tight`/`.demo-more-*` 一组规则，宿主渲染这些类却拿不到样式（`TODO.md` T-19b） |
@@ -89,7 +89,7 @@
 | 列宽拖拽手柄、行类型徽标 | ✅ | `.col-resize-layer` / `.row-badges`，`clampResizedColumnWidth` 同口径 |
 | 表格单元格选区 / 双击编辑 / 右键菜单（插入删除行列、合并拆分、行类型） | ✅ | 矩阵算子全走 core（`mergeCells`/`insertRow`/`setRowType` 等） |
 
-## 四、元素渲染（12 类）
+## 四、元素渲染（内置 12 类 + 插件元素）
 
 | 元素 | 状态 | 说明 |
 |---|---|---|
@@ -102,6 +102,7 @@
 | table | ✅ | 矩阵渲染 + 选区 + 合并拆分 + 行类型 + 单元格内嵌码图/图片；`table-parity.mjs` 同脚本跑两侧 12/12 对拍通过 |
 | html | ✅ | `evaluateTemplate` 后走 `dompurify` 消毒注入，与 canvas HtmlElement 同链路 |
 | pageNumber | ✅ | 设计态显示 `options.title \|\| '{pageIndex}/{totalPages}'`，与 canvas PageNumberElement 一致 |
+| 插件元素（plugin-kit 注册） | ✅ | 框架无关通道消费 `@worm-vue3-print/plugin-kit` 的 `ElementUI`：素材台在内置 11 项后按 core 注册顺序追加插件卡（标签/图标取 kind，分组读 `designer.materialCard.group`，首个同组项前出 `.material-group-title`，与 canvas `groupStart` 同判据；长标签走 `isWideMaterialLabel`）；画布调用 `ui.renderCanvas({ element, data: [DEFAULT_DEMO_DATA], designMode: true })`，把字符串（`innerHTML`）/`Node`/`{ node, dispose }` 装进 `.plugin-kit-canvas`（宽高 100%），渲染抛错时按类型名占位，上一轮实例的 `dispose` 在整树重建前尽力调用；属性台在 `renderProperty` 存在且 `hasProperties(element)` 通过时首位出现「自定义属性」页签并默认激活，内容调用 `ui.renderProperty`（`update(partial)` 走 `store.updateElement` 落模板并记一条历史、`repaint()` 走整树重绘），`hasProperties=false` 维持既有两页签，属性搜索按 `ui.searchKeywords` 命中（未搜索恒显示）；`ui.styles` 按 type 幂等注入 Shadow DOM（`<style data-plugin-ui="type">`），`subscribeElementUIRegistry` 让已挂载实例在插件注册/注销后自动重绘。前提是插件同时注册 core kind 与 UI，只注册 core kind 的插件仍不显示（与改造前一致）。宿主可用 `el.designData`（单对象 / 数组 / `design-data` attribute 的 JSON 串）注入设计态业务数据，画布与属性台都把它当 `data` 数组信封交给插件，未注入回落 `DEFAULT_DEMO_DATA`；属性台另传 `fields`（`el.fields` 的业务字段清单）供图表类插件生成数据源下拉 |
 | 自动缩小（shrink）实测回写 | ✅ | `fitTextNode`（core/browser）实测遍挂在 `paint()` 末尾，元素级与单元格级共用；探针属性 `data-fit/base/min/mm` 与 canvas 同集合。`shrink-parity.mjs` 同脚本对拍：18pt 基准 → 两侧同为 16.19pt，切回截断均复原 18pt |
 
 ## 五、属性台
@@ -127,6 +128,12 @@
 
 ## 六、宿主接口
 
+> **2026-11-15 新增 `/vue3` 兼容门面**：面向「已按 canvas 口径接入、想换成 common 运行时」的 Vue 3 宿主，
+> 只改依赖与 import 即可；门面把 Vue props/emits/expose 翻译成 element property / CustomEvent / DOM 方法。
+> 它是本包的独立子路径（`vue` 为 optional peer），主入口仍零框架，因此不列入下方「与 canvas 的宿主接口」对拍；
+> 契约转换、已提供导出与能力边界见 `README.md`「Vue 3 兼容门面」一节，回归见 `src/vue3/__tests__/vue3-compat.spec.ts`。
+> 已在 `demo` 上临时切换实证：`vue-tsc` 0 错、`vite build` 通过（验证后还原，demo 仍用 canvas）。
+
 | 通道 | 状态 | 说明 |
 |---|---|---|
 | `template` / `fields` property 与同名 attribute（JSON 或对象） | ✅ | |
@@ -135,7 +142,7 @@
 | `dblclick-element` / `dblclick-cell` CustomEvent（bubbles + composed） | ✅ | 画布双击元素/单元格同时打开本包表达式编辑器（canvas `onDblClickElement`/`onDblClickCell` 同口径），宿主事件是旁路通知。**画布侧双击判定走 mousedown 双击检测**（`print-designer.isDoubleTap`，同目标 500ms/6px 内两击）：paint 是 `clear(shell)` 全量重建，第一击选中后旧节点被替换，Chrome 对「两击目标跨 detached/新节点」不再派发原生 dblclick（实测 30ms 间隔亦为空；canvas 侧 Vue 原地 patch 无此问题），所以 `elements.ts`/`table.ts` 画布节点**不挂** `onDblclick`，由判定器内部派发 `element-dblclick`/`table-cell-dblclick`；属性台输入框（内容分组、表格单元格、水印）不经选中重绘，仍用原生 `onDblclick`。两颗 `detail` 形态不同：前者为元素 id 字符串**本身**（与 canvas `@dblclick-element` 首参一致，不是 JSON 字符串，宿主**不要** `JSON.parse`）；后者为 `{ elementId, r, c, cellId }` 对象，画布单元格与属性台单元格输入框两条双击入口同形。回归覆盖 `__tests__/expression-dblclick.spec.ts`（9 项：弹出/预填/确定写回/取消不写回/锁定护栏/非白名单不弹/流式列表任意位置双击/单元格按下标写回/未选中表格跨重建双击只派 cell 事件；测试必须走两次 mousedown/up 的真实节奏，合成 dblclick 会假绿）。双击白名单 `DBL_EDITABLE_FIELD` 两侧逐项一致，已含 `flowList`（单元模板即 `options.formatter`，列表路径写在模板里） |
 | 保存前校验：非法拼版弹提示并带到「页面属性」，多页模板走 core `normalizeTemplate` 归一化 | ✅ | 与 canvas `handleSave` 同口径，非法即阻断 |
 | `validateTemplate()` | ✅ | 当前为拼版配置校验（canvas 同名方法亦仅此口径） |
-| 选中元素即切到「元素属性」页签、清空即回「页面属性」 | ✅ | 对应 canvas 的 `selectedElement` watch |
+| 选中元素即切到「元素属性」页签（有插件 UI 的元素切「自定义属性」）、清空即回「页面属性」 | ✅ | 对应 canvas 的 `selectedElement` watch，插件元素与 canvas 同口径 |
 | `isEdit` / `showHelp` | ✅ | attribute 口径 |
 | `uploadImage` 注入（图片元素上传入口） | ✅ | 与 canvas 的 ImageContentUpload 同结构同文案：`.image-content-upload > label.pd-button.small.upload-label[.disabled] > svg.pd-icon + 文字 + input.visually-hidden`，另有 `.upload-tip`；未注入时置灰，四类提示（非图片 / 未配置 / 失败 / 抛错）逐字一致 |
 | `uploadDesignBackground` 注入（设计背景上传） | ✅ | 同 canvas：未注入时入口 `.disabled`，提示文案「设计背景上传能力未配置」等逐字一致 |
@@ -149,8 +156,8 @@
 
 | 指标 | 值 |
 |---|---|
-| `dist/index.js` | 368.28 kB（gzip 106.68 kB） |
-| `dist/index.cjs` | 292.22 kB（gzip 89.61 kB） |
+| `dist/index.js` | 445.32 kB（gzip 131.15 kB） |
+| `dist/index.cjs` | 355.60 kB（gzip 109.99 kB） |
 | Vue 版 IIFE 封装（早期 spike 实测，验证件已删除，结论见 `docs/superpowers/spikes/2026-09-28-web-component-host/README.md`） | ≈178 kB gzip（含 Vue 运行时） |
 
 > 数值取 vite 构建输出（1 kB = 1000 字节）；用 `stat`/`gzip -c` 按 KiB 复核会小约 2%，属单位差异不是体积变化。
@@ -159,7 +166,7 @@
 
 ## 八、与 canvas 的有意行为差异
 
-以下 13 条是与 Vue3 版**功能等价但实现口径不同**的点，验收时按此判定，不算回归：
+以下 15 条是与 Vue3 版**功能等价但实现口径不同**的点，验收时按此判定，不算回归：
 
 1. **快捷键的实例接管**：canvas 的 `useKeyboard` 绑在 `document`（页面任意处 Ctrl+Z 都生效）。本包也绑 `document`，但额外加一层「最后交互的实例」仲裁：宿主内 `pointerdown`/`focusin` 即接管，未有人接管时由最先连接的实例兜底，因此同页挂多个设计器不会互相抢键，而**焦点掉回 `body` 时快捷键仍然有效**（早期绑在宿主元素上，点过工具栏按钮后 Ctrl+Z/Ctrl+1 会整体失效 —— 由 ops 脚本揭穿）。判定「是否在为输入」用 `composedPath()[0]` 取 shadow 内真实 target（document 上拿到的 target 已被重定向成宿主）。
 2. **文本输入的提交时机**：canvas 用 `@input` 实时提交；Common 的属性台文本框统一用 `change`（失焦或回车提交）。原因：无框架版每次 store 变更会整体重绘属性台，边打边提交会把光标顶回开头，无法连续输入。
@@ -174,3 +181,5 @@
 11. **属性台/页签的收起语义对齐 canvas 的 `v-show`**：canvas 收起的分组与非活跃页签节点常驻 DOM（只 `display:none`），Common 早期是「不建节点」，会让「DOM 里有几项」这类断言两侧对不上；现也改为节点常驻 + `display` 切换，但**过滤字段/输入联想**这类瞬时状态仍只做定点更新、不整体重绘（对应第 2 条）。分组展开态与面板折叠态都复用 canvas 的 localStorage 键（`property-group-<key>`、`print-studio:left|right`），同一浏览器两侧偏好互通。
 12. **Ctrl+X 剪切**：canvas 的剪切只有工具栏按钮（`useKeyboard` 未接 `onCut`），本包额外把 Ctrl/⌘+X 也接到同一条 `cutSelected()`。属于「多做一步」，不影响其它键位。
 13. **拖拽中同组成员即时跟随**：canvas 的 `BaseElement` 拖拽期间只给自己加 `transform`，同组兄弟在 mouseup 才一次性跳到新坐标；本包的 live 层让同组成员即时跟随。落点结果与历史记录完全一致（ops 逐步对拍通过），仅拖拽过程中的中间帧不同（本包无 150ms 过渡动画，见第 10 条）。
+14. **插件设计器 UI 的消费通道**：canvas 把 core 插件注册表映射成 Vue 组件（素材卡 / 画布组件 / 属性台「自定义属性」页签）；本包零框架 shell 通过 `@worm-vue3-print/plugin-kit` 的框架无关 `ElementUI` 契约直接挂 DOM —— 素材卡按 core kind 追加（分组读 `designer.materialCard.group`），画布调用 `renderCanvas`，属性台首位「自定义属性」页签调用 `renderProperty`（`update` 经本包 `store.updateElement` 写模板并记历史），`styles` 注入 Shadow DOM。**已支持**：插件同时注册 core kind 与 plugin-kit UI 后，素材台自动出现、选中默认进「自定义属性」；未注册 UI 的插件仍不显示素材卡，模板里已有的该类元素在设计态按类型名占位（`shell/elements.ts` 兜底分支）。出纸/预览路径不变，仍取决于宿主装配的 core 注册表（`renderHtmlPages` 按注册态分派）。
+15. **插件 UI 的设计态示例数据可注入**：本包新增 `el.designData`（单对象 / 对象数组 / `design-data` attribute 的 JSON 串），画布与属性台把归一后的数组信封作为 `data` 交给插件，未注入回落 core 的 `DEFAULT_DEMO_DATA`；属性台还把 `el.fields` 作为 `fields` 传给 `renderProperty`，让图表类插件的数据源下拉能列真实业务字段。canvas 侧画布组件本来就有宿主的 `printData`，属性台则固定用 `[DEFAULT_DEMO_DATA]`（只透传 `fields`）。两侧 `fields` 一致、`data` 口径不同，属「本包多做一步」，不影响既有模板与出纸。

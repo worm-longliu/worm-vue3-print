@@ -1,5 +1,9 @@
 // demo/src/samples/index.ts
-// 示例模板库注册表：全部示例使用静态内置数据，新增示例只需在此追加一项。
+// 示例模板库注册表：全部示例使用静态内置数据，新增示例只需在对应注册表追加一项。
+//
+// 注册表按「是否依赖可选包」分两个文件：
+// - ./host-samples.ts：不依赖可选包的示例，demo-common 四个宿主同步时只求值这一份；
+// - 本文件：在宿主安全示例之上补图表类示例（依赖 @worm-vue3-print/echarts）。
 //
 // 新增示例的排版约束（渲染管线的硬规则，踩过一次就别再踩）：
 // 1. 固定纸模板纵向要留 2mm 分页安全余量——内容底边贴着版心底边会被判到第二页，
@@ -10,49 +14,20 @@
 //    相交分列累计，未组合的并排两块会被整宽尾行合计扣两次，紧尺寸标签因此被挤到第二页
 //    （拼版模板则直接拒纸）。组合不改几何，只让整组同页、纵向只扣一次并集高度。
 import type { SampleGroup, SampleTemplate } from './types'
-import { PURCHASE_RECEIPT_SAMPLE } from './purchase-receipt'
-import { SALES_OUTBOUND_SAMPLE } from './sales-outbound'
-import { EXPRESS_WAYBILL_SAMPLE } from './express-waybill'
-import { WEIGHT_LABEL_SAMPLE } from './weight-label'
-import { PRICE_LABEL_SAMPLE } from './price-label'
-import { ASSET_TAG_SAMPLE } from './asset-tag'
-import { ROLL_LABEL_SAMPLE } from './roll-label'
-import { BATTERY_MODULE_LABEL_SAMPLE } from './battery-module-label'
-import { BATTERY_MODULE_LABEL_NO_SN_SAMPLE } from './battery-module-label-no-sn'
-import { THERMAL_RECEIPT_SAMPLE } from './thermal-receipt'
-import { TCM_PRESCRIPTION_SAMPLE } from './tcm-prescription'
-import { COMPREHENSIVE_SHOWCASE_SAMPLE } from './comprehensive-showcase'
-import { PAGINATION_EDGE_SAMPLE } from './pagination-edge'
-import { TEXT_WRAP_FOLLOW_SAMPLE } from './text-wrap-follow'
-import { PAYMENT_REQUEST_SAMPLE } from './payment-request'
+import { HOST_SAMPLE_TEMPLATES } from './host-samples'
 import { SALES_CHART_SAMPLE } from './sales-chart'
-import { ECHARTS_TEST_CASE_SAMPLE } from './echarts-test-case'
+import { ECHARTS_SHOWCASE_SAMPLE } from './echarts-showcase'
 
 export type { SampleTemplate, SampleGroup }
 
-/** 示例库：单据 → 标签 → 小票 */
-export const SAMPLE_TEMPLATES: SampleTemplate[] = [
-  PURCHASE_RECEIPT_SAMPLE,
-  SALES_OUTBOUND_SAMPLE,
-  PAYMENT_REQUEST_SAMPLE,
-  TCM_PRESCRIPTION_SAMPLE,
-  EXPRESS_WAYBILL_SAMPLE,
-  COMPREHENSIVE_SHOWCASE_SAMPLE,
-  PAGINATION_EDGE_SAMPLE,
-  TEXT_WRAP_FOLLOW_SAMPLE,
-  SALES_CHART_SAMPLE,
-  ECHARTS_TEST_CASE_SAMPLE,
-  WEIGHT_LABEL_SAMPLE,
-  PRICE_LABEL_SAMPLE,
-  ASSET_TAG_SAMPLE,
-  ROLL_LABEL_SAMPLE,
-  BATTERY_MODULE_LABEL_SAMPLE,
-  BATTERY_MODULE_LABEL_NO_SN_SAMPLE,
-  THERMAL_RECEIPT_SAMPLE,
-]
+/** 图表类示例：依赖可选包 @worm-vue3-print/echarts，demo-common 宿主不同步 */
+const CHART_SAMPLES: SampleTemplate[] = [SALES_CHART_SAMPLE, ECHARTS_SHOWCASE_SAMPLE]
+
+/** 示例库：单据 → 标签 → 小票 → 图表 */
+export const SAMPLE_TEMPLATES: SampleTemplate[] = [...HOST_SAMPLE_TEMPLATES, ...CHART_SAMPLES]
 
 /** 分组顺序（弹窗筛选项） */
-export const SAMPLE_GROUPS: SampleGroup[] = ['单据', '标签', '小票', '测试']
+export const SAMPLE_GROUPS: SampleGroup[] = ['单据', '标签', '小票', '图表']
 
 /** 按分组过滤 */
 export function listSamples(group?: SampleGroup | '全部'): SampleTemplate[] {

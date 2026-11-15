@@ -1,5 +1,5 @@
-// demo/src/samples/echarts-test-case.ts
-// 测试案例：十个图表元素端到端验证（画布 / 预览 / 打印同一份模板）。
+// demo/src/samples/echarts-showcase.ts
+// 示例：ECharts 十类图表元素总览（画布 / 预览 / 打印同一份模板）。
 // 每个 kind 一个元素，全部只用 $data 占位 + 字段映射，模板不写死业务数值：
 //   直角系：柱状 / 条形 / 折线 / 面积   单系列类目绑定
 //   饼系：饼图 / 环形图                 { name, value }
@@ -10,15 +10,15 @@ import { CHART_KIND_DEFINITIONS, createDefaultChartOption } from '@worm-vue3-pri
 import { createElementFactory } from './element-helper'
 import type { SampleTemplate } from './types'
 
-const { el } = createElementFactory('etc')
+const { el } = createElementFactory('ecs')
 
-export const ECHARTS_TEST_FIELDS: PrintBusinessField[] = [
-  { id: 'etc-1', fieldKey: 'title', fieldLabel: '案例标题', fieldType: 'string', sortOrder: 1 },
-  { id: 'etc-2', fieldKey: 'trend', fieldLabel: '趋势数据', fieldType: 'list', sortOrder: 2 },
+export const ECHARTS_SHOWCASE_FIELDS: PrintBusinessField[] = [
+  { id: 'ecs-1', fieldKey: 'title', fieldLabel: '标题', fieldType: 'string', sortOrder: 1 },
+  { id: 'ecs-2', fieldKey: 'trend', fieldLabel: '趋势数据', fieldType: 'list', sortOrder: 2 },
 ]
 
-export const ECHARTS_TEST_DATA: Record<string, any> = {
-  title: 'ECharts 十类图表测试案例',
+export const ECHARTS_SHOWCASE_DATA: Record<string, any> = {
+  title: 'ECharts 十类图表元素总览',
   trend: [
     { name: '一月', sales: 120, profit: 40 },
     { name: '二月', sales: 168, profit: 62 },
@@ -69,13 +69,13 @@ const template: TemplateData = {
   ],
 }
 
-export const ECHARTS_TEST_CASE_SAMPLE: SampleTemplate = {
-  id: 'echarts-test-case',
-  name: 'ECharts 十类图表测试',
-  group: '测试',
-  desc: '柱状 / 条形 / 折线 / 面积 / 饼 / 环形 / 散点 / 雷达 / 漏斗 / 仪表盘十个元素，验证绑定与出图',
+export const ECHARTS_SHOWCASE_SAMPLE: SampleTemplate = {
+  id: 'echarts-showcase',
+  name: '十类图表总览',
+  group: '图表',
+  desc: '柱状 / 条形 / 折线 / 面积 / 饼 / 环形 / 散点 / 雷达 / 漏斗 / 仪表盘十个图表元素，共用一份趋势数据源',
   paper: 'A4 纵向 · 190mm 版心',
-  fields: ECHARTS_TEST_FIELDS,
-  data: ECHARTS_TEST_DATA,
+  fields: ECHARTS_SHOWCASE_FIELDS,
+  data: ECHARTS_SHOWCASE_DATA,
   template,
 }

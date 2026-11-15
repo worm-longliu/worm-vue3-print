@@ -26,6 +26,9 @@ describe('十类图表 kind 定义', () => {
     expect(resolveChartPanelFields('scatterChart')).toContain('bubble')
     expect(resolveChartPanelFields('gaugeChart')).toContain('gaugeRange')
     expect(resolveChartPanelFields('gaugeChart')).not.toContain('categoryField')
+    expect(resolveChartPanelFields('funnelChart')).toContain('padding')
+    expect(resolveChartPanelFields('radarChart')).toContain('radius')
+    expect(resolveChartPanelFields('barChart')).not.toContain('padding')
     expect(resolveChartPanelFields('unknown')).toEqual([])
   })
 

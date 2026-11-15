@@ -5,13 +5,15 @@ import { h } from '../core/h'
 import { iconSvg } from '../core/icons'
 import { colorPicker } from './color-picker'
 import type { PrintFontDeclaration } from '@worm-vue3-print/core'
+import type { PrintBusinessField } from '@worm-vue3-print/core/designer'
 import type { DesignerStore } from '../core/store'
 
 /** 外壳局部 UI 状态（不落模板数据，仅影响渲染） */
 export interface ShellState {
   leftTab: 'elements' | 'fields' | 'layers'
   leftCollapsed: boolean
-  propTab: 'element' | 'page'
+  /** 属性台页签：有插件 UI 时 'custom' 为「自定义属性」 */
+  propTab: 'element' | 'page' | 'custom'
   propCollapsed: boolean
   /** 打开的下拉面板 id（同一时刻只允许一个） */
   openDd: string | null
@@ -52,6 +54,10 @@ export interface ShellCtx {
     uploadDesignBackground?: (file: File) => Promise<string>
     /** 模板级字体声明，与 canvas 的 PrintDesigner `fonts` prop 同类型（裸字符串族名不参与候选，与画布一致） */
     fonts?: readonly PrintFontDeclaration[]
+    /** 设计态示例数据（数组信封）；插件 UI 消费，未注入时回落 DEFAULT_DEMO_DATA */
+    designData?: readonly Record<string, unknown>[]
+    /** 宿主业务字段清单；插件属性台据此生成数据源/字段映射下拉 */
+    fields?: readonly PrintBusinessField[]
   }
 }
 

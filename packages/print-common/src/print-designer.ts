@@ -7,12 +7,14 @@ import {
 } from '@worm-vue3-print/core/designer'
 import { buildFontFaceCss, normalizeTemplate, validateTiling, collectPrintWarnings } from '@worm-vue3-print/core'
 import { fitTextNode } from '@worm-vue3-print/core/browser'
+import { getElementUIEntries, subscribeElementUIRegistry } from '@worm-vue3-print/plugin-kit'
 import type { AlignLine, ElementType, MultiPageTemplateData, ResizePoint, RuntimeElement, TemplateData, UploadDesignBackgroundFn, UploadImageFn } from '@worm-vue3-print/core/designer'
 import type { PrintFontDeclaration } from '@worm-vue3-print/core'
 import { clear, h, render } from './core/h'
 import { DesignerStore } from './core/store'
 import type { DesignerOptions } from './core/store'
 import { FormatToolbar } from './core/format'
+import { getPluginPropertyTab } from './core/plugin'
 import { renderCanvasArea, zoneRectsMM, clearDropDrag } from './shell/canvas'
 import { positionLabel } from './shell/elements'
 import type { CanvasUI } from './shell/canvas'
@@ -20,6 +22,7 @@ import { renderFormatBar } from './shell/format-bar'
 import { hydrateCodes } from './shell/code'
 import { renderLeftPanel, renderPageTabs, renderStatusBar } from './shell/panels'
 import { renderPropertyPanel } from './shell/property-panel'
+import { disposeAllElementUI } from './shell/plugin-ui'
 import { abortTableColResize, renderTableContextMenu } from './shell/table'
 import type { TableMenuState } from './shell/table'
 import { renderExpressionEditor } from './shell/expression-editor'
@@ -72,6 +75,26 @@ function writeChromeKey(key: string, value: boolean) {
   try { localStorage.setItem(key, value ? '1' : '0') } catch { /* 忽略 */ }
 }
 
+/**
+ * 插件 UI 的设计态示例数据统一成「数组信封」（data[0] 即数据根对象）。
+ * 宿主可传单个业务对象、对象数组或 JSON 字符串；非法/缺省值返回 undefined，
+ * 由消费方回落到 core 的 DEFAULT_DEMO_DATA，老宿主零改动。
+ */
+type DesignData = readonly Record<string, unknown>[]
+
+function normalizeDesignData(value: unknown): DesignData | undefined {
+  let parsed = value
+  if (typeof parsed === 'string') {
+    try { parsed = JSON.parse(parsed) } catch { return undefined }
+  }
+  if (Array.isArray(parsed)) {
+    return parsed.filter((item): item is Record<string, unknown> =>
+      !!item && typeof item === 'object' && !Array.isArray(item)) as DesignData
+  }
+  if (parsed && typeof parsed === 'object') return [parsed as Record<string, unknown>]
+  return undefined
+}
+
 interface DragState {
   /** 本次拖拽实际跟手的元素：被点中元素 + 同组元素（canvas 的口径，不含其它选中项） */
   ids: string[]
@@ -101,6 +124,10 @@ export class PrintDesignerElement extends HTMLElement {
   private store!: DesignerStore
   private format!: FormatToolbar
   private unsub: (() => void) | null = null
+  /** plugin-kit 注册态订阅：插件注册/注销后让已挂载实例重绘素材台与画布 */
+  private unsubPluginUI: (() => void) | null = null
+  /** 已注入 shadow root 的插件 UI 样式（按元素 type 去重，paint 时同步） */
+  private pluginStyleEls = new Map<string, HTMLStyleElement>()
   private state: ShellState = {
     leftTab: 'elements', leftCollapsed: false, propTab: 'page', propCollapsed: false,
     openDd: null, openMore: false, collapsedGroups: new Set(), renamingPage: null,
@@ -141,6 +168,17 @@ export class PrintDesignerElement extends HTMLElement {
   uploadImage?: UploadImageFn
   /** 宿主注入：设计背景图上传，返回可直接 <img src> 的完整路径（对应 canvas 的 UPLOAD_DESIGN_BACKGROUND_KEY） */
   uploadDesignBackground?: UploadDesignBackgroundFn
+  /**
+   * 宿主注入的「设计态示例数据」：插件 UI 的画布预览与属性台据此渲染真实业务数据
+   * （图表类插件的数据源/字段映射都依赖它）。不注入时消费方回落 DEFAULT_DEMO_DATA。
+   * 支持 `el.designData = {...}` / `el.designData = [{...}]` 或 `design-data` attribute（JSON 串）。
+   */
+  private _designData?: DesignData
+  set designData(v: unknown) {
+    this._designData = normalizeDesignData(v)
+    this.repaint()
+  }
+  get designData(): DesignData | undefined { return this._designData }
   /** 模板级字体声明（对应 canvas 的 fonts prop）：注入 @font-face、列出字体候选、随保存/导出写回模板 */
   private _fonts?: readonly PrintFontDeclaration[]
   set fonts(v: readonly PrintFontDeclaration[] | undefined) {
@@ -176,9 +214,15 @@ export class PrintDesignerElement extends HTMLElement {
     this.repaint()
   }
 
-  static get observedAttributes() { return ['template', 'fields', 'name', 'fonts'] }
+  static get observedAttributes() { return ['template', 'fields', 'name', 'fonts', 'design-data'] }
 
   attributeChangedCallback(name: string, _old: string | null, value: string | null) {
+    // design-data 允许移除后回到内置 demo 数据，所以要在通用「空值直接返回」之前单独处理
+    if (name === 'design-data') {
+      this._designData = value === null ? undefined : normalizeDesignData(value)
+      this.repaint()
+      return
+    }
     if (!value) return
     if (name === 'name') { this.repaint(); return }
     let parsed: unknown
@@ -193,6 +237,7 @@ export class PrintDesignerElement extends HTMLElement {
       // 重连（宿主挪动节点等）：字体与全局键监听随卸载摘除过，这里补挂
       this.applyFontFace()
       this.attachDocKeys()
+      this.attachPluginUI()
       return
     }
     const opts: DesignerOptions = {}
@@ -200,6 +245,9 @@ export class PrintDesignerElement extends HTMLElement {
     if (t) { try { opts.initialTemplate = JSON.parse(t) } catch { /* 非法模板 JSON：保持默认模板 */ } }
     const f = this.getAttribute('fields')
     if (f) { try { opts.initialFields = JSON.parse(f) } catch { /* 忽略 */ } }
+    const d = this.getAttribute('design-data')
+    // HTML 声明式 attribute 在升级前就可能挂上：attributeChangedCallback 通常已写入，这里兜住解析顺序差异
+    if (d && this._designData === undefined) this._designData = normalizeDesignData(d)
     this.store = new DesignerStore(opts)
     this.format = new FormatToolbar(this.store)
     // 格式刷的触发点是「选中集变化」（canvas useFormatPainter 的 watch(selectedIds)）：
@@ -210,6 +258,7 @@ export class PrintDesignerElement extends HTMLElement {
     this.bindPointer()
     this.bindKeys()
     this.attachDocKeys()
+    this.attachPluginUI()
     this.applyFontFace()
     this.repaint()
     requestAnimationFrame(() => this.measureRuler())
@@ -233,6 +282,10 @@ export class PrintDesignerElement extends HTMLElement {
   disconnectedCallback() {
     this.unsub?.()
     this.unsub = null
+    this.unsubPluginUI?.()
+    this.unsubPluginUI = null
+    // 插件 UI 的资源（图表实例/监听）在整树重建或卸载前释放
+    disposeAllElementUI()
     this.detachDocKeys()
     this.ro?.disconnect()
     this.ro = null
@@ -273,6 +326,38 @@ export class PrintDesignerElement extends HTMLElement {
       this.ownerDocument.head.appendChild(this.docFontFaceStyle)
     }
     this.docFontFaceStyle.textContent = css
+  }
+
+  /** 订阅 plugin-kit 注册态：插件热注册/注销后立即重绘素材台、画布与属性台 */
+  private attachPluginUI() {
+    if (this.unsubPluginUI) return
+    this.unsubPluginUI = subscribeElementUIRegistry(() => this.repaint())
+  }
+
+  /**
+   * 把已注册插件 UI 的 styles 幂等注入 shadow root：按元素 type 去重，
+   * 每个 <style data-plugin-ui="type"> 恒常驻，注册态变化时增删/改文本。
+   */
+  private syncPluginUIStyles() {
+    const wanted = new Map<string, string>()
+    for (const { type, ui } of getElementUIEntries()) {
+      if (ui.styles) wanted.set(type, ui.styles)
+    }
+    for (const [type, node] of [...this.pluginStyleEls]) {
+      if (wanted.has(type)) continue
+      node.remove()
+      this.pluginStyleEls.delete(type)
+    }
+    for (const [type, css] of wanted) {
+      let node = this.pluginStyleEls.get(type)
+      if (!node) {
+        node = document.createElement('style')
+        node.setAttribute('data-plugin-ui', type)
+        this.root.appendChild(node)
+        this.pluginStyleEls.set(type, node)
+      }
+      if (node.textContent !== css) node.textContent = css
+    }
   }
 
   // ─── 宿主 API ───
@@ -425,7 +510,8 @@ export class PrintDesignerElement extends HTMLElement {
     const el = this.store.elements.find(e => e.id === id)
     if (!el) return
     this.store.selectOne(id)
-    this.state.propTab = 'element'
+    // 与 canvas onDblClickElement 同口径：有插件 UI 时回「自定义属性」，否则回「元素属性」
+    this.state.propTab = getPluginPropertyTab(el) ? 'custom' : 'element'
     if (el.options.locked) return
     const field = DBL_EDITABLE_FIELD[el.printElementType.type]
     if (!field) return
@@ -468,6 +554,8 @@ export class PrintDesignerElement extends HTMLElement {
         uploadImage: this.uploadImage,
         uploadDesignBackground: this.uploadDesignBackground,
         fonts: this.fonts,
+        designData: this.designData,
+        fields: this.store.fields,
       },
     }
   }
@@ -494,11 +582,16 @@ export class PrintDesignerElement extends HTMLElement {
 
   private paint() {
     if (!this.store) return
+    // 插件 UI 与注册态同步：整树重建前先释放上一轮插件实例，再幂等注入 styles
+    disposeAllElementUI()
+    this.syncPluginUIStyles()
     // 与 canvas 的 selectedElement watch 同口径：选中集变化即切换属性台页签
     const selKey = [...this.store.selectedIds].join(',')
     if (selKey !== this.lastSelKey) {
       this.lastSelKey = selKey
-      this.state.propTab = selKey ? 'element' : 'page'
+      const selected = this.store.selectedElement
+      // 有插件 UI 的元素默认激活「自定义属性」页签（canvas 同口径）
+      this.state.propTab = !selected ? 'page' : getPluginPropertyTab(selected) ? 'custom' : 'element'
     }
     const shell = this.root.querySelector<HTMLElement>('.designer-container')!
     // canvas 的 PrintDesigner 根节点：格式刷激活时挂 `.format-painting`，画布区光标变十字（派生 CSS 自带该规则）

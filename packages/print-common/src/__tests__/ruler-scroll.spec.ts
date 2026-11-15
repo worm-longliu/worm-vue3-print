@@ -73,7 +73,7 @@ describe('设计器滚动状态跨重绘', () => {
   })
 
   it('刻度原点不再叠加 scrollPos', async () => {
-    const { el, root, store } = await mountDesigner()
+    const { el, store } = await mountDesigner()
     setScrollPos(el, 40, 120)
     store.emit(false)
     await frame()

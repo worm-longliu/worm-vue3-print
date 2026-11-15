@@ -1,5 +1,8 @@
 import { createApp } from 'vue'
 import { registerAll } from '@worm-vue3-print/common'
+// 图表插件适配包：import 即注册（core 插件描述符 + plugin-kit 设计器 UI 一并生效）。
+// 不装它时设计器仍是纯 common 能力；装了之后素材台「图表」分组出现十张图表卡。
+import '@worm-vue3-print/echarts-common'
 import App from './App.vue'
 
 // 一次性注册 <print-designer>：不自动污染全局，宿主按需调用

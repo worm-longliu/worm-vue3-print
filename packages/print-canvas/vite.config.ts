@@ -42,6 +42,7 @@ export default defineConfig({
         'vue',
         // 匹配主包及 /designer、/browser 等全部子路径，均作为外部依赖不打进 canvas
         /^@worm-vue3-print\/core(\/.*)?$/,
+        /^@worm-vue3-print\/plugin-kit$/,
         'dompurify',
         'jsbarcode',
         'qrcode',
