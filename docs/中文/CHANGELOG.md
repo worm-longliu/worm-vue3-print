@@ -2,6 +2,13 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## 未发布
+
+### 变更
+
+- **素材台与属性台加宽、素材卡改两列**：左侧素材台 224px → 248px，右侧属性台 280px → 304px；元素页签的素材卡改为两列栅格，标签文本较长的素材（如「流式列表」）独占整行，字段与图层页签不受影响。`@worm-vue3-print/canvas` 与实验性的 `@worm-vue3-print/common` 同步改动。
+- **素材台顺序调整并移除 HTML 入口**：长文移到表格之后（表格、长文、流式列表相邻），HTML 不再提供素材卡；HTML 元素类型与出纸口径不变，已存在的 HTML 元素在模板里照旧加载。`canvas` 与 `common` 同序同图标。
+
 ## V1.4.8(2026-11-11)
 
 > **修复版**：本版以 dist-tag `latest` 发布到 npm（`@worm-vue3-print/core` / `canvas` / `common` / `skills` 的 `1.4.8`）。仅修复 macOS/Safari 下表格单元格右键菜单，core 出纸层无改动，因此 `v1.4.7` 的全平台客户端安装包继续沿用、仍可下载。`@worm-vue3-print/common` 仍为实验性质，不建议用于生产。
