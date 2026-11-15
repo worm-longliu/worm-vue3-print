@@ -50,6 +50,8 @@ export * from './utils/zone-layout.js'
 export * from './utils/ruler.js'
 export * from './utils/preset-colors.js'
 export * from './utils/property-search.js'
+// 素材卡标签「文本较长」判据：canvas 素材台与 common 零框架外壳共用同一份
+export * from './utils/material-label.js'
 export * from './utils/crop-anchor.js'
 export * from './utils/field-groups.js'
 // 复制文本到系统剪贴板：素材台字段单击复制、表达式弹窗字段复制按钮共用（浏览器环境专用）

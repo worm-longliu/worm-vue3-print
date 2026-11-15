@@ -90,9 +90,9 @@ function mountLeftPanel() {
 }
 
 describe('LeftPanel 扩展素材卡', () => {
-  it('未注册扩展时素材卡与主包内置项完全一致（12 项、无图表）', () => {
+  it('未注册扩展时素材卡与主包内置项完全一致（11 项、无图表）', () => {
     const cards = mountLeftPanel().findAll('.material-label').map(node => node.text())
-    expect(cards).toHaveLength(12)
+    expect(cards).toHaveLength(11)
     expect(cards).not.toContain('图表')
   })
 
@@ -103,11 +103,11 @@ describe('LeftPanel 扩展素材卡', () => {
     expect(w.findAll('.material-label').map(node => node.text())).toEqual(
       expect.arrayContaining(['图表', '文本']),
     )
-    expect(w.findAll('.material-card')).toHaveLength(13)
+    expect(w.findAll('.material-card')).toHaveLength(12)
 
     clearElementExtensions()
     await nextTick()
-    expect(w.findAll('.material-card')).toHaveLength(12)
+    expect(w.findAll('.material-card')).toHaveLength(11)
     expect(w.findAll('.material-label').map(node => node.text())).not.toContain('图表')
   })
 

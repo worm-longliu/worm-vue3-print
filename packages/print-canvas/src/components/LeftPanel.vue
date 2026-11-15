@@ -18,12 +18,13 @@
           <button type="button" class="pd-tab" :class="{ active: activeTab === 'fields' }" @click="activeTab = 'fields'">字段</button>
           <button type="button" class="pd-tab" :class="{ active: activeTab === 'layers' }" @click="activeTab = 'layers'">图层</button>
         </div>
-        <div v-show="activeTab === 'elements'" class="pd-tab-pane" role="tabpanel">
+        <div v-show="activeTab === 'elements'" class="pd-tab-pane material-grid" role="tabpanel">
           <div class="panel-title">拖拽元素到画布</div>
           <template v-for="item in elementTypes" :key="item.type">
             <div v-if="item.groupStart" class="material-group-title">{{ item.group }}</div>
             <div
               class="material-card"
+              :class="{ 'material-card--wide': item.wide }"
               draggable="true"
               @dragstart="onDragStart($event, item.type)"
             >
@@ -58,6 +59,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { ElementType, PrintBusinessField, RuntimeElement } from '@worm-vue3-print/core/designer'
+import { isWideMaterialLabel } from '@worm-vue3-print/core/designer'
 import LayerPanel from './LayerPanel.vue'
 import FieldTreePanel from './FieldTreePanel.vue'
 import { getElementExtensions } from '../composables/useElementExtensionRegistry'
@@ -89,22 +91,23 @@ interface MaterialItem {
   /** 扩展包可声明分组名；仅首项渲染分组标题，未注册/未声明时 DOM 与内置态一致 */
   group?: string
   groupStart?: boolean
+  /** 标签文本较长，两列栅格下独占整行 */
+  wide?: boolean
 }
 
-/** 内置 12 项：canvas 主包自带、不依赖任何可选包 */
+/** 内置 11 项：canvas 主包自带、不依赖任何可选包（HTML 不提供素材入口，HTML 元素能力与出纸口径不变） */
 const builtinElementTypes: (MaterialItem & { type: ElementType })[] = [
   { type: 'text', label: '文本', icon: 'Ｔ' },
   { type: 'barcode', label: '条形码', icon: '▍▍' },
   { type: 'qrcode', label: '二维码', icon: '▦' },
   { type: 'image', label: '图片', icon: '▧' },
   { type: 'table', label: '表格', icon: '⊞' },
-  { type: 'flowList', label: '流式列表', icon: '⊟' },
   { type: 'longText', label: '长文', icon: '¶' },
+  { type: 'flowList', label: '流式列表', icon: '⊟' },
   { type: 'hline', label: '横线', icon: '―' },
   { type: 'vline', label: '竖线', icon: '│' },
   { type: 'rect', label: '矩形', icon: '▭' },
   { type: 'oval', label: '椭圆', icon: '◯' },
-  { type: 'html', label: 'HTML', icon: '<>' },
 ]
 
 /**
@@ -126,7 +129,7 @@ const elementTypes = computed<MaterialItem[]>(() => {
   return all.map(item => {
     const groupStart = !!item.group && item.group !== prevGroup
     if (item.group) prevGroup = item.group
-    return { ...item, groupStart }
+    return { ...item, groupStart, wide: isWideMaterialLabel(item.label) }
   })
 })
 
@@ -148,8 +151,8 @@ function expandTab(tab: string) {
 
 <style scoped>
 .left-panel {
-  width: 224px;
-  min-width: 224px;
+  width: 248px;
+  min-width: 248px;
   background: var(--pd-sidebar, #ffffff);
   border-right: 1px solid var(--pd-border-soft, #e9ecf2);
   display: flex;
@@ -243,6 +246,26 @@ function expandTab(tab: string) {
   min-height: 0;
   overflow-y: auto;
   padding: 12px;
+}
+/* 元素页签两列栅格：文本较长的素材（判据见 core 的 isWideMaterialLabel）独占整行 */
+.material-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-content: start;
+}
+.material-grid > .panel-title,
+.material-grid > .material-group-title,
+.material-grid > .material-card--wide {
+  grid-column: 1 / -1;
+}
+.material-grid > .panel-title,
+.material-grid > .material-group-title {
+  margin-bottom: 0;
+}
+.material-grid > .material-card {
+  margin-bottom: 0;
+  min-width: 0;
 }
 .panel-title {
   font-size: 11px;

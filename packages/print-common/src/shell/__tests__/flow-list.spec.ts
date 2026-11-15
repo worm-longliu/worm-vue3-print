@@ -116,10 +116,10 @@ function stubStorage() {
 }
 
 describe('工具箱与元素层', () => {
-  it('工具箱含「流式列表」，且紧跟在表格之后（与 canvas 同序）', () => {
+  it('工具箱含「流式列表」，排在表格与长文之后（与 canvas 同序）', () => {
     const order = ELEMENT_TYPES.map(t => t.type)
     expect(order).toContain('flowList')
-    expect(order.indexOf('flowList')).toBe(order.indexOf('table') + 1)
+    expect(order.slice(order.indexOf('table'), order.indexOf('table') + 3)).toEqual(['table', 'longText', 'flowList'])
     expect(ELEMENT_TYPES.find(t => t.type === 'flowList')?.label).toBe('流式列表')
   })
 

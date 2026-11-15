@@ -1,4 +1,4 @@
-// 扩展元素注册表：内置 12 种之外的元素（如 ECharts 图表）由独立可选包注册，
+// 扩展元素注册表：内置 11 种之外的元素（如 ECharts 图表）由独立可选包注册，
 // 主包只认注册表、不依赖任何图表库。注册表是模块级单例，每个用例后必须清空。
 import { describe, it, expect, afterEach } from 'vitest'
 import { computed, defineComponent, h } from 'vue'

@@ -256,7 +256,7 @@ describe('设计器联动：默认激活 / 分组 / 图层图标', () => {
     register({ group: '扩展元素' })
     const w = mount(LeftPanel, { props })
     expect(w.find('.material-group-title').text()).toBe('扩展元素')
-    expect(w.findAll('.material-label')).toHaveLength(13)
+    expect(w.findAll('.material-label')).toHaveLength(12)
   })
 
   it('LayerPanel：扩展 icon 优先于内置表，未注册时回落通用图标', () => {

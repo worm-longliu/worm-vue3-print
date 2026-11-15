@@ -587,8 +587,8 @@ function expandTab(tab: PropertyTabKey) {
 
 <style scoped>
 .property-panel {
-  width: 280px;
-  min-width: 280px;
+  width: 304px;
+  min-width: 304px;
   background: var(--pd-sidebar, #ffffff);
   border-left: 1px solid var(--pd-border-soft, #e9ecf2);
   display: flex;
