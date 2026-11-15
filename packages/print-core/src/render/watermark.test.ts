@@ -76,6 +76,13 @@ describe('resolveWatermarkText', () => {
     expect(resolveWatermarkText({ mode: 'binding', binding: 'order.no', testData: '兜底' }, { order: { no: null } })).toBe('兜底')
     expect(resolveWatermarkText({ mode: 'binding', binding: 'order.no' }, { order: { no: undefined } })).toBe('[order.no]')
   })
+  it('testData 为空串时继续回退 [binding]（配置面板会把未填的测试值落成空串）', () => {
+    expect(resolveWatermarkText({ mode: 'binding', binding: 'order.no', testData: '' }, {})).toBe('[order.no]')
+    expect(resolveWatermarkText({ mode: 'binding', binding: 'order.no', testData: '  ' }, {})).toBe('[order.no]')
+    // 设计态（无数据）仍要能出图：文本非空，水印层才会渲染
+    const layout = resolveWatermarkLayout({ mode: 'binding', binding: 'order.no', testData: '' }, [], A4)
+    expect(layout?.text).toBe('[order.no]')
+  })
   it('timestamp 追加时间，format 自定义生效', () => {
     const text = resolveWatermarkText(
       { mode: 'fixed', content: '机密', timestamp: true, format: 'YYYY/MM/DD' },

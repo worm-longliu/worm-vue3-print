@@ -26,6 +26,11 @@ function isSvg(tag: string) {
   return tag === 'svg' || tag === 'path' || tag === 'circle' || tag === 'rect' || tag === 'line' || tag === 'g'
 }
 
+/** 父节点已在 SVG 命名空间内：子标签必须同名创建（`text`/`tspan` 等 HTML 无对应标签，名单兜不住） */
+function inSvgContext(parent: Element | ShadowRoot): boolean {
+  return parent instanceof Element && parent.namespaceURI === SVG_NS
+}
+
 export function render(node: El | string | Node, parent: Element | ShadowRoot): Element | Text {
   if (typeof node === 'string') {
     const t = document.createTextNode(node)
@@ -37,7 +42,9 @@ export function render(node: El | string | Node, parent: Element | ShadowRoot): 
     return node as Element
   }
   const { tag, props, children } = node
-  const el = isSvg(tag) ? document.createElementNS(SVG_NS, tag) : document.createElement(tag)
+  const el = (isSvg(tag) || inSvgContext(parent))
+    ? document.createElementNS(SVG_NS, tag)
+    : document.createElement(tag)
 
   for (const [key, raw] of Object.entries(props)) {
     if (raw === null || raw === undefined || raw === false) continue

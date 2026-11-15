@@ -1075,3 +1075,114 @@ describe('切片元素的上下外边距预算', () => {
       ])
   })
 })
+
+// ─── 同页多锚点让位：第二/第三张表格被长高内容按设计间隙下推 ───
+
+/** 动态表：模板盒 = 表头 8 + 数据 8 = 16mm；renderRowCount 为按数据展开的实际渲染行数 */
+function dynTable(
+  id: string,
+  top: number,
+  renderRowCount: number,
+  opts: { paginationDisabled?: boolean } = {},
+): Record<string, any> {
+  const renderRows = Array.from({ length: renderRowCount }, (_, r) => ({
+    type: r === 0 ? 'header' : 'data',
+    height: 8,
+    cells: [{ content: '', rowspan: 1, colspan: 1, merged: false }],
+  }))
+  return {
+    id,
+    type: 'table',
+    options: {
+      left: 0, top, width: 100, height: 16,
+      tableRows: [renderRows[0]!, renderRows[1]!],
+      _renderRows: renderRows,
+      _repeatHeaderCount: 1,
+    },
+    tablePagination: { enabled: !opts.paginationDisabled },
+  }
+}
+
+/** 表格测量：行高全 8mm，重复表头 1 行 */
+function measureTables(entries: Array<[string, number]>): Map<string, MeasuredElement> {
+  return new Map(entries.map(([id, rowCount]) => {
+    const hs = Array(rowCount).fill(8)
+    return [id, {
+      id,
+      measuredHeight: hs.reduce((s: number, h: number) => s + h, 0),
+      measuredRowHeights: hs,
+      repeatHeaderHeight: 8,
+    }]
+  }))
+}
+
+describe('同页多锚点让位', () => {
+  it('上表按数据长高（跟随区越过下表设计 top）：下表按设计间隙被下推，不再叠压', () => {
+    const a = dynTable('tbl-a', 8, 7)          // 实际 8..64；设计盒 8..24
+    const labelA = freeEl('lbl-a', 28, 66)     // A 的跟随区，设计底 28+66=94（与 B 设计 top 相切）
+    const b = dynTable('tbl-b', 94, 6)         // 实际 48mm；设计 top 94
+    const pages = paginate(
+      makeFreeTemplate([a, labelA, b]),
+      measureTables([['tbl-a', 7], ['tbl-b', 6]]),
+    )
+    expect(pages).toHaveLength(1)
+    // A 实际渲染底 = 8 + 56 + 跟随区(94-24=70) = 134；设计前沿 94，设计间隙 0 → B 落位 134
+    const sliceB = pages[0]!.sections.find(s => s.elementId === 'tbl-b')!
+    expect(sliceB).toMatchObject({ type: 'table-slice', startRow: 0, endRow: 6 })
+    expect(sliceB.renderTop).toBe(134)
+    // A 升级为 flow-group，跟随标题被实际内容下推：64 + (28-24) = 68 起
+    const groupA = pages[0]!.sections.find(s => s.elementId === 'tbl-a')!
+    expect(groupA).toMatchObject({ type: 'flow-group', groupTop: 8 })
+    expect(groupA.followElementIds).toContain('lbl-a')
+  })
+
+  it('上表未长高：下表保持设计 top，WYSIWYG 语义不变', () => {
+    const a = dynTable('tbl-a', 8, 2)  // 实际 = 模板 16mm，渲染底 24 = 设计底
+    const b = dynTable('tbl-b', 60, 2)
+    const pages = paginate(
+      makeFreeTemplate([a, b]),
+      measureTables([['tbl-a', 2], ['tbl-b', 2]]),
+    )
+    expect(pages).toHaveLength(1)
+    expect(pages[0]!.sections.find(s => s.elementId === 'tbl-b')!.renderTop).toBe(60)
+  })
+
+  it('三表链式下推：每张表按各自设计间隙接在上一张的实际渲染底之下', () => {
+    const a = dynTable('tbl-a', 8, 7)   // 实际 8..64（无跟随区）
+    const b = dynTable('tbl-b', 30, 6)  // 设计底 46；64 > 30 → 间隙 30-24=6 → 落位 70
+    const c = dynTable('tbl-c', 60, 6)  // 设计底 76；B 实际底 70+48=118 > 60 → 间隙 60-46=14 → 落位 132
+    const pages = paginate(
+      makeFreeTemplate([a, b, c]),
+      measureTables([['tbl-a', 7], ['tbl-b', 6], ['tbl-c', 6]]),
+    )
+    expect(pages).toHaveLength(1)
+    expect(pages[0]!.sections.find(s => s.elementId === 'tbl-b')!.renderTop).toBe(70)
+    expect(pages[0]!.sections.find(s => s.elementId === 'tbl-c')!.renderTop).toBe(132)
+  })
+
+  it('下表被推后，其跟随区随组整体下移（组容器起点 = 下推后的落位）', () => {
+    const a = dynTable('tbl-a', 8, 7)        // 实际 8..64
+    const b = dynTable('tbl-b', 40, 6)       // 设计底 56；64 > 40 → 间隙 16 → 落位 80
+    const labelB = freeEl('lbl-b', 60, 7)    // B 的跟随区，设计底 67
+    const pages = paginate(
+      makeFreeTemplate([a, b, labelB]),
+      measureTables([['tbl-a', 7], ['tbl-b', 6]]),
+    )
+    expect(pages).toHaveLength(1)
+    const groupB = pages[0]!.sections.find(s => s.elementId === 'tbl-b')!
+    expect(groupB).toMatchObject({ type: 'flow-group', groupTop: 80 })
+    expect(groupB.followElementIds).toContain('lbl-b')
+  })
+
+  it('表格分页未启用的下表同样被下推（整表单片让位）', () => {
+    const a = dynTable('tbl-a', 8, 7)
+    const b = dynTable('tbl-b', 40, 6, { paginationDisabled: true })  // 落位 80
+    const pages = paginate(
+      makeFreeTemplate([a, b]),
+      measureTables([['tbl-a', 7], ['tbl-b', 6]]),
+    )
+    expect(pages).toHaveLength(1)
+    expect(pages[0]!.sections.find(s => s.elementId === 'tbl-b')!)
+      .toMatchObject({ type: 'table-slice', startRow: 0, endRow: 6, renderTop: 80 })
+  })
+})

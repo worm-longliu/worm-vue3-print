@@ -104,7 +104,10 @@ export function resolveWatermarkText(
     if (resolved != null && typeof resolved !== 'object' && String(resolved) !== binding) {
       text = String(resolved)
     } else {
-      text = wm.testData ?? `[${wm.binding}]`
+      // testData 被配置面板落成空串时视为「未填」：直接 `??` 会让空串通过，
+      // 设计态（无业务数据）水印整层不渲染，只剩预览/打印能看到。
+      const fallback = typeof wm.testData === 'string' ? wm.testData.trim() : ''
+      text = fallback ? wm.testData! : `[${wm.binding}]`
     }
   }
 

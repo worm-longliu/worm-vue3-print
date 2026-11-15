@@ -146,6 +146,8 @@ export class PrintDesignerElement extends HTMLElement {
   /** 工具栏收纳的尺寸驱动源：容器宽度变化不触发重绘，需观察器重跑后置遍 */
   private toolbarRo: ResizeObserver | null = null
   private scrollPos = { x: 0, y: 0 }
+  /** 页签 pane（属性台/素材台的 .pd-tab-pane）最近一次 scrollTop，按 data-pane 键记账：整树重建换节点后回写 */
+  private paneScroll = new Map<string, number>()
   private marquee = { visible: false, x: 0, y: 0, w: 0, h: 0 }
   private menu = { visible: false, x: 0, y: 0, flipX: 0, flipY: 0, targetId: null as string | null }
   private guidePreview: { type: 'vertical' | 'horizontal'; position: number } | null = null
@@ -630,6 +632,11 @@ export class PrintDesignerElement extends HTMLElement {
     const shell = this.root.querySelector<HTMLElement>('.designer-container')!
     // canvas 的 PrintDesigner 根节点：格式刷激活时挂 `.format-painting`，画布区光标变十字（派生 CSS 自带该规则）
     shell.classList.toggle('format-painting', this.format.painterActive)
+    // 可见 pane 的 scrollTop 重建前从活节点刷新一遍（捕获监听兜底之外的双保险；
+    // 隐藏 pane 读到的是 0，跳过以免覆盖滚动事件记下的真值）
+    for (const pane of shell.querySelectorAll<HTMLElement>('[data-pane]')) {
+      if (pane.style.display !== 'none') this.paneScroll.set(pane.dataset.pane!, pane.scrollTop)
+    }
     clear(shell)
     const ctx = this.ctx
     render(renderToolbar(ctx, renderFormatBar(ctx as ShellCtx & { format: FormatToolbar })), shell)
@@ -659,6 +666,13 @@ export class PrintDesignerElement extends HTMLElement {
     if (area) {
       area.scrollLeft = this.scrollPos.x
       area.scrollTop = this.scrollPos.y
+    }
+    // 属性台/素材台的页签 pane 同为整树重建换新的滚动容器（.pd-tab-pane overflow:auto），
+    // 不回写 scrollTop 会跳顶（改字号、开关等任何属性台操作都触发 repaint）；
+    // canvas 的 v-show 节点常驻无此问题。隐藏 pane 本次写不进（无布局被夹为 0），下帧可见时再补
+    for (const pane of shell.querySelectorAll<HTMLElement>('[data-pane]')) {
+      const top = this.paneScroll.get(pane.dataset.pane!)
+      if (top !== undefined) pane.scrollTop = top
     }
     this.syncRulers()
     this.persistChrome()
@@ -1260,6 +1274,20 @@ export class PrintDesignerElement extends HTMLElement {
     if (this.instanceDisposers.length) return
     this.bindPointer()
     this.bindKeys()
+    this.bindPaneScroll()
+  }
+
+  /**
+   * 页签 pane 滚动记账：scroll 事件不冒泡，在 shadow root 捕获阶段拦截。
+   * pane 节点随整树重建每帧更换，scrollTop 只能外置（同 canvas-area 的 scrollPos 思路）。
+   */
+  private bindPaneScroll() {
+    this.on(this.root, 'scroll', ev => {
+      const t = ev.target
+      if (!(t instanceof HTMLElement)) return
+      const key = t.dataset.pane
+      if (key) this.paneScroll.set(key, t.scrollTop)
+    }, true)
   }
 
   // ─── 全局指针移动：拖拽 / 缩放 / 吸附 ───

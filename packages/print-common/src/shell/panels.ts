@@ -42,6 +42,8 @@ export function renderLeftPanel(ctx: ShellCtx) {
   // 只渲染当前页签会让隐藏 DOM 签名与 canvas 不一致，也会让页签切换时的首帧布局测量落空
   const tabPane = (tab: string, children: unknown[], extraClass = '') => h('div', {
     class: `pd-tab-pane${extraClass ? ` ${extraClass}` : ''}`, role: 'tabpanel',
+    // 滚动记账键：整树重建会换掉 pane 节点，paint 尾部按该键回写 scrollTop（见 print-designer.ts）
+    dataset: { pane: `left:${tab}` },
     style: st.leftTab === tab ? '' : { display: 'none' },
   }, children)
 

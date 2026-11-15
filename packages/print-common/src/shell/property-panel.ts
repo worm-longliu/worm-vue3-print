@@ -573,6 +573,8 @@ function customPane(ctx: ShellCtx, el: RuntimeElement, custom: PluginPropertyTab
   }
   return h('div', {
     class: 'pd-tab-pane', role: 'tabpanel',
+    // 滚动记账键：整树重建会换掉 pane 节点，paint 尾部按该键回写 scrollTop（见 print-designer.ts）
+    dataset: { pane: 'prop:custom' },
     style: ctx.state.propTab === 'custom' ? '' : { display: 'none' },
   }, [content])
 }
@@ -636,6 +638,7 @@ export function renderPropertyPanel(ctx: ShellCtx) {
       customTab && el ? customPane(ctx, el, customTab) : '',
       h('div', {
         class: 'pd-tab-pane', role: 'tabpanel',
+        dataset: { pane: 'prop:element' },
         style: tab === 'element' ? '' : { display: 'none' },
       }, el
         // canvas：元素页签内先渲染 PropertySearch，再是 .property-content 分组们
@@ -643,6 +646,7 @@ export function renderPropertyPanel(ctx: ShellCtx) {
         : [h('p', { class: 'pd-empty', text: '请在画布中选择一个元素' })]),
       h('div', {
         class: 'pd-tab-pane', role: 'tabpanel',
+        dataset: { pane: 'prop:page' },
         style: tab === 'page' ? '' : { display: 'none' },
       }, [pagePane(ctx)]),
     ].filter(Boolean)),

@@ -31,6 +31,7 @@
 
 ### 修复
 
+- **零框架设计器里水印表达式不再被配置项冲掉，设计稿也能看到水印**：属性台的 `commit()` 只把旋转/颜色/透明度/密度等数值键写回，而 `updateTemplateData()` 是浅合并——`watermark` 整体被替换，已配好的 `mode` / `binding` / `content` 随之消失，表现为改任一项就把表达式清空（「恢复默认值」走同一条路径）。现以当前水印为基底整体写回，只覆盖本次改动的键。设计稿看不到水印另有两处成因：`core/h.ts` 只按标签名名单创建 SVG 元素，瓦片内的 `<text>` 被建成 HTML 元素、SVG 不绘制，现改为父节点在 SVG 命名空间时子标签同名创建；表达式水印在无业务数据时回退 `testData`，而配置面板会把未填的测试值落成空串，`??` 让空串通过导致水印整层不渲染，现空串（含纯空白）继续回退 `[表达式]` 占位。预览与服务端出纸走 core 的 HTML 字符串渲染，本来没有这两处偏差。
 - **零框架设计器卸载后不再残留全局监听**：`bindPointer()` 原先以匿名函数往 `window` / 宿主元素 / shadow root 挂 5 个监听，`bindKeys()` 另挂 2 个，`disconnectedCallback()` 没有对应 `remove`，SPA 路由反复挂载会累积监听并持有整个实例；注入宿主文档 `head` 的 `@font-face` 与首挂标尺测量的 rAF 也未回收。现统一经实例级登记器成对摘除，重连时按同一路径重新登记；`host-contract.spec.ts` 新增 2 条卸载 / 重连断言，把 window 与 document 的 add / remove 逐项对拍。行为零变化。
 - **主站打印输出弹窗不再永远停在「检测中…」**：页面加载时 `template-session` 已在后台扫描本机打印客户端端口，弹窗再扫一遍时浏览器对失败的 WebSocket 连接限流，实测超过 30s 仍不收口。现给每次探测 8s 上限（`AbortController` 传给 `PrintClient.connect(signal)`），超时按「离线」收口，「重新检测」可再次发起。另修正两份验收脚本里 `page.waitForFunction(fn, { timeout })` 的超时参数位置（第二参是传给页面函数的 arg、第三参才是 options，写错会静默退回默认 30s），并把主站纳入业务场景快检的 console 噪声口径与 `verify-demo` 对齐。
 

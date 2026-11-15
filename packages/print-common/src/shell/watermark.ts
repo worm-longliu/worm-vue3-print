@@ -41,17 +41,18 @@ export function watermarkSection(ctx: ShellCtx) {
     return 'custom'
   })()
 
-  /** 统一落盘：只覆盖本区段负责的键，保留时间戳等其它水印配置 */
+  /** 统一落盘：以内置缺省补齐数值键后整体写回。
+   *  注意必须带上当前 wm 的其余键（mode/content/binding/timestamp/format）：
+   *  updateTemplateData 是浅合并，watermark 整体被替换，漏掉这些键就会把已配好的表达式清空。 */
   const commit = (patch: Partial<WatermarkOptions>) => {
     const base: WatermarkOptions = {
+      ...wm,
       testData: wm?.testData ?? '',
       rotate: wm?.rotate ?? WATERMARK_DEFAULTS.rotate,
       color: wm?.color || WATERMARK_DEFAULTS.color,
       opacity: wm?.opacity ?? WATERMARK_DEFAULTS.opacity,
       tileWidth: wm?.tileWidth ?? WATERMARK_DEFAULTS.tileWidth,
       tileHeight: wm?.tileHeight ?? WATERMARK_DEFAULTS.tileHeight,
-      timestamp: wm?.timestamp,
-      format: wm?.format,
     }
     ctx.store.updateTemplateData({ watermark: { ...base, ...patch } })
   }
