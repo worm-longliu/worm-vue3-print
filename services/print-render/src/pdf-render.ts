@@ -24,9 +24,7 @@ function runtime(): PrintRuntime {
     cachedRuntime = createDomHostRuntime(
       createPlaywrightDriverFactory(BrowserPool.getInstance()),
       loadExecutorBundle(),
-      // 第三参是 §4.3 旧 chartBundle 兼容位，P5 起留空；
       // 扩展元素执行器一律由注册表自动收集，新增插件无需改本文件。
-      undefined,
       collectExecutorBundles(),
     )
   }

@@ -1,5 +1,6 @@
 // demo/src/samples/element-helper.ts
 // 示例模板的元素/表格行构造函数：手写模板 JSON 太啰嗦，这里按最小必要字段收口。
+import type {} from '@worm-vue3-print/echarts'
 import type {
   ElementOptions,
   ElementType,
@@ -24,7 +25,16 @@ const TYPE_TITLES: Record<ElementType, string> = {
   qrcode: '二维码',
   html: 'HTML',
   pageNumber: '页码',
-  chart: '图表',
+  barChart: '柱状图',
+  barHChart: '条形图',
+  lineChart: '折线图',
+  areaChart: '面积图',
+  pieChart: '饼图',
+  doughnutChart: '环形图',
+  scatterChart: '散点图',
+  radarChart: '雷达图',
+  funnelChart: '漏斗图',
+  gaugeChart: '仪表盘',
 }
 
 /** 单元格简写：字符串即表达式，对象则可补充对齐/字号等 */

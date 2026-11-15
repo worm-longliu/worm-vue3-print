@@ -66,13 +66,12 @@ interface Produced {
 
 /**
  * core 运行时：Electron driver + core 的 DOM 执行器 + 注册表自动收集的扩展元素执行器。
- * 第三参保留 §4.3 旧 chartBundle 兼容位；新增插件只需在部署白名单里 import 一次。
+ * 新增插件只需在部署白名单里 import 一次。
  */
 export function createPrintRuntime(): PrintRuntime {
   return createDomHostRuntime(
     createElectronDriverFactory(),
     loadExecutorBundle(),
-    undefined,
     collectExecutorBundles(),
   )
 }

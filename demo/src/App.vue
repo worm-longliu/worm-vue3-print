@@ -183,8 +183,8 @@ import { createTemplateSession, type TemplateSessionStatus } from './template-se
 
 /**
  * ECharts 图表扩展由上方 `@worm-vue3-print/echarts` 的副作用 import 自注册：
- * 素材卡 / 画布组件 / 属性台 / 出图渲染器全部来自插件描述符，预览与打印共用注册表，
- * 宿主不再手写 installEchartsDesignerExtension() 或 createChartRenderer()。
+ * 一个插件注册十个图表元素，素材卡 / 画布组件 / 属性台 / 出图渲染器全部来自插件描述符，
+ * 预览与打印共用注册表，宿主不需要任何手写注册代码。
  */
 /** 相对路径图片（/docfiles/...）拼接基址：浏览器预览与打印保持一致，默认取当前站点 origin */
 const RENDER_BASE_URL = (import.meta.env.VITE_RENDER_BASE_URL as string | undefined) || window.location.origin

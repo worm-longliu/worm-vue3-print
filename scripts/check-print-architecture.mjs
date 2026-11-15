@@ -46,9 +46,9 @@ const SELF_CHECK = [
   { text: "import 'echarts/core'", hit: true },
   { text: "const e = await import('echarts')", hit: true },
   { text: "const e = require('echarts/charts')", hit: true },
-  { text: "import { loadChartExecutorBundle } from '@worm-vue3-print/echarts/node'", hit: false },
+  { text: "import { collectExecutorBundles } from '@worm-vue3-print/core'", hit: false },
   { text: "import '@worm-vue3-print/echarts/node'", hit: false },
-  { text: "import { createChartRenderer } from '@worm-vue3-print/echarts'", hit: false },
+  { text: "import '@worm-vue3-print/echarts'", hit: false },
   { text: "const x = require('@worm-vue3-print/echarts/node')", hit: false },
 ]
 
