@@ -1,48 +1,66 @@
-import { describe, expect, it } from 'vitest'
-import type { ChartSpec } from '@worm-vue3-print/core'
-import { createChartRenderer, mmToChartPx, renderChartToSvg } from '../renderer.js'
+import { describe, it, expect } from 'vitest'
+import { bindChartData } from '../bind.js'
+import { createDefaultChartOption } from '../defaults.js'
+import { CHART_KINDS } from '../kinds.js'
 
-const BAR_OPTION: Record<string, unknown> = {
-  title: { text: '月度销量' },
-  xAxis: { type: 'category', data: ['一月', '二月', '三月'] },
-  yAxis: { type: 'value' },
-  series: [{ type: 'bar', data: [12, 20, 15] }],
+const DATA = {
+  trend: [
+    { name: '一月', sales: 120, profit: 40 },
+    { name: '二月', sales: 168, profit: 62 },
+  ],
 }
 
-function makeSpec(overrides: Partial<ChartSpec> = {}): ChartSpec {
-  return { key: 'bar-1', option: BAR_OPTION, widthMm: 50, heightMm: 30, ...overrides }
+/** 出纸前数据已绑定：用真实绑定产物而不是模板里的 $data 占位 */
+const boundOption = (type: string): Record<string, unknown> => {
+  const patch = bindChartData(type, {
+    chartOption: createDefaultChartOption(type),
+    chartDataSource: 'trend',
+    chartCategoryField: type === 'scatterChart' ? 'sales' : 'name',
+    chartValueFields: ['sales', 'profit'],
+  }, DATA)
+  return (patch._chartOption as Record<string, unknown>) ?? {}
 }
+import { fitSvgRoot, mmToChartPx, renderChartElement, renderChartToSvg } from '../renderer.js'
 
-describe('renderChartToSvg', () => {
-  it('输出可内联铺满 mm 盒子的 SVG 根节点', () => {
-    const spec = makeSpec()
-    const svg = renderChartToSvg(spec)
-    const widthPx = mmToChartPx(spec.widthMm)
-    const heightPx = mmToChartPx(spec.heightMm)
-    expect(svg).toContain('<svg')
-    expect(svg).toContain('</svg>')
-    expect(svg).toContain(`viewBox="0 0 ${widthPx} ${heightPx}"`)
-    expect(svg).toContain('width="100%"')
-    expect(svg).toContain('height="100%"')
-    expect(svg).toContain('style="display:block')
-    // 矢量缩放：根节点不残留固定 px 宽高（内容里的 rect 仍按出图像素绘制）
-    const rootTag = /<svg\b[^>]*>/i.exec(svg)?.[0] ?? ''
-    expect(rootTag).not.toContain(`width="${widthPx}"`)
-    expect(rootTag).not.toContain(`height="${heightPx}"`)
+const specOf = (type: string) => ({
+  key: `${type}-1`,
+  type,
+  option: boundOption(type),
+  widthMm: 100,
+  heightMm: 60,
+})
+
+describe('SVG 渲染器', () => {
+  it('十类图表都能渲染出带 viewBox 的 SVG', () => {
+    for (const type of CHART_KINDS) {
+      const svg = renderChartToSvg(specOf(type))
+      expect(svg.startsWith('<svg'), type).toBe(true)
+      expect(svg).toContain('viewBox')
+      expect(svg).toContain('width="100%"')
+    }
   })
 
-  it('含中文标题不崩溃且文本进入产物', () => {
-    const svg = renderChartToSvg(makeSpec({ option: { ...BAR_OPTION, title: { text: '销售趋势（中文标题）' } } }))
-    expect(svg).toContain('<svg')
-    expect(svg).toContain('销售趋势')
+  it('mm→px 换算与 SVG 根节点归一', () => {
+    expect(mmToChartPx(25.4)).toBe(96)
+    expect(mmToChartPx(0)).toBe(1)
+    const normalized = fitSvgRoot('<svg width="10" height="20" viewBox="0 0 10 20"><g/></svg>', 96, 192)
+    expect(normalized).toContain('width="100%"')
+    expect(normalized).toContain('viewBox="0 0 96 192"')
   })
 
-  it('createChartRenderer 实现 ChartRenderer 端口', () => {
-    const renderer = createChartRenderer()
-    expect(renderer.render(makeSpec())).toContain('<svg')
+  it('非法 option 抛错（由调用方降级）', () => {
+    expect(() => renderChartToSvg({ key: 'k', type: 'barChart', option: [] as any, widthMm: 10, heightMm: 10 })).toThrow()
+  })
+})
+
+describe('通用渲染分派入口', () => {
+  it('绑定后的 _chartOption 优先，输出 SVG', () => {
+    const html = renderChartElement({ type: 'pieChart', title: '饼图', widthMm: 60, heightMm: 60, _chartOption: createDefaultChartOption('pieChart') } as any)
+    expect(html.startsWith('<svg')).toBe(true)
   })
 
-  it('非法 option 抛错，交给 core 降级占位', () => {
-    expect(() => renderChartToSvg(makeSpec({ option: null as unknown as Record<string, unknown> }))).toThrow()
+  it('缺 option 或 option 非法时回落标题文本占位', () => {
+    expect(renderChartElement({ type: 'barChart', title: '标题' } as any)).toBe('<span>标题</span>')
+    expect(renderChartElement({ type: 'barChart', title: 'X', chartOption: [1] } as any)).toBe('<span>X</span>')
   })
 })

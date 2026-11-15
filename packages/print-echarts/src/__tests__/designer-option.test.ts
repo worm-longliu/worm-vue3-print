@@ -1,51 +1,48 @@
-import { describe, expect, it } from 'vitest'
-import { CHART_PALETTES, createDefaultChartOption } from '../constants.js'
-import {
-  asObject,
-  previewChartOption,
-  readChartType,
-  readPaletteKey,
-  syncSeriesCount,
-  withChartType,
-} from '../designer/option-utils.js'
+import { describe, it, expect } from 'vitest'
+import { createDefaultChartOption } from '../defaults.js'
+import { previewChartOption, readPaletteKey, syncSeriesCount } from '../designer/option-utils.js'
 
-describe('设计器图表 option 工具', () => {
-  it('previewChartOption 把 $data 占位替换为示例数据（不修改原对象）', () => {
-    const raw = createDefaultChartOption('bar')
-    const preview = previewChartOption(raw)
-    expect((preview.xAxis as Record<string, unknown>).data).toEqual(['示例一', '示例二', '示例三'])
-    expect(((preview.series as Record<string, unknown>[])[0]!).data).toEqual([12, 20, 15])
-    // 模板态占位保持不变，避免预览污染设计文件
-    expect(((raw.series as Record<string, unknown>[])[0]!).data).toEqual(['$data'])
+const preview = (type: string) => previewChartOption(type, createDefaultChartOption(type)) as Record<string, any>
+
+describe('设计态预览占位', () => {
+  it('直角系：类目与数值样例', () => {
+    const bar = preview('barChart')
+    expect(bar.xAxis.data).toEqual(['示例一', '示例二', '示例三'])
+    expect(bar.series[0].data).toHaveLength(3)
+    expect(typeof bar.series[0].data[0]).toBe('number')
   })
 
-  it('withChartType 切换面积/饼/散点的坐标系与 series 形态', () => {
-    const bar = createDefaultChartOption('bar')
-    expect(readChartType(bar)).toBe('bar')
-
-    const area = withChartType(bar, 'area')
-    expect(readChartType(area)).toBe('area')
-    expect(((area.series as Record<string, unknown>[])[0]!).areaStyle).toBeTruthy()
-
-    const pie = withChartType(bar, 'pie')
-    expect(pie.xAxis).toBeUndefined()
-    expect(((pie.series as Record<string, unknown>[])[0]!).type).toBe('pie')
-
-    const scatter = withChartType(bar, 'scatter')
-    expect(asObject(scatter.xAxis).type).toBe('value')
-    expect(((scatter.series as Record<string, unknown>[])[0]!).type).toBe('scatter')
+  it('饼图/漏斗生成 { name, value }', () => {
+    expect(preview('pieChart').series[0].data[0]).toMatchObject({ name: '示例一', value: expect.any(Number) })
+    expect(preview('funnelChart').series[0].data).toHaveLength(3)
   })
 
-  it('syncSeriesCount 按数值字段数对齐 series 且保留 $data 占位', () => {
-    const option = syncSeriesCount(createDefaultChartOption('bar'), 3)
-    const series = option.series as Record<string, unknown>[]
-    expect(series).toHaveLength(3)
-    for (const item of series) expect(item.data).toEqual(['$data'])
+  it('散点生成 [x,y]，雷达生成 indicator + 行系列，仪表盘生成 { value }', () => {
+    expect(Array.isArray(preview('scatterChart').series[0].data[0])).toBe(true)
+    const radar = preview('radarChart')
+    expect(radar.radar.indicator).toHaveLength(3)
+    expect(radar.series[0].data[0]).toMatchObject({ name: '示例', value: expect.any(Array) })
+    expect(preview('gaugeChart').series[0].data[0]).toMatchObject({ value: expect.any(Number) })
   })
 
-  it('readPaletteKey 命中预设配色', () => {
-    const option = { ...createDefaultChartOption('bar'), color: [...CHART_PALETTES[1]!.colors] }
-    expect(readPaletteKey(option, CHART_PALETTES)).toBe('fresh')
-    expect(readPaletteKey(createDefaultChartOption('bar'), CHART_PALETTES)).toBe('default')
+  it('非法 option 返回空对象', () => {
+    expect(previewChartOption('barChart', undefined)).toEqual({})
+    expect(previewChartOption('barChart', [] as any)).toEqual({})
+  })
+})
+
+describe('配色回读与 series 对齐', () => {
+  it('readPaletteKey 命中预设或回落 default', () => {
+    const palettes = [{ key: 'default', colors: ['#111', '#222'] }]
+    expect(readPaletteKey({ color: ['#111', '#222'] }, palettes)).toBe('default')
+    expect(readPaletteKey({ color: ['#999'] }, palettes)).toBe('default')
+  })
+
+  it('syncSeriesCount 按 kind 的 series 类型补足并保留自定义字段', () => {
+    const line = syncSeriesCount({ series: [{ type: 'line', data: ['$data'], symbolSize: 4 }] }, 2, 'lineChart') as Record<string, any>
+    expect(line.series).toHaveLength(2)
+    expect(line.series[1].type).toBe('line')
+    expect(line.series[1].symbolSize).toBe(4)
+    expect(line.series[1].data).toEqual(['$data'])
   })
 })

@@ -1,2 +1,2 @@
-// 执行器产物版本：随执行器契约变化而递增（与包版本无关），宿主可据此判断是否需要重新注入。
-export const CHART_EXECUTOR_VERSION = '1'
+/** 页面执行器插件版本：执行器协议变化时递增（renderAssets 契约）；与 npm 包版本无关 */
+export const CHART_EXECUTOR_VERSION = '2'

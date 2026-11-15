@@ -11,9 +11,9 @@
 import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { echarts, type EChartsType } from '../echarts.js'
+import { normalizeChartOption } from '../normalize.js'
 import { previewChartOption } from './option-utils.js'
 
-// 与 canvas ElementComponentProps 同形（内联类型字面量，便于 SFC 编译期提取运行时 props）
 const props = defineProps<{
   element: RuntimeElement
   data?: Record<string, any>[]
@@ -24,6 +24,10 @@ const containerRef = ref<HTMLDivElement>()
 let chart: EChartsType | null = null
 let observer: ResizeObserver | null = null
 
+function elementType(): string {
+  return props.element.printElementType?.type ?? ''
+}
+
 function draw(): void {
   if (!chart) return
   try {
@@ -31,7 +35,8 @@ function draw(): void {
       {
         // 设计态禁用动画；非设计态交给默认动画（打印端固定 animation:false）
         animation: props.designMode !== true,
-        ...previewChartOption(props.element.options.chartOption),
+        // 预览按 kind 生成合法示例形态，再按 kind 归一 series/轴，避免雷达/散点空白
+        ...normalizeChartOption(elementType(), previewChartOption(elementType(), props.element.options.chartOption)),
       },
       true,
     )
@@ -55,7 +60,7 @@ onMounted(async () => {
   }
 })
 
-// 图形化面板 / JSON 编辑器都会改写 element.options.chartOption（响应式对象），深度监听重绘
+// 图形化面板改写 element.options.chartOption（响应式对象），深度监听重绘
 watch(
   () => [
     props.element.options.chartOption,
@@ -63,6 +68,8 @@ watch(
     props.element.options.chartCategoryField,
     props.element.options.chartValueFields,
     props.element.options.chartSeriesField,
+    props.element.options.chartBubble,
+    props.element.printElementType?.type,
   ],
   draw,
   { deep: true },
