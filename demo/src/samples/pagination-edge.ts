@@ -3,7 +3,7 @@
 // P1 末页组合贴表格片底部（换页流式光标回归）；P2 组超剩余预算整组移页；
 // P3 50mm 超高明细行 × 跨页重复表头；P4 并排堆叠簇并集扣高 + 贴满 275mm 预算线；
 // P5 keepWithNext 绑定对差 1mm 必须整体移页。对应引擎侧断言见 print-core pagination-engine.edge.test.ts。
-import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/common/vue3'
 import type { SampleTemplate } from './types'
 import rawTemplate from '../template-pagination-edge.json'
 

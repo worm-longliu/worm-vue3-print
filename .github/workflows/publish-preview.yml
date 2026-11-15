@@ -48,8 +48,8 @@ jobs:
         run: |
           npm run build -w @worm-vue3-print/core
           npm run build -w @worm-vue3-print/plugin-kit
-          npm run build -w @worm-vue3-print/canvas
           npm run build -w @worm-vue3-print/common
+          npm run build -w @worm-vue3-print/canvas
           npm run build -w @worm-vue3-print/skills
 
       - name: 校验标签与包版本一致

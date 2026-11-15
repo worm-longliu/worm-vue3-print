@@ -1,3 +1,4 @@
+import { TOOLBAR_OVERFLOW_KEY } from '@worm-vue3-print/plugin-kit'
 import { computed, inject, nextTick, onUnmounted, provide, reactive, ref, shallowRef } from 'vue'
 import type { DirectiveBinding, InjectionKey, ObjectDirective, Ref } from 'vue'
 import { resolveToolbarOverflow } from '@worm-vue3-print/core/designer'
@@ -35,7 +36,7 @@ export function moreSlotId(id: string) {
   return `tb-more-slot-${id}`
 }
 
-export const TOOLBAR_OVERFLOW: InjectionKey<ToolbarOverflowContext> = Symbol('worm-print-toolbar-overflow')
+export const TOOLBAR_OVERFLOW: InjectionKey<ToolbarOverflowContext> = TOOLBAR_OVERFLOW_KEY as InjectionKey<ToolbarOverflowContext>
 
 /** flex gap，与 .designer-toolbar 的 gap 同源 */
 const GAP = 2

@@ -1,13 +1,12 @@
-// 图标派生脚本：扫描 print-canvas 源码里从 lucide-vue-next 导入的图标，
-// 从 lucide 的 ESM 图标产物中提取 SVG 片段，生成 print-common 的内置图标表。
-// 目的：Common 版设计器不引入 lucide 运行时依赖，但工具栏图标与 canvas 逐一对应；
-// canvas 换了图标，重新构建即自动跟随，不需要人工同步。
+// 图标派生脚本：从 print-core 的共享图标清单派生 common 的内置图标表。
+// 清单（packages/print-core/src/styles/icon-manifest.json）是图标名的单一权威来源；
+// common 不引入 lucide 运行时依赖，canvas 直接 import lucide-vue-next 的同名图标。
 import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, URL } from 'node:url'
 
 const PKG = join(fileURLToPath(import.meta.url), '../..')
-const CANVAS_SRC = join(PKG, '../print-canvas/src')
+const MANIFEST = fileURLToPath(new URL('../../../packages/print-core/src/styles/icon-manifest.json', import.meta.url))
 const OUT = join(PKG, 'src/core/icons.ts')
 
 /** PascalCase → kebab-case（lucide 文件名口径；数字前补连字符） */
@@ -16,37 +15,6 @@ function kebab(name) {
     .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
     .replace(/([A-Za-z])(\d)/g, '$1-$2')
     .toLowerCase()
-}
-
-/** 递归收集 .vue / .ts 文件 */
-function walk(dir, acc = []) {
-  for (const item of readdirSync(dir, { withFileTypes: true })) {
-    const p = join(dir, item.name)
-    if (item.isDirectory()) walk(p, acc)
-    else if (/\.(vue|ts)$/.test(item.name)) acc.push(p)
-  }
-  return acc
-}
-
-/** 从源码里提取 `import { A, B as C } from 'lucide-vue-next'` 的图标名 */
-function collectIconNames(files) {
-  const names = new Set()
-  for (const f of files) {
-    const source = readFileSync(f, 'utf8')
-    // 每文件新建正则：global 正则的 lastIndex 跨文件残留会漏掉后续匹配。
-    // 捕获段排除花括号，避免从更早的 import 起匹配而把首个图标名粘进上一段丢掉。
-    const re = /import\s*\{([^{}]*)\}\s*from\s*['"]lucide-vue-next['"]/g
-    let m
-    while ((m = re.exec(source))) {
-      for (const raw of m[1].split(',')) {
-        const part = raw.trim()
-        if (!part) continue
-        const original = (part.split(/\s+as\s+/)[0] || part).trim()
-        if (/^[A-Z]/.test(original)) names.add(original)
-      }
-    }
-  }
-  return [...names].sort()
 }
 
 /** 解析 lucide ESM 图标模块，返回内部 SVG 标记 */
@@ -71,6 +39,18 @@ function parseLucideModule(source) {
   return tags.join('')
 }
 
+let names
+try {
+  names = JSON.parse(readFileSync(MANIFEST, 'utf8')).icons
+} catch {
+  console.error('[gen-icons] 缺少共享图标清单 packages/print-core/src/styles/icon-manifest.json')
+  process.exit(1)
+}
+if (!Array.isArray(names) || !names.length) {
+  console.error('[gen-icons] 共享图标清单为空')
+  process.exit(1)
+}
+
 const LUCIDE_ICONS = (() => {
   const candidates = [
     join(PKG, '../../node_modules/lucide-vue-next/dist/esm/icons'),
@@ -84,8 +64,6 @@ if (!LUCIDE_ICONS) {
   process.exit(1)
 }
 
-const files = walk(CANVAS_SRC)
-const names = collectIconNames(files)
 // 文件名兜底索引：lucide 对含数字的图标命名不统一（grid-3x3 vs 直觉的 grid-3-x3），
 // 去掉连字符后比对，避免为个别图标硬编码别名表。
 const ICON_INDEX = new Map(readdirSync(LUCIDE_ICONS)
@@ -109,7 +87,7 @@ const decl = Object.entries(icons)
   .map(([name, svg]) => `  ${name}: '${svg.replace(/'/g, "\\'")}',`)
   .join('\n')
 
-writeFileSync(OUT, `// 自动生成，请勿手改：由 scripts/gen-icons.mjs 从 print-canvas 的 lucide 导入派生。
+writeFileSync(OUT, `// 自动生成，请勿手改：由 scripts/gen-icons.mjs 从 print-core 共享图标清单派生。
 // 图标名与 canvas 一一对应，工具栏/格式栏按同名取用，保证两处视觉一致。
 
 /** lucide 图标内部 SVG 片段（viewBox 固定 0 0 24 24，stroke 走 currentColor） */
@@ -126,5 +104,5 @@ export function iconSvg(name: string, size = 15, cls?: string): string {
 `)
 
 const rel = relative(PKG, OUT)
-console.log(`[gen-icons] canvas 导入图标 ${names.length} 个，成功派生 ${Object.keys(icons).length} 个 → ${rel}`)
+console.log(`[gen-icons] 共享清单 ${names.length} 个图标，成功派生 ${Object.keys(icons).length} 个 → ${rel}`)
 if (missing.length) console.warn('[gen-icons] 以下图标未能派生（按名字核对 lucide 文件名）：', missing.join(', '))

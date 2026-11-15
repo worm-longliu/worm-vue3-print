@@ -6,6 +6,12 @@
 
 ### 新增
 
+- **common 成为设计器权威实现，技术主站切换完成**：`demo/`（9303）的依赖、Vite alias、tsconfig paths 与运行时 import 全部改到 `@worm-vue3-print/common/vue3`，四宿主继续直挂零框架主入口；`@worm-vue3-print/canvas` 保留为 Vue 3 兼容轨，不再持有权威样式或独立能力清单。顺带修好门面预览组件的两个真实缺陷：`PrintHtmlPreview` 原先在 setup 阶段 `immediate` 渲染时 iframe 尚未挂载、写不进 HTML，改为 `onMounted` 后首渲；`h()` 拼 children 未给 key，loading 消失时 Vue 按索引 diff 把 iframe 整个重建导致刚写入的 HTML 丢失，现给 iframe / loading 稳定 key。主站实测预览 5 页出纸、四宿主官方 UI 验收各 60/60。
+- **样式、图标与主题令牌单一来源**：新增 `print-core/src/styles`（`designer.css` / `theme.css` / `icon-manifest.json`，随 core 发布为 `./styles/*` 子路径）。`gen-styles.mjs` / `gen-icons.mjs` 彻底不再读 `canvas/dist/canvas.css` 或扫 canvas 源码；canvas 反向消费共享 `:root` 主题令牌（源码内不再定义任何 `--pd-*`）。产物与改造前**逐字一致**，移走 `canvas/dist/canvas.css` 后 common 仍可生成；`gen-styles.mjs --check` 提供漂移检测；全仓构建顺序反转为 core → plugin-kit → common → canvas。
+- **统一元素注册表（内置与插件同权）**：common 新增 `core/element-definitions.ts`，内置 13 类元素（11 类素材 + html / pageNumber）与第三方插件走同一张表；`elements.ts` 的 11 个 `case` 改为渲染器映射，`panels.ts` 静态素材表、`property-panel.ts` 的 `isText/isCode/isTable`、`print-designer.ts` 的双击编辑白名单全部改为数据驱动。`registerElementDefinition()` 可覆盖内置标签/图标/属性分组/双击字段，`registerElementRenderer()` 可替换画布渲染，注销句柄只撤销自己那一版并回落基线；注册态变化通知已挂载设计器即时重绘。core 新增 `element-capabilities.ts` 能力位注册表，把 `ZONE_ALLOWED` / rotation / text-fit / element-border / binding / element-factory 六处类型白名单收敛为一张表，插件在 `defineElementPlugin({ kinds: [{ capabilities }] })` 声明即自动生效（亦可覆盖内置），所有消费点保留历史回落，存量模板零回归。
+- **版本化宿主契约**：新增 `host-contract.ts`（`PRINT_DESIGNER_CONTRACT_VERSION = 1.0.0`），把 5 个 attribute、8 个 property、5 个方法、5 个事件及其 `detail` 联合类型、8 个 `::part` 挂钩与 `--pd-*` 主题令牌收敛成机器可读契约；事件派发改引用具名常量，运行时可查 `PrintDesignerElement.contractVersion` / `getHostContract()`。`host-contract.spec.ts` 把声明面与运行时逐项对拍，漂移即红。
+- **验收进 CI**：新增 `.github/workflows/host-acceptance.yml`，跑契约 / 能力位 / 注册表单测、common 类型门禁、架构守卫，以及四宿主 + 主站的 `verify-demo` 与 `verify-business-scenarios`；common 加 `pretest` 类型门禁。
+
 - **Vue 3 宿主可零改动切换到 common 运行时**：`@worm-vue3-print/common` 新增 `/vue3` 兼容门面（纯 TS 渲染函数，`vue` 为 optional peer，主入口仍零框架）。把依赖与 import 从 `@worm-vue3-print/canvas` 换成 `@worm-vue3-print/common/vue3` 即可，宿主的模板、事件回调、`ref` 方法调用与业务逻辑一行不动：门面把对象 / 函数 props 赋成 element property、`save` 的 `CustomEvent.detail` 解成 emit 的 JSON 字符串首参、`getTemplateJson()` 由字符串还原成对象，并代理 `validateTemplate()` / `getGeometryWarnings()`。同时补齐 `PrintHtmlPreview`、`DEFAULT_DEMO_DATA`、`provideToolbarOverflow` / `createOverflowUnitDirective` 等 canvas 侧导出，类型上 `InstanceType<typeof PrintDesigner>` 含 expose 方法，`vue-tsc` 可直接通过。已在 `demo` 上实证：只改 import 与源码 alias，`vue-tsc` 0 错、`vite build` 成功（验证后还原）。能力边界见包 README「Vue 3 兼容门面」：Vue 专属元素扩展注册表不提供，自定义元素请走 plugin-kit / echarts-common。
 - **自定义插件可拿到宿主真实数据与业务字段**：`@worm-vue3-print/common` 新增 `el.designData`（单对象 / 对象数组 / `design-data` attribute 均可，单对象自动归一成数组信封），插件的画布与属性台据此用真实业务数据画预览；属性台上下文新增 `fields`（宿主业务字段清单），图表类插件可据此生成数据源 / 字段映射下拉。未注入时仍回落 `DEFAULT_DEMO_DATA`，历史宿主零改动。`@worm-vue3-print/canvas` 属性台同步透传 `fields`；demo-common Vue 3 宿主已注入当前示例数据。
 - **零框架设计器支持自定义元素插件**：新增 `@worm-vue3-print/plugin-kit`，插件用 `defineElementUI` 写一份框架无关的画布/属性台 DOM 渲染能力，`@worm-vue3-print/common` 直接消费（素材卡分组、画布、属性台首位「自定义属性」页签），Vue 3 的 `@worm-vue3-print/canvas` 自动生成桥接组件；元素语义仍由 core 的插件描述符承载，只注册 core kind、未注册 UI 的插件保持原样（素材台不出现卡片，模板内按类型名占位）。
@@ -16,11 +22,17 @@
 
 ### 变更
 
+- **发布链改为六包同批发版**：`publish:npm` / `publish-npm.yml` 按 core → plugin-kit → common → canvas → echarts → echarts-common 依赖顺序发布（另加 skills），`release.yml` 校验全部七个包版本与标签一致。`plugin-kit` 是 common / canvas 的运行时依赖，此前发布序列从不包含它，1.5.0 若按旧流程发版，宿主安装必然 404；`publish-common.yml` 现在会在单独补发 common 前校验同版本 plugin-kit 已在 registry 上。文档同步撤下 common 的「实验性 / 不建议生产」定性：它是设计器权威实现，`/vue3` 门面与 canvas 为 Vue 3 兼容轨。
 - **漏斗图 / 雷达图出厂留白收紧**：漏斗不写内边距时会吃 ECharts 的 px 默认（左右 80、上 60、下 65），60×60mm 框里图形只剩一半不到，现默认 `6% / 25% / 6% / 5%`（右侧留给外置标签）；雷达图 ECharts 6 把 `radar.radius` 默认从 5.x 的 75% 调到 50%，70×60mm 框里图形直径只剩短边一半，现默认恢复 `75%`。出厂值只影响新建元素，存量模板的 `chartOption` 已落盘、出图逐字不变。
 - **素材台与属性台加宽、素材卡改两列**：左侧素材台 224px → 248px，右侧属性台 280px → 304px；元素页签的素材卡改为两列栅格，标签文本较长的素材（如「流式列表」）独占整行，字段与图层页签不受影响。`@worm-vue3-print/canvas` 与实验性的 `@worm-vue3-print/common` 同步改动。
 - **素材台顺序调整并移除 HTML 入口**：长文移到表格之后（表格、长文、流式列表相邻），HTML 不再提供素材卡；HTML 元素类型与出纸口径不变，已存在的 HTML 元素在模板里照旧加载。`canvas` 与 `common` 同序同图标。
 - **素材台与图层图标统一为矢量图标**（lucide），`@worm-vue3-print/canvas` 与实验性的 `@worm-vue3-print/common` 两侧同构。
 - **图表配置收敛**：`configureChartPlugin` 移除 `defaultChartType` / `defaultChartOption`，保留默认尺寸、配色、追加组件与示例类目；删除旧图表兼容 API 与 `chartRenderer` / `renderCharts` 端口，扩展元素统一走 `renderAssets` 通用通道。
+
+### 修复
+
+- **零框架设计器卸载后不再残留全局监听**：`bindPointer()` 原先以匿名函数往 `window` / 宿主元素 / shadow root 挂 5 个监听，`bindKeys()` 另挂 2 个，`disconnectedCallback()` 没有对应 `remove`，SPA 路由反复挂载会累积监听并持有整个实例；注入宿主文档 `head` 的 `@font-face` 与首挂标尺测量的 rAF 也未回收。现统一经实例级登记器成对摘除，重连时按同一路径重新登记；`host-contract.spec.ts` 新增 2 条卸载 / 重连断言，把 window 与 document 的 add / remove 逐项对拍。行为零变化。
+- **主站打印输出弹窗不再永远停在「检测中…」**：页面加载时 `template-session` 已在后台扫描本机打印客户端端口，弹窗再扫一遍时浏览器对失败的 WebSocket 连接限流，实测超过 30s 仍不收口。现给每次探测 8s 上限（`AbortController` 传给 `PrintClient.connect(signal)`），超时按「离线」收口，「重新检测」可再次发起。另修正两份验收脚本里 `page.waitForFunction(fn, { timeout })` 的超时参数位置（第二参是传给页面函数的 arg、第三参才是 options，写错会静默退回默认 30s），并把主站纳入业务场景快检的 console 噪声口径与 `verify-demo` 对齐。
 
 ## V1.4.8(2026-11-11)
 

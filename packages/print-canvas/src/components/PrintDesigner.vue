@@ -544,62 +544,7 @@ function handleSave() {
 <style scoped>
 .designer-container {
   /* ── 精工排版工作台令牌：冷灰底 + 白纸 + 蓝墨点缀 ── */
-  --pd-bg: #f3f5f9;            /* 应用底色 / 内嵌控件底 */
-  --pd-surface: #ffffff;       /* 工具栏、状态栏、面板表面 */
-  --pd-field-bg: #f4f6fa;      /* 卡片、内嵌输入槽 */
-  --pd-sidebar: #ffffff;
-  --pd-sidebar-hover: #f0f3f9;
-  --pd-canvas-bg: #e6e9f0;     /* 排版垫：略深，托起纸张 */
-  --pd-paper: #FFFFFF;
-  --pd-accent: #165DFF;
-  --pd-accent-2: #3D7BFF;
-  --pd-accent-soft: rgba(22, 93, 255, .09);
-  --pd-accent-secondary: #f56c6c;
-  --pd-danger-soft: rgba(245, 108, 108, .10);
-  --pd-ink-green: #67c23a;
-  --pd-text: #2a2e37;
-  --pd-text-muted: #8b909c;
-  --pd-text-faint: #b4b9c4;
-  --pd-border: #d9dde6;
-  --pd-border-soft: #e9ecf2;
   /* ── 控件与浮层表面令牌：原写死值登记在此，浅色默认逐像素不变，深色主题方可逐位覆盖 ── */
-  --pd-input-bg: #ffffff;        /* 输入框 / 下拉 / textarea / 选项 chip 衬底 */
-  --pd-hover-tint: #ecf5ff;      /* 未激活页签与列表项 hover 蓝调 */
-  --pd-danger: #e53e3e;          /* 表达式预览错误态：文字 / 底 / 描边 */
-  --pd-danger-bg: #fef2f2;
-  --pd-danger-border: #fecaca;
-  --pd-menu-text: #333;          /* 表格右键菜单：文字 / 描边 / hover / 分隔线 / 禁用 / 分组标题 */
-  --pd-menu-hover: #f5f7fa;
-  --pd-menu-border: #dcdfe6;
-  --pd-menu-divider: #ebeef5;
-  --pd-menu-muted: #909399;
-  --pd-menu-disabled: #c0c4cc;
-  --pd-scrollbar: rgba(23, 32, 60, .18);        /* scrollbar-color（Firefox 通路） */
-  --pd-scrollbar-thumb: rgba(23, 32, 60, .16);  /* WebKit 滚动条滑块 */
-  --pd-scrollbar-thumb-hover: rgba(23, 32, 60, .30);
-  --pd-help-field-bg: #f0f9ff;   /* 表达式弹窗四张帮助卡片：底色 / 描边 / 标题字色 */
-  --pd-help-field-line: #bae6fd;
-  --pd-help-field-ink: #0369a1;
-  --pd-help-function-bg: #f0fdf4;
-  --pd-help-function-line: #bbf7d0;
-  --pd-help-function-ink: #166534;
-  --pd-help-variable-bg: #fefce8;
-  --pd-help-variable-line: #fde68a;
-  --pd-help-variable-ink: #854d0e;
-  --pd-help-conditional-bg: #fdf2f8;
-  --pd-help-conditional-line: #fbcfe8;
-  --pd-help-conditional-ink: #9d174d;
-  --pd-handle: #165DFF;
-  --pd-ruler: #9aa1af;
-  --pd-ruler-bg: #f8f9fc;
-  --pd-ruler-cursor: #165DFF;
-  --pd-radius: 6px;
-  --pd-shadow-sm: 0 1px 2px rgba(23, 32, 60, .05);
-  --pd-shadow-md: 0 2px 8px rgba(23, 32, 60, .06), 0 10px 28px rgba(23, 32, 60, .07);
-  --pd-shadow-paper: 0 0 0 1px rgba(23, 32, 60, .05),
-                     0 1px 2px rgba(23, 32, 60, .06),
-                     0 8px 20px rgba(23, 32, 60, .08),
-                     0 26px 60px rgba(23, 32, 60, .15);
   height: 100%;
   display: flex;
   flex-direction: column;

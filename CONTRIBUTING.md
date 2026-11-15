@@ -103,11 +103,11 @@ npm publish -w @worm-vue3-print/canvas
 npm publish -w @worm-vue3-print/skills
 ```
 
-> 范围说明：渲染微服务为本仓库私有 workspace 包 `services/print-render`（`@worm-vue3-print/render`），不发布 npm。`packages/print-common` 也发布 npm：与主线同号发正式版，但保留实验性声明，见方式三。
+> 范围说明：渲染微服务为本仓库私有 workspace 包 `services/print-render`（`@worm-vue3-print/render`），不发布 npm。`packages/print-common` 是设计器权威实现，与主线同号发正式版；`plugin-kit`/`echarts`/`echarts-common` 必须同批发布，见方式二与方式三。
 
-### 方式三：发布 `@worm-vue3-print/common`（正式版本号，保留实验性声明）
+### 方式三：单独补发 `@worm-vue3-print/common`（正式版本号）
 
-`common` 已按主线号发布正式版（dist-tag `latest`），但仍属实验性质：npm 主页面顶部必须保留「实验性、不建议用于生产」声明，并提供 Vue 3 / Vue 2 / React 用法示例。发布可由 `.github/workflows/publish-common.yml` 手动触发，也可走本地脚本。
+`common` 已按主线号发布正式版（dist-tag `latest`）。**常规发版请走方式二的全量序列**（core → plugin-kit → common → canvas → echarts → echarts-common → skills），本方式只用于单独补发修复版；npm 主页面需提供 Vue 3 / Vue 2 / React 用法示例。发布可由 `.github/workflows/publish-common.yml` 手动触发，也可走本地脚本。
 
 ```bash
 # 1. 版本号与主线同号：手改 packages/print-common/package.json 与六份 lock 的 common 条目
@@ -124,7 +124,7 @@ npm run publish:common:check
 
 要点：
 
-- **构建顺序不能调**：`scripts/gen-styles.mjs` 从 `packages/print-canvas/dist/canvas.css` 派生样式，canvas 没构建时 common 直接报错退出；
+- **common 先于 canvas 构建**：样式与图标的单一权威源是 `packages/print-core/src/styles/`（随 core 一起发布），`gen-styles.mjs` / `gen-icons.mjs` 从它派生，不再读 `print-canvas/dist`；canvas 与 common 都从共享源消费主题令牌。
 - **`publish:common` 带 `--tag latest`**：正式版直接覆盖 `latest`；只有预发布（版本含 `-`）才用 `publish:common:beta`（`--tag next`）；
 - **手敲 `npm publish` 必须显式带 `--registry=https://registry.npmjs.org`**（本机默认是 npmmirror）；`publish:npm` 与 `publish:common` 里已写死。registry 缓存会骗人、`publishConfig.tag` 不被 npm 11 采纳等判据见技能 `references/pitfalls.md`；
 - **摘 dist-tag 需本机 OTP**（仓库令牌对 `dist-tag rm` 返回 403）：`npm dist-tag rm @worm-vue3-print/common latest --registry=https://registry.npmjs.org --otp=<OTP>`。正式版直接写 `latest`，不需要这一步；

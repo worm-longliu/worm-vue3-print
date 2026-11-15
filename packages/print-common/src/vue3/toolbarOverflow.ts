@@ -1,3 +1,4 @@
+import { TOOLBAR_OVERFLOW_KEY } from '@worm-vue3-print/plugin-kit'
 /**
  * 顶部条自适应收纳：与 canvas 的 composables/useToolbarOverflow.ts 逐字同源的移植副本。
  * 唯一判据 resolveToolbarOverflow 在 core/designer，本文件只做 Vue 指令与度量桥接。
@@ -40,7 +41,7 @@ export function moreSlotId(id: string) {
   return `tb-more-slot-${id}`
 }
 
-export const TOOLBAR_OVERFLOW: InjectionKey<ToolbarOverflowContext> = Symbol('worm-print-toolbar-overflow')
+export const TOOLBAR_OVERFLOW: InjectionKey<ToolbarOverflowContext> = TOOLBAR_OVERFLOW_KEY as InjectionKey<ToolbarOverflowContext>
 
 /** flex gap，与 .designer-toolbar 的 gap 同源 */
 const GAP = 2

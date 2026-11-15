@@ -17,6 +17,8 @@
 
 import type { ElementOptions } from './types.js'
 import type { ElementRenderSpec, ElementRenderer } from '../render/types.js'
+import type { ElementCapabilities } from './element-capabilities.js'
+import { registerElementCapabilities } from './element-capabilities.js'
 
 // 通用渲染契约只有一份定义：designer 子路径与主入口共用 render/types.ts 的形状，
 // 避免注册表与打印管线各自声明同名词义而悄悄漂移。
@@ -48,6 +50,12 @@ export interface ElementPluginKind {
   fixedHeight?: boolean
   /** 是否禁止 AI 生成（MCP 的 blocked 标记） */
   blocked?: boolean
+  /**
+   * 元素能力位声明（区域放行 / 旋转 / textFit / 边框 / 绑定 / 出厂默认 / 屏蔽）。
+   * 注册插件时自动并入统一能力表，与内置类型走同一条查询路径；同 type 可覆盖内置声明。
+   * 未声明时该类型仍可按历史默认行为工作（getElementCapabilities 返回空视图）。
+   */
+  capabilities?: ElementCapabilities
   requiredOptionKeys?: readonly string[]
   /** 该元素类型的出厂默认选项；缺省参数由元素工厂传入 */
   defaultOptions?: (partial?: Partial<ElementOptions>) => Partial<ElementOptions>
@@ -222,6 +230,18 @@ export function registerElementPlugin(plugin: PrintElementPlugin): () => void {
   }
   s.plugins.set(plugin.id, plugin)
   for (const kind of plugin.kinds) s.typeIndex.set(kind.type, { plugin, kind })
+  // 能力位随插件一起登记：kind.capabilities 优先，fixedHeight / blocked 作为缺省补位，
+  // 让「只声明 fixedHeight 的旧插件」也能自动进入统一能力表。
+  const releaseCaps: Array<() => void> = []
+  for (const kind of plugin.kinds) {
+    const caps: ElementCapabilities = {
+      ...(kind.fixedHeight === true ? { fixedHeight: true } : {}),
+      ...(kind.blocked === true ? { blocked: true } : {}),
+      ...(kind.capabilities ?? {}),
+    }
+    if (Object.keys(caps).length === 0) continue
+    releaseCaps.push(registerElementCapabilities(kind.type, caps))
+  }
   for (const [from, to] of Object.entries(plugin.legacyAliases ?? {})) {
     s.legacyAliases.set(from, to)
   }
@@ -231,6 +251,7 @@ export function registerElementPlugin(plugin: PrintElementPlugin): () => void {
     for (const [type, entry] of [...s.typeIndex]) {
       if (entry.plugin === plugin) s.typeIndex.delete(type)
     }
+    for (const release of releaseCaps) release()
   }
 }
 

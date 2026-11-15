@@ -1,6 +1,6 @@
 // demo/src/samples/weight-label.ts
 // 示例二：称签打印（条码秤标签）——散装商品称重后即时打一枚价签
-import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/common/vue3'
 import { createElementFactory } from './element-helper'
 import type { SampleTemplate } from './types'
 

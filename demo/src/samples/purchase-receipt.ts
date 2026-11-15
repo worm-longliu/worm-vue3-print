@@ -1,7 +1,7 @@
 // demo/src/samples/purchase-receipt.ts
 // 示例一：采购收货单（沿用 demo 原有默认模板与业务字段/数据）
-import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/canvas'
-import type { TemplateData } from '@worm-vue3-print/canvas'
+import { DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
+import type { TemplateData } from '@worm-vue3-print/common/vue3'
 import type { SampleTemplate } from './types'
 import rawTemplate from '../template-purchase-receipt.json'
 import { PURCHASE_RECEIPT_FIELDS } from '../business'

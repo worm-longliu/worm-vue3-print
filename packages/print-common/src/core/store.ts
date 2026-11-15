@@ -7,7 +7,7 @@ import type {
 import {
   clampToZone, createFieldElement, createFieldLabelElement, createRuntimeElement, finalizeElementZone, generateGroupId,
   generateId, getPaperDimensions, getZoneRects, MIN_SCALE_PERCENT, normalizeTemplateUnits,
-  syncTableElementSize, useAlign, useGroup, ZONE_ALLOWED_TYPES, zoneFromPaperPoint,
+  syncTableElementSize, useAlign, useGroup, isZoneAllowedType, zoneFromPaperPoint,
 } from '@worm-vue3-print/core/designer'
 import { createDefaultTemplate } from './default-template'
 
@@ -311,7 +311,7 @@ export class DesignerStore {
   private placeAtDropPoint(el: RuntimeElement, dropPoint: PaperPoint): boolean {
     const t = this.templateData
     const zone = zoneFromPaperPoint(t, dropPoint.x, dropPoint.y)
-    if (zone !== 'content' && !ZONE_ALLOWED_TYPES.includes(el.printElementType.type)) {
+    if (zone !== 'content' && !isZoneAllowedType(el.printElementType.type)) {
       alert('该元素类型不能放入页眉/页脚')
       return false
     }

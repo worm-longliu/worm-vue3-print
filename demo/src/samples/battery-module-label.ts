@@ -2,7 +2,7 @@
 // 示例十一：电池模块出货标签（含 SN 条码）——95×75mm 自定义单枚，四列栅格做整版排版
 // 版式取自业务侧导出的真实模板，三处按用户要求调整：字体统一黑体、条码改为倍率 3 + 条高 7mm + 203dpi、
 // 元素高按行高和校正（demo/samples/index.ts 的硬规则：行高和必须等于元素高，否则加载时被回写顶开版式）。
-import type { TableCell, TableCellBorder, TableCellBorders, TemplateData } from '@worm-vue3-print/canvas'
+import type { TableCell, TableCellBorder, TableCellBorders, TemplateData } from '@worm-vue3-print/common/vue3'
 import { createElementFactory } from './element-helper'
 import type { SampleTemplate } from './types'
 

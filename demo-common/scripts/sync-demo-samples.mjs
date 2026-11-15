@@ -45,7 +45,10 @@ async function loadSamples() {
     platform: 'node',
     target: 'es2022',
     write: false,
-    alias: { '@worm-vue3-print/canvas': '@worm-vue3-print/core/designer' },
+    alias: {
+      '@worm-vue3-print/canvas': '@worm-vue3-print/core/designer',
+      '@worm-vue3-print/common/vue3': '@worm-vue3-print/core/designer',
+    },
     define: { 'import.meta.env.BASE_URL': '"/"' },
     logLevel: 'silent',
   })

@@ -1,6 +1,6 @@
 // demo/src/samples/thermal-receipt.ts
 // 示例五：零售小票——80mm 热敏连续纸，出纸高度按内容推导
-import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/common/vue3'
 import { createElementFactory } from './element-helper'
 import type { SampleTemplate } from './types'
 

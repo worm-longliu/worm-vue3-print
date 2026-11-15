@@ -15,6 +15,12 @@ import { DesignerStore } from './core/store'
 import type { DesignerOptions } from './core/store'
 import { FormatToolbar } from './core/format'
 import { getPluginPropertyTab } from './core/plugin'
+import { getElementDblEditableField, subscribeElementDefinitions } from './core/element-definitions'
+import {
+  PRINT_DESIGNER_ATTRIBUTES, PRINT_DESIGNER_CONTRACT_VERSION,
+  PRINT_DESIGNER_EVENT, PRINT_DESIGNER_PARTS, getHostContract,
+} from './host-contract'
+import type { PrintDesignerHostContract } from './host-contract'
 import { renderCanvasArea, zoneRectsMM, clearDropDrag } from './shell/canvas'
 import { positionLabel } from './shell/elements'
 import type { CanvasUI } from './shell/canvas'
@@ -49,16 +55,8 @@ const HOVER_TIP_CONTAINERS = '.page-tabs, .field-tree-panel, .pd-dialog-overlay'
 /** Ctrl/⌘ 组合键白名单：不在表内的组合键不拦截浏览器默认行为（与 canvas useKeyboard 一致） */
 const HANDLED_CTRL_KEYS = new Set(['z', 'y', 'a', 'c', 'x', 'v', 'd', 'g', '1', 'l', 'r', 'e', 't', 'b', '0'])
 
-/** 画布双击可直接编辑表达式的元素类型（与 canvas 的 DBL_EDITABLE_FIELD 逐项一致） */
-const DBL_EDITABLE_FIELD: Record<string, string> = {
-  text: 'formatter',
-  longText: 'formatter',
-  // 流式列表：单元模板就是 options.formatter（列表路径写在模板里），双击任意位置都落在这个元素框上
-  flowList: 'formatter',
-  barcode: 'formatter',
-  qrcode: 'formatter',
-  image: 'src',
-}
+// 画布双击可编辑字段改由统一元素定义注册表提供（getElementDblEditableField），
+// 内置基线与 canvas 的 DBL_EDITABLE_FIELD 逐项一致，插件可声明自己的编辑字段。
 
 const LEFT_CHROME_KEY = 'print-studio:left'
 const RIGHT_CHROME_KEY = 'print-studio:right'
@@ -126,8 +124,14 @@ export class PrintDesignerElement extends HTMLElement {
   private unsub: (() => void) | null = null
   /** plugin-kit 注册态订阅：插件注册/注销后让已挂载实例重绘素材台与画布 */
   private unsubPluginUI: (() => void) | null = null
+  /** 统一元素定义注册态订阅：内置被覆盖 / 自定义元素注册后即时重绘 */
+  private unsubDefinitions: (() => void) | null = null
   /** 已注入 shadow root 的插件 UI 样式（按元素 type 去重，paint 时同步） */
   private pluginStyleEls = new Map<string, HTMLStyleElement>()
+  /** 实例级监听登记：卸载时成对摘除，避免 SPA 反复挂载累积 window/document 监听并持有整个实例 */
+  private instanceDisposers: Array<() => void> = []
+  /** 首挂标尺测量的 rAF 句柄：卸载后取消，避免对已销毁实例回调 */
+  private measureRaf: number | null = null
   private state: ShellState = {
     leftTab: 'elements', leftCollapsed: false, propTab: 'page', propCollapsed: false,
     openDd: null, openMore: false, collapsedGroups: new Set(), renamingPage: null,
@@ -197,7 +201,11 @@ export class PrintDesignerElement extends HTMLElement {
     const style = document.createElement('style')
     style.textContent = designerCss
     this.root.appendChild(style)
-    render(h('div', { class: 'designer-container', dataset: { test: 'designer-container' } }), this.root)
+    render(h('div', {
+      class: 'designer-container', dataset: { test: 'designer-container' },
+      // ::part 让宿主有限定制外壳；容器常驻，只需打一次
+      part: 'container',
+    }), this.root)
   }
 
   set template(v: unknown) { this.applyTemplate(v) }
@@ -214,7 +222,17 @@ export class PrintDesignerElement extends HTMLElement {
     this.repaint()
   }
 
-  static get observedAttributes() { return ['template', 'fields', 'name', 'fonts', 'design-data'] }
+  /**
+   * 宿主契约版本（机器可读）；宿主可在挂载前用 `PrintDesignerElement.contractVersion`
+   * 判断是否需要降级或提示升级，避免把版本号埋在文档里。
+   */
+  static readonly contractVersion = PRINT_DESIGNER_CONTRACT_VERSION
+  /** 返回完整契约快照（attributes / properties / methods / 事件 / parts / 主题令牌） */
+  static getHostContract(): PrintDesignerHostContract { return getHostContract() }
+  /** 实例侧同款读取入口，便于 `document.querySelector('print-designer').getHostContract()` */
+  getHostContract(): PrintDesignerHostContract { return getHostContract() }
+
+  static get observedAttributes() { return [...PRINT_DESIGNER_ATTRIBUTES] }
 
   attributeChangedCallback(name: string, _old: string | null, value: string | null) {
     // design-data 允许移除后回到内置 demo 数据，所以要在通用「空值直接返回」之前单独处理
@@ -238,6 +256,7 @@ export class PrintDesignerElement extends HTMLElement {
       this.applyFontFace()
       this.attachDocKeys()
       this.attachPluginUI()
+      this.attachInstanceListeners()
       return
     }
     const opts: DesignerOptions = {}
@@ -255,13 +274,15 @@ export class PrintDesignerElement extends HTMLElement {
     this.store.onSelectionChanged = () => this.format.painterSyncSelection()
     this.readChrome()
     this.unsub = this.store.subscribe(() => this.repaint())
-    this.bindPointer()
-    this.bindKeys()
     this.attachDocKeys()
     this.attachPluginUI()
+    this.attachInstanceListeners()
     this.applyFontFace()
     this.repaint()
-    requestAnimationFrame(() => this.measureRuler())
+    this.measureRaf = requestAnimationFrame(() => {
+      this.measureRaf = null
+      this.measureRuler()
+    })
   }
 
   /** 面板折叠态：与 canvas 的 useStudioChrome 共用 localStorage 键，同一浏览器里两边偏好互通 */
@@ -284,6 +305,8 @@ export class PrintDesignerElement extends HTMLElement {
     this.unsub = null
     this.unsubPluginUI?.()
     this.unsubPluginUI = null
+    this.unsubDefinitions?.()
+    this.unsubDefinitions = null
     // 插件 UI 的资源（图表实例/监听）在整树重建或卸载前释放
     disposeAllElementUI()
     this.detachDocKeys()
@@ -300,6 +323,13 @@ export class PrintDesignerElement extends HTMLElement {
     // 悬浮提示与吸附闪烁点的定时器随卸载摘除
     this.hideHoverTip()
     if (this.snapTimer) { clearTimeout(this.snapTimer); this.snapTimer = null }
+    // 实例级监听（window / document / 宿主元素 / shadow root）成对摘除，防止反复挂载累积并持有实例
+    for (const off of this.instanceDisposers) off()
+    this.instanceDisposers = []
+    // 注入宿主文档 head 的 @font-face 也要带走，否则每次挂载都堆一个 style 节点
+    this.docFontFaceStyle?.remove()
+    this.docFontFaceStyle = null
+    if (this.measureRaf !== null) { cancelAnimationFrame(this.measureRaf); this.measureRaf = null }
   }
 
   /**
@@ -330,8 +360,12 @@ export class PrintDesignerElement extends HTMLElement {
 
   /** 订阅 plugin-kit 注册态：插件热注册/注销后立即重绘素材台、画布与属性台 */
   private attachPluginUI() {
-    if (this.unsubPluginUI) return
-    this.unsubPluginUI = subscribeElementUIRegistry(() => this.repaint())
+    if (!this.unsubPluginUI) {
+      this.unsubPluginUI = subscribeElementUIRegistry(() => this.repaint())
+    }
+    if (!this.unsubDefinitions) {
+      this.unsubDefinitions = subscribeElementDefinitions(() => this.repaint())
+    }
   }
 
   /**
@@ -395,7 +429,7 @@ export class PrintDesignerElement extends HTMLElement {
     const text = JSON.stringify(json)
     this.store.dirty = false
     this.repaint()
-    this.dispatchEvent(new CustomEvent('save', { detail: text, bubbles: true, composed: true }))
+    this.dispatchEvent(new CustomEvent(PRINT_DESIGNER_EVENT.save, { detail: text, bubbles: true, composed: true }))
   }
   /** 拼版配置校验：getTemplateJson 是旁路，宿主导出/另存时需自行调用拦截 */
   validateTemplate() {
@@ -513,7 +547,7 @@ export class PrintDesignerElement extends HTMLElement {
     // 与 canvas onDblClickElement 同口径：有插件 UI 时回「自定义属性」，否则回「元素属性」
     this.state.propTab = getPluginPropertyTab(el) ? 'custom' : 'element'
     if (el.options.locked) return
-    const field = DBL_EDITABLE_FIELD[el.printElementType.type]
+    const field = getElementDblEditableField(el.printElementType.type)
     if (!field) return
     this.openExpression({
       elementId: el.id,
@@ -628,6 +662,30 @@ export class PrintDesignerElement extends HTMLElement {
     }
     this.syncRulers()
     this.persistChrome()
+    this.applyHostParts(shell)
+  }
+
+  /**
+   * 每次整树重建后补 `::part` 标记。派生的 designer.css 只认类名，
+   * 因此这里只给顶层容器加属性，不改动任何 DOM 结构与 class。
+   * 宿主用 `print-designer::part(toolbar) { ... }` 即可有限定制外壳。
+   */
+  private applyHostParts(shell: HTMLElement) {
+    const map: Readonly<Record<string, string>> = {
+      '.designer-toolbar': 'toolbar',
+      '.format-toolbar': 'format-bar',
+      '.left-panel': 'left-panel',
+      '.canvas-area': 'canvas-area',
+      '.property-panel': 'property-panel',
+      '.status-bar': 'status-bar',
+      '.page-tabs': 'page-tabs',
+    }
+    for (const [selector, part] of Object.entries(map)) {
+      const node = shell.querySelector<HTMLElement>(selector)
+      if (node && PRINT_DESIGNER_PARTS.includes(part as typeof PRINT_DESIGNER_PARTS[number])) {
+        node.setAttribute('part', part)
+      }
+    }
   }
 
   /**
@@ -744,13 +802,13 @@ export class PrintDesignerElement extends HTMLElement {
       case 'zoom': this.zoomByStep((arg as number) > 0 ? 1 : -1); break
       case 'preview':
         // canvas 的 @preview 无载荷（宿主自行取 getTemplateJson）；本包额外带一份 JSON 字符串供宿主直接用
-        this.dispatchEvent(new CustomEvent('preview', {
+        this.dispatchEvent(new CustomEvent(PRINT_DESIGNER_EVENT.preview, {
           detail: this.getTemplateJson(), bubbles: true, composed: true,
         })); break
       case 'save': this.save(); break
       case 'help':
         // canvas：@help="helpVisible = true"。本包额外保留向外派发（宿主可监听），顺序是先派再开
-        this.dispatchEvent(new CustomEvent('help', { bubbles: true, composed: true }))
+        this.dispatchEvent(new CustomEvent(PRINT_DESIGNER_EVENT.help, { bubbles: true, composed: true }))
         this.openHelp(arg as string | undefined)
         break
       case 'guide-remove': s.removeGuide(arg as string); break
@@ -783,7 +841,7 @@ export class PrintDesignerElement extends HTMLElement {
         // 由 isDoubleTap 在 mousedown 阶段派发（见上方注释），原生 dblclick 在重绘后不会触发，这里不再监听
         const { id } = arg as { id: string }
         this.dblEditElement(id)
-        this.dispatchEvent(new CustomEvent('dblclick-element', {
+        this.dispatchEvent(new CustomEvent(PRINT_DESIGNER_EVENT.dblclickElement, {
           detail: id, bubbles: true, composed: true,
         })); break
       }
@@ -791,7 +849,7 @@ export class PrintDesignerElement extends HTMLElement {
         const a = arg as { elementId: string; r: number; c: number; cellId?: string }
         this.dblEditCell(a)
         // 与 dblclick-element 对称的宿主事件：detail 为对象，画布单元格与属性台单元格两条入口同形
-        this.dispatchEvent(new CustomEvent('dblclick-cell', {
+        this.dispatchEvent(new CustomEvent(PRINT_DESIGNER_EVENT.dblclickCell, {
           detail: { elementId: a.elementId, r: a.r, c: a.c, cellId: a.cellId },
           bubbles: true, composed: true,
         })); break
@@ -1188,9 +1246,25 @@ export class PrintDesignerElement extends HTMLElement {
     this.syncRulers()
   }
 
+  /**
+   * 登记一对 add/removeEventListener。实例级监听一律走这里，
+   * disconnectedCallback 统一回放，避免匿名函数没法 remove 造成全局监听累积。
+   */
+  private on(target: EventTarget, type: string, listener: EventListener, options?: AddEventListenerOptions | boolean) {
+    target.addEventListener(type, listener, options)
+    this.instanceDisposers.push(() => target.removeEventListener(type, listener, options))
+  }
+
+  /** 首挂与重连共用：只在没有登记时挂一次（卸载时已清空登记） */
+  private attachInstanceListeners() {
+    if (this.instanceDisposers.length) return
+    this.bindPointer()
+    this.bindKeys()
+  }
+
   // ─── 全局指针移动：拖拽 / 缩放 / 吸附 ───
   private bindPointer() {
-    window.addEventListener('mousemove', (ev) => {
+    const onMove = (ev: MouseEvent) => {
       const s = this.store
       if (!s) return
       const scale = (s.scale || 100) / 100
@@ -1249,8 +1323,8 @@ export class PrintDesignerElement extends HTMLElement {
         s.livePatch(this.resize.id, rect as never)
         this.patchElementDom()
       }
-    })
-    window.addEventListener('mouseup', () => {
+    }
+    const onUp = () => {
       const wasDragging = !!this.drag
       const d = this.drag
       if (d?.moved && d.altKey) {
@@ -1276,34 +1350,39 @@ export class PrintDesignerElement extends HTMLElement {
         // 未移动也要撤掉 mousedown 时挂上的拖拽态（canvas 的 isDragging 在 mouseup 归 false）
         if (wasDragging) { this.store.draggingIds = new Set(); this.syncDragGhost() }
       }
-    })
+    }
     // 外点关闭下拉与右键菜单（shadow 内节点用 composedPath 判定）
-    this.addEventListener('pointerdown', (ev) => {
+    const onOutsideDown = (ev: PointerEvent) => {
       const path = ev.composedPath() as EventTarget[]
       const inDd = path.some(n => (n as HTMLElement).classList?.contains('tb-dd'))
       if (this.state.openDd && !inDd) { this.state.openDd = null; this.repaint() }
       if (this.state.openMore && !inDd) { this.state.openMore = false; this.repaint() }
       const inMenu = path.some(n => (n as HTMLElement).classList?.contains('context-menu'))
       if (this.menu.visible && !inMenu) { this.menu.visible = false; this.repaint() }
-    })
+    }
     // 自定义 tooltip：canvas 的 useHoverTip 用事件委托 + 300ms 延迟显示 `.pd-hover-tip`
     // （fixed 定位，不受页签列表与素材台的 overflow 裁剪）。工具栏/格式栏的 tip 是 CSS ::after，无需 JS。
     // 监听挂在 shadow root 上：宿主元素只能拿到被重定向后的 target，取不到 shadow 内的节点。
-    this.root.addEventListener('mouseover', (ev) => {
+    const onOver = (ev: Event) => {
       const el = (ev as MouseEvent).target as HTMLElement | null
       const tip = el?.closest?.('[data-tip]') as HTMLElement | null
       if (!tip || !tip.closest(HOVER_TIP_CONTAINERS)) return
       if (this.hoverTipTimer) clearTimeout(this.hoverTipTimer)
       this.hoverTipTimer = setTimeout(() => this.showHoverTip(tip), 300)
-    })
-    this.root.addEventListener('mouseout', (ev) => {
+    }
+    const onOut = (ev: Event) => {
       const e = ev as MouseEvent
       const tip = (e.target as HTMLElement | null)?.closest?.('[data-tip]') as HTMLElement | null
       if (!tip) return
       // 同一目标内部（图标与文字之间）移动不隐藏
       if ((e.relatedTarget as HTMLElement | null)?.closest?.('[data-tip]') === tip) return
       this.hideHoverTip()
-    })
+    }
+    this.on(window, 'mousemove', onMove as EventListener)
+    this.on(window, 'mouseup', onUp as EventListener)
+    this.on(this, 'pointerdown', onOutsideDown as EventListener)
+    this.on(this.root, 'mouseover', onOver)
+    this.on(this.root, 'mouseout', onOut)
   }
 
   private showHoverTip(el: HTMLElement) {
@@ -1366,8 +1445,8 @@ export class PrintDesignerElement extends HTMLElement {
     // 谁是「当前设计器」：canvas 的 useKeyboard 绑 document，页面只有一个实例；本包允许同页多实例，
     // 用「最后交互的实例」接管全局快捷键，行为与 canvas 一致（焦点丢回 body 也仍然可用）
     const claim = () => { PrintDesignerElement.active = this }
-    this.addEventListener('pointerdown', claim)
-    this.addEventListener('focusin', claim)
+    this.on(this, 'pointerdown', claim)
+    this.on(this, 'focusin', claim)
     if (!PrintDesignerElement.active) PrintDesignerElement.active = this
   }
 

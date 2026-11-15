@@ -32,7 +32,10 @@
       "types": "./dist/client/index.d.ts",
       "import": "./dist/client/index.js",
       "require": "./dist/client/index.cjs"
-    }
+    },
+    "./styles/designer.css": "./dist/styles/designer.css",
+    "./styles/theme.css": "./dist/styles/theme.css",
+    "./styles/icon-manifest.json": "./dist/styles/icon-manifest.json"
   },
   "files": [
     "dist"
@@ -53,7 +56,7 @@
     "designer"
   ],
   "scripts": {
-    "build": "tsup && node ../../scripts/inject-license-banner.mjs dist",
+    "build": "tsup && node scripts/copy-styles.mjs && node ../../scripts/inject-license-banner.mjs dist",
     "test": "vitest run",
     "test:watch": "vitest"
   },

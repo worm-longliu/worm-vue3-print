@@ -20,6 +20,7 @@ import type { El } from '../core/h'
 import { iconSvg } from '../core/icons'
 import { getPluginPropertyTab } from '../core/plugin'
 import type { PluginPropertyTab } from '../core/plugin'
+import { getElementPropertyGroup } from '../core/element-definitions'
 import { mountElementUIResult } from './plugin-ui'
 import { colorTrigger, divider, field, fieldHelp, radioGroup, resetButton, stepper } from './controls'
 import { createDefaultOptions, propertyDefault, DEFAULT_DEMO_DATA } from '@worm-vue3-print/core/designer'
@@ -85,9 +86,11 @@ function elementPane(ctx: ShellCtx, el: RuntimeElement) {
   const o = el.options
   const type = el.printElementType.type
   const patch = (p: Record<string, unknown>) => s.updateElement(el.id, p as never)
-  const isText = type === 'text' || type === 'longText'
-  const isCode = type === 'barcode' || type === 'qrcode'
-  const isTable = type === 'table'
+  // 统一注册表派生：插件可通过 propertyGroup 复用内置属性分组，也可覆盖内置分组
+  const propertyGroup = getElementPropertyGroup(type)
+  const isText = propertyGroup === 'text'
+  const isCode = propertyGroup === 'code'
+  const isTable = propertyGroup === 'table'
   /** 单元格选中态：单元格位置与宽高由行高/列宽控制，「位置与尺寸」分组让位（canvas isTableCellSelected） */
   const cellSelected = isTable && s.tableSelection?.elementId === el.id
   /** 多选单元格：只做批量设置，不回显单格配置——「内容」绑定组按 r1,c1 单格读写，整组让位给单元格台 */

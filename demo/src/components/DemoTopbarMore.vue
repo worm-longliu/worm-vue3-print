@@ -34,7 +34,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useToolbarOverflow } from '@worm-vue3-print/canvas'
+import { useToolbarOverflow } from '@worm-vue3-print/common/vue3'
 
 const ctx = useToolbarOverflow()
 const open = ref(false)

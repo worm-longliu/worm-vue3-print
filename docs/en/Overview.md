@@ -34,11 +34,11 @@ Flow lists (`flowList`) lay a data array out as text cells in a fixed number of 
 | Package | Directory | Published | Purpose |
 |---|---|---|---|
 | `@worm-vue3-print/core` | `packages/print-core` | npm | Expression engine + isomorphic rendering pipeline; browser silent-print SDK at `/client` |
-| `@worm-vue3-print/canvas` | `packages/print-canvas` | npm | Vue 3 visual designer (`PrintDesigner`) and preview component (`PrintHtmlPreview`), native controls, no UI kit |
+| `@worm-vue3-print/canvas` | `packages/print-canvas` | npm | Vue 3 compatibility track for the designer; consumes the same shared styles and capability registry as `common` |
 | `@worm-vue3-print/render` | `services/print-render` | Docker | Server-side PDF renderer built on Playwright (Headless Chromium) |
 | `@worm-vue3-print/print-client` | `clients/print-client` | installer | Cross-platform Electron silent-print client (loopback WebSocket + `webContents.print`) |
 
-Only `core` and `canvas` are published to npm.
+Published to npm: `core`, `plugin-kit`, `common`, `canvas`, `echarts`, `echarts-common` and `skills` — all share the same version and must be released together. `common` (`@worm-vue3-print/common`) is the **authoritative designer implementation**: a framework-free Custom Element consumed by the main demo site and by Vue 3 / Vue 2 / React / jQuery / no-framework hosts. Styles, icons and theme tokens have a single source of truth in `print-core/src/styles`; element capabilities (core) and element definitions (common) come from unified registries where built-in types and third-party plugins have equal standing. The host contract is versioned in `packages/print-common/src/host-contract.ts`.
 
 ## Installation
 

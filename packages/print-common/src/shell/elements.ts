@@ -21,12 +21,14 @@ import type { RuntimeElement } from '@worm-vue3-print/core/designer'
 import { resolveCanvasFontFamily } from '@worm-vue3-print/core'
 import { h } from '../core/h'
 import { getPluginElement } from '../core/plugin'
-import type { DesignerStore } from '../core/store'
+import {
+  getElementDefinition, registerElementRenderers,
+} from '../core/element-definitions'
+import type { ElementContentHost, ElementContentRenderer } from '../core/element-definitions'
 import { renderBarcode, renderQrcode } from './code'
 import type { ShellCtx } from './controls'
 import { mountElementUIResult } from './plugin-ui'
 import { renderTable } from './table'
-import type { TableFire } from './table'
 import { renderFlowListElement } from './flow-list'
 
 const V_ALIGN_FLEX: Record<string, string> = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }
@@ -175,99 +177,104 @@ function fitDataset(el: RuntimeElement): Record<string, string> {
   return ds
 }
 
-type ContentHost = {
-  store: DesignerStore
-  fire: TableFire
-  /** 宿主注入的设计态示例数据；缺省回落内置 demo 数据 */
-  designData?: readonly Record<string, unknown>[]
+/** 元素内容宿主上下文：与统一注册表的契约同形 */
+export type ContentHost = ElementContentHost
+
+/**
+ * 内置元素的内容渲染器表：每项即原先 switch 的一个 case，逐字保留实现。
+ * 注册进统一注册表后，内置与插件走同一条 `getElementDefinition(type).renderContent`
+ * 分派路径；第三方可覆盖同 type 的渲染器，注销后自动回落到本表。
+ */
+const BUILTIN_CONTENT_RENDERERS: Readonly<Record<string, ElementContentRenderer>> = {
+  text: (el) => {
+    const { style } = textLikeStyle(el)
+    const o = el.options
+    // 设计态显示原始表达式（与 canvas 的 displayText 口径一致），不做数据求值
+    return h('div', {
+      class: 'print-text', style, dataset: fitDataset(el),
+      text: String(o.testData || o.formatter || '') || '文本',
+    })
+  },
+  longText: (el) => {
+    const { style } = textLikeStyle(el)
+    const o = el.options
+    return h('div', {
+      class: 'print-longtext', style, dataset: fitDataset(el),
+      // canvas 的长文本设计态只看 formatter，占位文案是「长文本内容」
+      text: String(o.formatter || '') || '长文本内容',
+    })
+  },
+  hline: (el) => h('div', { class: 'print-line', style: lineStyle(el) }),
+  vline: (el) => h('div', { class: 'print-line', style: lineStyle(el) }),
+  rect: (el) => h('div', { class: 'print-shape', style: shapeStyle(el) }),
+  oval: (el) => h('div', { class: 'print-shape', style: shapeStyle(el) }),
+  image: (el) => {
+    const o = el.options
+    const raw = String(o.src ?? '')
+    const src = raw.includes('{') ? evaluateTemplate(raw, DEFAULT_DEMO_DATA) : raw
+    return h('div', { class: 'print-image' }, [
+      src
+        ? h('img', { src, style: imageStyle(el) })
+        : h('div', { class: 'image-placeholder', text: '图片' }),
+    ])
+  },
+  qrcode: (el) => renderQrcode(el),
+  barcode: (el) => renderBarcode(el),
+  html: (el) => {
+    // 与 canvas HtmlElement 同口径：先表达式求值，再 DOMPurify 消毒后注入
+    const o = el.options
+    const raw = String(o.formatter ?? '')
+    const html = raw
+      ? DOMPurify.sanitize(evaluateTemplate(raw, {}))
+      : '<div style="background:#e0e0e0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10pt;color:#999">HTML</div>'
+    return h('div', { class: 'print-html', html })
+  },
+  pageNumber: (el, designMode) => {
+    const o = el.options
+    return h('div', {
+      class: 'page-number-element',
+      style: {
+        fontSize: `${o.fontSize || 12}pt`,
+        fontWeight: o.fontWeight || 'normal',
+        fontFamily: resolveCanvasFontFamily(o.fontFamily),
+        color: o.color || '#333',
+        textAlign: o.textAlign || 'left',
+        ...(o.textAlign === 'justify' ? { textAlignLast: 'justify' } : {}),
+      },
+      text: designMode ? (o.title || '{pageIndex}/{totalPages}') : String(o.title || ''),
+    })
+  },
+  table: (el, _designMode, host) =>
+    host ? renderTable(el, host.store, host.fire) : h('div', { class: 'print-table' }),
+  flowList: (el, _designMode, host) => renderFlowListElement(el, undefined, host?.store),
 }
+
+// 模块加载即注入内置渲染器；重复加载（多打包副本）按 type 幂等覆盖，结果一致。
+registerElementRenderers(BUILTIN_CONTENT_RENDERERS)
 
 /** 元素内容层（对应 BaseElement 里的 contentComponent 分发） */
 function content(el: RuntimeElement, designMode: boolean, host?: ContentHost) {
   const type = el.printElementType.type
-  const o = el.options
-  switch (type) {
-    case 'text': {
-      const { style } = textLikeStyle(el)
-      // 设计态显示原始表达式（与 canvas 的 displayText 口径一致），不做数据求值
-      return h('div', {
-        class: 'print-text', style, dataset: fitDataset(el),
-        text: String(o.testData || o.formatter || '') || '文本',
-      })
-    }
-    case 'longText': {
-      const { style } = textLikeStyle(el)
-      return h('div', {
-        class: 'print-longtext', style, dataset: fitDataset(el),
-        // canvas 的长文本设计态只看 formatter，占位文案是「长文本内容」
-        text: String(o.formatter || '') || '长文本内容',
-      })
-    }
-    case 'hline':
-    case 'vline':
-      return h('div', { class: 'print-line', style: lineStyle(el) })
-    case 'rect':
-    case 'oval':
-      return h('div', { class: 'print-shape', style: shapeStyle(el) })
-    case 'image': {
-      const raw = String(o.src ?? '')
-      const src = raw.includes('{') ? evaluateTemplate(raw, DEFAULT_DEMO_DATA) : raw
-      return h('div', { class: 'print-image' }, [
-        src
-          ? h('img', { src, style: imageStyle(el) })
-          : h('div', { class: 'image-placeholder', text: '图片' }),
-      ])
-    }
-    case 'qrcode':
-      return renderQrcode(el)
-    case 'barcode':
-      return renderBarcode(el)
-    case 'html': {
-      // 与 canvas HtmlElement 同口径：先表达式求值，再 DOMPurify 消毒后注入
-      const raw = String(o.formatter ?? '')
-      const html = raw
-        ? DOMPurify.sanitize(evaluateTemplate(raw, {}))
-        : '<div style="background:#e0e0e0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10pt;color:#999">HTML</div>'
-      return h('div', { class: 'print-html', html })
-    }
-    case 'pageNumber':
-      return h('div', {
-        class: 'page-number-element',
-        style: {
-          fontSize: `${o.fontSize || 12}pt`,
-          fontWeight: o.fontWeight || 'normal',
-          fontFamily: resolveCanvasFontFamily(o.fontFamily),
-          color: o.color || '#333',
-          textAlign: o.textAlign || 'left',
-          ...(o.textAlign === 'justify' ? { textAlignLast: 'justify' } : {}),
-        },
-        text: designMode ? (o.title || '{pageIndex}/{totalPages}') : String(o.title || ''),
-      })
-    case 'table':
-      return host ? renderTable(el, host.store, host.fire) : h('div', { class: 'print-table' })
-    case 'flowList':
-      return renderFlowListElement(el, undefined, host?.store)
-    default: {
-      // 插件元素：优先消费 plugin-kit 的框架无关画布渲染；未注册 UI 仍按类型名占位
-      const pluginEl = getPluginElement(type)
-      if (!pluginEl) return h('div', { text: type })
-      const box = document.createElement('div')
-      box.className = 'plugin-kit-canvas'
-      box.style.width = '100%'
-      box.style.height = '100%'
-      try {
-        mountElementUIResult(`canvas:${el.id}`, pluginEl.ui.renderCanvas({
-          element: el,
-          // 宿主注入真实业务数据时优先用之，未注入维持历史口径（内置 demo 数据）
-          data: host?.designData?.length ? host.designData : [DEFAULT_DEMO_DATA],
-          designMode: true,
-        }), box)
-      } catch {
-        box.textContent = String(type)
-      }
-      return box
-    }
+  const renderer = getElementDefinition(type)?.renderContent
+  if (renderer) return renderer(el, designMode, host)
+  // 插件元素：优先消费 plugin-kit 的框架无关画布渲染；未注册 UI 仍按类型名占位
+  const pluginEl = getPluginElement(type)
+  if (!pluginEl) return h('div', { text: type })
+  const box = document.createElement('div')
+  box.className = 'plugin-kit-canvas'
+  box.style.width = '100%'
+  box.style.height = '100%'
+  try {
+    mountElementUIResult(`canvas:${el.id}`, pluginEl.ui.renderCanvas({
+      element: el,
+      // 宿主注入真实业务数据时优先用之，未注入维持历史口径（内置 demo 数据）
+      data: host?.designData?.length ? host.designData : [DEFAULT_DEMO_DATA],
+      designMode: true,
+    }), box)
+  } catch {
+    box.textContent = String(type)
   }
+  return box
 }
 
 /** 选中角标文本：与 canvas BaseElement 的 posLabel 逐字一致（四舍五入到整数 mm） */

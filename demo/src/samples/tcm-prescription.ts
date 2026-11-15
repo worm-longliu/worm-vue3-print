@@ -4,7 +4,7 @@
 // 「炙黄芪（先煎）30g」「鸡血藤（后下）20g」这类长单元比一列宽，开「内容过长时跨列」后各吃掉两个列位，
 // 当前行列位不够就把整味药挪到下一行行首（绝不切词），单元仍锚在列界上所以左右都齐。
 // 药材明细来自 data.drugs，单元模板 {name} {spec} 与表格单元格共用同一套表达式。
-import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/common/vue3'
 import { createElementFactory } from './element-helper'
 import type { SampleTemplate } from './types'
 

@@ -11,7 +11,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { ElementOptions, TemplateData } from '@worm-vue3-print/canvas'
+import type { ElementOptions, TemplateData } from '@worm-vue3-print/common/vue3'
 import { getByPath, getPaperDimensions, isContinuousPaperSize } from '@worm-vue3-print/core'
 
 /**

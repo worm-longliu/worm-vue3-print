@@ -1,16 +1,28 @@
 // web/src/components/print/utils/element-factory.ts
 import type { RuntimeElement, ElementType, ElementOptions } from '../types.js'
-import { createDefaultTable } from './table-matrix.js'
+import {
+  BUILTIN_ELEMENT_CAPABILITIES, getElementBaseBox, getElementCapabilities,
+  getElementCapabilityTypes,
+} from '../element-capabilities.js'
 import { getElementPlugin } from '../element-plugin-registry.js'
 
 /**
- * 已屏蔽的元素类型：占位实现（设计态能画、出纸永远空盒），不允许从素材台新建，
- * 导入模板时一律剥离。类型联合与渲染分支保留，恢复只需把该类型从这里移出并放回素材台。
+ * 已屏蔽的元素类型：由能力位注册表派生（内置基线 + 插件声明）。
+ * 占位实现（设计态能画、出纸永远空盒），不允许从素材台新建，导入模板时一律剥离。
+ * 恢复只需把该类型的 `blocked` 能力位撤掉并放回素材台。
  */
-export const BLOCKED_ELEMENT_TYPES: readonly ElementType[] = ['html']
+export function getBlockedElementTypes(): string[] {
+  return getElementCapabilityTypes().filter(type => getElementCapabilities(type).blocked === true)
+}
+
+export const BLOCKED_ELEMENT_TYPES: readonly ElementType[] = getBlockedElementTypes() as ElementType[]
 
 export function isBlockedElementType(type?: string | null): boolean {
-  return !!type && (BLOCKED_ELEMENT_TYPES as readonly string[]).includes(type)
+  if (!type) return false
+  const declared = getElementCapabilities(type).blocked
+  return declared === undefined
+    ? (BUILTIN_ELEMENT_CAPABILITIES[type]?.blocked === true)
+    : declared
 }
 
 /**
@@ -56,90 +68,23 @@ export function generateId(): string {
 export function createDefaultOptions(type: ElementType): ElementOptions {
   // pt → mm：20/50/120/20 → 7/17.6/42.3/7.1
   // 不预置 fontFamily：未手工配置字体时交还 CSS 继承，由渲染端系统默认字体承接
-  const base: ElementOptions = {
-    left: 7, top: 17.6, width: 42.3, height: 7.1,
-  }
-
-  switch (type) {
-    case 'text':
-      return { ...base, formatter: '文本', fontSize: 12, textAlign: 'left', height: 5.3 }
-    case 'image':
-      return { ...base, width: 28.2, height: 28.2, fit: 'contain' }
-    case 'longText':
-      return { ...base, width: 141.1, height: 28.2, fontSize: 12, lineHeight: 18 }
-    case 'table': {
-      const { rows, colWidths } = createDefaultTable()
-      const totalW = colWidths.reduce((s, w) => s + w, 0)
-      const totalH = rows.reduce((s, r) => s + r.height, 0)
-      return {
-        ...base, width: totalW, height: totalH,   // 表格尺寸由列宽/行高(mm)派生，与渲染端一致
-        tableMode: 'dynamic',
-        tableRows: rows,
-        tableColWidths: colWidths,
-        tableDefaultFontSize: 10,
-        tableDefaultColor: '#333333',
-        tableDefaultPadding: 1,
-        fields: [],
-        tablePagination: { enabled: true },
-      }
-    }
-    case 'flowList':
-      // 每行列数与行高都必须由作者指定（不自动算列数）；跨列默认关，打开后上限钳到列数。
-      // 容器布局缺省 fixed：新拖入也不自动分页，动态模式由作者显式开启。
-      return {
-        ...base, width: 141.1, height: 21.2, fontSize: 12, formatter: '{name} {spec}',
-        flowColumns: 4, flowRowHeight: 8, flowGapX: 4,
-        flowAutoSpan: false, flowMaxSpan: 2,
-        flowLayoutMode: 'fixed', flowPaddingTop: 0, flowPaddingRight: 0,
-        flowPaddingBottom: 0, flowPaddingLeft: 0,
-      }
-    case 'hline':
-      return { ...base, width: 70.6, height: 1.8, borderWidth: 0.75 }
-    case 'vline':
-      return { ...base, width: 1.8, height: 35.3, borderWidth: 0.75 }
-    case 'rect':
-      return { ...base, width: 28.2, height: 28.2, borderWidth: 1, borderColor: '#333' }
-    case 'oval':
-      return { ...base, width: 28.2, height: 28.2, borderWidth: 1, borderColor: '#333' }
-    case 'barcode':
-      return { ...base, width: 56.4, height: 14.1, title: '条形码', barcodeType: 'code128', testData: '12345678' }
-    case 'qrcode':
-      return { ...base, width: 28.2, height: 28.2, title: '二维码', testData: 'qrcode' }
-    case 'html':
-      return { ...base, width: 28.2, height: 28.2 }
-    default: {
-      // 通用机制：扩展元素的出厂默认选项由插件描述符提供，主体不认识任何具体类型。
-      // createRuntimeElement / draftTemplate 因此与插件注册态自动保持一致。
-      const pluginDefaults = getElementPlugin(type)?.kind.defaultOptions?.()
-      return pluginDefaults ? { ...base, ...pluginDefaults } : base
-    }
-  }
+  const base = getElementBaseBox() as ElementOptions
+  // 内置与插件共用同一条路径：能力位声明 defaultOptions 即生效，后注册者可覆盖内置。
+  const own = getElementCapabilities(type).defaultOptions?.()
+  if (own) return { ...base, ...own }
+  // 兼容旧插件：kind.defaultOptions 未提供 capabilities 时仍按描述符出默认选项
+  const pluginDefaults = getElementPlugin(type)?.kind.defaultOptions?.()
+  return pluginDefaults ? { ...base, ...pluginDefaults } : base
 }
 
 export function createRuntimeElement(type: ElementType, options?: Partial<ElementOptions>): RuntimeElement {
-  const typeMetaMap: Record<ElementType, { title: string }> = {
-    text: { title: '文本' },
-    image: { title: '图片' },
-    longText: { title: '长文' },
-    table: { title: '表格' },
-    flowList: { title: '流式列表' },
-    hline: { title: '横线' },
-    vline: { title: '竖线' },
-    rect: { title: '矩形' },
-    oval: { title: '椭圆' },
-    barcode: { title: '条形码' },
-    qrcode: { title: '二维码' },
-    html: { title: 'HTML' },
-    pageNumber: { title: '页码' },
-  }
-
   return {
     id: generateId(),
     options: { ...createDefaultOptions(type), ...options },
     printElementType: {
       type,
-      // 扩展类型不在内置表内；标题取插件声明，保证 AI 草稿与素材卡一致
-      title: typeMetaMap[type]?.title || getElementPlugin(type)?.kind.label || String(type),
+      // 标题同样来自能力位注册表；插件 kind.label 回落，保证 AI 草稿与素材卡一致
+      title: getElementCapabilities(type).title || getElementPlugin(type)?.kind.label || String(type),
     },
   }
 }

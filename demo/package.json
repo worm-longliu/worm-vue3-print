@@ -10,9 +10,11 @@
     "typecheck": "vue-tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@worm-vue3-print/canvas": "file:../packages/print-canvas",
+    "@worm-vue3-print/common": "file:../packages/print-common",
     "@worm-vue3-print/core": "file:../packages/print-core",
     "@worm-vue3-print/echarts": "file:../packages/print-echarts",
+    "@worm-vue3-print/echarts-common": "file:../packages/print-echarts-common",
+    "@worm-vue3-print/plugin-kit": "file:../packages/print-plugin-kit",
     "dompurify": "^3.4.12",
     "jsbarcode": "^3.12.3",
     "lucide-vue-next": "^0.577.0",

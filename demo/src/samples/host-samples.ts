@@ -17,12 +17,14 @@ import { COMPREHENSIVE_SHOWCASE_SAMPLE } from './comprehensive-showcase'
 import { PAGINATION_EDGE_SAMPLE } from './pagination-edge'
 import { TEXT_WRAP_FOLLOW_SAMPLE } from './text-wrap-follow'
 import { PAYMENT_REQUEST_SAMPLE } from './payment-request'
+import { HEALTH_REPORT_SAMPLE } from './health-report'
 
 /** 不依赖可选包的示例：单据 → 标签 → 小票 */
 export const HOST_SAMPLE_TEMPLATES: SampleTemplate[] = [
   PURCHASE_RECEIPT_SAMPLE,
   SALES_OUTBOUND_SAMPLE,
   PAYMENT_REQUEST_SAMPLE,
+  HEALTH_REPORT_SAMPLE,
   TCM_PRESCRIPTION_SAMPLE,
   EXPRESS_WAYBILL_SAMPLE,
   COMPREHENSIVE_SHOWCASE_SAMPLE,

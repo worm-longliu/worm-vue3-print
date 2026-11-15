@@ -4,6 +4,7 @@
 // 无 DOM 依赖：服务端、桌面客户端、浏览器预览与设计器画布共用同一份判定。
 
 import type { TextFit } from '../designer/types.js'
+import { getElementCapabilities } from '../designer/element-capabilities.js'
 import { ptToMm } from '../designer/utils/units.js'
 
 /** 自动缩小的默认下限字号（pt） */
@@ -18,17 +19,18 @@ function normalizeFit(value: unknown): TextFit | undefined {
   return typeof value === 'string' && VALID_FITS.includes(value) ? (value as TextFit) : undefined
 }
 
-/** 文本类元素未显式配置时的默认形式：与既有无配置行为一致 */
-const ELEMENT_DEFAULT_FIT: Record<string, TextFit> = {
+/** 能力位未声明时的历史回落（与改造前 ELEMENT_DEFAULT_FIT 逐项一致） */
+const DEFAULT_FIT_FALLBACK: Record<string, TextFit> = {
   text: 'clip',
   longText: 'autoHeight',
   // 流式列表一框一页：超出元素框高的单元按截断处理，不自动撑破纸面（specs 第八节第 8 项）
   flowList: 'clip',
 }
 
-/** 元素级显示形式：未配置时按元素类型取默认（text=截断、longText=自适应行高） */
+/** 元素级显示形式：未配置时按能力位注册表取默认（插件可声明自己的 defaultTextFit） */
 export function resolveElementTextFit(type: string, opts?: { textFit?: TextFit } | undefined): TextFit {
-  return normalizeFit(opts?.textFit) ?? ELEMENT_DEFAULT_FIT[type] ?? 'clip'
+  const declared = getElementCapabilities(type).defaultTextFit
+  return normalizeFit(opts?.textFit) ?? declared ?? DEFAULT_FIT_FALLBACK[type] ?? 'clip'
 }
 
 /**

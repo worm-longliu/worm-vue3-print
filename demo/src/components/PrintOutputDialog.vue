@@ -62,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import { PrintClient, WormPrintError } from '@worm-vue3-print/core/client'
 import type { PrinterInfo } from '@worm-vue3-print/core/client'
 import type { MultiPageTemplateData, PrintTemplateData } from '@worm-vue3-print/core'
@@ -178,7 +178,26 @@ function showClientMessage(message: string, kind: 'success' | 'error' = 'success
   }, 5000)
 }
 
+/**
+ * 端口区间探测（默认 17521~17540）在浏览器对失败的 WebSocket 连接做限流时会拖很久，
+ * 实测主站页面加载后 template-session 已在后台重试扫描，弹窗再扫一遍可超过 30s 仍停在
+ * 「检测中…」。这里给每次探测设定上限，超时按「离线」收口，「重新检测」可再次发起。
+ */
+const CLIENT_PROBE_TIMEOUT_MS = 8000
+let clientProbeSeq = 0
+let clientProbeTimer: ReturnType<typeof setTimeout> | undefined
+let clientProbeController: AbortController | undefined
+
+function setClientOffline(seq: number) {
+  if (seq !== clientProbeSeq) return // 旧探测的结果不覆盖新探测
+  clientStatus.value = 'offline'
+  clientStatusText.value = '打印客户端离线'
+}
+
 async function connectPrintClient() {
+  const seq = ++clientProbeSeq
+  clientProbeController?.abort()
+  clearTimeout(clientProbeTimer)
   clientStatus.value = 'checking'
   clientStatusText.value = '检测打印客户端…'
   if (!clientStatusRegistered) {
@@ -194,16 +213,29 @@ async function connectPrintClient() {
       }
     })
   }
+  const controller = new AbortController()
+  clientProbeController = controller
+  clientProbeTimer = setTimeout(() => controller.abort(), CLIENT_PROBE_TIMEOUT_MS)
   try {
-    await client.connect()
+    await client.connect(controller.signal)
+    if (seq !== clientProbeSeq) return
     clientStatus.value = 'online'
     clientStatusText.value = '打印客户端在线'
     await refreshClientPrinters()
   } catch {
-    clientStatus.value = 'offline'
-    clientStatusText.value = '打印客户端离线'
+    setClientOffline(seq)
+  } finally {
+    clearTimeout(clientProbeTimer)
+    clientProbeTimer = undefined
+    if (clientProbeController === controller) clientProbeController = undefined
   }
 }
+
+onBeforeUnmount(() => {
+  clientProbeSeq++
+  clientProbeController?.abort()
+  clearTimeout(clientProbeTimer)
+})
 
 async function refreshClientPrinters() {
   try {

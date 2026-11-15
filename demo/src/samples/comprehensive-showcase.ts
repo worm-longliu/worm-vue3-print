@@ -1,6 +1,6 @@
 // demo/src/samples/comprehensive-showcase.ts
 // 综合示例模板：A4 横向 + 多级表头（跨列分组 / 跨行合并）+ 表格内图片、条形码、二维码同表混排。
-import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/common/vue3'
 import type { SampleTemplate } from './types'
 import rawTemplate from '../template-comprehensive-showcase.json'
 

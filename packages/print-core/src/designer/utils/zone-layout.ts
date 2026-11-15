@@ -1,10 +1,24 @@
 // web/src/components/print/utils/zone-layout.ts
 // 页眉/页脚/内容三区几何计算与归区逻辑（区域元素坐标相对区域左上角，mm）
 import type { RuntimeElement, TemplateData, ElementZone } from '../types.js'
+import { getElementCapabilities, getElementCapabilityTypes } from '../element-capabilities.js'
 import { getPaperDimensions } from './default-config.js'
 
-/** 允许放入页眉/页脚的元素类型 */
-export const ZONE_ALLOWED_TYPES = ['text', 'image', 'hline', 'vline', 'rect', 'oval', 'barcode', 'qrcode']
+/**
+ * 允许放入页眉/页脚的元素类型。
+ * 由能力位注册表派生：内置基线 + 插件声明，顺序与内置声明顺序一致。
+ * 保留数组形态以兼容既有消费方；新代码请直接用 `isZoneAllowedType(type)`。
+ */
+export function getZoneAllowedTypes(): string[] {
+  return getElementCapabilityTypes().filter(type => getElementCapabilities(type).zoneAllowed === true)
+}
+
+export const ZONE_ALLOWED_TYPES: string[] = getZoneAllowedTypes()
+
+/** 该类型是否允许放入页眉/页脚（含插件声明；未声明回落 false） */
+export function isZoneAllowedType(type: string): boolean {
+  return getElementCapabilities(type).zoneAllowed === true
+}
 
 export interface ZoneRectPt {
   left: number
@@ -68,7 +82,7 @@ export function finalizeElementZone(
   const cy = from.top + el.options.top + el.options.height / 2
   let target = zoneFromPaperPoint(t, cx, cy)
   let rejected = false
-  if (target !== 'content' && !ZONE_ALLOWED_TYPES.includes(el.printElementType.type)) {
+  if (target !== 'content' && !isZoneAllowedType(el.printElementType.type)) {
     target = 'content'
     rejected = true
   }

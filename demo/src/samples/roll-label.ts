@@ -1,6 +1,6 @@
 // demo/src/samples/roll-label.ts
 // 示例七：双列卷纸标签——60×45mm 物料标签，拼版到 122mm 宽卷纸页（每页 2 枚，自动分页）
-import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/common/vue3'
 import { createElementFactory } from './element-helper'
 import type { SampleTemplate } from './types'
 

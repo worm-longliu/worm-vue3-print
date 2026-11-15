@@ -13,7 +13,7 @@ import { syncTableElementSize } from '@worm-vue3-print/core/designer'
 import { getPaperDimensions } from '@worm-vue3-print/core/designer'
 import { computeFitScale } from '@worm-vue3-print/core/designer'
 import {
-  getZoneRects, zoneFromPaperPoint, clampToZone, finalizeElementZone, ZONE_ALLOWED_TYPES,
+  getZoneRects, zoneFromPaperPoint, clampToZone, finalizeElementZone, isZoneAllowedType,
 } from '@worm-vue3-print/core/designer'
 import { useSelection } from './useSelection'
 import { useClipboard } from './useClipboard'
@@ -402,7 +402,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
   function placeAtDropPoint(el: RuntimeElement, dropPoint: { x: number; y: number }): boolean {
     // dropPoint 为 mm（由 CanvasArea.toPaperPoint 返回）
     const zone = zoneFromPaperPoint(templateData.value, dropPoint.x, dropPoint.y)
-    if (zone !== 'content' && !ZONE_ALLOWED_TYPES.includes(el.printElementType.type)) {
+    if (zone !== 'content' && !isZoneAllowedType(el.printElementType.type)) {
       alert('该元素类型不能放入页眉/页脚')
       return false
     }

@@ -1,3 +1,4 @@
+@import '../../../print-core/src/styles/theme.css';
 /* 打印设计器原生控件样式：仅 HTML/CSS，不依赖 UI 组件库 */
 .pd-form {
   display: flex;

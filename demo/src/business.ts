@@ -1,5 +1,5 @@
 // demo 业务字典：加载模板 106977040967000141（采购收货单 / purchase_receipt）
-import type { PrintBusinessField } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField } from '@worm-vue3-print/common/vue3'
 
 /** 模板 ID（宿主持久化记录的主键，与设计器核心无关） */
 export const TEMPLATE_ID = '106977040967000141'

@@ -157,10 +157,11 @@ import {
   createDefaultTemplate,
   provideToolbarOverflow,
   createOverflowUnitDirective,
-} from '@worm-vue3-print/canvas'
-import type { PrintBusinessField, TemplateData, MultiPageTemplateData } from '@worm-vue3-print/canvas'
-// 可选扩展包：import 即自注册（素材卡 / 画布组件 / 属性台 / 出图渲染器），宿主零配置
-import '@worm-vue3-print/echarts'
+} from '@worm-vue3-print/common/vue3'
+import type { PrintBusinessField, TemplateData, MultiPageTemplateData } from '@worm-vue3-print/common/vue3'
+// 可选扩展包：core 描述符与出图渲染器走 /kit，设计器 UI 走 echarts-common（plugin-kit 契约）
+import '@worm-vue3-print/echarts/kit'
+import '@worm-vue3-print/echarts-common'
 import { isMultiPageTemplate, mergeFontDeclarations } from '@worm-vue3-print/core'
 import type {
   PrintFontDeclaration,
@@ -752,6 +753,12 @@ body,
 .demo-container {
   flex: 1;
   min-height: 0;
+}
+/* 设计器已是 Custom Element：显式给块级宽高，避免宿主 flex 容器下塌陷 */
+.demo-container print-designer {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 /* ── 预览弹层（全屏，便于看清整页细节） ── */

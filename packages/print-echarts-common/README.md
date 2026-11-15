@@ -4,8 +4,9 @@ ECharts 十类图表元素在**零框架设计器**（`@worm-vue3-print/common`�
 以 [`@worm-vue3-print/plugin-kit`](../print-plugin-kit) 的框架无关 `ElementUI` 契约，
 提供**静态 SVG 画布**与**原生 DOM 图形化属性面板**。
 
-> 状态：本包随工作区主线开发，**尚未发布到 npm**；请以工作区依赖或源码方式引入。
-> 实验性能力，不建议生产环境直接依赖。
+> 状态：1.5.0 起与 core / plugin-kit / common / canvas / echarts **六包同号同批发版**（`publish-npm.yml`），
+> 主站 `demo/` 已把它列为运行时依赖。能力边界要清楚：只提供 common 侧的**静态 SVG 画布**
+> （无 ECharts 实例、无动画、设计态不消费 `designData`），出纸由 `@worm-vue3-print/echarts` 的页面执行器负责。
 
 ## 与 `@worm-vue3-print/echarts` 的关系
 

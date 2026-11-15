@@ -1,6 +1,6 @@
 // demo/src/samples/asset-tag.ts
 // 示例六：资产标签——二维码标签，A4 拼版一张纸铺 3 列 × 6 行共 18 枚
-import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/common/vue3'
 import { createElementFactory } from './element-helper'
 import type { SampleTemplate } from './types'
 

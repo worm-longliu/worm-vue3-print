@@ -5,7 +5,7 @@ Vue 3 可视化打印模板设计器 + 模板表达式引擎 + 同构渲染管�
 可视化拖拽设计打印模板、数据绑定、表达式求值、分页排版；三端共用同一套渲染与分页算法（逻辑同源，像素级一致还需字体与 Chromium 内核同源）。
 纯 Vue 3 + HTML/CSS/SVG 原生控件实现，不依赖任何 UI 组件库，可以接入任意 Vue 3 项目中。
 
-> ⚠️ **实验性能力声明**：`packages/print-common`（`@worm-vue3-print/common`）与示例 `demo-common/` 属于**实验性质**，用于把设计器以零框架运行时形态（原生自定义元素）提供给 **Vue 3 / Vue 2 / React / jQuery 等多种运行时框架**（含无框架宿主）。该包**尚未完成稳定性测试**，已按**正式版本号**发布到 npm（dist-tag `latest`，当前 `1.5.0`，安装直接 `npm i @worm-vue3-print/common`），npm 主页面保留实验性声明并包含 Vue3 / Vue2 / React 用法示例；不建议用于生产，Vue 3 项目请使用成熟的 `@worm-vue3-print/canvas`。
+> **架构口径（1.5.0 起）**：`packages/print-common`（`@worm-vue3-print/common`）是设计器的**权威实现**——零框架原生自定义元素，技术主站 `demo/` 与 Vue 3 / Vue 2 / React / jQuery / 无框架宿主统一消费它。样式、图标与主题令牌的单一来源在 `print-core/src/styles`，元素能力位与 UI 定义走统一注册表；`@worm-vue3-print/canvas` 保留为 **Vue 3 兼容轨**（消费同一份共享样式与 core 能力表），不再持有权威样式或独立能力清单。`demo-common/` 是四宿主集成示例与 CI 验收工程。宿主契约见 `packages/print-common/src/host-contract.ts`。
 
 ## 🔗 在线预览
 
@@ -43,8 +43,8 @@ GitHub Pages：**https://worm-longliu.github.io/worm-vue3-print/**
 worm-vue3-print/
 ├── packages/                  # 工作区包（npm workspaces；core / canvas / common / skills 发布到 npm，contract 与 mcp 暂不发布）
 │   ├── print-core/            # @worm-vue3-print/core   模板表达式引擎 + 同构渲染管线（含浏览器端静默打印 SDK 子路径 /client）
-│   ├── print-canvas/          # @worm-vue3-print/canvas Vue 3 可视化设计器画布
-│   ├── print-common/          # @worm-vue3-print/common 通用宿主适配版设计器（实验性 · 未完全稳定测试；支持多种运行时框架；生产请用 print-canvas）
+│   ├── print-canvas/          # @worm-vue3-print/canvas Vue 3 兼容轨设计器（消费 common 同一份共享样式/能力表）
+│   ├── print-common/          # @worm-vue3-print/common 设计器权威实现（零框架 Custom Element；四宿主 + 技术主站共用）
 │   ├── print-plugin-kit/      # @worm-vue3-print/plugin-kit 框架无关的插件设计器 UI 契约与注册表（common 原生消费 / canvas Vue 桥接；尚未发布）
 │   ├── print-echarts/         # @worm-vue3-print/echarts  ECharts 图表元素可选包（独立可选：渲染器 + 页面执行器 + 设计器扩展；/kit 为框架无关纯 TS 出口）
 │   ├── print-echarts-common/  # @worm-vue3-print/echarts-common 图表元素的 common 适配包（静态 SVG 画布 + 图形化属性面板；尚未发布）
@@ -56,7 +56,7 @@ worm-vue3-print/
 ├── services/
 │   └── print-render/          # @worm-vue3-print/render 服务端 PDF 渲染微服务（private，不发布 npm）
 ├── demo/                      # 演示项目：Vue 3 设计器 + 预览 + 静默打印集成的完整示例
-├── demo-common/               # 演示项目（实验性 · 未完全稳定测试）：apps/ 下四个独立宿主 demo（Vue3/Vue2/React/jQuery），index.html 为静态导航页
+├── demo-common/               # 四宿主集成与 CI 验收工程：apps/ 下四个独立宿主 demo（Vue3/Vue2/React/jQuery），index.html 为静态导航页
 ├── docs/                      # 项目文档
 │   ├── 中文/                  #   中文文档（指南 / 接口 / 示例 / 文档总览 / CHANGELOG）
 │   ├── en/                    #   英文文档（首页 Overview / CHANGELOG，AI 生成并声明）
@@ -84,13 +84,13 @@ worm-vue3-print/
 | `packages/print-plugin-kit` | 插件设计器 UI 基础包（`@worm-vue3-print/plugin-kit`，尚未发布）：框架无关的 `defineElementUI` / `registerElementUI` 契约与注册表，插件只写一份画布/属性台 DOM 渲染能力，`common` 原生消费、`canvas` 自动生成 Vue 桥接组件；注册态挂 `globalThis` 固定 Symbol，与 core 插件注册表同一约定 |
 | `packages/print-echarts` | ECharts 图表元素可选包（`@worm-vue3-print/echarts`）：依赖 `echarts`，一个 `defineElementPlugin` 描述符注册**十个图表元素**（柱状/条形/折线/面积/饼/环形/散点/雷达/漏斗/仪表盘），承载 SVG 渲染器（SSR 出图）、页面执行器 IIFE、设计器画布/图形化属性面板与共享数据契约；**包入口 import 即自注册**，宿主零配置即可用十张图表素材卡，还可通过 `configureChartPlugin()` 覆盖默认尺寸/配色/示例数据/额外组件。core 与 canvas 主包不依赖图表库；未安装时素材台不显示图表、模板内图表按占位降级。自定义元素照抄 `docs/中文/指南/自定义元素插件开发.md` 与 `examples/custom-element-plugin/` |
 | `packages/print-echarts-common` | 图表元素的 common 适配包（`@worm-vue3-print/echarts-common`，尚未发布）：用 `plugin-kit` 契约把十个图表 kind 接进零框架设计器——画布用 `renderChartToSvg` 出与出纸同源的静态 SVG，属性台把 Vue 版图形化面板按原生 DOM 重写（数据源/字段映射/标题/图例/配色/堆叠等）；`import` 即注册，不改 `@worm-vue3-print/echarts` 的 Vue 3 能力 |
-| `packages/print-common` | ⚠️ **实验性 · 未完全稳定测试**：通用宿主适配设计器（`@worm-vue3-print/common`）：以原生自定义元素 `<print-designer>` 形态提供，**支持多种运行时框架**——任意框架（Vue 3 / Vue 2 / React / jQuery / Angular 等）或无框架宿主均可直接接入，供 React / Vue2 / jQuery 等非 Vue3 宿主使用，**不打包 Vue 运行时**。样式与图标由 `scripts/gen-styles.mjs`、`scripts/gen-icons.mjs` 从 canvas 构建产物派生（类名逐字对齐），交互与渲染逻辑复用 core 的 designer 导出；另产出浏览器直挂形态 `dist/common.js`（UMD，core 与码制库内联，挂 `window.WormPrintCommon`）与 `dist/common.css`，无打包器宿主一个 `<script>` + 一个 `<link>` 即可接入。插件元素（如 ECharts 图表）经 `plugin-kit` 契约原生消费，素材卡/画布/属性台与 canvas 同口径；与 Vue3 版的功能与样式一致性说明见包内 `PARITY.md`，宿主示例在 `demo-common/apps/` |
+| `packages/print-common` | **设计器权威实现**：通用宿主适配设计器（`@worm-vue3-print/common`）：以原生自定义元素 `<print-designer>` 形态提供，**支持多种运行时框架**——任意框架（Vue 3 / Vue 2 / React / jQuery / Angular 等）或无框架宿主均可直接接入，供 React / Vue2 / jQuery 等非 Vue3 宿主使用，**不打包 Vue 运行时**。样式与图标的**单一来源在 `print-core/src/styles`**，`scripts/gen-styles.mjs`、`scripts/gen-icons.mjs` 从共享源派生（canvas 反向消费同一份主题令牌，类名逐字对齐）；元素能力位与 UI 定义走统一注册表，内置与插件同权，交互与渲染逻辑复用 core 的 designer 导出；另产出浏览器直挂形态 `dist/common.js`（UMD，core 与码制库内联，挂 `window.WormPrintCommon`）与 `dist/common.css`，无打包器宿主一个 `<script>` + 一个 `<link>` 即可接入。插件元素（如 ECharts 图表）经 `plugin-kit` 契约原生消费，素材卡/画布/属性台与 canvas 同口径；与 Vue3 版的功能与样式一致性说明见包内 `PARITY.md`，宿主示例在 `demo-common/apps/` |
 | `packages/print-contract` | 模板契约层（`@worm-vue3-print/contract`，private）：把 `TemplateData`/`ElementOptions` 收敛为机器可读契约——`OPTION_META` 全键元数据（编译期必填映射，core 加字段而此处漏登记则 `tsc` 红）、zod schema 与 `validateTemplateJson`（废弃键/未知键只降级 warning，不判死存量模板）、`checkExpression`（语法交给 core 解析器、函数名走白名单）、`inspectTemplate`（静态版面体检，**不做排版测量**）、`draftTemplate`（走 core 元素工厂产草稿并回灌三道校验） |
 | `packages/print-mcp` | 桌面客户端内部 MCP 工具库（`@worm-vue3-print/mcp`，private）：提供 5 个纯计算工具与 4 个模板会话工具，由客户端在本机 `/mcp` 组合暴露。**不调用模型、不读取任何模型密钥**，工具循环归宿主 AI Agent |
 | `clients/print-client` | 静默打印桌面客户端（Electron，private）：主进程 WS 服务 / 打印引擎 / 打印机服务 / 配置与任务记录（`src/main`）、配置窗口 Vue 3 界面（`src/renderer`）、隐藏渲染 worker（`src/worker`）、沙箱 IPC 桥（`src/preload`）、IPC 通道契约（`src/shared`）；含 electron-builder 打包配置与真机冒烟脚本（`scripts/`） |
 | `services/print-render` | 服务端渲染微服务（private）：基于 Playwright 的 PDF 渲染（`driver-playwright` / `pdf-render` / `browser-pool` / `server`），workspace 软链依赖 core，与浏览器预览、桌面客户端共用同一份打印管线 |
 | `demo` | Vue 3 演示项目：设计器接入（`App.vue`）、静默打印集成、渲染客户端封装（`render-client.ts`）、业务字段（`business.ts`）、内置模板 JSON（`template-purchase-receipt.json`），端口 9303 |
-| `demo-common` | ⚠️ **实验性示例 · 未完全稳定测试**（对应上方实验性的 `print-common`）：通用宿主适配、**支持多种运行时框架**的多宿主集成示例：`apps/vue3`（9331，SFC）、`apps/vue2`（9332，SFC + Options API）、`apps/react`（9335，hooks）走 **NPM 包接入**；`apps/jquery`（9334）走 **JS + CSS 直挂**（无打包器、业务代码不 import 插件，只用 `window.WormPrintCommon` + `$`）。四个工程彼此独立（各有 `package.json` / lock / node_modules），**不共用任何壳层封装**——设计器挂载、`fields`/`template` 的 property 注入、`uploadImage` 宿主回调、`save`/`preview`/`help`/`dblclick-element`/`dblclick-cell` 事件、浏览器渲染预览与打印、服务端 PDF、客户端静默打印、批量份数都写在各自的文件里，照抄一个工程即可落到自己项目；示例模板/字段/数据也各自带一份（`src/templates.js`）。四个页面的界面版式与 `demo/` **完全一致**：同一份顶栏动作、同一个全屏打印预览层、同一套「打印输出 / 加载示例 / 自定义字段与数据」弹窗，样式由 `scripts/sync-demo-styles.mjs`（`npm run styles:demo-common`）从 `demo/` 逐字抽取成各工程同 MD5 的 `src/styles/demo-ui.css`，工程内不再写私有布局样式。`apps/vue3` 额外接入 `@worm-vue3-print/echarts-common`，示例库带「图表」分组（其余宿主未安装该适配包，样例不同步）；`index.html` 是四入口静态导航页，`scripts/dev-all.mjs` / `install-all.mjs` 一次拉起或安装四个工程，`scripts/verify-demo.mjs` 做 32 项 UI 级验收（按 demo 类名逐项判定，含防「DOM 全绿但布局塌陷」的尺寸断言） |
+| `demo-common` | 四宿主集成与 CI 验收工程（对应权威实现 `print-common`）：通用宿主适配、**支持多种运行时框架**的多宿主集成示例：`apps/vue3`（9331，SFC）、`apps/vue2`（9332，SFC + Options API）、`apps/react`（9335，hooks）走 **NPM 包接入**；`apps/jquery`（9334）走 **JS + CSS 直挂**（无打包器、业务代码不 import 插件，只用 `window.WormPrintCommon` + `$`）。四个工程彼此独立（各有 `package.json` / lock / node_modules），**不共用任何壳层封装**——设计器挂载、`fields`/`template` 的 property 注入、`uploadImage` 宿主回调、`save`/`preview`/`help`/`dblclick-element`/`dblclick-cell` 事件、浏览器渲染预览与打印、服务端 PDF、客户端静默打印、批量份数都写在各自的文件里，照抄一个工程即可落到自己项目；示例模板/字段/数据也各自带一份（`src/templates.js`）。四个页面的界面版式与 `demo/` **完全一致**：同一份顶栏动作、同一个全屏打印预览层、同一套「打印输出 / 加载示例 / 自定义字段与数据」弹窗，样式由 `scripts/sync-demo-styles.mjs`（`npm run styles:demo-common`）从 `demo/` 逐字抽取成各工程同 MD5 的 `src/styles/demo-ui.css`，工程内不再写私有布局样式。`apps/vue3` 额外接入 `@worm-vue3-print/echarts-common`，示例库带「图表」分组（其余宿主未安装该适配包，样例不同步）；`index.html` 是四入口静态导航页，`scripts/dev-all.mjs` / `install-all.mjs` 一次拉起或安装四个工程，`scripts/verify-demo.mjs` 做 UI 级验收（按 demo 类名逐项判定，含防「DOM 全绿但布局塌陷」的尺寸断言），`scripts/verify-business-scenarios.mjs` 做全示例业务场景回归；两者均已纳入 `.github/workflows/host-acceptance.yml` |
 | `docs` | 文档：`中文/`（指南、接口、示例、文档总览、CHANGELOG，为权威版本）、`en/`（英文首页 Overview 与 CHANGELOG，由 AI 生成并在文内声明），`superpowers/` 为设计文档（specs）与实施计划（plans） |
 | `skills` | 三个可分发使用技能：`worm-vue3-print-integration`（Vue 3）、`worm-vue3-print-common`（跨框架）、`worm-vue3-print-mcp`（MCP 与模板生成）；通过 `npx @worm-vue3-print/skills <技能名>` 安装，详见 `skills/README.md` |
 | `scripts` | 仓库级 Node 脚本：`check-print-architecture.mjs`（出图端重复实现守卫：测量 / 纸高 / 出图参数 / 码制 / **插件渲染库裸依赖**，带规则自检，`npm run lint:print-architecture`）、`inject-license-banner.mjs`（发布包类型声明补版权头） |
@@ -106,12 +106,12 @@ worm-vue3-print/
 | `@worm-vue3-print/plugin-kit` | `packages/print-plugin-kit` | 工作区可选包 | 框架无关的插件设计器 UI 契约与注册表：插件用 `defineElementUI` 写一份 DOM 渲染能力（画布 + 属性台），`common` 原生消费、`canvas` 自动生成 Vue 桥接组件；元素语义仍由 core 插件描述符承载。**尚未发布到 npm** |
 | `@worm-vue3-print/echarts` | `packages/print-echarts` | 工作区可选包 | ECharts 图表元素扩展包：十个图表元素、SVG 渲染器、页面执行器与设计器扩展；`/kit` 子路径为不带 Vue 的纯 TS 出口（供 common 适配包复用）。**尚未发布到 npm**，按需从工作区/源码引入，主包不依赖图表库 |
 | `@worm-vue3-print/echarts-common` | `packages/print-echarts-common` | 工作区可选包 | 图表元素的 common 适配包：用 `plugin-kit` 契约提供静态 SVG 画布与图形化属性面板，供零框架设计器直接使用；**尚未发布到 npm** |
-| `@worm-vue3-print/common` | `packages/print-common` | npm 正式版（`latest`）· **实验性** | ⚠️ 通用宿主适配设计器 `<print-designer>`（零框架运行时，实现为原生 Custom Element + Shadow DOM）：**支持多种运行时框架**，功能与样式对齐 `@worm-vue3-print/canvas`，供 React / Vue2 / jQuery 等非 Vue3 宿主接入（详见包内 `PARITY.md`）。**按正式版本号发布，安装直接 `npm i @worm-vue3-print/common`**；npm 主页面含 Vue 3 / Vue 2 / React 用法示例；**尚在实验阶段、未完全稳定测试，不建议用于生产**，Vue 3 项目请继续使用 `@worm-vue3-print/canvas`（成熟方案） |
+| `@worm-vue3-print/common` | `packages/print-common` | npm 正式版（`latest`）· **权威实现** | 通用宿主适配设计器 `<print-designer>`（零框架运行时，实现为原生 Custom Element + Shadow DOM）：**支持多种运行时框架**，功能与样式对齐 `@worm-vue3-print/canvas`，供 React / Vue2 / jQuery 等非 Vue3 宿主接入（详见包内 `PARITY.md`）。**按正式版本号发布，安装直接 `npm i @worm-vue3-print/common`**；npm 主页面含 Vue 3 / Vue 2 / React 用法示例；宿主契约版本化（`PRINT_DESIGNER_CONTRACT_VERSION` / `getHostContract()`），`::part` 与 `--pd-*` 支持有限定制；Vue 3 项目若要沿用原组件形态可用 `/vue3` 兼容门面或 `@worm-vue3-print/canvas` |
 | `@worm-vue3-print/skills` | `packages/print-skills` | npm | 三个使用技能的 npx/Git 安装器：显式技能名，支持 `--repo`、`--ref`、`--dir`、`--force`，默认安装到项目 `.agents/skills` |
 | `@worm-vue3-print/render` | `services/print-render` | 内部 | 基于 Playwright（Headless Chromium）的服务端 PDF 渲染微服务，Docker 部署；与浏览器预览、桌面客户端共用同一份渲染管线，保证三端出纸一致 |
 | `@worm-vue3-print/print-client` | `clients/print-client` | 内部 | 跨平台静默打印桌面客户端（Electron，回环 WebSocket + core 同构渲染 + `webContents.print` 静默出纸） |
 
-> 发布到 npm 的正式包为 `core`、`canvas`、`common` 与 `skills`：core/canvas/skills 由 `npm run publish:npm` 按标签发布；`@worm-vue3-print/common` 与主线同号发布正式版（dist-tag `latest`，当前 `1.5.0`），但保留实验性声明，发布走 `npm run publish:common` 或手动触发 `publish-common.yml`（流程见 [CONTRIBUTING.md](CONTRIBUTING.md)）；`render` 与 `print-client` 为私有工作区包，分别以 Docker 镜像和安装包形式分发，客户端安装包挂在 [GitHub Releases](https://github.com/worm-longliu/worm-vue3-print/releases)（见下文[下载客户端安装包](#下载客户端安装包)）。示例 `demo-common` 不在工作区内，仍以 `file:` 依赖消费本仓库的 common；该包**尚未完成稳定性测试**，不建议应用到生产，Vue 3 项目请使用 `@worm-vue3-print/canvas`。
+> 发布到 npm 的正式包为 `core`、`plugin-kit`、`common`、`canvas`、`echarts`、`echarts-common` 与 `skills`，全部与主线同号（1.5.0）。`plugin-kit` 是 common/canvas 的运行时依赖，`echarts-common` 是图表适配包，**六者必须同批发布**：`npm run publish:npm` 按 core → plugin-kit → common → canvas → echarts → echarts-common → skills 顺序执行；单独补发 common 用 `npm run publish:common`（流程见 [CONTRIBUTING.md](CONTRIBUTING.md)）。`render` 与 `print-client` 为私有工作区包，分别以 Docker 镜像和安装包形式分发，客户端安装包挂在 [GitHub Releases](https://github.com/worm-longliu/worm-vue3-print/releases)（见下文[下载客户端安装包](#下载客户端安装包)）。示例 `demo-common` 不在工作区内，仍以 `file:` 依赖消费本仓库的 common。
 
 ## 功能特性
 

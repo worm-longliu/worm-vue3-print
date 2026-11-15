@@ -2,7 +2,7 @@
 // 示例十二：电池模块出货标签（无 SN 标签格）——条码保留，取消「SN」文字格并把条码格合并到整行
 // 与「含 SN 条码」的差别都在 SN 那一行：原来「SN」占第 1 列、条码跨 3 列、文本字号 14；
 // 这里条码跨满 4 列、文本字号 10（让出高度给条区，203dpi 下换到 2 个打印点）。
-import type { TableCell, TableCellBorders, TemplateData } from '@worm-vue3-print/canvas'
+import type { TableCell, TableCellBorders, TemplateData } from '@worm-vue3-print/common/vue3'
 import type { SampleTemplate } from './types'
 import { BATTERY_MODULE_LABEL_TEMPLATE } from './battery-module-label'
 

@@ -1,6 +1,6 @@
 // demo/src/samples/express-waybill.ts
 // 示例四：快递电子面单——100×150mm 一联面单（自定义纸）
-import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/common/vue3'
 import { createElementFactory } from './element-helper'
 import type { SampleTemplate } from './types'
 

@@ -6,6 +6,7 @@
 // 口径：pt（与单元格 TableCellBorder、rect/oval 自身 borderWidth 统一）。
 
 import type { ElementBorderSide, ElementOptions } from '../designer/types.js'
+import { getElementCapabilities } from '../designer/element-capabilities.js'
 
 export interface ElementBorderCss {
   /** CSS 长度，pt 口径（与 rect/oval、单元格边框一致） */
@@ -22,12 +23,14 @@ export interface ElementBordersCss {
 
 export const ELEMENT_BORDER_SIDES: readonly ElementBorderSide[] = ['top', 'right', 'bottom', 'left']
 
-/** 用 border 画自身本体或走单元格边框的类型，不参与元素级边框 */
-const SELF_BORDER_TYPES: ReadonlySet<string> = new Set(['rect', 'oval', 'hline', 'vline', 'table'])
+/** 能力位未声明时的历史回落（用 border 画自身本体或走单元格边框的类型） */
+const SELF_BORDER_FALLBACK: ReadonlySet<string> = new Set(['rect', 'oval', 'hline', 'vline', 'table'])
 
-/** 该元素类型是否可携带元素级边框（供设计器格式刷等按类型过滤写入目标） */
+/** 该元素类型是否可携带元素级边框（插件可通过 capabilities.acceptsElementBorder 声明或覆盖内置） */
 export function acceptsElementBorder(type: string | undefined): boolean {
-  return !!type && !SELF_BORDER_TYPES.has(type)
+  if (!type) return false
+  const declared = getElementCapabilities(type).acceptsElementBorder
+  return declared === undefined ? !SELF_BORDER_FALLBACK.has(type) : declared
 }
 
 const VALID_STYLES: ReadonlySet<string> = new Set(['solid', 'dashed', 'dotted', 'double'])
@@ -54,7 +57,7 @@ export function resolveElementBorder(
   type: string | undefined,
   opts: BorderFields | undefined,
 ): ElementBordersCss | null {
-  if (!type || SELF_BORDER_TYPES.has(type)) return null
+  if (!acceptsElementBorder(type)) return null
   const all = parseBorder(opts?.borderWidth, opts?.borderStyle, opts?.borderColor)
   const edges: Partial<Record<ElementBorderSide, ElementBorderCss>> = {}
   const src = opts?.borders

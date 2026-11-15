@@ -1,6 +1,6 @@
 # 与 Vue3 版设计器（`@worm-vue3-print/canvas`）的一致性清单
 
-> ⚠️ 本包为**实验性质**，不建议应用到生产中；Vue 3 项目的正式方案是 `@worm-vue3-print/canvas`。
+> 本包是设计器的**权威实现**，Vue 3 的 `@worm-vue3-print/canvas` 为兼容轨（消费同一份共享样式与 core 能力表）。
 > 验收口径：**功能清单逐项 + 截图逐张比对**（历史轮次），现为「逻辑单测 + 源码审计 + 宿主集成验收」。
 > 早期成对截图脚本（`demo-common/scripts/compare.mjs`，输出 `demo-common/evidence/compare/`，两侧同名成对如
 > `vue3-10-toolbar.png` / `common-10-toolbar.png`）依赖当时的共用壳层与 `#demo` 别名直连 `demo/src/samples/**`；

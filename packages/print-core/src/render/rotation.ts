@@ -1,6 +1,7 @@
 // print-core/src/render/rotation.ts
 // 元素级旋转的口径单点：AABB 几何、类型/档位放行与直角吸附。
 // 分页引擎、连续纸推导、出纸校验与 HTML 渲染四处共用本文件，禁止各自重抄三角公式。
+import { getElementCapabilities } from '../designer/element-capabilities.js'
 
 /** 旋转后轴对齐外接盒（mm），坐标与设计盒同一参照系 */
 export interface RotatedAabb {
@@ -53,12 +54,19 @@ export function getRotatedAabb(
 /** 条码任意角度的点阵放行门槛（点/英寸）：实测 385dpi 起斜角游程恢复干净，300dpi 细条劣化 9 倍 */
 export const CODE_ROTATION_MIN_DPI = 385
 
-/** v1 忽略元素级旋转的类型（渲染不转；模板不报错，出纸保持水平） */
-const ROTATION_EXCLUDED_TYPES = new Set(['table', 'flowList'])
+/** 能力位未声明时的历史回落（v1 排除项）；正常路径一律读注册表 */
+const ROTATION_EXCLUDED_FALLBACK = new Set(['table', 'flowList'])
 
-/** 类型本身是否不参与元素级旋转（v1 排除项单点，宿主判「属性台是否出行」用它） */
+/** 类型本身是否不参与元素级旋转（插件可通过 capabilities.rotationExcluded 声明或覆盖内置） */
 export function isRotationExcludedType(type: string): boolean {
-  return ROTATION_EXCLUDED_TYPES.has(type)
+  const declared = getElementCapabilities(type).rotationExcluded
+  return declared === undefined ? ROTATION_EXCLUDED_FALLBACK.has(type) : declared
+}
+
+/** 码类任意角度需 385dpi 门槛（插件可通过 capabilities.codeRotationDpiGated 声明） */
+function isCodeRotationDpiGated(type: string): boolean {
+  const declared = getElementCapabilities(type).codeRotationDpiGated
+  return declared === undefined ? (type === 'barcode' || type === 'qrcode') : declared
 }
 
 /** 码类「任意角度」需 385dpi 以上打印头；属性台据此置灰自由角度输入（90° 步进不受限） */
@@ -69,7 +77,7 @@ export const CODE_OBLIQUE_NOTE = '条码与二维码仅支持 90° 步进；任�
  * 其余类型恒可编辑。与 resolveElementRotation 的吸附档同一门槛，避免属性台放开、出纸又吸附的分叉。
  */
 export function isFreeAngleEditable(type: string, opts?: { printerDpi?: number }): boolean {
-  if (type !== 'barcode' && type !== 'qrcode') return true
+  if (!isCodeRotationDpiGated(type)) return true
   const dpi = opts?.printerDpi
   return typeof dpi === 'number' && dpi > 0 && dpi >= CODE_ROTATION_MIN_DPI
 }
@@ -91,8 +99,8 @@ export function resolveElementRotation(
   if (typeof raw !== 'number' || !Number.isFinite(raw)) return undefined
   const a = normalizeRotationAngle(raw)
   if (a === 0) return undefined
-  if (ROTATION_EXCLUDED_TYPES.has(type)) return undefined
-  if (type === 'barcode' || type === 'qrcode') {
+  if (isRotationExcludedType(type)) return undefined
+  if (isCodeRotationDpiGated(type)) {
     if (a === 90 || a === 180 || a === 270) return a
     const effDpi = dpi ?? opts?.printerDpi
     if (typeof effDpi === 'number' && effDpi > 0 && effDpi < CODE_ROTATION_MIN_DPI) {

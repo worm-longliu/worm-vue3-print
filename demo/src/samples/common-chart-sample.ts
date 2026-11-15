@@ -3,7 +3,7 @@
 // 供 demo-common/scripts/sync-demo-samples.mjs 打包求值后同步进 common 宿主。
 // 只使用 @worm-vue3-print/echarts 的十类 kind 数据契约（chartOption + chart* 字段映射），
 // 与 demo 的销售图表/十类总览保持同口径，但不需要在求值阶段拉起图表库。
-import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/common/vue3'
 import type { SampleTemplate } from './types'
 
 const FIELDS: PrintBusinessField[] = [

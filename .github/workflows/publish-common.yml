@@ -38,20 +38,28 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
 
+      # 单独补发 common 时，plugin-kit 必须已经在 registry 上存在（common 的 runtime dependency）
+      - name: 校验 plugin-kit 已发布
+        run: |
+          VER=$(node -p "require('./packages/print-plugin-kit/package.json').version")
+          if ! npm view @worm-vue3-print/plugin-kit@"$VER" version >/dev/null 2>&1; then
+            echo "::error::plugin-kit@$VER 尚未发布；请先走 publish-npm.yml 全量发布链"
+            exit 1
+          fi
+          echo "plugin-kit@$VER 已发布"
+
       - name: 安装依赖
         run: npm ci
 
-      - name: 构建 core、plugin-kit、canvas 与 common
+      - name: 构建 core、plugin-kit 与 common
         run: |
           npm run build -w @worm-vue3-print/core
           npm run build -w @worm-vue3-print/plugin-kit
-          npm run build -w @worm-vue3-print/canvas
           npm run build -w @worm-vue3-print/common
 
-      - name: 测试 core、canvas 与 common
+      - name: 测试 core 与 common
         run: |
           npm test -w @worm-vue3-print/core
-          npm test -w @worm-vue3-print/canvas
           npm test -w @worm-vue3-print/common
 
       - name: 校验版本号并选择 dist-tag

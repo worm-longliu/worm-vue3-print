@@ -1,6 +1,6 @@
 // demo/src/samples/sales-outbound.ts
 // 示例七：销售出库单——A5 纵向单据，明细表格分页 + 每页小计 + 整表合计
-import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/common/vue3'
 import { createElementFactory } from './element-helper'
 import type { SampleTemplate } from './types'
 

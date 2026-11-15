@@ -140,10 +140,12 @@ const component = defineComponent({
       if (presets.value.some(p => p.key === key)) zoomKey.value = key
     }
 
+    // 首次渲染必须等 iframe 挂载：immediate 会在 setup 阶段执行，此时 iframeRef 尚未赋值，
+    // doc.write 被跳过且 props 不再变化时预览层永久空白（Vue 3 兼容门面独有的问题）。
     watch(
       () => [props.templateJson, props.printData, props.baseUrl, props.fontBaseUrl, props.renderers],
       () => void rerender(),
-      { immediate: true, deep: true },
+      { deep: true },
     )
     watch(zoomValue, () => applyViewZoom())
 
@@ -151,8 +153,8 @@ const component = defineComponent({
       ensurePreviewStyle()
       measureContainer()
       syncZoomKey()
-      applyViewZoom()
       window.addEventListener('resize', onWindowResize)
+      void rerender()
     })
 
     onBeforeUnmount(() => {
@@ -164,17 +166,20 @@ const component = defineComponent({
 
     return () => {
       const busy = rendering.value || !!errorMsg.value
+      // 子节点必须带稳定 key：loading/error 的插入与消失会改变 children 顺序，
+      // 无 key 时 Vue 按索引 diff 会重建 iframe，刚 doc.write 进去的纸面随旧节点一起丢失。
       const children: unknown[] = []
 
       if (errorMsg.value) {
-        children.push(h('div', { class: 'print-html-preview-error' }, [
+        children.push(h('div', { key: 'error', class: 'print-html-preview-error' }, [
           h('span', null, `预览渲染失败：${errorMsg.value}`),
         ]))
       } else if (rendering.value) {
-        children.push(h('div', { class: 'print-html-preview-loading' }, '预览渲染中…'))
+        children.push(h('div', { key: 'loading', class: 'print-html-preview-loading' }, '预览渲染中…'))
       }
 
       children.push(h('iframe', {
+        key: 'iframe',
         ref: iframeRef,
         class: 'print-html-preview-iframe',
         title: '打印预览',
@@ -182,7 +187,7 @@ const component = defineComponent({
       }))
 
       if (warnings.value.length && !busy) {
-        children.push(h('div', { class: 'print-html-preview-warn', role: 'status' }, [
+        children.push(h('div', { key: 'warn', class: 'print-html-preview-warn', role: 'status' }, [
           h('span', null, `出纸提示：${warnings.value.join('；')}`),
         ]))
       }
@@ -202,7 +207,7 @@ const component = defineComponent({
           bars.push(h('span', { class: 'print-html-preview-zoom-hint' }, viewHint.value))
         }
         bars.push(h('span', { class: 'print-html-preview-zoom-note' }, '仅屏幕缩放，打印不受影响'))
-        children.push(h('div', { class: 'print-html-preview-zoom' }, bars))
+        children.push(h('div', { key: 'zoom', class: 'print-html-preview-zoom' }, bars))
       }
 
       return h('div', {

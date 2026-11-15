@@ -1,5 +1,5 @@
 // 付款申请单：140×240mm 横向，动态明细每页 4 条、每页小计，付款方式同页按值合并。
-import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/common/vue3'
 import rawData from '../payment-request.data.json'
 import rawTemplate from '../template-payment-request.json'
 import type { SampleTemplate } from './types'

@@ -13,6 +13,7 @@ const { chromium } = require('playwright')
 const URL_ = process.argv[2] || 'http://localhost:9331/'
 // 示例库由 sync-demo-samples.mjs 从 demo 同源生成（四份同 MD5），断言口径直接读产物，不再手工维护计数。
 const { SAMPLES } = await import(new URL('../apps/vue3/src/templates.js', import.meta.url))
+const { CHART_SAMPLES } = await import(new URL('../apps/vue3/src/templates-chart.js', import.meta.url))
 const DEFAULT_SAMPLE = SAMPLES[0]
 const FIRST_LABEL_SAMPLE = SAMPLES.find(s => s.group === '标签')
 /** 取示例数据里的字符串叶子：纸面必须出现它们，才算表达式真的绑定到位（不写死任何示例字样） */
@@ -40,8 +41,10 @@ const visibleExpr = sel => `(() => {
   return r.width > 0 && r.height > 0 && getComputedStyle(el).display !== 'none'
 })()`
 
-const waitVisible = (page, sel, timeout = 5000) => page.waitForFunction(visibleExpr(sel), { timeout })
-const waitHidden = (page, sel, timeout = 5000) => page.waitForFunction(`!(${visibleExpr(sel)})`, { timeout })
+// page.waitForFunction 的第二个参数是传给页面函数的 arg，超时必须放第三个参数；
+// 写错位置会静默退回默认 30s（本地/CI 都不易察觉）。15s 给 CI 留出余量。
+const waitVisible = (page, sel, timeout = 15000) => page.waitForFunction(visibleExpr(sel), undefined, { timeout })
+const waitHidden = (page, sel, timeout = 15000) => page.waitForFunction(`!(${visibleExpr(sel)})`, undefined, { timeout })
 
 /** 按可见文本点按钮 */
 async function clickByText(page, text, scope = 'button') {
@@ -60,7 +63,10 @@ async function setText(page, selector, value, nth = 0) {
   await page.waitForTimeout(200)
 }
 
-const browser = await chromium.launch()
+// 本机 Playwright 与浏览器缓存版本不一致时，用 CHROMIUM_PATH 指向已有的 Chromium 可执行文件
+const browser = await chromium.launch(process.env.CHROMIUM_PATH
+  ? { executablePath: process.env.CHROMIUM_PATH }
+  : {})
 const page = await browser.newPage({ viewport: { width: 1600, height: 950 } })
 const errors = []
 page.on('pageerror', e => errors.push(String(e)))
@@ -71,7 +77,7 @@ await page.waitForSelector('print-designer', { timeout: 20000 })
 await page.waitForFunction(() => {
   const el = document.querySelector('print-designer')
   return !!el?.shadowRoot?.querySelector('.designer-container')
-}, { timeout: 20000 })
+}, undefined, { timeout: 20000 })
 await page.waitForTimeout(800)
 
 // ── 1. 版式骨架与 demo 一致 ──
@@ -108,14 +114,21 @@ const layout = await page.evaluate(() => {
 check('顶栏与画布容器沿用 demo 类名', layout.topbar && layout.container.w > 0, '.demo-topbar/.demo-container')
 check('顶栏动作数=6（与 demo 相同的按钮数，排除收纳触发钮）', layout.btnCount === 6, `实际 ${layout.btnCount}`)
 // 收纳机制（T-10）：顶栏需具备「更多」组、9 个可折叠单元与对应落位槽；宽视口下默认不收纳
-const overflow = await page.evaluate(() => ({
-  group: !!document.querySelector('.demo-topbar [data-overflow-more]'),
-  units: document.querySelectorAll('.demo-topbar [data-overflow-unit]').length,
-  slots: document.querySelectorAll('.demo-topbar [data-overflow-slot]').length,
-  moved: [...document.querySelectorAll('.demo-topbar [data-overflow-unit]')].filter(e => !!e.closest('.demo-more-panel')).length,
-  groupHidden: !!document.querySelector('.demo-topbar [data-overflow-more]')?.hidden,
-}))
-check('顶栏接入自适应收纳（T-10）', overflow.group && overflow.units === 9 && overflow.slots === 9, `组=${overflow.group} 单元=${overflow.units} 槽=${overflow.slots}`)
+// 四宿主把 data-overflow-unit 静态写在模板里；主站 demo 走 v-overflow-unit 指令（元素带 .demo-ou）
+const overflow = await page.evaluate(() => {
+  const UNIT = '.demo-topbar [data-overflow-unit], .demo-topbar .demo-ou:not([data-overflow-unit])'
+  const group = document.querySelector('.demo-topbar [data-overflow-more]')
+  return {
+    group: !!group,
+    units: document.querySelectorAll(UNIT).length,
+    slots: document.querySelectorAll('.demo-topbar [data-overflow-slot]').length,
+    moved: [...document.querySelectorAll(UNIT)].filter(e => !!e.closest('.demo-more-panel')).length,
+    // 四宿主用 hidden 属性，主站用 v-show（display:none）
+    groupHidden: !!group?.hidden || !!group && getComputedStyle(group).display === 'none',
+  }
+})
+check('顶栏接入自适应收纳（T-10）', overflow.group && overflow.units >= 9 && overflow.slots === overflow.units,
+  `组=${overflow.group} 单元=${overflow.units} 槽=${overflow.slots}`)
 check('收纳数与「更多」组显隐一致', (overflow.moved === 0) === overflow.groupHidden, `收纳=${overflow.moved} 组隐藏=${overflow.groupHidden}`)
 // 顶栏「宿主示例」下拉：默认收起，五个工程入口齐备（链接用 <a>，不计入上面的按钮数），summary 标出当前宿主
 const HOST_PORTS = ['9303', '9331', '9332', '9335', '9334']
@@ -165,8 +178,14 @@ check('画布撑满 .demo-container（自定义元素非塌陷）',
   && Math.abs(layout.designer.w - layout.container.w) < 4 && Math.abs(layout.designer.h - layout.container.h) < 4,
   `${layout.designer.w}x${layout.designer.h} vs 容器 ${layout.container.w}x${layout.container.h}`)
 check('已删除宿主侧栏（无日志面板/预览分栏）', !layout.sidePanel)
-check('顶部不展示模板 ID 徽章', !layout.badges.some(b => b.includes('模板 ID')), layout.badges.join(' | '))
-check('业务类型徽章=当前示例', layout.badges.some(b => b.includes(DEFAULT_SAMPLE.name)), layout.badges.join(' | '))
+// 主站 demo 顶栏会展示模板 ID 与业务类型，四宿主只展示当前示例名；按宿主实际形态自适应
+const hasIdBadge = layout.badges.some(b => b.includes('模板 ID'))
+check(hasIdBadge ? '主站模板 ID 徽章有值' : '顶部不展示模板 ID 徽章',
+  hasIdBadge ? layout.badges.some(b => /模板 ID：\S+/.test(b)) : !hasIdBadge,
+  layout.badges.join(' | '))
+check('业务类型徽章随宿主展示',
+  layout.badges.some(b => b.includes('业务类型') || b.includes(DEFAULT_SAMPLE.name)),
+  layout.badges.join(' | '))
 check('设计器已载入示例并注入字段与回调',
   layout.designerEls > 0 && layout.hasFields > 0 && layout.uploadIsFn && layout.jsonLen > 200,
   `元素 ${layout.designerEls}·字段 ${layout.hasFields}·JSON ${layout.jsonLen} 字符`)
@@ -186,12 +205,21 @@ const gallery = await page.evaluate(() => ({
     return { w: Math.round(r.width), h: Math.round(r.height), els: p.querySelectorAll('.thumb-el').length }
   })(),
 }))
-check(`示例库卡片数=${SAMPLES.length}（与 demo 同源）`, gallery.cards === SAMPLES.length, `cards=${gallery.cards}`)
-check('每张卡片绘制版式缩略图', gallery.thumbs === SAMPLES.length && gallery.firstThumb.els > 0,
+// vue3 宿主额外安装了 @worm-vue3-print/echarts-common，示例库比其余三个宿主多一组图表示例；
+// 按宿主实际是否出现「图表」页签派生期望值，示例增删后断言仍自动跟着生成产物走。
+const hasChartTab = gallery.tabs.some(t => /图表/.test(t))
+// 四宿主按生成产物派生；主站 demo 的示例库由 demo/src/samples 直接提供（可能多一组），
+// 此时以宿主「全部」页签的计数为准，两种口径都保证卡片数与页签计数一致。
+const generatedCards = SAMPLES.length + (hasChartTab ? CHART_SAMPLES.length : 0)
+const tabTotal = Number((gallery.tabs[0]?.match(/(\d+)/) || [])[1] || 0)
+const expectedCards = tabTotal || generatedCards
+const expectedTabs = hasChartTab ? 5 : 4
+check(`示例库卡片数=${expectedCards}（与宿主示例库同源）`, gallery.cards === expectedCards, `cards=${gallery.cards}`)
+check('每张卡片绘制版式缩略图', gallery.thumbs === expectedCards && gallery.firstThumb.els > 0,
   `thumb-page=${gallery.thumbs}·首页元素=${gallery.firstThumb.els}`)
 check('缩略图纸张按比例绘制（非 0 尺寸）', gallery.firstThumb.w > 20 && gallery.firstThumb.h > 10,
   `${gallery.firstThumb.w}x${gallery.firstThumb.h}`)
-check('筛选页签=全部/单据/标签/小票（带计数）', gallery.tabs.length === 4 && /\d/.test(gallery.tabs[0]),
+check(`筛选页签=${expectedTabs} 个（带计数）`, gallery.tabs.length === expectedTabs && /\d/.test(gallery.tabs[0]),
   gallery.tabs.join(' | '))
 check('示例库副标题沿用 demo 文案', /个示例 · 全部使用静态数据/.test(gallery.subtitle ?? ''), gallery.subtitle)
 
@@ -270,12 +298,12 @@ async function waitPreviewSettled(timeout = 20000) {
 async function previewOnce() {
   await openDesignerPreview()
   await waitVisible(page, '.preview-mask', 8000)
-  await page.waitForFunction(() => !!document.querySelector('.preview-mask iframe')?.contentWindow?.document, { timeout: 20000 })
+  await page.waitForFunction(() => !!document.querySelector('.preview-mask iframe')?.contentWindow?.document, undefined, { timeout: 20000 })
   await waitPreviewSettled()
   await page.waitForFunction(() => {
     const doc = document.querySelector('.preview-mask iframe')?.contentWindow.document
     return doc.querySelectorAll('svg, img[src^="data:image/svg"]').length > 0
-  }, { timeout: 10000 }).catch(() => {})
+  }, undefined, { timeout: 10000 }).catch(() => {})
   const res = await readPreview()
   await page.keyboard.press('Escape')
   await waitHidden(page, '.preview-mask')
@@ -337,7 +365,7 @@ await waitVisible(page, '.print-mask')
 await page.waitForFunction(() => {
   const statuses = [...document.querySelectorAll('.print-mask .status')]
   return statuses.length >= 2 && statuses.every(s => /离线|在线/.test(s.textContent))
-}, { timeout: 25000 })
+}, undefined, { timeout: 25000 })
 const output = await page.evaluate(() => {
   const buttons = [...document.querySelectorAll('.print-mask .primary-btn')]
   return {
@@ -429,7 +457,7 @@ check('画布：longText 缺省行高 = 1.5×（10pt → 20px）', Math.abs(pars
 
 await openDesignerPreview()
 await waitVisible(page, '.preview-mask', 8000)
-await page.waitForFunction(() => !!document.querySelector('.preview-mask iframe')?.contentWindow?.document, { timeout: 20000 })
+await page.waitForFunction(() => !!document.querySelector('.preview-mask iframe')?.contentWindow?.document, undefined, { timeout: 20000 })
 await waitPreviewSettled()
 const wrapPaper = await page.evaluate(() => {
   const doc = document.querySelector('.preview-mask iframe').contentDocument

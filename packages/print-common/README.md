@@ -1,15 +1,17 @@
 # @worm-vue3-print/common
 
-> ⚠️ **实验性质（按正式版本号发布）**：本包已发布到 npm 的 `latest`（当前 `1.4.8`），但接口与产物形态仍可能调整，
-> **不建议应用到生产环境**；Vue 3 项目默认用成熟方案 `@worm-vue3-print/canvas`。已按 canvas 口径接入、需要切换到零框架实现的宿主可用本包 `/vue3` 兼容门面；主入口面向 Vue 3 / Vue 2 / React / jQuery 等跨框架宿主。
+> **设计器权威实现**：技术主站 `demo/` 与 Vue 3 / Vue 2 / React / jQuery / 无框架宿主统一消费本包。
+> 样式、图标与主题令牌的单一来源在 `print-core/src/styles`，`@worm-vue3-print/canvas` 反向消费同一份；
+> 元素能力位（core）与元素定义（本包）走统一注册表，内置 11 类元素与第三方插件同权。
+> 宿主接入契约见 [「宿主契约」](#宿主契约) 与 `src/host-contract.ts`；Vue 3 宿主可用 `/vue3` 兼容门面沿用原组件写法。
 
 打印模板可视化设计器的 **通用宿主适配形态**：任意框架、或完全没有框架的宿主都能直接接入，
 实现为零框架原生 Custom Element + Shadow DOM，**不依赖 Vue / React 等任何框架运行时**，
-用于把 `@worm-vue3-print/canvas`（Vue 3 版设计器）的能力带给 Vue 2、React、jQuery 及任意非 Vue3 宿主。
+作为设计器的权威实现，同时向 Vue 3、Vue 2、React、jQuery 及任意无框架宿主提供同一套能力。
 
 - 功能与布局与 Vue 3 版对齐，逐项状态见 [PARITY.md](./PARITY.md)
-- 样式与图标从 canvas 构建产物**派生**（`scripts/gen-styles.mjs` 剥离 `[data-v-*]`、
-  `scripts/gen-icons.mjs` 抽取 lucide 图标），因此 canvas 改版后重新构建即自动跟随
+- 样式与图标从 **`print-core/src/styles` 共享源**派生（`gen-styles.mjs` 剥 `[data-v-*]` 后补主题令牌、
+  `gen-icons.mjs` 读共享 `icon-manifest.json`），canvas 与 common 消费同一份；`gen-styles.mjs --check` 做漂移检测
 - 运行时体积：`dist/index.js` 368.28 kB（gzip 106.68 kB），零框架依赖
 - 浏览器直挂形态：`dist/common.js`（UMD，core 与码制库已内联）+ `dist/common.css`，见下节
 
@@ -19,7 +21,7 @@
 npm i @worm-vue3-print/common @worm-vue3-print/core
 ```
 
-`common` 与主线同号发布正式版，安装直接取 `latest`（当前 `1.4.8`），不需要 `@next`；`core` 装同版本即可（本包依赖 `^1.4.8`），出纸链路也要直接用它。包虽按正式版本号发布，但仍是**实验性质**，不建议用于生产。
+`common` 与主线同号发布正式版，安装直接取 `latest`（线上最新 `1.4.8`，工作区为 `1.5.0` 待发），不需要 `@next`；`core` 装同版本即可，出纸链路也要直接用它。本包现为设计器的**权威实现**，技术主站 `demo/` 与四个宿主示例工程均已接入；`/vue3` 门面与 `@worm-vue3-print/canvas` 是 Vue 3 兼容轨。注意 `plugin-kit` 是本包的运行时依赖，1.5.0 起六包同号同批发版，安装时不要只锁 `core` + `common` 两个版本号。
 
 本页包含三种 NPM 宿主的最小接入示例：[Vue 3](#vue-3) · [Vue 2.7](#vue-27) · [React 18](#react-18)；无打包器宿主见下文「浏览器直挂」。
 
@@ -96,6 +98,73 @@ d.save()
 出纸链路不需要设计器，直接走 `@worm-vue3-print/core`（浏览器渲染 / print-render 服务端 /
 桌面静默打印），与 canvas（Vue 3）宿主完全一致。
 
+## 宿主契约
+
+`<print-designer>` 的接入面是**版本化**的，定义在 `src/host-contract.ts`，宿主不必再从散文里抄：
+
+```ts
+import {
+  PRINT_DESIGNER_CONTRACT_VERSION, getHostContract,
+  PRINT_DESIGNER_PARTS, PRINT_DESIGNER_THEME_TOKENS,
+} from '@worm-vue3-print/common'
+import type { PrintDesignerEventMap, PrintDesignerCustomEvent } from '@worm-vue3-print/common'
+
+// 运行时自检（自定义元素的静态属性与实例方法都能读）
+PrintDesignerElement.contractVersion === PRINT_DESIGNER_CONTRACT_VERSION
+el.getHostContract() === getHostContract()
+
+// 事件 detail 有类型：不要把 dblclick-element 的 detail 当 JSON 解析
+el.addEventListener('save', (e) => {
+  const ev = e as PrintDesignerCustomEvent<'save'>   // ev.detail: string
+})
+```
+
+| 面 | 内容 |
+|---|---|
+| attribute | `template` · `fields` · `name` · `fonts` · `design-data`（另有 `is-edit` / `show-help` 两个布尔开关） |
+| property | `template` · `fields` · `fonts` · `designData` · `isEdit` · `showHelp` · `uploadImage` · `uploadDesignBackground` |
+| 方法 | `getTemplateJson()` · `loadTemplate()` · `save()` · `validateTemplate()` · `getGeometryWarnings()` |
+| 事件（`bubbles + composed`） | `save` / `preview` → 模板 JSON 字符串；`help` → 无载荷；`dblclick-element` → 元素 id 字符串；`dblclick-cell` → `{ elementId, r, c, cellId? }` |
+
+`getTemplateJson()` 在自定义元素上返回**字符串**（`/vue3` 门面转回对象）；它绕过拼版校验，
+宿主旁路导出前要先调 `validateTemplate()`。事件全部 `bubbles: true, composed: true`，可穿透 Shadow DOM。
+
+**定制外观**：外壳 8 个 `::part` 挂钩（`container` / `toolbar` / `format-bar` / `left-panel` /
+`canvas-area` / `property-panel` / `status-bar` / `page-tabs`）允许有限定制：
+
+```css
+print-designer::part(toolbar) { border-bottom-width: 2px }
+print-designer { --pd-accent: #0a7d4b }   /* 主题令牌，完整清单见 core/styles/theme.css */
+```
+
+主题令牌有 52 个 `--pd-*`，权威定义在 `@worm-vue3-print/core/styles/theme.css`；不要写死颜色到
+Shadow DOM 内部选择器。契约版本遵守语义化：删/改 attribute、方法或事件形状升 MAJOR，
+新增可选项升 MINOR；`src/__tests__/host-contract.spec.ts` 会把声明面与运行时逐项对拍，漂移即红。
+
+**扩展元素**：内置 11 类与第三方插件走同一张注册表，见下节与「统一元素注册表」。
+
+## 统一元素注册表
+
+内置元素与插件**同权**：`registerElementDefinition()` 可覆盖内置的素材卡标签/图标/属性分组/双击字段，
+`registerElementRenderer()` 可替换画布内容渲染；注销句柄只撤销自己那一版，内置类型会自动回落基线。
+core 的 `registerElementCapabilities()` 则统一六处类型白名单（页眉页脚放行、旋转、文字溢出、
+元素级边框、绑定声明、出厂默认值），插件在 `defineElementPlugin({ kinds: [{ capabilities }] })` 里
+声明即自动生效：
+
+```ts
+import { registerElementDefinition, registerElementRenderer } from '@worm-vue3-print/common'
+
+const release = registerElementDefinition({
+  type: 'signature', label: '手写签名', icon: 'PenLine',
+  material: true, propertyGroup: 'general', dblEditableField: 'src', group: '扩展',
+})
+registerElementRenderer('signature', (el) => { /* 返回 HTML 字符串或 Node */ })
+// release() 后素材卡与渲染一并回到内置基线
+```
+
+两处注册表都挂在 `globalThis` 固定 Symbol 上，与 core / plugin-kit 一致，避免多打包副本漂移；
+注册态变化会通知已挂载的设计器即时重绘。
+
 ## 自定义元素插件（图表等）
 
 设计器只保留通用机制，具体元素由独立插件包提供。宿主 `import` 一次插件入口即可让素材卡、
@@ -171,9 +240,11 @@ TS 宿主沿用原写法即可通过 `vue-tsc`。
   （`defineElementUI` / `registerElementUI`），官方图表用 `echarts-common`，见上一节。
 - `initialElements`：common 没有独立元素池，门面在未提供 `initialTemplate` 时把它并入
   当前模板第一页的 `elements`；与 canvas 的「单独覆盖元素层」略有差别。
-- **样式单一来源仍在 canvas**：`scripts/gen-styles.mjs` 从 `print-canvas/dist/canvas.css`
-  派生本包样式。替代设计器运行时不等于可以停掉 canvas 的构建。
-- **本包仍是实验性质**，不建议直接用于生产；`/vue3` 是兼容通道，不是新的正式方案。
+- **样式、图标与主题令牌的单一来源在 `print-core/src/styles`**：`gen-styles.mjs` / `gen-icons.mjs`
+  从共享源派生，不再读 `print-canvas/dist`；canvas 反向消费同一份主题令牌。因此构建顺序是
+  core → plugin-kit → common → canvas，common 不依赖 canvas 的构建产物。
+- **本包是设计器权威实现**，`/vue3` 门面与 `@worm-vue3-print/canvas` 是 Vue 3 兼容轨（沿用原组件写法，
+  不是新的正式方案）；新接入的宿主统一用本包主入口。
 
 ## 在 Vue 3 / Vue 2 / React 中使用
 
@@ -354,4 +425,4 @@ export default function App() {
 | 样式 | `@worm-vue3-print/canvas/style.css` | 内置 Shadow DOM（`?inline`），无需引样式文件；light DOM 形态引 `@worm-vue3-print/common/style.css` |
 | 适用 | Vue 3 项目 | React / Vue 2 / jQuery / 原生 |
 
-Vue 3 项目默认继续用 `@worm-vue3-print/canvas`（功能面更全）；若要切换到 common 运行时且不想改宿主代码，用 `/vue3` 兼容门面，见上文对应章节。
+Vue 3 项目若要沿用原组件形态，可用 `/vue3` 兼容门面或 `@worm-vue3-print/canvas`（消费同一份共享样式与能力表）；新接入的宿主统一用本包主入口。

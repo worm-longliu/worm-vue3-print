@@ -4,29 +4,18 @@ import { PAPER_PRESETS, copyTextToClipboard, getPaperDimensions, groupFields, is
 import type { ElementType, PrintBusinessField, RuntimeElement } from '@worm-vue3-print/core/designer'
 import { h } from '../core/h'
 import { iconSvg } from '../core/icons'
-import { getPluginElement, getPluginElements } from '../core/plugin'
+import {
+  BUILTIN_ELEMENT_DEFINITIONS, getElementLayerIcon, getMaterialElementDefinitions,
+} from '../core/element-definitions'
 import type { ShellCtx } from './controls'
 
-/** 元素库：与 canvas LeftPanel.elementTypes 同序、同 lucide 图标名（HTML 不提供素材入口） */
-export const ELEMENT_TYPES: { type: ElementType; label: string; icon: string }[] = [
-  { type: 'text', label: '文本', icon: 'Type' },
-  { type: 'barcode', label: '条形码', icon: 'Barcode' },
-  { type: 'qrcode', label: '二维码', icon: 'QrCode' },
-  { type: 'image', label: '图片', icon: 'Image' },
-  { type: 'table', label: '表格', icon: 'Table' },
-  { type: 'longText', label: '长文', icon: 'TextAlignStart' },
-  { type: 'flowList', label: '流式列表', icon: 'List' },
-  { type: 'hline', label: '横线', icon: 'Minus' },
-  { type: 'vline', label: '竖线', icon: 'SeparatorVertical' },
-  { type: 'rect', label: '矩形', icon: 'Square' },
-  { type: 'oval', label: '椭圆', icon: 'Circle' },
-]
-
-/** 图层图标：素材表 ∪ 无素材入口但可加载的内置类型（html），与 canvas LayerPanel 同表 */
-const LAYER_ICON: Record<string, string> = {
-  ...Object.fromEntries(ELEMENT_TYPES.map(item => [item.type, item.icon])),
-  html: 'Code',
-}
+/**
+ * 元素库：由统一注册表派生的「内置基线快照」，与 canvas LeftPanel.elementTypes 同序同图标。
+ * 运行时素材台请用 `getMaterialElementDefinitions()`（含插件动态项与自定义覆盖）。
+ */
+export const ELEMENT_TYPES: { type: ElementType; label: string; icon: string }[] =
+  BUILTIN_ELEMENT_DEFINITIONS.filter(def => def.material)
+    .map(def => ({ type: def.type as ElementType, label: def.label, icon: def.icon }))
 
 /** 图标名 → 内联 SVG；canvas/common 两侧对未知名统一回落 Shapes */
 function iconMarkup(name: string | undefined, size: number): string {
@@ -99,11 +88,11 @@ function materialCard(type: string, label: string, icon: string) {
   ])
 }
 
-/** 素材台：内置 11 项后追加 plugin-kit 注册的插件卡（按 materialCard.group 出分组标题） */
+/** 素材台：统一注册表（内置 + 自定义覆盖 + 插件项）按注册顺序出卡，group 出分组标题 */
 function elementsPane(): unknown[] {
   const cards: unknown[] = []
   let prevGroup: string | undefined
-  for (const item of [...ELEMENT_TYPES, ...getPluginElements()]) {
+  for (const item of getMaterialElementDefinitions()) {
     const group = (item as { group?: string }).group
     // 与 canvas LeftPanel 的 groupStart 同判据：首个同组项前渲染分组标题
     if (group && group !== prevGroup) cards.push(h('div', { class: 'material-group-title', text: group }))
@@ -191,8 +180,8 @@ function layersPane(ctx: ShellCtx) {
   return h('div', { class: 'layer-panel' }, [
     h('div', { class: 'panel-title', text: '图层' }),
     ...layers.map(layer => {
-      // 内置类型查静态表；插件元素回落 plugin-kit 扩展项的 kind.icon（再回落 Shapes）
-      const icon = LAYER_ICON[layer.printElementType.type] ?? getPluginElement(layer.printElementType.type)?.icon
+      // 统一注册表：内置 / 自定义覆盖 / core 插件项共用同一条解析路径，未注册回落 Shapes
+      const icon = getElementLayerIcon(layer.printElementType.type)
       return h('div', {
         class: `layer-item${s.selectedIds.has(layer.id) ? ' active' : ''}`,
         onClick: (ev: Event) => s.selectElement(layer.id, (ev as MouseEvent).ctrlKey || (ev as MouseEvent).metaKey),

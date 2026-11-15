@@ -1,0 +1,57 @@
+/* 设计器主题令牌的单一来源。canvas（全局 CSS）与 common（Shadow DOM :host）都从这里取值。 */
+/* 只声明变量，不声明排版；宿主可在 <print-designer> 或 .designer-container 上逐位覆盖。 */
+:root {
+  --pd-bg: #f3f5f9;
+  --pd-surface: #ffffff;
+  --pd-field-bg: #f4f6fa;
+  --pd-sidebar: #ffffff;
+  --pd-sidebar-hover: #f0f3f9;
+  --pd-canvas-bg: #e6e9f0;
+  --pd-paper: #FFFFFF;
+  --pd-accent: #165DFF;
+  --pd-accent-2: #3D7BFF;
+  --pd-accent-soft: rgba(22, 93, 255, .09);
+  --pd-accent-secondary: #f56c6c;
+  --pd-danger-soft: rgba(245, 108, 108, .1);
+  --pd-ink-green: #67c23a;
+  --pd-text: #2a2e37;
+  --pd-text-muted: #8b909c;
+  --pd-text-faint: #b4b9c4;
+  --pd-border: #d9dde6;
+  --pd-border-soft: #e9ecf2;
+  --pd-input-bg: #ffffff;
+  --pd-hover-tint: #ecf5ff;
+  --pd-danger: #e53e3e;
+  --pd-danger-bg: #fef2f2;
+  --pd-danger-border: #fecaca;
+  --pd-menu-text: #333;
+  --pd-menu-hover: #f5f7fa;
+  --pd-menu-border: #dcdfe6;
+  --pd-menu-divider: #ebeef5;
+  --pd-menu-muted: #909399;
+  --pd-menu-disabled: #c0c4cc;
+  --pd-scrollbar: rgba(23, 32, 60, .18);
+  --pd-scrollbar-thumb: rgba(23, 32, 60, .16);
+  --pd-scrollbar-thumb-hover: rgba(23, 32, 60, .3);
+  --pd-help-field-bg: #f0f9ff;
+  --pd-help-field-line: #bae6fd;
+  --pd-help-field-ink: #0369a1;
+  --pd-help-function-bg: #f0fdf4;
+  --pd-help-function-line: #bbf7d0;
+  --pd-help-function-ink: #166534;
+  --pd-help-variable-bg: #fefce8;
+  --pd-help-variable-line: #fde68a;
+  --pd-help-variable-ink: #854d0e;
+  --pd-help-conditional-bg: #fdf2f8;
+  --pd-help-conditional-line: #fbcfe8;
+  --pd-help-conditional-ink: #9d174d;
+  --pd-handle: #165DFF;
+  --pd-ruler: #9aa1af;
+  --pd-ruler-bg: #f8f9fc;
+  --pd-ruler-cursor: #165DFF;
+  --pd-radius: 6px;
+  --pd-shadow-sm: 0 1px 2px rgba(23, 32, 60, .05);
+  --pd-shadow-md: 0 2px 8px rgba(23, 32, 60, .06), 0 10px 28px rgba(23, 32, 60, .07);
+  --pd-shadow-paper: 0 0 0 1px rgba(23, 32, 60, .05), 0 1px 2px rgba(23, 32, 60, .06), 0 8px 20px rgba(23, 32, 60, .08), 0 26px 60px rgba(23, 32, 60, .15);
+}
+

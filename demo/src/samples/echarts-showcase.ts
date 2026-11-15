@@ -5,7 +5,7 @@
 //   饼系：饼图 / 环形图                 { name, value }
 //   散点：x/y 数据对                    气泡用第二数值字段
 //   雷达 / 漏斗 / 仪表盘                多维 / 降序 / 单值
-import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/common/vue3'
 import { CHART_KIND_DEFINITIONS, createDefaultChartOption } from '@worm-vue3-print/echarts'
 import { createElementFactory } from './element-helper'
 import type { SampleTemplate } from './types'

@@ -9,6 +9,8 @@ on:
       - packages/print-core/src/**
       - packages/print-canvas/src/**
       - packages/print-common/src/**
+      - packages/print-plugin-kit/src/**
+      - packages/print-echarts-common/src/**
       - .github/workflows/pages.yml
   workflow_dispatch:
 
@@ -30,17 +32,17 @@ jobs:
         with:
           node-version: 22
 
-      # ── 1. 根工作区：构建 core → plugin-kit → canvas → common → echarts → echarts-common ──
-      # common 的 gen-styles.mjs 依赖 canvas/dist/canvas.css，须先构建 canvas；canvas / common 依赖 plugin-kit。
+      # ── 1. 根工作区：构建 core → plugin-kit → common → canvas → echarts → echarts-common ──
+      # 样式与图标的单一权威源在 print-core/src/styles；common 是权威设计器实现，不依赖 canvas 构建产物。
       # demo-common/vue3 宿主还 import @worm-vue3-print/echarts-common，须先构建图表适配包。
       # workspaces 只包含 packages/* services/* clients/*，demo / demo-common 独立安装。
-      - name: 根工作区 npm ci + 构建依赖链（core → plugin-kit → canvas → common → echarts → echarts-common）
+      - name: 根工作区 npm ci + 构建依赖链（core → plugin-kit → common → canvas → echarts → echarts-common）
         run: |
           npm ci
           npm run build -w @worm-vue3-print/core
           npm run build -w @worm-vue3-print/plugin-kit
-          npm run build -w @worm-vue3-print/canvas
           npm run build -w @worm-vue3-print/common
+          npm run build -w @worm-vue3-print/canvas
           npm run build -w @worm-vue3-print/echarts
           npm run build -w @worm-vue3-print/echarts-common
         env:

@@ -2,7 +2,7 @@
 // 在页面内完成两遍渲染（测量 → 分页 → 最终 HTML），产物直送打印客户端，客户端不再渲染。
 import { renderHtmlPages, browserCodeRenderer } from '@worm-vue3-print/core/browser'
 // 包入口 import 即注册插件；渲染器由打印管线按注册表自动收集，无需宿主手写传参
-import '@worm-vue3-print/echarts'
+import '@worm-vue3-print/echarts/kit'
 import type { MultiPageTemplateData, PrintTemplateData } from '@worm-vue3-print/core'
 import type { RenderedHtmlPages } from '@worm-vue3-print/core/client'
 

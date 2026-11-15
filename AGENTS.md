@@ -52,7 +52,7 @@
   - `packages/print-core`（`@worm-vue3-print/core`）：模板表达式引擎、同构渲染管线与框架无关的设计器内核（纯 TypeScript，无 Vue/React 依赖）。根入口导出引擎与渲染能力，`/designer`、`/browser`、`/client`（静默打印浏览器端 SDK）为子路径导出。
   - `packages/print-canvas`（`@worm-vue3-print/canvas`）：Vue 3 可视化设计器画布（原生控件，不依赖 Element Plus 等 UI 组件库，无宿主业务依赖）。
   - `packages/print-plugin-kit`（`@worm-vue3-print/plugin-kit`，尚未发布）：框架无关的插件设计器 UI 契约与注册表（纯 TS/DOM）。插件写一份 UI，common 原生消费、canvas 自动 Vue 桥接；元素语义仍由 core 插件描述符承载。
-  - `packages/print-common`（`@worm-vue3-print/common`）：零框架（原生 Custom Elements + Shadow DOM）宿主适配设计器，与 canvas 功能对齐，实验性、不建议生产。
+  - `packages/print-common`（`@worm-vue3-print/common`）：零框架（原生 Custom Elements + Shadow DOM）设计器**权威实现**，技术主站与四宿主统一消费；样式/图标/主题令牌单一来源在 `print-core/src/styles`，元素能力位与 UI 定义走统一注册表，vue3 门面与 canvas 为兼容轨。
   - `packages/print-echarts`（`@worm-vue3-print/echarts`，尚未发布）：ECharts 图表元素可选包（十类 kind、SVG 渲染器、页面执行器、Vue 设计器组件）；`/kit` 子路径为框架无关纯 TS 出口。
   - `packages/print-echarts-common`（`@worm-vue3-print/echarts-common`，尚未发布）：图表元素的 common 适配包，用 plugin-kit 契约提供静态 SVG 画布与图形化属性面板。
   - `packages/print-skills`（`@worm-vue3-print/skills`）：三个使用技能的 npx/Git 安装器；只读取远程仓库 `skills/`，不分发 `.agents/` 开发技能。
@@ -60,7 +60,7 @@
   - `clients/print-client`（`@worm-vue3-print/print-client`）：跨平台静默打印桌面客户端（Electron，本地 WebSocket + core 同构渲染）。
 - 其他目录：`demo`（Vite 集成示例）、`docs`（中英文档）、`skills`（集成技能）、`.release`（发布相关）。
 - 边界约定：`core`（纯逻辑）→ `canvas`（设计器 UI）→ 宿主应用；SDK、渲染服务与桌面客户端只依赖 `core`，分层清晰，改动不得破坏该边界。
-- 开发命令：`npm install` / `npm run build` / `npm test`；发布到 npm 的正式包为 `core`、`canvas`、`common` 与 `skills` 四个（`publish:npm` / `publish:common` / `publish:skills`）。`common` 与主线同号发布正式版（dist-tag `latest`），但 npm 主页面与 README 必须保留实验性声明、不建议生产；发布走 `publish:common` 或手动 `publish-common.yml`，版本随主线同号。
+- 开发命令：`npm install` / `npm run build` / `npm test`；发布到 npm 的正式包为 `core`、`canvas`、`common` 与 `skills` 四个（`publish:npm` / `publish:common` / `publish:skills`）。`core` / `plugin-kit` / `common` / `canvas` / `echarts` / `echarts-common` / `skills` 全部与主线同号发布（dist-tag `latest`）；六者必须同批发布（`plugin-kit` 是 common/canvas 的运行时依赖），发布走 `publish:npm` 或手动 `publish-npm.yml`，单独补发 common 用 `publish:common`。
 
 ## 六、协作约定
 

@@ -1,7 +1,7 @@
 // demo/src/samples/text-wrap-follow.ts
 // 示例十四：文本换行与跟随（V1.3.11 能力集合）——元素级「保留换行符」、关自动换行的单行溢出、
 // 长文本缺省行高、跟随区竖线，以及「表格旁侧一栏不会被跟随拖走」（横向相交才跟随）。
-import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/common/vue3'
 import { createElementFactory } from './element-helper'
 import type { SampleTemplate } from './types'
 

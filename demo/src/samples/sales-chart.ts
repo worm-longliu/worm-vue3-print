@@ -2,7 +2,7 @@
 // 示例：ECharts 图表元素——柱状图 / 环形图 / 折线图共用同一份数据源。
 // 模板只存 chartOption 与字段映射，真实数据由 core 绑定阶段按字段注入。
 // 顶层 plugins 清单走 strict 校验，作为宿主最佳实践样例（version 为插件描述符版本）。
-import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/common/vue3'
 import { createDefaultChartOption } from '@worm-vue3-print/echarts'
 import { createElementFactory } from './element-helper'
 import type { SampleTemplate } from './types'

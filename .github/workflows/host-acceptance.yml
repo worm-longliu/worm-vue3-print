@@ -1,0 +1,122 @@
+# 宿主契约与 UI 验收：把 demo-common/scripts 下的手工脚本纳入 CI。
+#
+# 与 ci.yml 的分工：ci.yml 跑单测 / 构建 / 架构守卫（快、无浏览器）；
+# 本 workflow 跑需要真实 Chromium 的 Custom Element 契约与四宿主 UI 验收（慢）。
+# 只在设计器内核、共享样式、示例库或宿主工程变化时触发，也可手动触发。
+name: Host Acceptance
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'packages/print-common/**'
+      - 'packages/print-core/src/styles/**'
+      - 'packages/print-core/src/designer/**'
+      - 'demo-common/**'
+      - 'demo/src/**'
+      - '.github/workflows/host-acceptance.yml'
+  pull_request:
+    paths:
+      - 'packages/print-common/**'
+      - 'packages/print-core/src/styles/**'
+      - 'packages/print-core/src/designer/**'
+      - 'demo-common/**'
+      - 'demo/src/**'
+      - '.github/workflows/host-acceptance.yml'
+  workflow_dispatch:
+
+jobs:
+  contract:
+    name: 宿主契约 / 能力位 / 元素注册表
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: 构建共享依赖链（core → plugin-kit → common）
+        run: |
+          npm run build -w @worm-vue3-print/core
+          npm run build -w @worm-vue3-print/plugin-kit
+          npm run build -w @worm-vue3-print/common
+      - name: common 类型门禁（pretest 亦会执行）
+        run: npm run typecheck -w @worm-vue3-print/common
+      - name: 契约 / 统一注册表测试（common）
+        run: |
+          npm run test -w @worm-vue3-print/common -- \
+            src/__tests__/host-contract.spec.ts \
+            src/__tests__/element-definitions.spec.ts
+      - name: 元素能力位测试（core）
+        run: |
+          npm run test -w @worm-vue3-print/core -- \
+            src/designer/__tests__/element-capabilities.spec.ts
+      - name: 架构守卫
+        run: npm run lint:print-architecture
+
+  hosts:
+    name: 四宿主 + 主站 UI 验收
+    runs-on: ubuntu-latest
+    needs: contract
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: 构建共享依赖链（common 为权威实现，canvas 反向消费共享样式）
+        run: |
+          npm run build -w @worm-vue3-print/core
+          npm run build -w @worm-vue3-print/plugin-kit
+          npm run build -w @worm-vue3-print/common
+          npm run build -w @worm-vue3-print/canvas
+          npm run build -w @worm-vue3-print/echarts
+          npm run build -w @worm-vue3-print/echarts-common
+      - name: 同步示例库与宿主样式
+        run: |
+          npm run samples:demo-common
+          npm run styles:demo-common
+      - name: 安装四宿主与主站依赖
+        run: |
+          npm run install:demo-common:all
+          npm install --prefix demo
+      # 验收脚本用 createRequire(demo/package.json) 加载 demo 的 playwright，浏览器版本必须与它一致；
+      # 在仓库根 npx 会临时拉最新版，装出的 Chromium revision 可能对不上。
+      - name: 安装 Chromium（与 demo 的 playwright 版本一致）
+        working-directory: demo
+        run: npx playwright install --with-deps chromium
+      # 启动与验收放在同一个 step：后台 dev server 不跨 step 传递，避免 runner 在 step 结束时回收子进程。
+      - name: 启动五宿主 + 官方 UI 验收 + 业务场景回归
+        run: |
+          set -e
+          npm run dev:demo-common:vue3 > /tmp/host-vue3.log 2>&1 &
+          npm run dev:demo-common:vue2 > /tmp/host-vue2.log 2>&1 &
+          npm run dev:demo-common:react > /tmp/host-react.log 2>&1 &
+          npm run dev:demo-common:jquery > /tmp/host-jquery.log 2>&1 &
+          npm run dev --prefix demo > /tmp/host-main.log 2>&1 &
+          for port in 9331 9332 9335 9334 9303; do
+            ok=0
+            for i in $(seq 1 60); do
+              if curl -fsS "http://localhost:$port/" >/dev/null 2>&1; then ok=1; break; fi
+              sleep 1
+            done
+            if [ "$ok" -ne 1 ]; then
+              echo "端口 $port 未就绪"; tail -40 /tmp/host-*.log; exit 1
+            fi
+            echo "端口 $port 就绪"
+          done
+          for port in 9331 9332 9335 9334 9303; do
+            echo "===== verify-demo :$port ====="
+            node demo-common/scripts/verify-demo.mjs "http://localhost:$port/"
+          done
+          echo "===== business-scenarios 全量 :9331 ====="
+          node demo-common/scripts/verify-business-scenarios.mjs http://localhost:9331/
+          for port in 9332 9335 9334 9303; do
+            echo "===== business-scenarios 快检 :$port ====="
+            node demo-common/scripts/verify-business-scenarios.mjs "http://localhost:$port/" --quick
+          done
+      - name: 失败时输出宿主日志
+        if: failure()
+        run: tail -60 /tmp/host-*.log || true

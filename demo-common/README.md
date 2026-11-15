@@ -11,7 +11,7 @@
 `scripts/sync-demo-styles.mjs` 从 `demo/` 逐字抽取成一份 `apps/<宿主>/src/styles/demo-ui.css`
 （四份同 MD5，758 行），宿主工程内不再有任何私有布局样式。
 示例库也不各写各的：`scripts/sync-demo-samples.mjs` 把 `demo/src/samples` 求值展开成
-`apps/<宿主>/src/templates.js`（四份同 MD5，15 个示例），与 demo 用同一批模板、字段与数据。
+`apps/<宿主>/src/templates.js`（四份同 MD5，16 个示例），与 demo 用同一批模板、字段与数据。
 
 > 这里刻意不做逻辑抽象：demo 的价值在于读者能在一个文件里看完「注册元素 → 注入模板与字段 → 听事件 → 出纸」，
 > 而不是跳到某个 shared 包里去看封装。四个工程的重复是有意为之；同源只有样式与示例库两处，因为它们必须与 demo 一致。
@@ -107,6 +107,19 @@ node scripts/verify-demo.mjs http://localhost:9331/   # 逐个跑 9332 / 9335 / 
 页签筛选与应用、全屏预览层出纸（纸面数 / 文本 / 码值节点）与批量份数、自定义 JSON 的非法拦截与应用生效、
 打印输出弹窗两条链路的状态与离线置灰、导出模板真的触发下载、全程 console 洁净。
 其中示例库的卡片数、徽章示例名与标签页签计数直接读生成产物 `apps/vue3/src/templates.js`，示例增删后断言自动跟着走。
+
+### 业务场景全量回归
+
+```bash
+node scripts/verify-business-scenarios.mjs http://localhost:9331/           # 全量：遍历示例库全部示例
+node scripts/verify-business-scenarios.mjs http://localhost:9332/ --quick  # 快检：只跑体检报告深度场景
+```
+
+以 `templates.js` 为用例源（新增示例自动纳入），逐个走「示例库选中 → 模板注入与 `validateTemplate()` →
+预览出纸 → 数据绑定与未求值表达式残留」。另对多页体检报告做深度断言：`{ version: 1, pages }` 五页完整加载、
+页签按检验项目命名、各项目独立成页、表格与多级表头、三张内联 SVG 图表在画布与纸面同时可见、
+页脚连续页码、批量 2 份合并出纸、`loadTemplate()` 多页往返不丢元素、导出下载、全程 console 洁净。
+本机 Playwright 与浏览器缓存版本不一致时，用 `CHROMIUM_PATH` 指向已有的 Chromium 可执行文件。
 
 另有两份源码审计工具：`scripts/class-audit.mjs`（canvas 类名覆盖率）与
 `scripts/style-scope-audit.mjs`（派生 CSS 的 scoped 泄漏嫌疑），它们查的是 `packages/print-common` 源码，与 demo 无关。
