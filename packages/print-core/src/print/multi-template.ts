@@ -9,7 +9,7 @@ import type {
   ElementRenderers,
   MultiPageTemplateData,
 } from '../render/types.js'
-import { getPaperDimensions, isContinuousPaper } from '../render/types.js'
+import { getPaperDimensions, getOutputPaperDimensions, isContinuousPaper } from '../render/types.js'
 import { renderFinalPages, wrapHtmlDocument } from '../render/html-generator.js'
 import {
   buildBasePageCss,
@@ -54,7 +54,9 @@ export function normalizeTemplate(
       throw new Error(`多页面模板不支持标签拼版（${pageLabel(p, i)}）`)
     }
     const d = getPaperDimensions(p)
-    if (d.width !== firstPaper.width || d.height !== firstPaper.height) {
+    const sameSize = d.width === firstPaper.width && d.height === firstPaper.height
+    const rotatedSize = d.width === firstPaper.height && d.height === firstPaper.width
+    if (!sameSize && !rotatedSize) {
       throw new Error(
         `多页面模板各页纸张尺寸必须一致（${pageLabel(p, i)} ${d.width}×${d.height}mm 与首页 ${firstPaper.width}×${firstPaper.height}mm 不同）`,
       )
@@ -106,6 +108,8 @@ export interface MultiPageCopyInput {
 export interface MultiPageDocument {
   html: string
   pageCount: number
+  /** 按物理页顺序展开的出纸尺寸（含方向与内容旋转） */
+  pagePaperMm: Array<{ width: number; height: number }>
   /** 展平的全局页码 PageLayout（调试用；pageIndex 份内全局连续） */
   pageLayouts: PageLayout[]
 }
@@ -127,13 +131,16 @@ export function composeMultiPageDocument(
   }
   const templates = copies[0]!.boundPages
 
-  // CSS：@page（首模板）+ 模板无关基础 + 各页作用域几何；批量份间追加强制分页
+  // 命名纸张规则按页绑定，同一纸型可在同一份文档中横纵向混排。
   const css =
     buildFontFaceCss(mergeFontDeclarations(templates)) +
     [
-      buildPageRuleCss(templates[0]!),
       buildBasePageCss(),
-      ...templates.map((t, i) => buildPageGeometryCss(t, `.mt-${i}`)),
+      ...templates.flatMap((t, i) => [
+        buildPageRuleCss(t, undefined, `mt-${i}`),
+        `.mt-${i}.print-page { page: mt-${i}; }`,
+        buildPageGeometryCss(t, `.mt-${i}`),
+      ]),
       ...(copies.length > 1 ? [COPY_BREAK_CSS] : []),
     ].join('\n\n')
 
@@ -170,10 +177,14 @@ export function composeMultiPageDocument(
 
   // 展平（调试用）：份内全局 pageIndex
   const pageLayouts: PageLayout[] = []
+  const pagePaperMm: MultiPageDocument['pagePaperMm'] = []
   let g = 0
   for (const c of copies) {
-    for (const ls of c.layoutsPerPage) {
-      for (const p of ls) pageLayouts.push({ ...p, pageIndex: g++ })
+    for (const [i, ls] of c.layoutsPerPage.entries()) {
+      for (const p of ls) {
+        pageLayouts.push({ ...p, pageIndex: g++ })
+        pagePaperMm.push(getOutputPaperDimensions(c.boundPages[i]!))
+      }
     }
   }
 
@@ -181,5 +192,6 @@ export function composeMultiPageDocument(
     html: wrapHtmlDocument(css, bodyInner),
     pageCount,
     pageLayouts,
+    pagePaperMm,
   }
 }

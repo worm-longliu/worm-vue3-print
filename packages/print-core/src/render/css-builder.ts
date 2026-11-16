@@ -124,11 +124,11 @@ function elementBlock(): string {
 
 // ── 几何块（模板相关；多页时按模板作用域化，单页时保持原始选择器） ──
 
-/** @page 规则：纸张尺寸（含连续纸推导纸高）；@page 无法作用域化，多页时由首个模板输出一次 */
-function pageRuleBlock(paper: { width: number; height: number }): string {
+/** @page 规则：多页可传命名页名，由对应页面的 page 属性绑定。 */
+function pageRuleBlock(paper: { width: number; height: number }, pageName?: string): string {
   return `
 /* ── 打印纸张：浏览器原生打印按此尺寸分页（Playwright page.pdf 以显式宽高为准，无副作用） ── */
-@page { size: ${mm(paper.width)} ${mm(paper.height)}; margin: 0; }
+@page${pageName ? ` ${pageName}` : ''} { size: ${mm(paper.width)} ${mm(paper.height)}; margin: 0; }
 `
 }
 
@@ -141,10 +141,10 @@ function pageRuleBlock(paper: { width: number; height: number }): string {
  *   270° → translate(0,Wd) rotate(270deg)   → 填满 Hd×Wd（纸张交换长宽，方向反向）
  * 无需缩放，内容不被拉伸/裁切。基础规则 .print-page-rotor 无 transform，由 .print-page-rotor-${angle} 补旋转。
  */
-function buildRotorCss(area: { width: number; height: number }, margins: { top: number; right: number; bottom: number; left: number }, angle: 0 | 90 | 180 | 270): string {
+function buildRotorCss(area: { width: number; height: number }, margins: { top: number; right: number; bottom: number; left: number }, angle: 0 | 90 | 180 | 270, desc = ''): string {
   const base = `
 /* ── 出纸转子：设计稿整页旋转 ${angle}° 填入出纸纸张 ── */
-.print-page-rotor {
+${desc}.print-page-rotor {
   position: absolute;
   top: 0;
   left: 0;
@@ -163,7 +163,7 @@ function buildRotorCss(area: { width: number; height: number }, margins: { top: 
   const tf = transforms[angle]
   return [
     base.trim(),
-    `.print-page-rotor-${angle} {\n  transform: ${tf};\n}`,
+    `${desc}.print-page-rotor-${angle} {\n  transform: ${tf};\n}`,
   ].join('\n')
 }
 
@@ -241,14 +241,14 @@ ${desc}.content-area {
 `
 }
 
-/** 模板无关的基础 CSS（多页文档外壳用；不含 @page，@page 由首模板单独输出） */
+/** 模板无关的基础 CSS（多页文档外壳用；不含按页生成的 @page） */
 export function buildBasePageCss(): string {
   return [screenBlock(), watermarkBlock(), elementBlock()].join('').trim()
 }
 
-/** @page 规则 CSS（纸张尺寸，含连续纸推导纸高）。@page 无法作用域化，多页文档由首个模板输出一份 */
-export function buildPageRuleCss(template: TemplateData, pageHeightMm?: number): string {
-  return pageRuleBlock(resolveOuterPaper(template, pageHeightMm)).trim()
+/** @page 规则 CSS：普通模板匿名，多页模板使用稳定的命名页。 */
+export function buildPageRuleCss(template: TemplateData, pageHeightMm?: number, pageName?: string): string {
+  return pageRuleBlock(resolveOuterPaper(template, pageHeightMm), pageName).trim()
 }
 
 /**
@@ -270,7 +270,7 @@ export function buildPageGeometryCss(
   return [
     pageGeometryBlock(template, outer, pageSel, rotated),
     areaGeometryBlock(template, area, desc),
-    ...(rotated ? [buildRotorCss(area, template.margins, angle)] : []),
+    ...(rotated ? [buildRotorCss(area, template.margins, angle, desc)] : []),
   ].join('').trim()
 }
 

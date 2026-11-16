@@ -71,10 +71,15 @@ describe('normalizeTemplate', () => {
       .toThrow(/至少需要一页/)
   })
 
-  it('各页纸张不一致抛错（含方向），错误带页面名', () => {
+  it('同一纸型允许横纵向混排', () => {
     const b = { ...makePage('横向', [el('x', 30)]), orientation: 'landscape' } as TemplateData
+    expect(normalizeTemplate({ pages: [cover, b] })).toEqual([cover, b])
+  })
+
+  it('不同纸型仍被拒绝，错误带页面名', () => {
+    const b = { ...makePage('小纸张', []), paperSize: 'A5' } as TemplateData
     expect(() => normalizeTemplate({ pages: [cover, b] }))
-      .toThrow(/纸张尺寸必须一致/)
+      .toThrow(/纸张尺寸必须一致.*小纸张/)
   })
 
   it('含连续纸页面抛错', () => {
@@ -119,6 +124,21 @@ describe('mergeFontDeclarations', () => {
 // ─── 整份文档组合：页码 / 新开一页 / 批量 ───
 
 describe('composeMultiPageDocument', () => {
+  it('横纵混排按页声明纸张，独立旋转的几何不串页', () => {
+    const landscape = { ...content, orientation: 'landscape', outputRotation: 180 } as TemplateData
+    const doc = composeMultiPageDocument([{
+      boundPages: [cover, landscape],
+      layoutsPerPage: [pageOf(cover), pageOf(landscape)],
+      data: {},
+    }])
+    expect(doc.html).toContain('@page mt-0 { size: 210mm 297mm; margin: 0; }')
+    expect(doc.html).toContain('@page mt-1 { size: 297mm 210mm; margin: 0; }')
+    expect(doc.html).toContain('.mt-0.print-page { page: mt-0; }')
+    expect(doc.html).toContain('.mt-1.print-page { page: mt-1; }')
+    expect(doc.html).toContain('.mt-1 .print-page-rotor {')
+    expect(doc.html).toContain('.mt-1 .print-page-rotor-180 {')
+  })
+
   it('封面 1 页 + 内容 2 页：pageCount=3，页码全局连续 1/3、2/3、3/3', () => {
     const coverLayouts = pageOf(cover)
     const contentLayouts = pageOf(content)

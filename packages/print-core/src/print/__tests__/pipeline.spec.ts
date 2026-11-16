@@ -314,6 +314,43 @@ function multiTemplate() {
 }
 
 describe('多页面模板', () => {
+  it.each([
+    { paperSize: 'A3' as const, customWidth: undefined, customHeight: undefined, width: 297, height: 420 },
+    { paperSize: 'CUSTOM' as const, customWidth: 120, customHeight: 180, width: 120, height: 180 },
+  ])('$paperSize 按实际纸张尺寸生成逐页规格，不沿用 A4 常量', async ({ paperSize, customWidth, customHeight, width, height }) => {
+    const { runtime } = runtimeOf()
+    const base = template({ paperSize, customWidth, customHeight })
+    const result = await prepareDocument({ templateJson: { pages: [base, { ...base, orientation: 'landscape' }] } }, runtime)
+    expect(result.pagePaperMm).toEqual([{ width, height }, { width: height, height: width }])
+  })
+
+  it('横纵混排逐页测量并返回按物理页展开的尺寸，批量保持顺序', async () => {
+    const { fake, runtime } = runtimeOf()
+    const pages = [template(), template({ orientation: 'landscape' }), template()]
+    const viewports: Array<{ width: number; height: number }> = []
+    fake.driver.open = async viewport => { viewports.push(viewport) }
+    const result = await prepareDocument({ templateJson: { pages }, printData: [{}, {}] }, runtime)
+    expect(result.pageCount).toBe(6)
+    expect(result.pagePaperMm).toEqual([
+      { width: 210, height: 297 }, { width: 297, height: 210 }, { width: 210, height: 297 },
+      { width: 210, height: 297 }, { width: 297, height: 210 }, { width: 210, height: 297 },
+    ])
+    expect(viewports[0].width).toBeLessThan(viewports[0].height)
+    expect(viewports[1].width).toBeGreaterThan(viewports[1].height)
+    expect(viewports[2]).toEqual(viewports[0])
+  })
+
+  it('多页 PDF 优先使用逐页 CSS 尺寸', async () => {
+    const { fake, runtime } = runtimeOf()
+    let cssPageSize: boolean | undefined
+    fake.driver.pdf = async (_html, spec) => {
+      cssPageSize = spec.preferCSSPageSize
+      return new Uint8Array([1])
+    }
+    await renderPdf({ templateJson: { pages: [template(), template({ orientation: 'landscape' })] } }, runtime)
+    expect(cssPageSize).toBe(true)
+  })
+
   it('封面 1 页 + 内容 2 页：pageCount=3，作用域类与全局页码正确', async () => {
     const { runtime } = runtimeOf({ measurements: [] })
     const result = await prepareDocument({ templateJson: multiTemplate() }, runtime)

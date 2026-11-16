@@ -94,6 +94,18 @@ describe('parsePrintSubmit', () => {
 })
 
 describe('parsePrintSubmitHtml', () => {
+  it('逐页尺寸允许横纵互换，拒绝不同纸型、非法尺寸及页数不符', () => {
+    const job = {
+      html: '<html></html>', paperMm: { width: 210, height: 297 }, pageCount: 2,
+      pagePaperMm: [{ width: 210, height: 297 }, { width: 297, height: 210 }],
+    }
+    expect(parsePrintSubmitHtml(job).pagePaperMm).toEqual(job.pagePaperMm)
+    for (const pagePaperMm of [[], [{ width: 210, height: 297 }], [job.paperMm, { width: 297, height: 420 }], [job.paperMm, { width: 0, height: 210 }]]) {
+      expect(() => parsePrintSubmitHtml({ ...job, pagePaperMm })).toThrow('pagePaperMm')
+    }
+    expect(() => parsePrintSubmitHtml({ ...job, continuous: true })).toThrow('pagePaperMm')
+  })
+
   const valid = {
     html: '<html><body>ok</body></html>',
     paperMm: { width: 80, height: 120.5 },

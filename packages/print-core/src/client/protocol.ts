@@ -126,6 +126,8 @@ export interface RenderedHtmlPages {
   html: string
   /** 最终纸张尺寸（mm；连续纸为探针推导高度） */
   paperMm: { width: number; height: number }
+  /** 多页面模板逐页尺寸；各页纸型相同，允许横纵向互换 */
+  pagePaperMm?: { width: number; height: number }[]
   /** 模板是否连续纸 */
   continuous?: boolean
   /** 总页数（客户端任务记录用，可选） */
@@ -138,6 +140,8 @@ export interface PrintSubmitHtmlRequest {
   html: string
   /** 最终纸张尺寸（mm） */
   paperMm: { width: number; height: number }
+  /** 多页面模板逐页尺寸，顺序与 HTML 中的物理页一致 */
+  pagePaperMm?: { width: number; height: number }[]
   /** 模板是否连续纸（影响纸张覆盖语义，缺省 false） */
   continuous?: boolean
   /** 总页数（可选，任务记录展示） */

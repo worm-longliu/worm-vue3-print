@@ -157,10 +157,12 @@ import {
 - 每个页面模板各自跑一遍完整的「绑定 → 测量 → 分页」，共用同一份数据；
 - 每个页面模板**必定从新的一页开始**（无需额外分页元素），整份文档**一次出图**；
 - `{pageIndex}` / `{totalPages}` 在**份内全局连续**（按前序模板页数累计 `pageOffset`）；
-- `PreparedDocument.pageCount` = 份内全部模板页数之和，`paperMm` 取首页（各页纸张已强制一致）；
+- `PreparedDocument.pageCount` 为全部物理页数；多页面模板的 `pagePaperMm` 按物理页顺序列出出纸尺寸（含批量与溢出分页），`paperMm` 保留首页尺寸以兼容既有调用方；
 - 多页面 × 批量（数组数据）时：每份 = 一份完整的多页文档，页码每份重置。
 
-三条校验（失败抛中文错误，消息带页面名）：`pages` 至少 1 页、各页纸张尺寸（含方向）必须一致、**不支持连续纸与标签拼版**。
+三条校验（失败抛中文错误，消息带页面名）：`pages` 至少 1 页、各页纸张尺寸必须相同或互换宽高（同一纸型横纵向混排）、**不支持连续纸与标签拼版**。
+
+多页 PDF 使用命名 `@page` 与 `preferCSSPageSize` 保留各页方向。浏览器 `renderHtmlPages()` 同样返回 `pagePaperMm`；通过 `client.printHtml(result)` 直送时会自动透传，新旧模板格式不变。横纵混排仍提交一个打印作业，不拆页；混排时不允许使用全局 `print.landscape` 覆盖各页方向。需要同步升级 core 与桌面客户端，实体出纸的方向识别仍取决于打印机驱动。
 
 > 单模板产物与旧版**逐字一致**：CSS 被拆成 `buildBasePageCss()`（与模板无关）+ `buildPageGeometryCss(template, '.mt-N')`（各页几何），
 > 单模板仍走同一入口输出，由护栏测试锁死，存量模板零迁移。

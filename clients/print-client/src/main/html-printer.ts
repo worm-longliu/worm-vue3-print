@@ -52,14 +52,23 @@ export interface WebPrintOptions {
 export function buildWebPrintOptions(
   print: PrintOptions,
   paperMm: { width: number; height: number },
+  pagePaperMm?: Array<{ width: number; height: number }>,
 ): WebPrintOptions {
+  const mixed = pagePaperMm?.some(p => p.width !== paperMm.width || p.height !== paperMm.height)
+  if (mixed && typeof print.landscape === 'boolean') {
+    throw new ProtocolFailure('INVALID_REQUEST', '横纵向混排由各页设计方向决定，不允许 print.landscape 覆盖')
+  }
+  // 混排仍提交一个作业：介质按短边×长边声明，各页方向由命名 @page 决定。
+  const media = mixed
+    ? { width: Math.min(paperMm.width, paperMm.height), height: Math.max(paperMm.width, paperMm.height) }
+    : paperMm
   const options: WebPrintOptions = {
     silent: true,
     printBackground: true,
     copies: print.copies && print.copies > 0 ? Math.trunc(print.copies) : 1,
     pageSize: {
-      width: millimetersToMicrometers(paperMm.width),
-      height: millimetersToMicrometers(paperMm.height),
+      width: millimetersToMicrometers(media.width),
+      height: millimetersToMicrometers(media.height),
     },
     margins: { marginType: 'none' },
   }

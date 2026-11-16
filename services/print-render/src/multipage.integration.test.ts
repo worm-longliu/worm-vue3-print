@@ -31,6 +31,50 @@ function page(name: string, elements: PrintTemplateElement[]): PrintTemplateData
 }
 
 describe('多页面模板渲染（真实 Chromium）', () => {
+  it('纵向封面、横向内容跨页、纵向条款批量输出，尺寸与页码按原顺序保留', async () => {
+    const cover = page('封面', [textEl('cover', 10, 20, '{title}')])
+    const landscape = {
+      ...page('内容', [
+        textEl('line1', 0, 80, '{body}'),
+        textEl('line2', 80, 80, '{body}'),
+        textEl('line3', 160, 80, '{body}'),
+        { ...textEl('wide', 0, 10, '横向右侧'), options: { left: 230, top: 0, width: 30, height: 10, formatter: '横向右侧' } },
+      ]),
+      orientation: 'landscape' as const,
+    }
+    const terms = page('条款', [textEl('terms', 10, 20, '条款')])
+    const pages = [cover, landscape, terms].map(p => ({
+      ...p,
+      footer: { height: 5, elements: [{ id: 'pg', type: 'pageNumber', options: { left: 0, top: 0, width: 30, height: 5, testData: '{pageIndex}/{totalPages}' } }] },
+    }))
+    const { pdf, prepared } = await coreRenderPdf({
+      templateJson: { pages },
+      printData: [{ title: '封面甲', body: '正文甲' }, { title: '封面乙', body: '正文乙' }],
+    }, runtime)
+    const task = getDocument({ data: pdf.slice() })
+    try {
+      const doc = await task.promise
+      expect(prepared.pageCount).toBe(8)
+      expect(doc.numPages).toBe(8)
+      expect(prepared.pagePaperMm).toHaveLength(8)
+      for (let i = 1; i <= doc.numPages; i++) {
+        const p = await doc.getPage(i)
+        const viewport = p.getViewport({ scale: 1 })
+        const inCopy = (i - 1) % 4
+        const landscapePage = inCopy === 1 || inCopy === 2
+        expect(viewport.width / PT_PER_MM).toBeCloseTo(landscapePage ? 297 : 210, 0)
+        expect(viewport.height / PT_PER_MM).toBeCloseTo(landscapePage ? 210 : 297, 0)
+        const content = await p.getTextContent()
+        const text = content.items.map(item => 'str' in item ? item.str : '').join('').normalize('NFKC')
+        expect(text).toContain(`${inCopy + 1}/4`)
+        expect(text).toContain(inCopy === 0 ? (i <= 4 ? '封面甲' : '封面乙') : inCopy === 3 ? '条款' : (i <= 4 ? '正文甲' : '正文乙'))
+        if (inCopy === 1) expect(text).toContain('横向右侧')
+      }
+    } finally {
+      await task.destroy()
+    }
+  })
+
   it('封面 1 页 + 内容 2 页 → 3 页 PDF，页码与纸张正确', async () => {
     const { pdf } = await coreRenderPdf({
       templateJson: {

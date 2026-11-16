@@ -20,6 +20,11 @@ const template = {
 } as unknown as TemplateData
 
 describe('renderHtmlPages', () => {
+  it('横纵向多页结果携带逐页尺寸，供客户端按原方向输出', async () => {
+    const result = await renderHtmlPages({ pages: [template, { ...template, orientation: 'landscape' }] }, {})
+    expect(result.pagePaperMm).toEqual([{ width: 210, height: 297 }, { width: 297, height: 210 }])
+  })
+
   it('调用方传入 CodeRenderer 时直接沿用（不走向量收集与页面渲染）', async () => {
     const custom: CodeRenderer = { render: () => '<svg id="custom"/>' }
     const result = await renderHtmlPages(template, {}, undefined, custom)

@@ -25,6 +25,7 @@ export type HtmlPrintOptions = Pick<
 export interface HtmlPrintJob {
   html: string
   paperMm: { width: number; height: number }
+  pagePaperMm?: { width: number; height: number }[]
   continuous: boolean
   pageCount?: number
   print: HtmlPrintOptions
@@ -201,9 +202,27 @@ export function parsePrintSubmitHtml(raw: unknown): HtmlPrintJob {
     pageCount = raw.pageCount
   }
 
+  let pagePaperMm: HtmlPrintJob['pagePaperMm']
+  if (raw.pagePaperMm !== undefined) {
+    if (!Array.isArray(raw.pagePaperMm) || raw.pagePaperMm.length === 0) invalid('pagePaperMm 必须是非空数组')
+    if (continuous) invalid('连续纸不支持 pagePaperMm')
+    if (pageCount !== undefined && raw.pagePaperMm.length !== pageCount) invalid('pagePaperMm 数量必须与 pageCount 一致')
+    const first = raw.paperMm
+    pagePaperMm = raw.pagePaperMm.map((paper, i) => {
+      if (!isRecord(paper) || !isPositiveFinite(paper.width) || !isPositiveFinite(paper.height)) {
+        invalid(`pagePaperMm[${i}] 必须包含正数宽高`)
+      }
+      const same = paper.width === first.width && paper.height === first.height
+      const swapped = paper.width === first.height && paper.height === first.width
+      if (!same && !swapped) invalid(`pagePaperMm[${i}] 必须使用相同纸型（允许横纵向互换）`)
+      return { width: paper.width, height: paper.height }
+    })
+  }
+
   return {
     html: raw.html,
     paperMm: { width: raw.paperMm.width, height: raw.paperMm.height },
+    pagePaperMm,
     continuous,
     pageCount,
     print,

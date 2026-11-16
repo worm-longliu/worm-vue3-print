@@ -58,13 +58,26 @@ describe('DesignerStore：模板与运行时池', () => {
     expect(s.pages.map(p => p.name)).toEqual(['页面 3', '页面 1', '页面 2'])
   })
 
-  it('新增页继承当前页纸张与方向（否则横版模板加出竖版页，保存被整份拦下）', () => {
+  it('新增页继承当前页纸张与方向', () => {
     s.updateTemplateData({ orientation: 'landscape' } as never)
     s.addPage()
     const p2 = s.pages[1]!
     expect(p2.paperSize).toBe('A4')
     expect(p2.orientation).toBe('landscape')
     expect(s.pages.map(p => p.name)).toEqual(['页面 1', '页面 2'])
+  })
+
+  it('同纸型跨页共享，方向与内容旋转独立，新增页继承当前设置', () => {
+    s.addPage()
+    s.updateTemplateData({ orientation: 'landscape', outputRotation: 180 })
+    s.updateTemplateData({ paperSize: 'A5' })
+    expect(s.pages.map(p => p.paperSize)).toEqual(['A5', 'A5'])
+    expect(s.pages.map(p => p.orientation)).toEqual(['portrait', 'landscape'])
+    expect(s.pages[0]!.outputRotation).toBeUndefined()
+    s.addPage()
+    expect(s.templateData.outputRotation).toBe(180)
+    const out = json(s)
+    expect(out.pages!.map(p => p.orientation)).toEqual(['portrait', 'landscape', 'landscape'])
   })
 
   it('多页导出为 { version: 1, pages }、单页导出页对象（与 canvas 的 wrapper 同形）', () => {

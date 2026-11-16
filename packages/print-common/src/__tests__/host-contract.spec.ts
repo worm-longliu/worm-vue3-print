@@ -55,6 +55,23 @@ describe('宿主契约：声明面', () => {
 })
 
 describe('宿主契约：运行时对拍', () => {
+  it('同纸型横纵混排可以加载、保存并再次打开，方向不丢失', () => {
+    const el = create()
+    try {
+      const page = JSON.parse(el.getTemplateJson())
+      el.loadTemplate({ version: 1, pages: [page, { ...page, orientation: 'landscape' }] })
+      const saves: string[] = []
+      el.addEventListener('save', e => saves.push(String((e as CustomEvent).detail)))
+      el.save()
+      expect(saves).toHaveLength(1)
+      el.loadTemplate(saves[0])
+      const saved = JSON.parse(el.getTemplateJson())
+      expect(saved.pages.map((p: { orientation: string }) => p.orientation)).toEqual(['portrait', 'landscape'])
+    } finally {
+      el.remove()
+    }
+  })
+
   it('observedAttributes 与声明逐项一致', () => {
     expect(PrintDesignerElement.observedAttributes).toEqual([...PRINT_DESIGNER_ATTRIBUTES])
     expect(PrintDesignerElement.contractVersion).toBe(PRINT_DESIGNER_CONTRACT_VERSION)
