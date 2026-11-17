@@ -6,6 +6,10 @@
   "description": "桌面客户端内部 MCP 工具库：为浏览器实时画布会话提供模板校验、草稿与会话读写工具。",
   "license": "MIT",
   "author": "worm <liu_long_qqcom@qq.com>",
+  "homepage": "https://github.com/worm-longliu/worm-print-platform",
+  "bugs": {
+    "url": "https://github.com/worm-longliu/worm-print-platform/issues"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [

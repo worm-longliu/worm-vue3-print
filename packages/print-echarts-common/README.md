@@ -1,5 +1,9 @@
 # @worm-vue3-print/echarts-common
 
+> [!IMPORTANT]
+> **【迁移公告】** `worm-vue3-print` 已进入维护状态，稳定主版本 1.5.x 已迁至 **worm-print-platform**（[Gitee](https://gitee.com/liulong_oschina/worm-print-platform) ｜ [GitHub](https://github.com/worm-longliu/worm-print-platform)）；npm scope `@worm-vue3-print/*` → `@worm-print-platform/*`。
+> **本包迁移去向**：本包并入 [`@worm-print-platform/echarts/ui`](https://www.npmjs.com/package/@worm-print-platform/echarts)——一行 `import '@worm-print-platform/echarts/ui'` 替代旧的两包（`@worm-vue3-print/echarts` + `@worm-vue3-print/echarts-common`）。完整步骤见[新仓迁移指南](https://github.com/worm-longliu/worm-print-platform/blob/master/docs/migration-worm-vue3-print.md)。
+
 ECharts 十类图表元素在**零框架设计器**（`@worm-vue3-print/common`）里的宿主适配包：
 以 [`@worm-vue3-print/plugin-kit`](../print-plugin-kit) 的框架无关 `ElementUI` 契约，
 提供**静态 SVG 画布**与**原生 DOM 图形化属性面板**。

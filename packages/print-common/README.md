@@ -1,5 +1,9 @@
 # @worm-vue3-print/common
 
+> [!IMPORTANT]
+> **【迁移公告】** `worm-vue3-print` 已进入维护状态，稳定主版本 1.5.x 已迁至 **worm-print-platform**（[Gitee](https://gitee.com/liulong_oschina/worm-print-platform) ｜ [GitHub](https://github.com/worm-longliu/worm-print-platform)）；npm scope `@worm-vue3-print/*` → `@worm-print-platform/*`。
+> **本包迁移去向**：本包（零框架）→ [`@worm-print-platform/canvas`](https://www.npmjs.com/package/@worm-print-platform/canvas)；UMD 产物 `common.js/common.css` → `canvas.js/canvas.css`，全局 `window.WormPrintCommon` → `window.WormPrintCanvas`。完整步骤见[新仓迁移指南](https://github.com/worm-longliu/worm-print-platform/blob/master/docs/migration-worm-vue3-print.md)。
+
 > **设计器权威实现**：技术主站 `demo/` 与 Vue 3 / Vue 2 / React / jQuery / 无框架宿主统一消费本包。
 > 样式、图标与主题令牌的单一来源在 `print-core/src/styles`，`@worm-vue3-print/canvas` 反向消费同一份；
 > 元素能力位（core）与元素定义（本包）走统一注册表，内置 11 类元素与第三方插件同权。

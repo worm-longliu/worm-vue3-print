@@ -1,5 +1,9 @@
 # @worm-vue3-print/echarts
 
+> [!IMPORTANT]
+> **【迁移公告】** `worm-vue3-print` 已进入维护状态，稳定主版本 1.5.x 已迁至 **worm-print-platform**（[Gitee](https://gitee.com/liulong_oschina/worm-print-platform) ｜ [GitHub](https://github.com/worm-longliu/worm-print-platform)）；npm scope `@worm-vue3-print/*` → `@worm-print-platform/*`。
+> **本包迁移去向**：[`@worm-print-platform/echarts`](https://www.npmjs.com/package/@worm-print-platform/echarts)，升级为 npm 正式包，`/kit` 子路径保留，新增 `/ui`（`import '@worm-print-platform/echarts/ui'` 一行即注册）。完整步骤见[新仓迁移指南](https://github.com/worm-longliu/worm-print-platform/blob/master/docs/migration-worm-vue3-print.md)。
+
 打印模板的 **ECharts 图表元素可选包**：一个插件注册十个图表元素，提供 SVG 渲染器（echarts SSR）、
 页面执行器、设计器画布 / 图形化属性面板与共享数据契约。
 主包 `@worm-vue3-print/core` 与 `@worm-vue3-print/canvas` 不依赖任何图表库，只有本包引入 `echarts`。

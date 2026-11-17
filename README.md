@@ -7,6 +7,16 @@ Vue 3 可视化打印模板设计器 + 模板表达式引擎 + 同构渲染管�
 
 > **架构口径（1.5.0 起）**：`packages/print-common`（`@worm-vue3-print/common`）是设计器的**权威实现**——零框架原生自定义元素，技术主站 `demo/` 与 Vue 3 / Vue 2 / React / jQuery / 无框架宿主统一消费它。样式、图标与主题令牌的单一来源在 `print-core/src/styles`，元素能力位与 UI 定义走统一注册表；`@worm-vue3-print/canvas` 保留为 **Vue 3 兼容轨**（消费同一份共享样式与 core 能力表），不再持有权威样式或独立能力清单。`demo-common/` 是四宿主集成示例与 CI 验收工程。宿主契约见 `packages/print-common/src/host-contract.ts`。
 
+> [!IMPORTANT]
+> **【迁移公告】本仓库已进入维护状态**
+>
+> `worm-vue3-print` 即日起进入维护状态（仅修复严重缺陷，不再新增功能）。稳定主版本 **1.5.x** 已在拆仓后的新仓库 **worm-print-platform** 继续迭代，欢迎迁移。
+>
+> - **新仓库地址**：[Gitee](https://gitee.com/liulong_oschina/worm-print-platform) ｜ [GitHub](https://github.com/worm-longliu/worm-print-platform)
+> - **npm scope 迁移**：`@worm-vue3-print/*` → `@worm-print-platform/*`
+> - **完整迁移指南**：[新仓 docs/migration-worm-vue3-print.md](https://github.com/worm-longliu/worm-print-platform/blob/master/docs/migration-worm-vue3-print.md)（包名映射总表 + Vue 3 / 零框架 / 源码引入三条路径 + 行为差异）
+> - **Vue 3 组件用户**：`@worm-vue3-print/canvas` → `@worm-print-platform/canvas/vue3`，业务代码零改动；完整三步切换见下方 [迁移到 worm-print-platform](#migration) 章节。
+
 ## 🔗 在线预览
 
 GitHub Pages：**https://worm-longliu.github.io/worm-vue3-print/**
@@ -501,6 +511,46 @@ docker build -f services/print-render/Dockerfile -t worm-vue3-print-render .
 
 - Gitee：https://gitee.com/liulong_oschina/worm-vue3-print
 - GitHub：https://github.com/worm-longliu/worm-vue3-print
+
+> **新仓库（稳定主版本 1.5.x）**：[Gitee](https://gitee.com/liulong_oschina/worm-print-platform) ｜ [GitHub](https://github.com/worm-longliu/worm-print-platform) ｜ npm scope `@worm-print-platform/*`
+
+<a id="migration"></a>
+
+## 迁移到 worm-print-platform（Vue 3 组件用户三步切换）
+
+新仓 `worm-print-platform` 是 1.5.x 稳定主线。`@worm-vue3-print/canvas`（Vue 3 组件轨）迁移到 `@worm-print-platform/canvas/vue3` 后，组件模板、事件、ref 调用与业务逻辑**一行不改**，只换依赖与 import。完整口径（包名映射、零框架路径、源码引入路径、行为差异）见[新仓迁移指南](https://github.com/worm-longliu/worm-print-platform/blob/master/docs/migration-worm-vue3-print.md)。
+
+**① 换依赖**（`vue` 是 `/vue3` 门面的 optional peer，项目里已有则无需操作）：
+
+```bash
+npm uninstall @worm-vue3-print/canvas @worm-vue3-print/core
+npm install @worm-print-platform/canvas @worm-print-platform/core
+```
+
+**② 换 import 与类型来源**（全部集中到 `/vue3` 子路径；`style.css` 的 import 直接删除——门面样式内置）：
+
+```diff
+- import { PrintDesigner, PrintHtmlPreview, createDefaultTemplate, renderHtmlPages, DEFAULT_DEMO_DATA } from '@worm-vue3-print/canvas'
+- import type { PrintBusinessField, TemplateData } from '@worm-vue3-print/canvas'
+- import '@worm-vue3-print/canvas/style.css'
++ import { PrintDesigner, PrintHtmlPreview, createDefaultTemplate, renderHtmlPages, DEFAULT_DEMO_DATA } from '@worm-print-platform/canvas/vue3'
++ import type { PrintBusinessField, TemplateData } from '@worm-print-platform/canvas/vue3'
+```
+
+**③ 图表插件（如使用）**：
+
+```bash
+npm uninstall @worm-vue3-print/echarts @worm-vue3-print/echarts-common
+npm install @worm-print-platform/echarts
+```
+
+```diff
+- import { configureChartPlugin } from '@worm-vue3-print/echarts'
+- import '@worm-vue3-print/echarts-common'
++ import '@worm-print-platform/echarts/ui'
+```
+
+`configureChartPlugin()` 等能力由 `@worm-print-platform/echarts/kit` 提供，用法不变。
 
 ## 抖音 & 赞赏
 

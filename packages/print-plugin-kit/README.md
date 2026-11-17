@@ -1,5 +1,9 @@
 # @worm-vue3-print/plugin-kit
 
+> [!IMPORTANT]
+> **【迁移公告】** `worm-vue3-print` 已进入维护状态，稳定主版本 1.5.x 已迁至 **worm-print-platform**（[Gitee](https://gitee.com/liulong_oschina/worm-print-platform) ｜ [GitHub](https://github.com/worm-longliu/worm-print-platform)）；npm scope `@worm-vue3-print/*` → `@worm-print-platform/*`。
+> **本包迁移去向**：[`@worm-print-platform/plugin-kit`](https://www.npmjs.com/package/@worm-print-platform/plugin-kit)，升级为 npm 正式包，契约与注册表同名同形。完整步骤见[新仓迁移指南](https://github.com/worm-longliu/worm-print-platform/blob/master/docs/migration-worm-vue3-print.md)。
+
 打印模板自定义元素的**框架无关设计器 UI 契约与注册表**。
 
 插件作者只写一份 DOM 渲染能力（返回 HTML 字符串或 DOM 节点），即可同时被两类宿主消费：

@@ -25,6 +25,10 @@
   },
   "license": "MIT",
   "author": "worm <liu_long_qqcom@qq.com>",
+  "homepage": "https://github.com/worm-longliu/worm-print-platform",
+  "bugs": {
+    "url": "https://github.com/worm-longliu/worm-print-platform/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/worm-longliu/worm-vue3-print.git"

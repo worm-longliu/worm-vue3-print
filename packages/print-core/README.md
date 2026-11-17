@@ -1,5 +1,9 @@
 # @worm-vue3-print/core
 
+> [!IMPORTANT]
+> **【迁移公告】** `worm-vue3-print` 已进入维护状态，稳定主版本 1.5.x 已迁至 **worm-print-platform**（[Gitee](https://gitee.com/liulong_oschina/worm-print-platform) ｜ [GitHub](https://github.com/worm-longliu/worm-print-platform)）；npm scope `@worm-vue3-print/*` → `@worm-print-platform/*`。
+> **本包迁移去向**：[`@worm-print-platform/core`](https://www.npmjs.com/package/@worm-print-platform/core)，仅改包名即可；子路径 `/designer` `/browser` `/client` 保持可用，另增 `/node`。完整步骤见[新仓迁移指南](https://github.com/worm-longliu/worm-print-platform/blob/master/docs/migration-worm-vue3-print.md)。
+
 打印模板表达式引擎与**同构渲染管线**（数据绑定 / HTML 生成 / 分页 / 测量元素），纯 TypeScript。
 
 ```

@@ -1,5 +1,23 @@
 # @worm-vue3-print/canvas
 
+> [!IMPORTANT]
+> **【迁移公告】** `worm-vue3-print` 已进入维护状态，稳定主版本 1.5.x 已迁至 **worm-print-platform**（[Gitee](https://gitee.com/liulong_oschina/worm-print-platform) ｜ [GitHub](https://github.com/worm-longliu/worm-print-platform)）；npm scope `@worm-vue3-print/*` → `@worm-print-platform/*`。
+>
+> **本包迁移去向**：本包是 Vue 3 组件轨，迁移目标为 [`@worm-print-platform/canvas/vue3`](https://www.npmjs.com/package/@worm-print-platform/canvas)，**业务代码零改动**，只换依赖与 import：
+>
+> ① `npm uninstall @worm-vue3-print/canvas @worm-vue3-print/core` + `npm install @worm-print-platform/canvas @worm-print-platform/core`（`vue` 是 `/vue3` 门面的 optional peer，项目已有则无需操作）。
+>
+> ② import（含 `import type`）改到 `@worm-print-platform/canvas/vue3`，并**删除 `@worm-vue3-print/canvas/style.css` 的 import**（门面样式内置）：
+> ```diff
+> - import { PrintDesigner, PrintHtmlPreview } from '@worm-vue3-print/canvas'
+> - import '@worm-vue3-print/canvas/style.css'
+> + import { PrintDesigner, PrintHtmlPreview } from '@worm-print-platform/canvas/vue3'
+> ```
+>
+> ③ 图表插件（如使用）：`npm uninstall @worm-vue3-print/echarts @worm-vue3-print/echarts-common` + `npm install @worm-print-platform/echarts`，改为 `import '@worm-print-platform/echarts/ui'`。
+>
+> 详见[新仓迁移指南 · 路径 A](https://github.com/worm-longliu/worm-print-platform/blob/master/docs/migration-worm-vue3-print.md)。
+
 Vue 3 可视化打印模板设计器画布（`worm-vue3-print` monorepo）。纯 Vue 3 + HTML/CSS/SVG +
 原生控件实现，**不依赖 Element Plus、不依赖宿主 API/路由/租户**。模板保存、字段查询、
 图片上传、消息提示等能力由宿主通过 props / 事件 / 适配器注入。
