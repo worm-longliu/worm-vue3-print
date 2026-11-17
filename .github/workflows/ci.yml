@@ -36,8 +36,8 @@ jobs:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
       - name: 安装 Chromium 与系统依赖
         run: npx playwright install --with-deps chromium
-      - name: 构建 core 与 render
-        run: npm run build -w @worm-vue3-print/core && npm run build -w @worm-vue3-print/render
+      - name: 构建 core、echarts 与 render
+        run: npm run build -w @worm-vue3-print/core && npm run build -w @worm-vue3-print/echarts && npm run build -w @worm-vue3-print/render
       - name: 连续纸与出图规格集成测试
         run: npm run test -w @worm-vue3-print/render -- src/continuous.integration.test.ts
         timeout-minutes: 5

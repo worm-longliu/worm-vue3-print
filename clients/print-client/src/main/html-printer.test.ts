@@ -21,6 +21,16 @@ describe('buildWebPrintOptions', () => {
     expect(options.pageSize).toEqual({ width: 210000, height: 297000 })
   })
 
+  it('横纵混排使用共同介质尺寸，方向交给各页 CSS，不按首页横向强制整份', () => {
+    const landscape = { width: 297, height: 210 }
+    const pages = [landscape, { width: 210, height: 297 }]
+    const options = buildWebPrintOptions({ copies: 2 }, landscape, pages)
+    expect(options.pageSize).toEqual({ width: 210000, height: 297000 })
+    expect(options.copies).toBe(2)
+    expect(options).not.toHaveProperty('landscape')
+    expect(() => buildWebPrintOptions({ landscape: true }, landscape, pages)).toThrow('混排')
+  })
+
   it('份数取整，缺省与非正数归 1', () => {
     expect(buildWebPrintOptions({ copies: 3 }, label).copies).toBe(3)
     expect(buildWebPrintOptions({ copies: 2.7 }, label).copies).toBe(2)

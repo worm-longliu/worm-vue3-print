@@ -420,14 +420,14 @@ export class PrintDesignerElement extends HTMLElement {
       this.repaint()
       return
     }
-    // 出纸裁切提示（预估口径）：与 canvas 一致——不阻断保存，但点保存时必须被看见一次
-    const warnings = this.getGeometryWarnings()
-    if (warnings.length) window.alert(`出纸提示（不影响保存）：\n${warnings.join('\n')}`)
     const json = this.templateJsonWithFonts()
     if (Array.isArray((json as MultiPageTemplateData).pages)) {
       try { normalizeTemplate(json as never) }
       catch (e) { window.alert(e instanceof Error ? e.message : String(e)); return }
     }
+    // 格式校验通过后再询问裁切，确认即放行；取消保留当前编辑状态。
+    const warnings = this.getGeometryWarnings()
+    if (warnings.length && !window.confirm(`出纸提示：部分内容超出纸面，打印时会被裁切。\n是否接受裁切并继续保存？\n点击“确定”继续保存，点击“取消”返回修改。\n\n${warnings.join('\n')}`)) return
     const text = JSON.stringify(json)
     this.store.dirty = false
     this.repaint()
@@ -441,7 +441,7 @@ export class PrintDesignerElement extends HTMLElement {
 
   /**
    * 出纸裁切提示（旋转外接盒顶越页首、元素超出纸面左右缘），与 canvas 同名同口径。
-   * 预估口径：编辑期无实测高，自适应行高按设计盒估算 ⇒ 只提示、不阻断保存。
+   * 预估口径：编辑期无实测高，自适应行高按设计盒估算；保存时由用户确认是否接受裁切。
    */
   getGeometryWarnings(): string[] {
     return collectPrintWarnings(this.store.templateData)

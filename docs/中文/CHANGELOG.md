@@ -6,6 +6,8 @@
 
 ### 新增
 
+- **裁切提示改为可取消的保存确认**：超出纸面的内容先询问是否接受裁切，确认后继续保存，取消则保留编辑内容与未保存状态；拼版及多页纸型错误优先显示，避免被裁切提示掩盖。
+- **同一纸型支持多页横纵向混排**：设计器纸型与自定义尺寸跨页共享，设计方向和内容旋转按页独立；测量、分页及命名纸张规则均按各页设置计算，PDF 保留各页方向。新增可选 `pagePaperMm` 传递逐物理页尺寸，浏览器预渲染直送客户端时自动透传；客户端保持一个打印作业，混排时禁止全局方向覆盖。A4/A3 混用、连续纸多页与多页拼版仍不支持，实体打印机需验证驱动行为。
 - **common 成为设计器权威实现，技术主站切换完成**：`demo/`（9303）的依赖、Vite alias、tsconfig paths 与运行时 import 全部改到 `@worm-vue3-print/common/vue3`，四宿主继续直挂零框架主入口；`@worm-vue3-print/canvas` 保留为 Vue 3 兼容轨，不再持有权威样式或独立能力清单。顺带修好门面预览组件的两个真实缺陷：`PrintHtmlPreview` 原先在 setup 阶段 `immediate` 渲染时 iframe 尚未挂载、写不进 HTML，改为 `onMounted` 后首渲；`h()` 拼 children 未给 key，loading 消失时 Vue 按索引 diff 把 iframe 整个重建导致刚写入的 HTML 丢失，现给 iframe / loading 稳定 key。主站实测预览 5 页出纸、四宿主官方 UI 验收各 60/60。
 - **样式、图标与主题令牌单一来源**：新增 `print-core/src/styles`（`designer.css` / `theme.css` / `icon-manifest.json`，随 core 发布为 `./styles/*` 子路径）。`gen-styles.mjs` / `gen-icons.mjs` 彻底不再读 `canvas/dist/canvas.css` 或扫 canvas 源码；canvas 反向消费共享 `:root` 主题令牌（源码内不再定义任何 `--pd-*`）。产物与改造前**逐字一致**，移走 `canvas/dist/canvas.css` 后 common 仍可生成；`gen-styles.mjs --check` 提供漂移检测；全仓构建顺序反转为 core → plugin-kit → common → canvas。
 - **统一元素注册表（内置与插件同权）**：common 新增 `core/element-definitions.ts`，内置 13 类元素（11 类素材 + html / pageNumber）与第三方插件走同一张表；`elements.ts` 的 11 个 `case` 改为渲染器映射，`panels.ts` 静态素材表、`property-panel.ts` 的 `isText/isCode/isTable`、`print-designer.ts` 的双击编辑白名单全部改为数据驱动。`registerElementDefinition()` 可覆盖内置标签/图标/属性分组/双击字段，`registerElementRenderer()` 可替换画布渲染，注销句柄只撤销自己那一版并回落基线；注册态变化通知已挂载设计器即时重绘。core 新增 `element-capabilities.ts` 能力位注册表，把 `ZONE_ALLOWED` / rotation / text-fit / element-border / binding / element-factory 六处类型白名单收敛为一张表，插件在 `defineElementPlugin({ kinds: [{ capabilities }] })` 声明即自动生效（亦可覆盖内置），所有消费点保留历史回落，存量模板零回归。

@@ -9,7 +9,7 @@
 // 2/4/6/8 像素上、逐位均匀且零灰阶——预览与纸面成同一张点阵。
 // 自适应档用整数倍而非任意倍：非整数倍会重采样出半像素边，正是「抗锯齿」观感的来源。
 
-import { getPaperDimensions } from './default-config.js'
+import { getPaperDimensions, isContinuousPaperSize } from './default-config.js'
 
 /** CSS 绝对单位：1in = 96px */
 export const MM_TO_PX = 96 / 25.4
@@ -56,14 +56,18 @@ export function resolvePrinterDpi(templateJson?: Record<string, any> | null): nu
 }
 
 /**
- * 纸张宽度（CSS px）：兼容单页与多页结构。
+ * 纸张宽度（CSS px）：多页取最宽的出纸页，避免按纵向首页缩放时横向页超出预览容器。
  * 宽高一律走 core 的 `getPaperDimensions`——方向交换、自定义宽度、连续纸宽度都在那一处结算，
  * 预览不再维护第二份纸型表（此前那份漏了 Letter/Legal/针式/热敏纸，还把 A3/A5 横版算错）。
  */
 export function paperWidthPx(templateJson?: Record<string, any> | null): number {
-  const page = templateJson?.pages?.[0] ?? templateJson
-  if (!page) return FALLBACK_PAPER_WIDTH_MM * MM_TO_PX
-  return getPaperDimensions(page).width * MM_TO_PX
+  if (!templateJson) return FALLBACK_PAPER_WIDTH_MM * MM_TO_PX
+  const pages = templateJson.pages?.length ? templateJson.pages : [templateJson]
+  return Math.max(...pages.map((page: Record<string, any>) => {
+    const paper = getPaperDimensions(page as Parameters<typeof getPaperDimensions>[0])
+    const swapped = (page.outputRotation === 90 || page.outputRotation === 270) && !isContinuousPaperSize(page.paperSize)
+    return swapped ? paper.height : paper.width
+  })) * MM_TO_PX
 }
 
 /** 适配档：容器宽放得下整页的最大整数倍，非整数一律向下取整（不产生亚像素重采样） */

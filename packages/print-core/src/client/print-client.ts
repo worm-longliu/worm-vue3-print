@@ -132,6 +132,7 @@ export class PrintClient {
     const payload: PrintSubmitHtmlRequest = {
       html: rendered.html,
       paperMm: rendered.paperMm,
+      pagePaperMm: rendered.pagePaperMm,
       continuous: rendered.continuous,
       pageCount: rendered.pageCount,
       print,

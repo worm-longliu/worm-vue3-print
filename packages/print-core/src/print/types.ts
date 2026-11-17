@@ -90,6 +90,8 @@ export interface PreparedDocument {
   pageCount: number
   paperMm: PaperMm
   continuous: boolean
+  /** 多页面模板按物理页展开的尺寸；paperMm 保留首页尺寸，兼容现有调用方 */
+  pagePaperMm?: PaperMm[]
   heightSource: HeightSource
   pageLayouts: PageLayout[]
   /** 份数：单对象=1，数组=数组长度 */

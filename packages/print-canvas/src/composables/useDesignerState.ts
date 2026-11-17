@@ -471,8 +471,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     pages.value[activePageIndex.value] = templateData.value
     if (pages.value.length > 1) {
       const paper = {
-        paperSize: data.paperSize, orientation: data.orientation,
-        outputRotation: data.outputRotation,
+        paperSize: data.paperSize,
         customWidth: data.customWidth, customHeight: data.customHeight,
       }
       for (const p of pages.value) Object.assign(p, paper)
@@ -525,6 +524,7 @@ export function useDesignerState(options: DesignerStateOptions = {}) {
     const np = toRuntimePool({
       ...createDefaultTemplate(),
       paperSize: base.paperSize, orientation: base.orientation,
+      outputRotation: base.outputRotation,
       customWidth: base.customWidth, customHeight: base.customHeight,
       name: nextDefaultPageName(),
     })

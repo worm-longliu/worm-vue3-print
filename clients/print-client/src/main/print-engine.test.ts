@@ -36,6 +36,7 @@ afterEach(() => {
 function createEngine(policy: { keep: boolean; dir: string }) {
   const records: JobRecord[] = []
   const history = new JobHistoryStore(join(workDir, 'jobs.jsonl'), 100)
+  const toPdf = vi.fn(async (_html: string, _spec: unknown, _viewport: unknown) => new Uint8Array(Buffer.from('%PDF-1.4 fake')))
   const engine = new PrintEngine({
     printerService: {
       resolve: async (name?: string) => ({ name: name ?? '测试打印机', isDefault: true }),
@@ -44,9 +45,9 @@ function createEngine(policy: { keep: boolean; dir: string }) {
     runtime: {
       withSession: async (_budget: unknown, fn: (session: unknown) => Promise<unknown>) =>
         fn({
-          toPdf: async () => new Uint8Array(Buffer.from('%PDF-1.4 fake')),
+          toPdf,
           renderCodes: async () => new Map(),
-          measure: async () => [],
+          measure: async () => ({ measurements: [], fits: [] }),
           probeContentBottom: async () => 0,
         }),
     } as any,
@@ -55,7 +56,7 @@ function createEngine(policy: { keep: boolean; dir: string }) {
     pdfOutput: () => policy,
   })
   engine.onSettled((r) => records.push(r))
-  return { engine, records, history }
+  return { engine, records, history, toPdf }
 }
 
 const payload = {
@@ -90,6 +91,37 @@ describe('PrintEngine 生成 PDF 的落盘策略', () => {
 })
 
 describe('PrintEngine 出纸分发', () => {
+  it('模板直打也保留横纵混排，方向覆盖冲突在出纸前被拒绝', async () => {
+    const { engine } = createEngine({ keep: false, dir: join(workDir, 'pdf') })
+    const page = {
+      paperSize: 'A4', orientation: 'landscape', unit: 'mm',
+      margins: { top: 10, right: 10, bottom: 10, left: 10 },
+      header: { height: 0, elements: [] }, footer: { height: 0, elements: [] }, elements: [],
+    }
+    const job = { templateJson: { pages: [page, { ...page, orientation: 'portrait' }] }, print: { copies: 2 } }
+    await engine.submit(job)
+    expect(printHtmlDocument).toHaveBeenCalledTimes(1)
+    const [html, options] = vi.mocked(printHtmlDocument).mock.calls[0]!
+    expect(html).toContain('@page mt-0 { size: 297mm 210mm;')
+    expect(html).toContain('@page mt-1 { size: 210mm 297mm;')
+    expect(options).toMatchObject({ copies: 2, pageSize: { width: 210000, height: 297000 } })
+    await expect(engine.submit({ ...job, print: { landscape: false } })).rejects.toThrow('混排')
+    expect(printHtmlDocument).toHaveBeenCalledTimes(1)
+  })
+
+  it('预渲染混排仍为一次打印作业，保留 PDF 按页采用 CSS 纸张', async () => {
+    const { engine, toPdf } = createEngine({ keep: true, dir: join(workDir, 'pdf') })
+    await engine.submitHtml({
+      ...payload,
+      paperMm: { width: 297, height: 210 },
+      pagePaperMm: [{ width: 297, height: 210 }, { width: 210, height: 297 }],
+      pageCount: 2,
+    })
+    expect(printHtmlDocument).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(printHtmlDocument).mock.calls[0]![1].pageSize).toEqual({ width: 210000, height: 297000 })
+    expect(toPdf.mock.calls[0]![1]).toMatchObject({ preferCSSPageSize: true })
+  })
+
   it('出纸只走 Chromium 原生打印，并按 paperMm 声明微米纸张；系统命令不被调用', async () => {
     const dir = join(workDir, 'pdf')
     const { engine, records } = createEngine({ keep: false, dir })

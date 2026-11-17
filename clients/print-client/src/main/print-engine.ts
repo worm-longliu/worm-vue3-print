@@ -60,6 +60,7 @@ interface Produced {
   html: string
   pdf?: Uint8Array
   paperMm: { width: number; height: number }
+  pagePaperMm?: Array<{ width: number; height: number }>
   heightSource: 'config' | 'derived'
   pageCount?: number
 }
@@ -161,6 +162,7 @@ export class PrintEngine {
       html: prepared.html,
       pdf,
       paperMm: prepared.paperMm,
+      pagePaperMm: prepared.pagePaperMm,
       heightSource: prepared.heightSource,
       pageCount: prepared.pageCount,
     }
@@ -170,9 +172,9 @@ export class PrintEngine {
   private async produceFromHtml(job: HtmlPrintJob, needPdf: boolean): Promise<Produced> {
     const heightSource: Produced['heightSource'] = job.continuous ? 'derived' : 'config'
     if (!needPdf) {
-      return { html: job.html, paperMm: job.paperMm, heightSource, pageCount: job.pageCount }
+      return { html: job.html, paperMm: job.paperMm, pagePaperMm: job.pagePaperMm, heightSource, pageCount: job.pageCount }
     }
-    const spec = buildPdfTargetSpec(job.paperMm)
+    const spec = buildPdfTargetSpec(job.paperMm, !!job.pagePaperMm)
     const pdf = await this.deps.runtime.withSession(
       { timeoutMs: PDF_GENERATION_TIMEOUT_MS },
       session => session.toPdf(job.html, spec, paperViewportPx(job.paperMm)),
@@ -181,6 +183,7 @@ export class PrintEngine {
       html: job.html,
       pdf,
       paperMm: job.paperMm,
+      pagePaperMm: job.pagePaperMm,
       heightSource,
       pageCount: job.pageCount,
     }
@@ -220,6 +223,7 @@ export class PrintEngine {
         size: produced.pdf?.length,
         keep: keepPdf,
         paper: produced.paperMm,
+        pagePaperMm: produced.pagePaperMm,
         heightSource: produced.heightSource,
         pages: produced.pageCount,
       })
@@ -227,7 +231,7 @@ export class PrintEngine {
       if (route === 'html') {
         await printHtmlDocument(
           produced.html,
-          buildWebPrintOptions(printOptions, produced.paperMm),
+          buildWebPrintOptions(printOptions, produced.paperMm, produced.pagePaperMm),
           logger,
         )
       } else {

@@ -166,6 +166,18 @@ describe('PrintClient', () => {
     expect(frame.payload.continuous).toBeUndefined()
   })
 
+  it('printHtml 透传逐页纸张尺寸', async () => {
+    const { client } = makeClient()
+    const p = client.connect()
+    FakeWebSocket.instances[0]!.open()
+    await p
+    const ws = FakeWebSocket.instances[0]!
+    const pagePaperMm = [{ width: 210, height: 297 }, { width: 297, height: 210 }]
+    await client.printHtml({ html: '<html></html>', paperMm: pagePaperMm[0]!, pagePaperMm })
+    const frame = ws.sent.map(s => JSON.parse(s)).find(f => f.type === MESSAGE_TYPES.PRINT_SUBMIT_HTML)
+    expect(frame.payload.pagePaperMm).toEqual(pagePaperMm)
+  })
+
   it('pair 写入 localStorage，重建客户端时自动带上 token', async () => {
     const { client } = makeClient()
     client.pair('tok-xyz')

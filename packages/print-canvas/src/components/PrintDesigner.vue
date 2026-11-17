@@ -502,7 +502,7 @@ const tilingIssues = computed(() => {
 
 /**
  * 出纸裁切提示（旋转外接盒顶越页首、元素超出纸面左右缘）。
- * 口径是**预估**：编辑期没有浏览器实测高，自适应行高按设计盒估算，故只提示不阻断保存；
+ * 口径是**预估**：编辑期没有浏览器实测高，自适应行高按设计盒估算，保存时由用户确认是否接受裁切；
  * 判据与出纸同源（core 的 paginate），不另写一套几何。
  */
 const geometryWarnings = computed(() =>
@@ -528,14 +528,14 @@ function handleSave() {
     activePropertyTab.value = 'page'
     return
   }
-  // 出纸裁切提示（预估口径）：不阻断保存，但点保存时必须被看见一次
-  const warnings = geometryWarnings.value
-  if (warnings.length) alert(`出纸提示（不影响保存）：\n${warnings.join('\n')}`)
   const json = templateJsonWithFonts()
   // 多页模板：保存前做归一化校验（纸张尺寸一致、禁连续纸/拼版），非法则阻断
   if (Array.isArray((json as MultiPageTemplateData).pages)) {
     try { normalizeTemplate(json as PrintTemplateData | PrintMultiPageTemplateData) } catch (e) { alert(e instanceof Error ? e.message : String(e)); return }
   }
+  // 格式校验通过后再询问裁切，确认即放行；取消保留当前编辑状态。
+  const warnings = geometryWarnings.value
+  if (warnings.length && !confirm(`出纸提示：部分内容超出纸面，打印时会被裁切。\n是否接受裁切并继续保存？\n点击“确定”继续保存，点击“取消”返回修改。\n\n${warnings.join('\n')}`)) return
   emit('save', JSON.stringify(json))
   markSaved()
 }

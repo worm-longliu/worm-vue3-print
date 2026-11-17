@@ -49,6 +49,21 @@ describe('useDesignerState 多页面', () => {
     expect(s.templateData.value.paperSize).toBe('A5')
   })
 
+  it('方向和内容旋转按页独立，修改其他属性不会覆盖相邻页方向', () => {
+    const s = useDesignerState({ initialTemplate: { pages: [page('封面', 30), page('内容', 150)] } })
+    s.updateTemplateData({ ...s.templateData.value, orientation: 'landscape', outputRotation: 180 })
+    s.switchPage(1)
+    expect(s.templateData.value.orientation).toBe('portrait')
+    expect(s.templateData.value.outputRotation).toBeUndefined()
+    s.updateTemplateData({ ...s.templateData.value, pageBackground: '#eee' })
+    s.switchPage(0)
+    expect(s.templateData.value.orientation).toBe('landscape')
+    expect(s.templateData.value.outputRotation).toBe(180)
+    s.addPage()
+    expect(s.templateData.value.orientation).toBe('landscape')
+    expect(s.templateData.value.outputRotation).toBe(180)
+  })
+
   it('addPage/duplicatePage/deletePage/movePage 基础操作', () => {
     const s = useDesignerState({ initialTemplate: { version: 1, pages: [page('封面', 30)] } })
     s.addPage()
